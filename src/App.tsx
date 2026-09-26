@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import { AppShell } from './layout/AppShell'
+import { NuevoPedido } from './pages/NuevoPedido'
 import { PanelOperativo } from './pages/PanelOperativo'
 import { Proximamente } from './pages/Proximamente'
 
@@ -8,15 +9,7 @@ export default function App() {
     <AppShell>
       <Routes>
         <Route path="/" element={<PanelOperativo />} />
-        <Route
-          path="/nuevo-pedido"
-          element={
-            <Proximamente
-              title="Nuevo Pedido"
-              description="Cargá un nuevo pedido de logística."
-            />
-          }
-        />
+        <Route path="/nuevo-pedido" element={<NuevoPedido />} />
         <Route
           path="/pedidos"
           element={

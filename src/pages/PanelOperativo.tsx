@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import {
-  orders,
   ordersByStatus,
   STATUS_LABEL,
   STATUS_ORDER,
   type Order,
   type OrderStatus,
 } from '../data/orders'
+import { useOrders } from '../state/OrdersContext'
 
 type View = 'kanban' | 'tabla'
 
@@ -18,9 +18,9 @@ const SUMMARY: { key: 'total' | OrderStatus; label: string }[] = [
   { key: 'entregado', label: 'Entregados' },
 ]
 
-function countFor(key: 'total' | OrderStatus) {
-  if (key === 'total') return orders.length
-  return ordersByStatus(key).length
+function countFor(list: Order[], key: 'total' | OrderStatus) {
+  if (key === 'total') return list.length
+  return ordersByStatus(list, key).length
 }
 
 function OrderCard({ order }: { order: Order }) {
@@ -42,6 +42,7 @@ function OrderCard({ order }: { order: Order }) {
         </button>
       </div>
       <p className="order-client">{order.client}</p>
+      {order.address && <p className="order-zone">{order.address}</p>}
       {order.zone && <p className="order-zone">{order.zone}</p>}
       <p className="order-meta">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -62,6 +63,7 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 export function PanelOperativo() {
+  const { orders } = useOrders()
   const [view, setView] = useState<View>('kanban')
 
   return (
@@ -103,7 +105,7 @@ export function PanelOperativo() {
       <div className="stats">
         {SUMMARY.map((item) => (
           <article key={item.key} className="stat-card">
-            <strong>{countFor(item.key)}</strong>
+            <strong>{countFor(orders, item.key)}</strong>
             <span>{item.label}</span>
           </article>
         ))}
@@ -113,7 +115,7 @@ export function PanelOperativo() {
         <div className="board-scroll">
           <div className="kanban">
             {STATUS_ORDER.map((status) => {
-              const column = ordersByStatus(status)
+              const column = ordersByStatus(orders, status)
               return (
                 <section key={status} className="column" aria-label={STATUS_LABEL[status]}>
                   <header className="column-head">
