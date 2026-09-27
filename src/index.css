@@ -203,6 +203,7 @@ p {
 
 .page-header.row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
@@ -697,5 +698,20 @@ p {
   .field-grid {
     display: grid;
     grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .sidebar,
+  .no-print {
+    display: none !important;
+  }
+
+  .app {
+    display: block;
+  }
+
+  .main {
+    padding: 0;
   }
 }

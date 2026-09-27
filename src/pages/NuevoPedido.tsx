@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   DELIVERY_ZONES,
   PROPERTY_TYPES,
@@ -92,27 +92,30 @@ async function detectStreet() {
   return street || data.display_name || ''
 }
 
-export function NuevoPedido() {
+function PedidoForm({ editingId }: { editingId?: string }) {
   const navigate = useNavigate()
-  const { addOrder } = useOrders()
-  const [seller, setSeller] = useState('')
-  const [client, setClient] = useState('')
-  const [phone, setPhone] = useState('')
-  const [invoices, setInvoices] = useState([''])
-  const [collectOnDelivery, setCollectOnDelivery] = useState(false)
-  const [amount, setAmount] = useState('')
-  const [address, setAddress] = useState('')
-  const [betweenStreet1, setBetweenStreet1] = useState('')
-  const [betweenStreet2, setBetweenStreet2] = useState('')
-  const [propertyType, setPropertyType] = useState('')
-  const [deliveryDate, setDeliveryDate] = useState('')
-  const [timeWindow, setTimeWindow] = useState(TIME_WINDOWS[0])
-  const [requiresPickup, setRequiresPickup] = useState(false)
-  const [transporter, setTransporter] = useState(TRANSPORTERS[0])
-  const [notes, setNotes] = useState('')
-  const [attachmentName, setAttachmentName] = useState('')
-  const [receiverName, setReceiverName] = useState('')
-  const [receiverDni, setReceiverDni] = useState('')
+  const { orders, addOrder, updateOrder } = useOrders()
+  const existing = orders.find((order) => order.id === editingId)
+  const [seller, setSeller] = useState(existing?.seller ?? '')
+  const [client, setClient] = useState(existing?.client ?? '')
+  const [phone, setPhone] = useState(existing?.phone ?? '')
+  const [invoices, setInvoices] = useState(
+    existing?.invoices && existing.invoices.length > 0 ? existing.invoices : [''],
+  )
+  const [collectOnDelivery, setCollectOnDelivery] = useState(existing?.collectOnDelivery ?? false)
+  const [amount, setAmount] = useState(existing?.amount ?? '')
+  const [address, setAddress] = useState(existing?.address ?? '')
+  const [betweenStreet1, setBetweenStreet1] = useState(existing?.betweenStreet1 ?? '')
+  const [betweenStreet2, setBetweenStreet2] = useState(existing?.betweenStreet2 ?? '')
+  const [propertyType, setPropertyType] = useState(existing?.propertyType ?? '')
+  const [deliveryDate, setDeliveryDate] = useState(existing?.deliveryDate ?? '')
+  const [timeWindow, setTimeWindow] = useState(existing?.timeWindow ?? TIME_WINDOWS[0])
+  const [requiresPickup, setRequiresPickup] = useState(existing?.requiresPickup ?? false)
+  const [transporter, setTransporter] = useState(existing?.transporter ?? TRANSPORTERS[0])
+  const [notes, setNotes] = useState(existing?.notes ?? '')
+  const [attachmentName, setAttachmentName] = useState(existing?.attachmentName ?? '')
+  const [receiverName, setReceiverName] = useState(existing?.receiverName ?? '')
+  const [receiverDni, setReceiverDni] = useState(existing?.receiverDni ?? '')
   const [detecting, setDetecting] = useState(false)
   const [detectMessage, setDetectMessage] = useState('')
   const [errors, setErrors] = useState<Errors>({})
@@ -178,12 +181,12 @@ export function NuevoPedido() {
     if (Object.keys(nextErrors).length > 0) return
 
     const order: Order = {
-      id: `P-${Math.floor(1000000 + Math.random() * 9000000)}`,
+      id: existing?.id ?? `P-${Math.floor(1000000 + Math.random() * 9000000)}`,
       client: client.trim(),
       address: address.trim(),
-      loadedAt: formatLoadedAt(new Date()),
+      loadedAt: existing?.loadedAt ?? formatLoadedAt(new Date()),
       deliveryDate,
-      status: 'pendiente',
+      status: existing?.status ?? 'pendiente',
       seller,
       phone: phone.trim(),
       invoices: invoices.map((invoice) => invoice.trim()).filter(Boolean),
@@ -200,6 +203,11 @@ export function NuevoPedido() {
       receiverName: receiverName.trim() || undefined,
       receiverDni: receiverDni.trim() || undefined,
     }
+    if (existing) {
+      updateOrder(order)
+      navigate('/pedidos')
+      return
+    }
     addOrder(order)
     navigate('/')
   }
@@ -207,8 +215,12 @@ export function NuevoPedido() {
   return (
     <section className="page">
       <header className="page-header">
-        <h1>Nuevo Pedido</h1>
-        <p>Cargá un nuevo pedido de logística.</p>
+        <h1>{existing ? 'Editar Pedido' : 'Nuevo Pedido'}</h1>
+        <p>
+          {existing
+            ? 'Actualizá los datos del pedido.'
+            : 'Cargá un nuevo pedido de logística.'}
+        </p>
       </header>
 
       <form className="form-stack" onSubmit={onSubmit} noValidate>
@@ -491,14 +503,24 @@ export function NuevoPedido() {
         </section>
 
         <div className="form-actions">
-          <button type="button" className="btn-ghost" onClick={() => navigate('/')}>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => navigate(existing ? '/pedidos' : '/')}
+          >
             Cancelar
           </button>
           <button type="submit" className="btn-primary">
-            Crear Pedido
+            {existing ? 'Guardar cambios' : 'Crear Pedido'}
           </button>
         </div>
       </form>
     </section>
   )
+}
+
+export function NuevoPedido() {
+  const location = useLocation()
+  const editingId = (location.state as { orderId?: string } | null)?.orderId
+  return <PedidoForm key={editingId ?? 'nuevo'} editingId={editingId} />
 }

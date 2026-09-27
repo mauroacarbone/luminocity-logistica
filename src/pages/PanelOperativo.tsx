@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ordersByStatus,
   STATUS_LABEL,
@@ -24,11 +25,18 @@ function countFor(list: Order[], key: 'total' | OrderStatus) {
 }
 
 function OrderCard({ order }: { order: Order }) {
+  const navigate = useNavigate()
+
   return (
     <article className="order-card">
       <div className="order-card-top">
         <strong>{order.id}</strong>
-        <button type="button" className="icon-button" aria-label={`Editar ${order.id}`}>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={`Editar ${order.id}`}
+          onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4"

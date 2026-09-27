@@ -1,7 +1,11 @@
 import { Route, Routes } from 'react-router-dom'
 import { AppShell } from './layout/AppShell'
+import { Despacho } from './pages/Despacho'
 import { NuevoPedido } from './pages/NuevoPedido'
+import { PlanificadorRutas } from './pages/PlanificadorRutas'
 import { PanelOperativo } from './pages/PanelOperativo'
+import { PedidosPreparacion } from './pages/PedidosPreparacion'
+import { PendientesEntregas } from './pages/PendientesEntregas'
 import { Proximamente } from './pages/Proximamente'
 
 export default function App() {
@@ -10,42 +14,10 @@ export default function App() {
       <Routes>
         <Route path="/" element={<PanelOperativo />} />
         <Route path="/nuevo-pedido" element={<NuevoPedido />} />
-        <Route
-          path="/pedidos"
-          element={
-            <Proximamente
-              title="Pedidos y Preparación"
-              description="Pedidos de la semana, listos para preparar y editar."
-            />
-          }
-        />
-        <Route
-          path="/despacho"
-          element={
-            <Proximamente
-              title="Despacho"
-              description="Seguimiento de pedidos en viaje y entregados."
-            />
-          }
-        />
-        <Route
-          path="/rutas"
-          element={
-            <Proximamente
-              title="Planificador de Rutas"
-              description="Seleccioná pedidos del día y calculá la ruta."
-            />
-          }
-        />
-        <Route
-          path="/pendientes"
-          element={
-            <Proximamente
-              title="Pendientes de Entregas"
-              description="Lista de pedidos y modo picking."
-            />
-          }
-        />
+        <Route path="/pedidos" element={<PedidosPreparacion />} />
+        <Route path="/despacho" element={<Despacho />} />
+        <Route path="/rutas" element={<PlanificadorRutas />} />
+        <Route path="/pendientes" element={<PendientesEntregas />} />
         <Route
           path="/post-venta"
           element={

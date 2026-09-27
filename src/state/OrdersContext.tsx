@@ -4,6 +4,8 @@ import type { Order } from '../data/orders'
 type OrdersContextValue = {
   orders: Order[]
   addOrder: (order: Order) => void
+  updateOrder: (order: Order) => void
+  removeOrder: (id: string) => void
 }
 
 const OrdersContext = createContext<OrdersContextValue | null>(null)
@@ -15,8 +17,18 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setOrders((current) => [order, ...current])
   }
 
+  function updateOrder(order: Order) {
+    setOrders((current) =>
+      current.map((item) => (item.id === order.id ? order : item)),
+    )
+  }
+
+  function removeOrder(id: string) {
+    setOrders((current) => current.filter((item) => item.id !== id))
+  }
+
   return (
-    <OrdersContext.Provider value={{ orders, addOrder }}>
+    <OrdersContext.Provider value={{ orders, addOrder, updateOrder, removeOrder }}>
       {children}
     </OrdersContext.Provider>
   )
