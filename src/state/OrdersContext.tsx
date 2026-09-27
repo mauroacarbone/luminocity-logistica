@@ -58,6 +58,12 @@ function isOrder(value: unknown): value is Order {
   }
   if (order.collectOnDelivery !== undefined && typeof order.collectOnDelivery !== 'boolean') return false
   if (order.requiresPickup !== undefined && typeof order.requiresPickup !== 'boolean') return false
+  if (
+    order.packages !== undefined &&
+    (typeof order.packages !== 'number' || !Number.isInteger(order.packages) || order.packages < 1)
+  ) {
+    return false
+  }
   return OPTIONAL_STRINGS.every((key) => optionalString(order[key]))
 }
 

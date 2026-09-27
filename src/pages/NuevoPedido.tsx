@@ -187,6 +187,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       loadedAt: existing?.loadedAt ?? formatLoadedAt(new Date()),
       deliveryDate,
       status: existing?.status ?? 'pendiente',
+      packages: existing?.packages,
       seller,
       phone: phone.trim(),
       invoices: invoices.map((invoice) => invoice.trim()).filter(Boolean),

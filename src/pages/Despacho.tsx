@@ -395,7 +395,7 @@ export function Despacho() {
                   )}
                   <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
                     {order.transporter && <p>Transportista: {order.transporter}</p>}
-                    <p>Bultos: a definir</p>
+                    <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
                     {order.timeWindow && <p>{order.timeWindow}</p>}
                     {order.invoices && order.invoices.length > 0 && (
                       <p>{order.invoices.join(', ')}</p>

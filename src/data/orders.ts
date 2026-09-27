@@ -13,6 +13,7 @@ export type Order = {
   loadedAt: string
   deliveryDate: string
   status: OrderStatus
+  packages?: number
   seller?: string
   phone?: string
   invoices?: string[]
