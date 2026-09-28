@@ -241,19 +241,27 @@ p {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 14px;
   margin: 22px 0 18px;
 }
 
 .stat-card {
   background: var(--card);
+  border: 2px solid transparent;
   border-radius: 18px;
   padding: 18px 18px 16px;
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
   gap: 4px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.stat-card.active {
+  border-color: var(--yellow);
 }
 
 .stat-card strong {
@@ -276,6 +284,10 @@ p {
   grid-template-columns: repeat(5, minmax(210px, 1fr));
   gap: 14px;
   align-items: start;
+}
+
+.kanban.filtered {
+  grid-template-columns: minmax(210px, 360px);
 }
 
 .column-head {
@@ -421,6 +433,14 @@ p {
   background: #fff4cc;
 }
 
+.status-preparado {
+  background: #fde8d4;
+}
+
+.status-asignado {
+  background: #efe6ff;
+}
+
 .status-en-viaje {
   background: #e7f0ff;
 }
@@ -518,6 +538,15 @@ p {
 .field-error {
   color: #d24b4b;
   font-size: 13px;
+}
+
+.field-warn {
+  color: #8a5a12;
+  font-size: 13px;
+}
+
+.zone-field {
+  margin-top: 14px;
 }
 
 .inline-field {
@@ -642,6 +671,12 @@ p {
 .zone-chip strong {
   color: var(--ink);
   font-weight: 600;
+}
+
+.zone-chip.active {
+  border-color: var(--yellow);
+  background: #fff6cc;
+  color: var(--ink);
 }
 
 .form-actions {

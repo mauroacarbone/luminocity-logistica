@@ -394,6 +394,7 @@ export function Despacho() {
                     <p className="mt-1 text-sm text-lumi-muted">{addressLine(order)}</p>
                   )}
                   <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
+                    {order.zone && <p>Zona: {order.zone}</p>}
                     {order.transporter && <p>Transportista: {order.transporter}</p>}
                     <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
                     {order.timeWindow && <p>{order.timeWindow}</p>}

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   DELIVERY_ZONES,
@@ -8,6 +8,7 @@ import {
   TRANSPORTERS,
 } from '../data/catalog'
 import type { Order } from '../data/orders'
+import { asDeliveryZone, inferZone, zoneDayWarning, zoneDays, type ZoneQuery } from '../lib/zone'
 import { useOrders } from '../state/OrdersContext'
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024
@@ -84,12 +85,13 @@ async function detectStreet() {
 
   const data = (await response.json()) as {
     display_name?: string
-    address?: { road?: string; house_number?: string }
+    address?: ZoneQuery['place']
   }
-  const street = [data.address?.road, data.address?.house_number]
-    .filter(Boolean)
-    .join(' ')
-  return street || data.display_name || ''
+  const street = [data.address?.road, data.address?.house_number].filter(Boolean).join(' ')
+  return {
+    street: street || data.display_name || '',
+    hint: { displayName: data.display_name, place: data.address } satisfies ZoneQuery,
+  }
 }
 
 function PedidoForm({ editingId }: { editingId?: string }) {
@@ -104,7 +106,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   )
   const [collectOnDelivery, setCollectOnDelivery] = useState(existing?.collectOnDelivery ?? false)
   const [amount, setAmount] = useState(existing?.amount ?? '')
+  const savedZone = asDeliveryZone(existing?.zone)
   const [address, setAddress] = useState(existing?.address ?? '')
+  const [deliveryZone, setDeliveryZone] = useState(savedZone ?? '')
+  const [zoneManual, setZoneManual] = useState(Boolean(savedZone))
+  const [zoneHint, setZoneHint] = useState<ZoneQuery | null>(null)
+  const [zonePending, setZonePending] = useState(false)
   const [betweenStreet1, setBetweenStreet1] = useState(existing?.betweenStreet1 ?? '')
   const [betweenStreet2, setBetweenStreet2] = useState(existing?.betweenStreet2 ?? '')
   const [propertyType, setPropertyType] = useState(existing?.propertyType ?? '')
@@ -126,16 +133,47 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     )
   }
 
+  useEffect(() => {
+    if (zoneManual) return
+    const handle = window.setTimeout(() => {
+      const next = inferZone({
+        address,
+        displayName: zoneHint?.displayName,
+        place: zoneHint?.place,
+      })
+      setDeliveryZone(next ?? '')
+      setZonePending(false)
+    }, 500)
+    return () => window.clearTimeout(handle)
+  }, [address, zoneHint, zoneManual])
+
+  function onAddressChange(value: string) {
+    setAddress(value)
+    setZoneManual(false)
+    setZoneHint(null)
+    setZonePending(true)
+  }
+
   async function onDetect() {
     setDetecting(true)
     setDetectMessage('')
     try {
-      const street = await detectStreet()
-      if (!street) {
+      const detected = await detectStreet()
+      if (!detected.street) {
         setDetectMessage('No encontramos una calle para esta ubicación.')
         return
       }
-      setAddress(street)
+      setZoneManual(false)
+      setZoneHint(detected.hint)
+      setAddress(detected.street)
+      setDeliveryZone(
+        inferZone({
+          address: detected.street,
+          displayName: detected.hint.displayName,
+          place: detected.hint.place,
+        }) ?? '',
+      )
+      setZonePending(false)
       setErrors((current) => ({ ...current, address: undefined }))
     } catch {
       setDetectMessage('No se pudo detectar la ubicación. Completá la dirección a mano.')
@@ -180,9 +218,17 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
+    const resolvedZone = zoneManual
+      ? asDeliveryZone(deliveryZone)
+      : inferZone({
+          address: address.trim(),
+          displayName: zoneHint?.displayName,
+          place: zoneHint?.place,
+        })
     const order: Order = {
       id: existing?.id ?? `P-${Math.floor(1000000 + Math.random() * 9000000)}`,
       client: client.trim(),
+      zone: resolvedZone,
       address: address.trim(),
       loadedAt: existing?.loadedAt ?? formatLoadedAt(new Date()),
       deliveryDate,
@@ -212,6 +258,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     addOrder(order)
     navigate('/')
   }
+
+  const dayWarning = zoneDayWarning(deliveryZone, deliveryDate)
 
   return (
     <section className="page">
@@ -336,7 +384,17 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   value={address}
                   placeholder="Ej: Av. Corrientes 1234"
                   aria-invalid={Boolean(errors.address)}
-                  onChange={(event) => setAddress(event.target.value)}
+                  onChange={(event) => onAddressChange(event.target.value)}
+                  onBlur={(event) => {
+                    if (zoneManual) return
+                    const next = inferZone({
+                      address: event.target.value,
+                      displayName: zoneHint?.displayName,
+                      place: zoneHint?.place,
+                    })
+                    setDeliveryZone(next ?? '')
+                    setZonePending(false)
+                  }}
                 />
                 <button type="button" className="detect-btn" onClick={onDetect} disabled={detecting}>
                   {detecting ? 'Detectando...' : 'Detectar'}
@@ -385,11 +443,40 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               )}
             </label>
           </div>
+          <label className="field zone-field">
+            <span>Zona de reparto</span>
+            <select
+              value={deliveryZone}
+              onChange={(event) => {
+                setDeliveryZone(event.target.value)
+                setZoneManual(true)
+                setZonePending(false)
+              }}
+            >
+              <option value="">Sin zona</option>
+              {DELIVERY_ZONES.map((item) => (
+                <option key={item.name} value={item.name}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+            <small className="hint">
+              {zonePending
+                ? 'Calculando la zona…'
+                : deliveryZone
+                  ? zoneManual
+                    ? `${deliveryZone}. Se mantiene hasta que cambies la dirección.`
+                    : `Detectada: ${deliveryZone}${zoneDays(deliveryZone) ? ` · ${zoneDays(deliveryZone)}` : ''}.`
+                  : zoneManual
+                    ? 'Sin zona. Si cambiás la dirección, se vuelve a calcular.'
+                    : 'Se calcula con la dirección. Podés elegirla a mano.'}
+            </small>
+          </label>
           <p className="zone-title">Días de reparto por zona</p>
           <div className="zone-list">
-            {DELIVERY_ZONES.map((zone) => (
-              <span key={zone.name} className="zone-chip">
-                <strong>{zone.name}</strong> {zone.days}
+            {DELIVERY_ZONES.map((item) => (
+              <span key={item.name} className={!zonePending && item.name === deliveryZone ? 'zone-chip active' : 'zone-chip'}>
+                <strong>{item.name}</strong> {item.days}
               </span>
             ))}
           </div>
@@ -408,6 +495,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               />
               {errors.deliveryDate && (
                 <small className="field-error">{errors.deliveryDate}</small>
+              )}
+              {!errors.deliveryDate && dayWarning && (
+                <small className="field-warn">{dayWarning}</small>
               )}
             </label>
             <label className="field">

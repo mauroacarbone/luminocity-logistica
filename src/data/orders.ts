@@ -39,6 +39,14 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
   entregado: 'Entregados',
 }
 
+export const STATUS_PILL: Record<OrderStatus, string> = {
+  pendiente: 'Pendiente',
+  preparado: 'Preparado',
+  asignado: 'Asignado',
+  'en-viaje': 'En viaje',
+  entregado: 'Entregado',
+}
+
 export const STATUS_ORDER: OrderStatus[] = [
   'pendiente',
   'preparado',

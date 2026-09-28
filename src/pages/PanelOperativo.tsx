@@ -4,6 +4,7 @@ import {
   ordersByStatus,
   STATUS_LABEL,
   STATUS_ORDER,
+  STATUS_PILL,
   type Order,
   type OrderStatus,
 } from '../data/orders'
@@ -15,6 +16,7 @@ const SUMMARY: { key: 'total' | OrderStatus; label: string }[] = [
   { key: 'total', label: 'Total' },
   { key: 'pendiente', label: 'Pendientes' },
   { key: 'preparado', label: 'Preparados' },
+  { key: 'asignado', label: 'Asignados' },
   { key: 'en-viaje', label: 'En viaje' },
   { key: 'entregado', label: 'Entregados' },
 ]
@@ -52,6 +54,8 @@ function OrderCard({ order }: { order: Order }) {
       <p className="order-client">{order.client}</p>
       {order.address && <p className="order-zone">{order.address}</p>}
       {order.zone && <p className="order-zone">{order.zone}</p>}
+      {order.transporter && <p className="order-zone">Transportista: {order.transporter}</p>}
+      {order.packages != null && <p className="order-zone">Bultos: {order.packages}</p>}
       <p className="order-meta">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.8" />
@@ -73,6 +77,18 @@ function OrderCard({ order }: { order: Order }) {
 export function PanelOperativo() {
   const { orders } = useOrders()
   const [view, setView] = useState<View>('kanban')
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | null>(null)
+
+  function selectSummary(key: 'total' | OrderStatus) {
+    if (key === 'total') {
+      setStatusFilter(null)
+      return
+    }
+    setStatusFilter((current) => (current === key ? null : key))
+  }
+
+  const visibleOrders = statusFilter ? ordersByStatus(orders, statusFilter) : orders
+  const columns = statusFilter ? [statusFilter] : STATUS_ORDER
 
   return (
     <section className="page">
@@ -111,19 +127,28 @@ export function PanelOperativo() {
       </header>
 
       <div className="stats">
-        {SUMMARY.map((item) => (
-          <article key={item.key} className="stat-card">
-            <strong>{countFor(orders, item.key)}</strong>
-            <span>{item.label}</span>
-          </article>
-        ))}
+        {SUMMARY.map((item) => {
+          const active = item.key === 'total' ? statusFilter === null : statusFilter === item.key
+          return (
+            <button
+              key={item.key}
+              type="button"
+              className={active ? 'stat-card active' : 'stat-card'}
+              aria-pressed={active}
+              onClick={() => selectSummary(item.key)}
+            >
+              <strong>{countFor(orders, item.key)}</strong>
+              <span>{item.label}</span>
+            </button>
+          )
+        })}
       </div>
 
       {view === 'kanban' ? (
         <div className="board-scroll">
-          <div className="kanban">
-            {STATUS_ORDER.map((status) => {
-              const column = ordersByStatus(orders, status)
+          <div className={statusFilter ? 'kanban filtered' : 'kanban'}>
+            {columns.map((status) => {
+              const column = ordersByStatus(visibleOrders, status)
               return (
                 <section key={status} className="column" aria-label={STATUS_LABEL[status]}>
                   <header className="column-head">
@@ -152,27 +177,37 @@ export function PanelOperativo() {
                 <th>Pedido</th>
                 <th>Cliente</th>
                 <th>Estado</th>
+                <th>Transportista</th>
+                <th>Bultos</th>
                 <th>Cargado</th>
                 <th>Entrega</th>
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
-                <tr key={order.id}>
-                  <td>{order.id}</td>
-                  <td>
-                    {order.client}
-                    {order.zone ? <span className="zone-inline"> · {order.zone}</span> : null}
+              {visibleOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="empty">
+                    Sin pedidos
                   </td>
-                  <td>
-                    <span className={`status-pill status-${order.status}`}>
-                      {STATUS_LABEL[order.status].replace(/s$/, '')}
-                    </span>
-                  </td>
-                  <td>{order.loadedAt}</td>
-                  <td>{order.deliveryDate}</td>
                 </tr>
-              ))}
+              ) : (
+                visibleOrders.map((order) => (
+                  <tr key={order.id}>
+                    <td>{order.id}</td>
+                    <td>
+                      {order.client}
+                      {order.zone ? <span className="zone-inline"> · {order.zone}</span> : null}
+                    </td>
+                    <td>
+                      <span className={`status-pill status-${order.status}`}>{STATUS_PILL[order.status]}</span>
+                    </td>
+                    <td>{order.transporter || '—'}</td>
+                    <td>{order.packages != null ? order.packages : '—'}</td>
+                    <td>{order.loadedAt}</td>
+                    <td>{order.deliveryDate}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
