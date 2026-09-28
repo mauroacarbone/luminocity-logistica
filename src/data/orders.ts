@@ -27,6 +27,7 @@ export type Order = {
   transporter?: string
   notes?: string
   attachmentName?: string
+  attachmentDataUrl?: string
   receiverName?: string
   receiverDni?: string
 }

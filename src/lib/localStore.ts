@@ -18,10 +18,26 @@ export function loadList<T>(key: string, isItem: (value: unknown) => value is T)
   }
 }
 
-export function saveList(key: string, value: unknown) {
+function isQuotaError(error: unknown) {
+  if (error instanceof RangeError) return true
+  if (typeof error !== 'object' || error === null) return false
+  const name = 'name' in error ? String(error.name) : ''
+  const code = 'code' in error ? Number(error.code) : Number.NaN
+  const message = 'message' in error ? String(error.message) : ''
+  return (
+    name === 'QuotaExceededError' ||
+    name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    code === 22 ||
+    code === 1014 ||
+    /quota/i.test(message)
+  )
+}
+
+export function saveList(key: string, value: unknown): 'ok' | 'quota' | 'error' {
   try {
     localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // Sin espacio o en modo privado, la lista sigue en memoria.
+    return 'ok'
+  } catch (error) {
+    return isQuotaError(error) ? 'quota' : 'error'
   }
 }

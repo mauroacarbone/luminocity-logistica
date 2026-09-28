@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import type { Order } from '../data/orders'
 import {
   DAY_LONG,
@@ -208,6 +209,7 @@ export function PedidosPreparacion() {
                     {order.seller && <p>{order.seller}</p>}
                     <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
                     <p>Cargado: {order.loadedAt}</p>
+                    <OrderAttachmentLink name={order.attachmentName} dataUrl={order.attachmentDataUrl} />
                   </div>
                   {order.notes && (
                     <p className="mt-3 rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm">{order.notes}</p>

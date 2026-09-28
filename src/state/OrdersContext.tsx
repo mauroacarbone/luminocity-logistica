@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
 import type { Order, OrderStatus } from '../data/orders'
 import { loadList, saveList } from '../lib/localStore'
 
@@ -25,14 +25,20 @@ const OPTIONAL_STRINGS = [
   'transporter',
   'notes',
   'attachmentName',
+  'attachmentDataUrl',
   'receiverName',
   'receiverDni',
 ] as const
 
+export type OrderSaveResult =
+  | { status: 'saved' }
+  | { status: 'saved-without-attachment'; order: Order }
+  | { status: 'not-saved' }
+
 type OrdersContextValue = {
   orders: Order[]
-  addOrder: (order: Order) => void
-  updateOrder: (order: Order) => void
+  addOrder: (order: Order) => OrderSaveResult
+  updateOrder: (order: Order) => OrderSaveResult
   removeOrder: (id: string) => void
 }
 
@@ -67,23 +73,81 @@ function isOrder(value: unknown): value is Order {
   return OPTIONAL_STRINGS.every((key) => optionalString(order[key]))
 }
 
+function omitAttachment(order: Order): Order {
+  const next: Order = { ...order }
+  delete next.attachmentName
+  delete next.attachmentDataUrl
+  return next
+}
+
+function withoutNewAttachment(next: Order[], focusId: string, previous?: Order) {
+  return next.map((item) => {
+    if (item.id !== focusId) return item
+    if (previous?.attachmentDataUrl && previous.attachmentDataUrl !== item.attachmentDataUrl) {
+      return {
+        ...item,
+        attachmentName: previous.attachmentName,
+        attachmentDataUrl: previous.attachmentDataUrl,
+      }
+    }
+    const cleared = omitAttachment(item)
+    if (previous?.attachmentName && !previous.attachmentDataUrl) {
+      return { ...cleared, attachmentName: previous.attachmentName }
+    }
+    return cleared
+  })
+}
+
 export function OrdersProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>(() => loadList(ORDERS_KEY, isOrder))
+  const ordersRef = useRef(orders)
 
-  useEffect(() => {
-    saveList(ORDERS_KEY, orders)
-  }, [orders])
+  function commit(next: Order[], focusId?: string): OrderSaveResult {
+    const apply = (list: Order[], result: OrderSaveResult) => {
+      ordersRef.current = list
+      setOrders(list)
+      return result
+    }
+
+    const written = saveList(ORDERS_KEY, next)
+    if (written === 'ok') return apply(next, { status: 'saved' })
+
+    const focus = focusId ? next.find((item) => item.id === focusId) : undefined
+    if (written === 'quota' && focus?.attachmentDataUrl) {
+      const previous = ordersRef.current.find((item) => item.id === focus.id)
+      const restored = withoutNewAttachment(next, focus.id, previous)
+      if (saveList(ORDERS_KEY, restored) === 'ok') {
+        const order = restored.find((item) => item.id === focus.id) ?? omitAttachment(focus)
+        return apply(restored, { status: 'saved-without-attachment', order })
+      }
+      const restoredFocus = restored.find((item) => item.id === focus.id)
+      if (restoredFocus?.attachmentDataUrl) {
+        const omitted = next.map((item) => (item.id === focus.id ? omitAttachment(item) : item))
+        if (saveList(ORDERS_KEY, omitted) === 'ok') {
+          const order = omitted.find((item) => item.id === focus.id) ?? omitAttachment(focus)
+          return apply(omitted, { status: 'saved-without-attachment', order })
+        }
+      }
+      return apply(next, { status: 'not-saved' })
+    }
+
+    if (written === 'quota') return apply(next, { status: 'not-saved' })
+    return apply(next, { status: 'saved' })
+  }
 
   function addOrder(order: Order) {
-    setOrders((current) => [order, ...current])
+    return commit([order, ...ordersRef.current], order.id)
   }
 
   function updateOrder(order: Order) {
-    setOrders((current) => current.map((item) => (item.id === order.id ? order : item)))
+    return commit(
+      ordersRef.current.map((item) => (item.id === order.id ? order : item)),
+      order.id,
+    )
   }
 
   function removeOrder(id: string) {
-    setOrders((current) => current.filter((item) => item.id !== id))
+    commit(ordersRef.current.filter((item) => item.id !== id))
   }
 
   return (

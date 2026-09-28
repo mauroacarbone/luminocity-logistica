@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   DELIVERY_ZONES,
@@ -8,10 +8,17 @@ import {
   TRANSPORTERS,
 } from '../data/catalog'
 import type { Order } from '../data/orders'
+import {
+  ATTACHMENT_ACCEPT,
+  ATTACHMENT_SAVE_ERROR,
+  attachmentKind,
+  attachmentRejection,
+  openAttachment,
+  readAttachmentFile,
+} from '../lib/attachment'
+import { geocodeSearch, locateAddress, locatePoint, type GeocodeHit, type LocatedAddress } from '../lib/geocode'
 import { asDeliveryZone, inferZone, zoneDayWarning, zoneDays, type ZoneQuery } from '../lib/zone'
 import { useOrders } from '../state/OrdersContext'
-
-const MAX_FILE_BYTES = 2 * 1024 * 1024
 
 type Errors = Partial<
   Record<
@@ -62,36 +69,8 @@ function formatLoadedAt(date: Date) {
   return `${day}/${month}/${year}, ${timePart}`
 }
 
-async function detectStreet() {
-  if (!navigator.geolocation) {
-    throw new Error('Este navegador no puede detectar la ubicación.')
-  }
-
-  const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 12000,
-    })
-  })
-
-  const { latitude, longitude } = position.coords
-  const response = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-    { headers: { 'Accept-Language': 'es' } },
-  )
-  if (!response.ok) {
-    throw new Error('No se pudo completar la dirección.')
-  }
-
-  const data = (await response.json()) as {
-    display_name?: string
-    address?: ZoneQuery['place']
-  }
-  const street = [data.address?.road, data.address?.house_number].filter(Boolean).join(' ')
-  return {
-    street: street || data.display_name || '',
-    hint: { displayName: data.display_name, place: data.address } satisfies ZoneQuery,
-  }
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
 }
 
 function PedidoForm({ editingId }: { editingId?: string }) {
@@ -108,6 +87,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [amount, setAmount] = useState(existing?.amount ?? '')
   const savedZone = asDeliveryZone(existing?.zone)
   const [address, setAddress] = useState(existing?.address ?? '')
+  const [lookup, setLookup] = useState('')
+  const [suggestions, setSuggestions] = useState<GeocodeHit[]>([])
+  const [suggestOpen, setSuggestOpen] = useState(false)
+  const [activeSuggestion, setActiveSuggestion] = useState(0)
   const [deliveryZone, setDeliveryZone] = useState(savedZone ?? '')
   const [zoneManual, setZoneManual] = useState(Boolean(savedZone))
   const [zoneHint, setZoneHint] = useState<ZoneQuery | null>(null)
@@ -120,18 +103,40 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [requiresPickup, setRequiresPickup] = useState(existing?.requiresPickup ?? false)
   const [transporter, setTransporter] = useState(existing?.transporter ?? TRANSPORTERS[0])
   const [notes, setNotes] = useState(existing?.notes ?? '')
+  const [storedId, setStoredId] = useState<string | undefined>(existing?.id)
   const [attachmentName, setAttachmentName] = useState(existing?.attachmentName ?? '')
+  const [attachmentDataUrl, setAttachmentDataUrl] = useState(existing?.attachmentDataUrl ?? '')
+  const [readingFile, setReadingFile] = useState(false)
   const [receiverName, setReceiverName] = useState(existing?.receiverName ?? '')
   const [receiverDni, setReceiverDni] = useState(existing?.receiverDni ?? '')
-  const [detecting, setDetecting] = useState(false)
-  const [detectMessage, setDetectMessage] = useState('')
+  const [locating, setLocating] = useState(false)
+  const [locateError, setLocateError] = useState('')
+  const [betweenNote, setBetweenNote] = useState('')
   const [errors, setErrors] = useState<Errors>({})
+  const addressRef = useRef<HTMLDivElement>(null)
+  const searchAbort = useRef<AbortController | null>(null)
+  const locateAbort = useRef<AbortController | null>(null)
+  const pickingSuggestion = useRef(false)
+  const blurTimer = useRef<number | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const attachmentSectionRef = useRef<HTMLElement>(null)
+  const readCancel = useRef<(() => void) | null>(null)
+  const fileRequest = useRef(0)
+  const listId = useId()
 
   function updateInvoice(index: number, value: string) {
     setInvoices((current) =>
       current.map((invoice, itemIndex) => (itemIndex === index ? value : invoice)),
     )
   }
+
+  useEffect(() => {
+    return () => {
+      if (blurTimer.current) window.clearTimeout(blurTimer.current)
+      locateAbort.current?.abort()
+      readCancel.current?.()
+    }
+  }, [])
 
   useEffect(() => {
     if (zoneManual) return
@@ -147,57 +152,211 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     return () => window.clearTimeout(handle)
   }, [address, zoneHint, zoneManual])
 
+  useEffect(() => {
+    if (lookup.length < 3) return
+    const controller = new AbortController()
+    searchAbort.current = controller
+    const handle = window.setTimeout(() => {
+      geocodeSearch(lookup, controller.signal)
+        .then((hits) => {
+          if (controller.signal.aborted) return
+          const input = addressRef.current?.querySelector('input')
+          setSuggestions(hits)
+          setActiveSuggestion(0)
+          setSuggestOpen(hits.length > 0 && document.activeElement === input)
+        })
+        .catch((error: unknown) => {
+          if (controller.signal.aborted || isAbortError(error)) return
+          setSuggestions([])
+          setSuggestOpen(false)
+        })
+    }, 500)
+    return () => {
+      window.clearTimeout(handle)
+      controller.abort()
+    }
+  }, [lookup])
+
+  useEffect(() => {
+    if (!suggestOpen) return
+    function onPointerDown(event: PointerEvent) {
+      if (!addressRef.current?.contains(event.target as Node)) {
+        searchAbort.current?.abort()
+        setSuggestOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [suggestOpen])
+
   function onAddressChange(value: string) {
+    const nextLookup = value.trim()
     setAddress(value)
+    setLookup(nextLookup)
+    if (nextLookup.length < 3) {
+      setSuggestions([])
+      setSuggestOpen(false)
+    }
+    setLocateError('')
+    setBetweenNote('')
     setZoneManual(false)
     setZoneHint(null)
     setZonePending(true)
   }
 
-  async function onDetect() {
-    setDetecting(true)
-    setDetectMessage('')
-    try {
-      const detected = await detectStreet()
-      if (!detected.street) {
-        setDetectMessage('No encontramos una calle para esta ubicación.')
-        return
-      }
-      setZoneManual(false)
-      setZoneHint(detected.hint)
-      setAddress(detected.street)
-      setDeliveryZone(
-        inferZone({
-          address: detected.street,
-          displayName: detected.hint.displayName,
-          place: detected.hint.place,
-        }) ?? '',
-      )
-      setZonePending(false)
-      setErrors((current) => ({ ...current, address: undefined }))
-    } catch {
-      setDetectMessage('No se pudo detectar la ubicación. Completá la dirección a mano.')
-    } finally {
-      setDetecting(false)
+  function applyLocated(located: LocatedAddress) {
+    setLookup('')
+    setSuggestions([])
+    setSuggestOpen(false)
+    setZoneManual(false)
+    setZoneHint(located.hint)
+    setAddress(located.street)
+    setDeliveryZone(
+      inferZone({
+        address: located.street,
+        displayName: located.hint.displayName,
+        place: located.hint.place,
+      }) ?? '',
+    )
+    setZonePending(false)
+    setLocateError('')
+    setErrors((current) => ({ ...current, address: undefined, between: located.between.length ? undefined : current.between }))
+    if (located.between.length >= 2) {
+      setBetweenStreet1(located.between[0])
+      setBetweenStreet2(located.between[1])
+      setBetweenNote('')
+    } else if (located.between.length === 1) {
+      setBetweenStreet1(located.between[0])
+      setBetweenStreet2('')
+      setBetweenNote('Encontré una sola entre calle; completá la otra a mano.')
+    } else {
+      setBetweenStreet1('')
+      setBetweenStreet2('')
+      setBetweenNote('No pude detectar entre calles; completalas a mano.')
     }
   }
 
-  function onFile(file: File | undefined) {
-    if (!file) {
-      setAttachmentName('')
-      setErrors((current) => ({ ...current, file: undefined }))
+  async function runLocate(load: (signal: AbortSignal) => Promise<LocatedAddress>) {
+    locateAbort.current?.abort()
+    const controller = new AbortController()
+    locateAbort.current = controller
+    setLocating(true)
+    setLocateError('')
+    setBetweenNote('')
+    try {
+      const located = await load(controller.signal)
+      if (controller.signal.aborted) return
+      applyLocated(located)
+    } catch (error) {
+      if (controller.signal.aborted || isAbortError(error)) return
+      setLocateError('No encontramos esa dirección. Revisá calle y número.')
+    } finally {
+      if (locateAbort.current === controller) setLocating(false)
+    }
+  }
+
+  function dismissSuggestions() {
+    searchAbort.current?.abort()
+    setSuggestOpen(false)
+  }
+
+  function chooseSuggestion(hit: GeocodeHit) {
+    pickingSuggestion.current = true
+    dismissSuggestions()
+    void runLocate((signal) => locatePoint(hit, signal))
+  }
+
+  function onLocate() {
+    dismissSuggestions()
+    void runLocate((signal) => locateAddress(address.trim(), signal))
+  }
+
+  function onAddressKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Escape') {
+      if (!suggestOpen) return
+      event.preventDefault()
+      dismissSuggestions()
       return
     }
-    if (file.size > MAX_FILE_BYTES) {
-      setAttachmentName('')
-      setErrors((current) => ({
-        ...current,
-        file: 'El archivo supera los 2 MB.',
-      }))
-      return
+    if (!suggestOpen || suggestions.length === 0) return
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      const next = (activeSuggestion + 1) % suggestions.length
+      setActiveSuggestion(next)
+      document.getElementById(`${listId}-opt-${next}`)?.scrollIntoView({ block: 'nearest' })
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      const next = (activeSuggestion - 1 + suggestions.length) % suggestions.length
+      setActiveSuggestion(next)
+      document.getElementById(`${listId}-opt-${next}`)?.scrollIntoView({ block: 'nearest' })
+    } else if (event.key === 'Enter' && suggestions[activeSuggestion]) {
+      event.preventDefault()
+      chooseSuggestion(suggestions[activeSuggestion])
     }
-    setAttachmentName(file.name)
+  }
+
+  function onAddressBlur(event: FocusEvent<HTMLInputElement>) {
+    if (blurTimer.current) window.clearTimeout(blurTimer.current)
+    blurTimer.current = window.setTimeout(() => {
+      if (pickingSuggestion.current) {
+        pickingSuggestion.current = false
+        return
+      }
+      setSuggestOpen(false)
+    }, 160)
+    if (zoneManual) return
+    const next = inferZone({
+      address: event.target.value,
+      displayName: zoneHint?.displayName,
+      place: zoneHint?.place,
+    })
+    setDeliveryZone(next ?? '')
+    setZonePending(false)
+  }
+
+  function clearAttachment() {
+    fileRequest.current += 1
+    readCancel.current?.()
+    readCancel.current = null
+    setReadingFile(false)
+    setAttachmentName('')
+    setAttachmentDataUrl('')
     setErrors((current) => ({ ...current, file: undefined }))
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function onFile(file: File | undefined) {
+    if (!file) return
+    const problem = attachmentRejection(file)
+    if (problem) {
+      fileRequest.current += 1
+      readCancel.current?.()
+      readCancel.current = null
+      setReadingFile(false)
+      if (fileRef.current) fileRef.current.value = ''
+      setErrors((current) => ({ ...current, file: problem }))
+      return
+    }
+    fileRequest.current += 1
+    const request = fileRequest.current
+    readCancel.current?.()
+    const job = readAttachmentFile(file)
+    readCancel.current = job.abort
+    setReadingFile(true)
+    setErrors((current) => ({ ...current, file: undefined }))
+    job.promise
+      .then((dataUrl) => {
+        if (fileRequest.current !== request) return
+        setAttachmentName(file.name)
+        setAttachmentDataUrl(dataUrl)
+        setReadingFile(false)
+      })
+      .catch((error: unknown) => {
+        if (fileRequest.current !== request) return
+        setReadingFile(false)
+        if (isAbortError(error)) return
+        setErrors((current) => ({ ...current, file: 'No se pudo leer el archivo.' }))
+      })
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -215,6 +374,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     if (collectOnDelivery && !amount.trim()) {
       nextErrors.amount = 'Ingresá el monto a cobrar.'
     }
+    if (readingFile) {
+      nextErrors.file = 'Esperá a que se termine de leer el archivo.'
+    }
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -225,15 +387,17 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           displayName: zoneHint?.displayName,
           place: zoneHint?.place,
         })
+    const stored = storedId ? orders.find((order) => order.id === storedId) : undefined
+    const id = storedId ?? `P-${Math.floor(1000000 + Math.random() * 9000000)}`
     const order: Order = {
-      id: existing?.id ?? `P-${Math.floor(1000000 + Math.random() * 9000000)}`,
+      id,
       client: client.trim(),
       zone: resolvedZone,
       address: address.trim(),
-      loadedAt: existing?.loadedAt ?? formatLoadedAt(new Date()),
+      loadedAt: stored?.loadedAt ?? formatLoadedAt(new Date()),
       deliveryDate,
-      status: existing?.status ?? 'pendiente',
-      packages: existing?.packages,
+      status: stored?.status ?? 'pendiente',
+      packages: stored?.packages,
       seller,
       phone: phone.trim(),
       invoices: invoices.map((invoice) => invoice.trim()).filter(Boolean),
@@ -247,16 +411,31 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       transporter,
       notes: notes.trim(),
       attachmentName: attachmentName || undefined,
+      attachmentDataUrl: attachmentDataUrl || undefined,
       receiverName: receiverName.trim() || undefined,
       receiverDni: receiverDni.trim() || undefined,
     }
-    if (existing) {
-      updateOrder(order)
-      navigate('/pedidos')
+    const result = storedId ? updateOrder(order) : addOrder(order)
+    if (result.status === 'saved-without-attachment') {
+      setStoredId(result.order.id)
+      setAttachmentName(result.order.attachmentName ?? '')
+      setAttachmentDataUrl(result.order.attachmentDataUrl ?? '')
+      if (fileRef.current) fileRef.current.value = ''
+      setErrors({ file: ATTACHMENT_SAVE_ERROR })
+      attachmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
-    addOrder(order)
-    navigate('/')
+    if (result.status === 'not-saved') {
+      setStoredId(id)
+      setErrors({
+        file: attachmentDataUrl
+          ? ATTACHMENT_SAVE_ERROR
+          : 'No se pudo guardar el pedido en este navegador.',
+      })
+      attachmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+    navigate(storedId ? '/pedidos' : '/')
   }
 
   const dayWarning = zoneDayWarning(deliveryZone, deliveryDate)
@@ -264,9 +443,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   return (
     <section className="page">
       <header className="page-header">
-        <h1>{existing ? 'Editar Pedido' : 'Nuevo Pedido'}</h1>
+        <h1>{storedId ? 'Editar Pedido' : 'Nuevo Pedido'}</h1>
         <p>
-          {existing
+          {storedId
             ? 'Actualizá los datos del pedido.'
             : 'Cargá un nuevo pedido de logística.'}
         </p>
@@ -377,51 +556,97 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         <section className="form-card">
           <h2>Dirección de Entrega</h2>
           <div className="field-grid">
-            <label className="field">
-              <span>Dirección (Calle y Número) *</span>
-              <div className="address-row">
-                <input
-                  value={address}
-                  placeholder="Ej: Av. Corrientes 1234"
-                  aria-invalid={Boolean(errors.address)}
-                  onChange={(event) => onAddressChange(event.target.value)}
-                  onBlur={(event) => {
-                    if (zoneManual) return
-                    const next = inferZone({
-                      address: event.target.value,
-                      displayName: zoneHint?.displayName,
-                      place: zoneHint?.place,
-                    })
-                    setDeliveryZone(next ?? '')
-                    setZonePending(false)
-                  }}
-                />
-                <button type="button" className="detect-btn" onClick={onDetect} disabled={detecting}>
-                  {detecting ? 'Detectando...' : 'Detectar'}
+            <div className="field full">
+              <label htmlFor="delivery-address">Dirección (Calle y Número) *</label>
+              <div className="address-row" ref={addressRef}>
+                <div className="address-input-wrap">
+                  <input
+                    id="delivery-address"
+                    value={address}
+                    placeholder="Ej: Av. Corrientes 1234"
+                    autoComplete="off"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={suggestOpen}
+                    aria-controls={listId}
+                    aria-activedescendant={
+                      suggestOpen ? `${listId}-opt-${activeSuggestion}` : undefined
+                    }
+                    aria-invalid={Boolean(errors.address)}
+                    onChange={(event) => onAddressChange(event.target.value)}
+                    onKeyDown={onAddressKeyDown}
+                    onFocus={() => {
+                      if (blurTimer.current) {
+                        window.clearTimeout(blurTimer.current)
+                        blurTimer.current = null
+                      }
+                      if (lookup.length >= 3 && suggestions.length > 0) setSuggestOpen(true)
+                    }}
+                    onBlur={onAddressBlur}
+                  />
+                  {suggestOpen && suggestions.length > 0 && (
+                    <ul className="address-suggest" id={listId} role="listbox">
+                      {suggestions.map((hit, index) => (
+                        <li key={hit.id} role="presentation">
+                          <button
+                            type="button"
+                            role="option"
+                            id={`${listId}-opt-${index}`}
+                            aria-selected={index === activeSuggestion}
+                            onPointerDown={() => {
+                              pickingSuggestion.current = true
+                            }}
+                            onMouseEnter={() => setActiveSuggestion(index)}
+                            onClick={() => chooseSuggestion(hit)}
+                          >
+                            <strong>{hit.label}</strong>
+                            {hit.detail && <small>{hit.detail}</small>}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="detect-btn"
+                  onClick={onLocate}
+                  disabled={locating || address.trim().length < 3}
+                  aria-busy={locating}
+                >
+                  {locating ? 'Ubicando...' : 'Ubicar'}
                 </button>
               </div>
               <small className="hint">
-                Detectá tu ubicación para autocompletar las entre calles.
+                Ingresá la dirección del cliente y tocá Ubicar para completar zona y, si se puede,
+                entre calles.
               </small>
-              {detectMessage && <small className="field-error">{detectMessage}</small>}
+              {locateError && <small className="field-error">{locateError}</small>}
               {errors.address && <small className="field-error">{errors.address}</small>}
-            </label>
+            </div>
             <label className="field">
               <span className="hint-danger">Entre calle 1 (al menos una obligatoria)</span>
               <input
                 value={betweenStreet1}
                 placeholder="Ej: Callao"
                 aria-invalid={Boolean(errors.between)}
-                onChange={(event) => setBetweenStreet1(event.target.value)}
+                onChange={(event) => {
+                  setBetweenStreet1(event.target.value)
+                  setBetweenNote('')
+                }}
               />
               {errors.between && <small className="field-error">{errors.between}</small>}
+              {betweenNote && <small className="field-warn">{betweenNote}</small>}
             </label>
             <label className="field">
               <span>Entre calle 2</span>
               <input
                 value={betweenStreet2}
                 placeholder="Ej: Uruguay"
-                onChange={(event) => setBetweenStreet2(event.target.value)}
+                onChange={(event) => {
+                  setBetweenStreet2(event.target.value)
+                  setBetweenNote('')
+                }}
               />
             </label>
             <label className="field">
@@ -555,20 +780,56 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           </label>
         </section>
 
-        <section className="form-card">
+        <section className="form-card" ref={attachmentSectionRef}>
           <h2>Documentación</h2>
           <label className="field">
-            <span>Adjuntar remito, factura u otro archivo (foto o PDF, opcional)</span>
+            <span>Adjuntar remito, factura u otro archivo (imagen, PDF o Word, opcional)</span>
             <input
+              ref={fileRef}
               type="file"
-              accept="image/*,.pdf"
+              accept={ATTACHMENT_ACCEPT}
+              aria-invalid={Boolean(errors.file)}
               onChange={(event) => onFile(event.target.files?.[0])}
             />
-            <small className="hint">
-              Tamaño máximo recomendado: 2 MB. Los archivos más pesados pueden fallar al guardar.
-            </small>
-            {errors.file && <small className="field-error">{errors.file}</small>}
+            <small className="hint">Imagen, PDF o Word (.doc, .docx). Máximo 2 MB.</small>
           </label>
+          {readingFile && <small className="hint">Leyendo archivo…</small>}
+          {(attachmentName || attachmentDataUrl) && (
+            <div className="attachment-bar">
+              {attachmentDataUrl.startsWith('data:image/') && (
+                <img
+                  className="attachment-preview"
+                  src={attachmentDataUrl}
+                  alt={attachmentName || 'Adjunto'}
+                />
+              )}
+              <div className="attachment-actions">
+                <strong>{attachmentName || 'Adjunto'}</strong>
+                {attachmentDataUrl && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => openAttachment(attachmentName || 'adjunto', attachmentDataUrl)}
+                  >
+                    {attachmentKind(attachmentName, attachmentDataUrl) === 'word' ? 'Descargar' : 'Abrir'}
+                  </button>
+                )}
+                <button type="button" className="text-button" onClick={clearAttachment}>
+                  Quitar
+                </button>
+              </div>
+              {attachmentName && !attachmentDataUrl && (
+                <small className="hint">
+                  El archivo no está guardado. Volvé a adjuntarlo para verlo.
+                </small>
+              )}
+            </div>
+          )}
+          {errors.file && (
+            <small className="field-error" role="alert">
+              {errors.file}
+            </small>
+          )}
         </section>
 
         <section className="form-card">
@@ -597,12 +858,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           <button
             type="button"
             className="btn-ghost"
-            onClick={() => navigate(existing ? '/pedidos' : '/')}
+            onClick={() => navigate(storedId ? '/pedidos' : '/')}
           >
             Cancelar
           </button>
-          <button type="submit" className="btn-primary">
-            {existing ? 'Guardar cambios' : 'Crear Pedido'}
+          <button type="submit" className="btn-primary" disabled={readingFile}>
+            {storedId ? 'Guardar cambios' : 'Crear Pedido'}
           </button>
         </div>
       </form>

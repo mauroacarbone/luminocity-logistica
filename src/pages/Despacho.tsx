@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { TRANSPORTERS } from '../data/catalog'
 import {
   type Order,
@@ -402,6 +403,7 @@ export function Despacho() {
                       <p>{order.invoices.join(', ')}</p>
                     )}
                     {searching && <p>Entrega: {order.deliveryDate}</p>}
+                    <OrderAttachmentLink name={order.attachmentName} dataUrl={order.attachmentDataUrl} />
                   </div>
                 </div>
                 <div className="relative shrink-0">
