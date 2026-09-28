@@ -414,7 +414,8 @@ function ZoneList({
 }
 
 export function DatosMaestros() {
-  const { sellers, transporters, zones, propertyTypes, timeWindows, save } = useCatalog()
+  const { sellers, ownTransporters, courierTransporters, zones, propertyTypes, timeWindows, save } =
+    useCatalog()
 
   return (
     <section className="page">
@@ -432,12 +433,20 @@ export function DatosMaestros() {
           onSave={(next) => save({ sellers: next })}
         />
         <StringList
-          title="Transportistas"
-          hint="Aparecen en Nuevo Pedido y en el filtro de Despacho."
-          placeholder="Nuevo transportista"
-          empty="Todavía no hay transportistas."
-          items={transporters}
-          onSave={(next) => save({ transporters: next })}
+          title="Entrega propia"
+          hint="Transportistas de Nuevo Pedido cuando el tipo es Entrega propia. También entran al filtro de Despacho."
+          placeholder="Nuevo transportista propio"
+          empty="Todavía no hay transportistas de entrega propia."
+          items={ownTransporters}
+          onSave={(next) => save({ ownTransporters: next })}
+        />
+        <StringList
+          title="Correo / Courier"
+          hint="Transportistas de Nuevo Pedido cuando el tipo es Correo / Courier. También entran al filtro de Despacho."
+          placeholder="Nuevo correo o courier"
+          empty="Todavía no hay correos o couriers."
+          items={courierTransporters}
+          onSave={(next) => save({ courierTransporters: next })}
         />
         <ZoneList zones={zones} onSave={(next) => save({ zones: next })} />
         <StringList

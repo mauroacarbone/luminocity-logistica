@@ -1,6 +1,12 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { withCurrent } from '../data/catalog'
+import {
+  DISPATCH_LABEL,
+  defaultDispatchType,
+  listForDispatch,
+  withCurrent,
+  type DispatchType,
+} from '../data/catalog'
 import type { Order } from '../data/orders'
 import {
   ATTACHMENT_ACCEPT,
@@ -71,7 +77,9 @@ function isAbortError(error: unknown) {
 function PedidoForm({ editingId }: { editingId?: string }) {
   const navigate = useNavigate()
   const { orders, addOrder, updateOrder } = useOrders()
-  const { sellers, propertyTypes, timeWindows, transporters, zones } = useCatalog()
+  const { sellers, propertyTypes, timeWindows, ownTransporters, courierTransporters, zones } =
+    useCatalog()
+  const transporterLists = { ownTransporters, courierTransporters }
   const existing = orders.find((order) => order.id === editingId)
   const [seller, setSeller] = useState(existing?.seller ?? '')
   const [client, setClient] = useState(existing?.client ?? '')
@@ -97,7 +105,15 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [deliveryDate, setDeliveryDate] = useState(existing?.deliveryDate ?? '')
   const [timeWindow, setTimeWindow] = useState(existing?.timeWindow ?? timeWindows[0] ?? '')
   const [requiresPickup, setRequiresPickup] = useState(existing?.requiresPickup ?? false)
-  const [transporter, setTransporter] = useState(existing?.transporter ?? transporters[0] ?? '')
+  const [dispatchType, setDispatchType] = useState<DispatchType>(() =>
+    defaultDispatchType(existing, transporterLists),
+  )
+  const [transporter, setTransporter] = useState(
+    () =>
+      existing?.transporter ??
+      listForDispatch(defaultDispatchType(existing, transporterLists), transporterLists)[0] ??
+      '',
+  )
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [storedId, setStoredId] = useState<string | undefined>(existing?.id)
   const [attachmentName, setAttachmentName] = useState(existing?.attachmentName ?? '')
@@ -406,7 +422,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       propertyType,
       timeWindow,
       requiresPickup,
-      transporter,
+      dispatchType,
+      transporter: transporter.trim() || undefined,
       notes: notes.trim(),
       attachmentName: attachmentName || undefined,
       attachmentDataUrl: attachmentDataUrl || undefined,
@@ -444,7 +461,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     deliveryZone,
   )
   const timeOptions = withCurrent(timeWindows, timeWindow)
-  const transporterOptions = withCurrent(transporters, transporter)
+  const transporterOptions = withCurrent(listForDispatch(dispatchType, transporterLists), transporter)
+
+  function chooseDispatch(next: DispatchType) {
+    setDispatchType(next)
+    const list = listForDispatch(next, transporterLists)
+    setTransporter((current) => (current && list.includes(current) ? current : ''))
+  }
 
   return (
     <section className="page">
@@ -759,9 +782,25 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         </section>
 
         <section className="form-card">
-          <h2>Transportista</h2>
+          <h2>Tipo de despacho</h2>
+          <div className="dispatch-types" role="radiogroup" aria-label="Tipo de despacho">
+            {(['propia', 'correo'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                role="radio"
+                aria-checked={dispatchType === type}
+                className={dispatchType === type ? 'dispatch-type active' : 'dispatch-type'}
+                onClick={() => chooseDispatch(type)}
+              >
+                {DISPATCH_LABEL[type]}
+              </button>
+            ))}
+          </div>
           <label className="field">
+            <span>Transportista</span>
             <select value={transporter} onChange={(event) => setTransporter(event.target.value)}>
+              <option value="">Seleccioná transportista</option>
               {transporterOptions.map((name) => (
                 <option key={name} value={name}>
                   {name}
@@ -769,7 +808,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               ))}
             </select>
             <small className="hint">
-              El transportista queda asignado para cuando el pedido llegue a Despacho.
+              {transporterOptions.length === 0
+                ? 'No hay transportistas de este tipo. Cargalos en Datos maestros.'
+                : 'El transportista queda asignado para cuando el pedido llegue a Despacho.'}
             </small>
           </label>
         </section>

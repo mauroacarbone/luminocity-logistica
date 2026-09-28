@@ -24,6 +24,7 @@ export type Order = {
   propertyType?: string
   timeWindow?: string
   requiresPickup?: boolean
+  dispatchType?: 'propia' | 'correo'
   transporter?: string
   notes?: string
   attachmentName?: string

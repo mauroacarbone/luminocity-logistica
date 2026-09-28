@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
+import { DISPATCH_LABEL } from '../data/catalog'
 import { STATUS_PILL, type Order } from '../data/orders'
 import {
   DAY_LONG,
@@ -199,6 +200,7 @@ export function PedidosPreparacion() {
                   )}
                   <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
                     {order.zone && <p>Zona: {order.zone}</p>}
+                    {order.dispatchType && <p>Despacho: {DISPATCH_LABEL[order.dispatchType]}</p>}
                     {order.transporter && <p>Transportista: {order.transporter}</p>}
                     {order.timeWindow && <p>{order.timeWindow}</p>}
                     {order.invoices && order.invoices.length > 0 && (

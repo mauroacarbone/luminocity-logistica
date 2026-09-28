@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
-import { withExtras } from '../data/catalog'
+import { DISPATCH_LABEL, withExtras } from '../data/catalog'
 import {
   STATUS_ORDER,
   STATUS_PILL,
@@ -325,6 +325,7 @@ export function Despacho() {
                   )}
                   <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
                     {order.zone && <p>Zona: {order.zone}</p>}
+                    {order.dispatchType && <p>Despacho: {DISPATCH_LABEL[order.dispatchType]}</p>}
                     {order.transporter && <p>Transportista: {order.transporter}</p>}
                     <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
                     {order.timeWindow && <p>{order.timeWindow}</p>}

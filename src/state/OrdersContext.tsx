@@ -1,4 +1,5 @@
 import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
+import { isDispatchType } from '../data/catalog'
 import type { Order, OrderStatus } from '../data/orders'
 import { loadList, saveList } from '../lib/localStore'
 
@@ -64,6 +65,7 @@ function isOrder(value: unknown): value is Order {
   }
   if (order.collectOnDelivery !== undefined && typeof order.collectOnDelivery !== 'boolean') return false
   if (order.requiresPickup !== undefined && typeof order.requiresPickup !== 'boolean') return false
+  if (order.dispatchType !== undefined && !isDispatchType(order.dispatchType)) return false
   if (
     order.packages !== undefined &&
     (typeof order.packages !== 'number' || !Number.isInteger(order.packages) || order.packages < 1)

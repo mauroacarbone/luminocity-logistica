@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { DISPATCH_LABEL } from '../data/catalog'
 import {
   ordersByStatus,
   STATUS_LABEL,
@@ -55,6 +56,9 @@ function OrderCard({ order }: { order: Order }) {
       <p className="order-client">{order.client}</p>
       {order.address && <p className="order-zone">{order.address}</p>}
       {order.zone && <p className="order-zone">{order.zone}</p>}
+      {order.dispatchType && (
+        <p className="order-zone">Despacho: {DISPATCH_LABEL[order.dispatchType]}</p>
+      )}
       {order.transporter && <p className="order-zone">Transportista: {order.transporter}</p>}
       {order.packages != null && <p className="order-zone">Bultos: {order.packages}</p>}
       <p className="order-meta">
@@ -204,7 +208,12 @@ export function PanelOperativo() {
                     <td>
                       <span className={`status-pill status-${order.status}`}>{STATUS_PILL[order.status]}</span>
                     </td>
-                    <td>{order.transporter || '—'}</td>
+                    <td>
+                      {order.transporter || '—'}
+                      {order.dispatchType && (
+                        <span className="zone-inline"> · {DISPATCH_LABEL[order.dispatchType]}</span>
+                      )}
+                    </td>
                     <td>{order.packages != null ? order.packages : '—'}</td>
                     <td>{order.loadedAt}</td>
                     <td>{formatIsoDate(order.deliveryDate)}</td>

@@ -1,10 +1,11 @@
 import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
 import {
+  COURIER_TRANSPORTERS,
   DELIVERY_ZONES,
+  OWN_TRANSPORTERS,
   PROPERTY_TYPES,
   SELLERS,
   TIME_WINDOWS,
-  TRANSPORTERS,
   type DeliveryZone,
 } from '../data/catalog'
 import { saveList } from '../lib/localStore'
@@ -13,13 +14,15 @@ const CATALOG_KEY = 'luminocity.catalog.v1'
 
 export type Catalog = {
   sellers: string[]
-  transporters: string[]
+  ownTransporters: string[]
+  courierTransporters: string[]
   zones: DeliveryZone[]
   propertyTypes: string[]
   timeWindows: string[]
 }
 
 type CatalogContextValue = Catalog & {
+  transporters: string[]
   save: (patch: Partial<Catalog>) => boolean
 }
 
@@ -28,10 +31,40 @@ const CatalogContext = createContext<CatalogContextValue | null>(null)
 function seedCatalog(): Catalog {
   return {
     sellers: [...SELLERS],
-    transporters: [...TRANSPORTERS],
+    ownTransporters: [...OWN_TRANSPORTERS],
+    courierTransporters: [...COURIER_TRANSPORTERS],
     zones: DELIVERY_ZONES.map((zone) => ({ ...zone })),
     propertyTypes: [...PROPERTY_TYPES],
     timeWindows: [...TIME_WINDOWS],
+  }
+}
+
+function unionNames(lists: readonly (readonly string[])[]) {
+  const seen = new Set<string>()
+  const next: string[] = []
+  for (const list of lists) {
+    for (const name of list) {
+      if (seen.has(name)) continue
+      seen.add(name)
+      next.push(name)
+    }
+  }
+  return next
+}
+
+function transporterLists(record: Record<string, unknown>) {
+  if (isStringList(record.ownTransporters) && isStringList(record.courierTransporters)) {
+    return {
+      ownTransporters: record.ownTransporters,
+      courierTransporters: record.courierTransporters,
+    }
+  }
+  const legacy = isStringList(record.transporters) ? record.transporters : []
+  const known = new Set([...OWN_TRANSPORTERS, ...COURIER_TRANSPORTERS])
+  const extras = legacy.filter((name) => !known.has(name))
+  return {
+    ownTransporters: [...OWN_TRANSPORTERS, ...extras],
+    courierTransporters: [...COURIER_TRANSPORTERS],
   }
 }
 
@@ -49,12 +82,11 @@ function isZone(value: unknown): value is DeliveryZone {
   return isFilledString(zone.name) && isFilledString(zone.days)
 }
 
-function isCatalog(value: unknown): value is Catalog {
+function isStoredCatalog(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== 'object') return false
   const catalog = value as Record<string, unknown>
   return (
     isStringList(catalog.sellers) &&
-    isStringList(catalog.transporters) &&
     isStringList(catalog.propertyTypes) &&
     isStringList(catalog.timeWindows) &&
     Array.isArray(catalog.zones) &&
@@ -67,16 +99,18 @@ function loadCatalog(): Catalog {
     const raw = localStorage.getItem(CATALOG_KEY)
     if (!raw) return seedCatalog()
     const parsed: unknown = JSON.parse(raw)
-    if (!isCatalog(parsed)) {
+    if (!isStoredCatalog(parsed)) {
       localStorage.removeItem(CATALOG_KEY)
       return seedCatalog()
     }
+    const lists = transporterLists(parsed)
     return {
-      sellers: parsed.sellers,
-      transporters: parsed.transporters,
-      zones: parsed.zones.map((zone) => ({ name: zone.name, days: zone.days })),
-      propertyTypes: parsed.propertyTypes,
-      timeWindows: parsed.timeWindows,
+      sellers: parsed.sellers as string[],
+      ownTransporters: lists.ownTransporters,
+      courierTransporters: lists.courierTransporters,
+      zones: (parsed.zones as DeliveryZone[]).map((zone) => ({ name: zone.name, days: zone.days })),
+      propertyTypes: parsed.propertyTypes as string[],
+      timeWindows: parsed.timeWindows as string[],
     }
   } catch {
     try {
@@ -101,7 +135,13 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <CatalogContext.Provider value={{ ...catalog, save }}>
+    <CatalogContext.Provider
+      value={{
+        ...catalog,
+        transporters: unionNames([catalog.ownTransporters, catalog.courierTransporters]),
+        save,
+      }}
+    >
       {children}
     </CatalogContext.Provider>
   )

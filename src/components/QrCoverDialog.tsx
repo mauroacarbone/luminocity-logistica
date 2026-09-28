@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
+import { DISPATCH_LABEL } from '../data/catalog'
 import type { Order } from '../data/orders'
 
 function packagesLabel(order: Order) {
@@ -33,6 +34,9 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
       : []),
     { label: 'Bultos', value: packagesLabel(order) },
     { label: 'Zona', value: order.zone || '—' },
+    ...(order.dispatchType
+      ? [{ label: 'Despacho', value: DISPATCH_LABEL[order.dispatchType] }]
+      : []),
     { label: 'Transportista', value: order.transporter || '—' },
   ]
 

@@ -31,7 +31,53 @@ export const PROPERTY_TYPES = [
 
 export const TIME_WINDOWS = ['10:00-15:00', '09:00-13:00', '15:00-19:00']
 
-export const TRANSPORTERS = ['Oscar']
+export type DispatchType = 'propia' | 'correo'
+
+export const DISPATCH_LABEL: Record<DispatchType, string> = {
+  propia: 'Entrega propia',
+  correo: 'Correo / Courier',
+}
+
+export const OWN_TRANSPORTERS = [
+  'Entrego ya!',
+  'Oscar',
+  'Via cargo',
+  'Eventual',
+  'Dario',
+  'Expreso',
+  'Hormiga',
+]
+
+export const COURIER_TRANSPORTERS = [
+  'Andreani',
+  'Correo Argentino',
+  'Via Cargo',
+  'Entrego ya!',
+  'Oca',
+]
+
+export function isDispatchType(value: unknown): value is DispatchType {
+  return value === 'propia' || value === 'correo'
+}
+
+export function listForDispatch(
+  type: DispatchType,
+  lists: { ownTransporters: readonly string[]; courierTransporters: readonly string[] },
+) {
+  return type === 'correo' ? lists.courierTransporters : lists.ownTransporters
+}
+
+export function defaultDispatchType(
+  order: { dispatchType?: string; transporter?: string } | undefined,
+  lists: { ownTransporters: readonly string[]; courierTransporters: readonly string[] },
+): DispatchType {
+  if (isDispatchType(order?.dispatchType)) return order.dispatchType
+  const name = order?.transporter
+  if (name && lists.courierTransporters.includes(name) && !lists.ownTransporters.includes(name)) {
+    return 'correo'
+  }
+  return 'propia'
+}
 
 export const DELIVERY_ZONES: DeliveryZone[] = [
   { name: 'CABA', days: 'Lun · Mar · Mié · Jue · Vie · Sáb' },
