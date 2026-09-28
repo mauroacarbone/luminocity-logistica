@@ -1,4 +1,6 @@
 import { NavLink } from 'react-router-dom'
+import { ROLE_LABEL } from '../lib/authStore'
+import { useAuth } from '../state/AuthContext'
 
 const NAV = [
   { to: '/', label: 'Panel Operativo', end: true, icon: 'panel' },
@@ -73,6 +75,9 @@ function Icon({ name }: { name: (typeof NAV)[number]['icon'] }) {
 }
 
 export function Sidebar() {
+  const { user, logout } = useAuth()
+  const initial = user?.name.trim().charAt(0).toUpperCase() || 'L'
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -99,14 +104,14 @@ export function Sidebar() {
       <div className="sidebar-footer">
         <div className="user">
           <span className="avatar" aria-hidden="true">
-            M
+            {initial}
           </span>
           <span className="user-text">
-            <span className="user-name">Mauro Carbone</span>
-            <span className="user-role">Vendedor</span>
+            <span className="user-name">{user?.name}</span>
+            <span className="user-role">{user ? ROLE_LABEL[user.role] : ''}</span>
           </span>
         </div>
-        <button type="button" className="logout" disabled title="Próximo: login">
+        <button type="button" className="logout" onClick={logout}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M10 7V5a2 2 0 0 1 2-2h7v18h-7a2 2 0 0 1-2-2v-2M4 12h11M8 8l-4 4 4 4"

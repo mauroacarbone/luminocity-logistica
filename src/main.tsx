@@ -7,19 +7,22 @@ import { CatalogProvider } from './state/CatalogContext.tsx'
 import { ClaimsProvider } from './state/ClaimsContext.tsx'
 import { OrdersProvider } from './state/OrdersContext.tsx'
 import { PickingProvider } from './state/PickingContext.tsx'
+import { AuthProvider } from './state/AuthContext.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <CatalogProvider>
-        <OrdersProvider>
-          <PickingProvider>
-            <ClaimsProvider>
-              <App />
-            </ClaimsProvider>
-          </PickingProvider>
-        </OrdersProvider>
-      </CatalogProvider>
+      <AuthProvider>
+        <CatalogProvider>
+          <OrdersProvider>
+            <PickingProvider>
+              <ClaimsProvider>
+                <App />
+              </ClaimsProvider>
+            </PickingProvider>
+          </OrdersProvider>
+        </CatalogProvider>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 )
