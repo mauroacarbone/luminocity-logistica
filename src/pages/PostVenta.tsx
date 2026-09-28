@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
 import * as XLSX from 'xlsx'
 import { SELLERS } from '../data/catalog'
 import {
@@ -7,9 +7,17 @@ import {
   CLAIM_STATUS_ORDER,
   isOpenClaim,
   type Claim,
+  type ClaimFile,
   type ClaimStatus,
 } from '../data/claims'
 import type { Order } from '../data/orders'
+import {
+  attachmentKind,
+  claimAttachmentRejection,
+  imageFileRejection,
+  openAttachment,
+  readAttachmentFile,
+} from '../lib/attachment'
 import { useClaims } from '../state/ClaimsContext'
 import { useOrders } from '../state/OrdersContext'
 
@@ -32,7 +40,6 @@ const PERIODS: { id: Period; label: string }[] = [
 ]
 
 const MAX_PHOTOS = 5
-const MAX_ATTACHMENT_BYTES = 500 * 1024
 
 const STATUS_BADGE: Record<ClaimStatus, string> = {
   nuevo: 'bg-[#f1efe8] text-lumi-ink',
@@ -102,7 +109,7 @@ function downloadClaims(claims: Claim[]) {
     Productos: claim.products.map((product) => `${product.name} x${product.quantity}`).join(', '),
     Estado: CLAIM_STATUS_LABEL[claim.status],
     Fecha: formatWhen(claim.createdAt),
-    Fotos: claim.photoNames.length,
+    Fotos: claim.photos?.length ?? claim.photoNames.length,
   }))
   const sheet = XLSX.utils.json_to_sheet(rows)
   const book = XLSX.utils.book_new()
@@ -135,6 +142,38 @@ function SearchField({
   )
 }
 
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function fileLabel(kind: 'photo' | 'file', name: string, dataUrl: string) {
+  if (kind === 'photo') return 'Ver foto'
+  const type = attachmentKind(name, dataUrl)
+  return type === 'word' || type === 'other' ? 'Descargar' : 'Ver adjunto'
+}
+
+function ClaimFileButton({
+  kind,
+  file,
+}: {
+  kind: 'photo' | 'file'
+  file: ClaimFile
+}) {
+  if (!file.dataUrl) return null
+  const label = fileLabel(kind, file.name, file.dataUrl)
+  return (
+    <button
+      type="button"
+      className="self-start text-left text-sm font-medium text-lumi-ink hover:underline"
+      title={`${label} ${file.name}`}
+      onClick={() => openAttachment(file.name, file.dataUrl)}
+    >
+      {label}
+      {kind === 'photo' ? ` · ${file.name}` : ''}
+    </button>
+  )
+}
+
 function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
   const { orders } = useOrders()
   const { addClaim } = useClaims()
@@ -147,9 +186,14 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
   const [motive, setMotive] = useState('')
   const [description, setDescription] = useState('')
   const [products, setProducts] = useState([{ name: '', quantity: '1' }])
-  const [photoNames, setPhotoNames] = useState<string[]>([])
-  const [attachmentName, setAttachmentName] = useState('')
+  const [photos, setPhotos] = useState<ClaimFile[]>([])
+  const [attachment, setAttachment] = useState<ClaimFile | null>(null)
+  const [readingPhotos, setReadingPhotos] = useState(false)
+  const [readingFile, setReadingFile] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+  const photoRequest = useRef(0)
+  const fileRequest = useRef(0)
+  const fileAbort = useRef<(() => void) | null>(null)
 
   const needle = lookup.trim().toLowerCase()
   const matches = needle.length < 2
@@ -183,39 +227,91 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
     setMotive('')
     setDescription('')
     setProducts([{ name: '', quantity: '1' }])
-    setPhotoNames([])
-    setAttachmentName('')
+    photoRequest.current += 1
+    fileRequest.current += 1
+    fileAbort.current?.()
+    fileAbort.current = null
+    setPhotos([])
+    setAttachment(null)
+    setReadingPhotos(false)
+    setReadingFile(false)
     setErrors({})
   }
 
-  function onPhotos(files: FileList | null) {
+  async function onPhotos(files: FileList | null) {
     if (!files || files.length === 0) return
-    const room = MAX_PHOTOS - photoNames.length
+    const room = MAX_PHOTOS - photos.length
     if (room <= 0) {
       setErrors((current) => ({ ...current, photos: 'Podés adjuntar hasta 5 fotos.' }))
       return
     }
-    const incoming = [...files].slice(0, room).map((file) => file.name)
-    setPhotoNames((current) => [...current, ...incoming])
+    const incoming = [...files].slice(0, room)
+    const overflow = files.length > room
+    const request = photoRequest.current + 1
+    photoRequest.current = request
+    setReadingPhotos(true)
+    const loaded: ClaimFile[] = []
+    let problem: string | undefined
+    for (const file of incoming) {
+      const rejection = imageFileRejection(file)
+      if (rejection) {
+        problem = rejection
+        continue
+      }
+      const job = readAttachmentFile(file)
+      try {
+        const dataUrl = await job.promise
+        if (photoRequest.current !== request) return
+        loaded.push({ name: file.name, dataUrl })
+      } catch (error) {
+        if (photoRequest.current !== request) return
+        if (!isAbortError(error)) problem = 'No se pudo leer la foto.'
+      }
+    }
+    if (photoRequest.current !== request) return
+    setPhotos((current) => [...current, ...loaded].slice(0, MAX_PHOTOS))
     setErrors((current) => ({
       ...current,
-      photos: files.length > room ? 'Podés adjuntar hasta 5 fotos.' : undefined,
+      photos: problem ?? (overflow ? 'Podés adjuntar hasta 5 fotos.' : undefined),
     }))
+    setReadingPhotos(false)
   }
 
   function onAttachment(file: File | undefined) {
+    fileRequest.current += 1
+    const request = fileRequest.current
+    fileAbort.current?.()
+    fileAbort.current = null
     if (!file) {
-      setAttachmentName('')
+      setAttachment(null)
+      setReadingFile(false)
       setErrors((current) => ({ ...current, file: undefined }))
       return
     }
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      setAttachmentName('')
-      setErrors((current) => ({ ...current, file: 'El archivo no puede pesar más de 500 KB.' }))
+    const rejection = claimAttachmentRejection(file)
+    if (rejection) {
+      setAttachment(null)
+      setReadingFile(false)
+      setErrors((current) => ({ ...current, file: rejection }))
       return
     }
-    setAttachmentName(file.name)
+    const job = readAttachmentFile(file)
+    fileAbort.current = job.abort
+    setReadingFile(true)
     setErrors((current) => ({ ...current, file: undefined }))
+    job.promise
+      .then((dataUrl) => {
+        if (fileRequest.current !== request) return
+        setAttachment({ name: file.name, dataUrl })
+        setReadingFile(false)
+      })
+      .catch((error: unknown) => {
+        if (fileRequest.current !== request) return
+        setReadingFile(false)
+        if (isAbortError(error)) return
+        setAttachment(null)
+        setErrors((current) => ({ ...current, file: 'No se pudo leer el archivo.' }))
+      })
   }
 
   function onSubmit(event: FormEvent) {
@@ -232,10 +328,13 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
       .filter((product) => product.name)
     if (cleaned.length === 0) nextErrors.products = 'Agregá al menos un producto.'
     if (email.trim() && !email.includes('@')) nextErrors.email = 'El email no parece válido.'
+    if (readingPhotos || readingFile) {
+      nextErrors.file = 'Esperá a que se terminen de leer los archivos.'
+    }
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
-    const id = addClaim({
+    const result = addClaim({
       client: client.trim(),
       invoices: invoices.map((invoice) => invoice.trim()).filter(Boolean),
       phone: phone.trim(),
@@ -244,11 +343,11 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
       motive,
       description: description.trim(),
       products: cleaned,
-      photoNames,
-      attachmentName,
+      photos,
+      attachment: attachment ?? undefined,
     })
     reset()
-    onCreated(id)
+    onCreated(result.id)
   }
 
   return (
@@ -458,16 +557,17 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
                 }}
               />
             </label>
-            {photoNames.length > 0 && (
+            {readingPhotos && <small className="hint">Leyendo fotos…</small>}
+            {photos.length > 0 && (
               <ul className="mt-1 flex flex-col gap-1">
-                {photoNames.map((name, index) => (
-                  <li key={`${name}-${index}`} className="flex items-center justify-between text-sm">
-                    <span className="truncate">{name}</span>
+                {photos.map((photo, index) => (
+                  <li key={`${photo.name}-${index}`} className="flex items-center justify-between text-sm">
+                    <span className="truncate">{photo.name}</span>
                     <button
                       type="button"
                       className="text-button"
                       onClick={() =>
-                        setPhotoNames((current) => current.filter((_, itemIndex) => itemIndex !== index))
+                        setPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index))
                       }
                     >
                       Quitar
@@ -485,8 +585,9 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
               onChange={(event) => onAttachment(event.target.files?.[0])}
             />
-            <small className="hint">PDF, documento, planilla o imagen. Máximo 500 KB.</small>
-            {attachmentName && <small className="hint">{attachmentName}</small>}
+            <small className="hint">PDF, Word, Excel o imagen. Máximo 2 MB.</small>
+            {readingFile && <small className="hint">Leyendo archivo…</small>}
+            {attachment && <small className="hint">{attachment.name}</small>}
             {errors.file && <small className="field-error">{errors.file}</small>}
           </label>
         </div>
@@ -545,16 +646,14 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           <p className="mt-2 text-sm text-[#5f5b55]">
             {claim.products.map((product) => `${product.name} (x${product.quantity})`).join(' · ')}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {claim.photoNames.length > 0 && (
-              <span className="rounded-full bg-[#e5f6ea] px-2 py-0.5 text-xs font-medium text-[#1d7a3a]">
-                {claim.photoNames.length} foto{claim.photoNames.length === 1 ? '' : 's'}
-              </span>
-            )}
-            {claim.attachmentName && (
-              <span className="rounded-full bg-[#f1efe8] px-2 py-0.5 text-xs">{claim.attachmentName}</span>
-            )}
-          </div>
+          {(claim.photos?.some((photo) => photo.dataUrl) || claim.attachment?.dataUrl) && (
+            <div className="mt-2 flex flex-col items-start gap-1">
+              {claim.photos?.map((photo, index) => (
+                <ClaimFileButton key={`${photo.name}-${index}`} kind="photo" file={photo} />
+              ))}
+              {claim.attachment?.dataUrl && <ClaimFileButton kind="file" file={claim.attachment} />}
+            </div>
+          )}
           {latest && (
             <p className="mt-2 text-xs text-lumi-muted">
               {previous ? `${CLAIM_STATUS_LABEL[previous.status]} → ` : ''}
@@ -664,6 +763,58 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   )
 }
 
+function FilterBar({
+  seller,
+  period,
+  onSeller,
+  onPeriod,
+  claims,
+}: {
+  seller: string
+  period: Period
+  onSeller: (value: string) => void
+  onPeriod: (value: Period) => void
+  claims: Claim[]
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <select
+        value={seller}
+        aria-label="Vendedor"
+        onChange={(event) => onSeller(event.target.value)}
+        className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+      >
+        <option value="todos">Todos los vendedores</option>
+        {SELLERS.map((name) => (
+          <option key={name} value={name}>
+            {name}
+          </option>
+        ))}
+      </select>
+      <select
+        value={period}
+        aria-label="Período"
+        onChange={(event) => onPeriod(event.target.value as Period)}
+        className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+      >
+        {PERIODS.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm disabled:text-lumi-muted"
+        disabled={claims.length === 0}
+        onClick={() => downloadClaims(claims)}
+      >
+        Descargar Excel
+      </button>
+    </div>
+  )
+}
+
 function ClaimList({
   claims,
   empty,
@@ -683,41 +834,13 @@ function ClaimList({
 }) {
   return (
     <div className="mt-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={seller}
-          aria-label="Vendedor"
-          onChange={(event) => onSeller(event.target.value)}
-          className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
-        >
-          <option value="todos">Todos los vendedores</option>
-          {SELLERS.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={period}
-          aria-label="Período"
-          onChange={(event) => onPeriod(event.target.value as Period)}
-          className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
-        >
-          {PERIODS.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm disabled:text-lumi-muted"
-          disabled={claims.length === 0}
-          onClick={() => downloadClaims(claims)}
-        >
-          Descargar Excel
-        </button>
-      </div>
+      <FilterBar
+        seller={seller}
+        period={period}
+        onSeller={onSeller}
+        onPeriod={onPeriod}
+        claims={claims}
+      />
 
       {claims.length === 0 ? (
         <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-lumi-muted shadow-sm">{empty}</div>
@@ -736,7 +859,19 @@ function ClaimList({
   )
 }
 
-function Dashboard({ claims }: { claims: Claim[] }) {
+function Dashboard({
+  claims,
+  seller,
+  period,
+  onSeller,
+  onPeriod,
+}: {
+  claims: Claim[]
+  seller: string
+  period: Period
+  onSeller: (value: string) => void
+  onPeriod: (value: Period) => void
+}) {
   const open = claims.filter((claim) => isOpenClaim(claim.status)).length
   const resolved = claims.filter((claim) => claim.status === 'entregado')
   const rate = claims.length === 0 ? 0 : Math.round((resolved.length / claims.length) * 100)
@@ -782,6 +917,13 @@ function Dashboard({ claims }: { claims: Claim[] }) {
 
   return (
     <div className="mt-4 flex flex-col gap-4">
+      <FilterBar
+        seller={seller}
+        period={period}
+        onSeller={onSeller}
+        onPeriod={onPeriod}
+        claims={claims}
+      />
       <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         {stats.map((stat) => (
           <article key={stat.label} className="rounded-2xl bg-white px-4 py-5 text-center shadow-sm">
@@ -843,7 +985,7 @@ function Dashboard({ claims }: { claims: Claim[] }) {
 }
 
 export function PostVenta() {
-  const { claims } = useClaims()
+  const { claims, notice, dismissNotice } = useClaims()
   const [tab, setTab] = useState<Tab>('nuevo')
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState('todos')
@@ -862,10 +1004,6 @@ export function PostVenta() {
   const reclamos = listed.filter((claim) => isOpenClaim(claim.status))
   const finalizados = listed.filter((claim) => claim.status === 'entregado')
   const cancelados = listed.filter((claim) => claim.status === 'cancelado')
-  const dashboardClaims = useMemo(
-    () => claims.filter((claim) => matchesQuery(claim, needle)),
-    [claims, needle],
-  )
 
   function openCreated(id: string) {
     setHighlightId(id)
@@ -881,6 +1019,15 @@ export function PostVenta() {
         <h1>Post Venta</h1>
         <p>Cargá y seguí los reclamos de clientes</p>
       </header>
+
+      {notice && (
+        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-[#fff4cc] px-4 py-2 text-sm text-lumi-ink">
+          <span>{notice}</span>
+          <button type="button" className="shrink-0 font-medium" onClick={dismissNotice}>
+            Cerrar
+          </button>
+        </p>
+      )}
 
       <div className="mt-5">
         <SearchField
@@ -945,7 +1092,15 @@ export function PostVenta() {
           onPeriod={setPeriod}
         />
       )}
-      {tab === 'dashboard' && <Dashboard claims={dashboardClaims} />}
+      {tab === 'dashboard' && (
+        <Dashboard
+          claims={listed}
+          seller={seller}
+          period={period}
+          onSeller={setSeller}
+          onPeriod={setPeriod}
+        />
+      )}
     </section>
   )
 }

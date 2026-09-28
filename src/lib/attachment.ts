@@ -1,5 +1,7 @@
 const WORD_DOC = 'application/msword'
 const WORD_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const EXCEL_XLS = 'application/vnd.ms-excel'
+const EXCEL_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024
 
@@ -45,12 +47,41 @@ function isAllowedAttachment(file: File) {
   return ext === '.pdf' || ext === '.doc' || ext === '.docx' || IMAGE_EXTENSIONS.includes(ext)
 }
 
+function isSpreadsheet(file: File) {
+  const type = file.type.toLowerCase()
+  if (type === EXCEL_XLS || type === EXCEL_XLSX) return true
+  if (!isGenericType(type)) return false
+  const ext = extensionOf(file.name)
+  return ext === '.xls' || ext === '.xlsx'
+}
+
+function isImageFile(file: File) {
+  const type = file.type.toLowerCase()
+  if (type.startsWith('image/')) return true
+  if (!isGenericType(type)) return false
+  return IMAGE_EXTENSIONS.includes(extensionOf(file.name))
+}
+
 export function attachmentRejection(file: File) {
   if (!isAllowedAttachment(file)) {
     return 'Tipo de archivo no permitido. Usá una imagen, un PDF o un Word (.doc o .docx).'
   }
   if (file.size > MAX_ATTACHMENT_BYTES) return 'El archivo supera los 2 MB.'
   return null
+}
+
+export function imageFileRejection(file: File) {
+  if (!isImageFile(file)) return 'La foto tiene que ser una imagen.'
+  if (file.size > MAX_ATTACHMENT_BYTES) return 'El archivo supera los 2 MB.'
+  return null
+}
+
+export function claimAttachmentRejection(file: File) {
+  if (isSpreadsheet(file)) {
+    if (file.size > MAX_ATTACHMENT_BYTES) return 'El archivo supera los 2 MB.'
+    return null
+  }
+  return attachmentRejection(file)
 }
 
 export function attachmentKind(name: string, dataUrl?: string): AttachmentKind {
@@ -80,6 +111,8 @@ function mimeFromName(name: string) {
   if (ext === '.pdf') return 'application/pdf'
   if (ext === '.doc') return WORD_DOC
   if (ext === '.docx') return WORD_DOCX
+  if (ext === '.xls') return EXCEL_XLS
+  if (ext === '.xlsx') return EXCEL_XLSX
   return null
 }
 

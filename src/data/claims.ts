@@ -40,6 +40,11 @@ export type ClaimProduct = {
   quantity: number
 }
 
+export type ClaimFile = {
+  name: string
+  dataUrl: string
+}
+
 export type ClaimEvent = {
   at: string
   status: ClaimStatus
@@ -57,7 +62,9 @@ export type Claim = {
   description: string
   products: ClaimProduct[]
   photoNames: string[]
+  photos?: ClaimFile[]
   attachmentName: string
+  attachment?: ClaimFile
   status: ClaimStatus
   createdAt: string
   resolvedAt?: string
