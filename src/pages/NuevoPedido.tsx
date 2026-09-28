@@ -1,12 +1,6 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import {
-  DELIVERY_ZONES,
-  PROPERTY_TYPES,
-  SELLERS,
-  TIME_WINDOWS,
-  TRANSPORTERS,
-} from '../data/catalog'
+import { withCurrent } from '../data/catalog'
 import type { Order } from '../data/orders'
 import {
   ATTACHMENT_ACCEPT,
@@ -18,6 +12,7 @@ import {
 } from '../lib/attachment'
 import { geocodeSearch, locateAddress, locatePoint, type GeocodeHit, type LocatedAddress } from '../lib/geocode'
 import { asDeliveryZone, inferZone, zoneDayWarning, zoneDays, type ZoneQuery } from '../lib/zone'
+import { useCatalog } from '../state/CatalogContext'
 import { useOrders } from '../state/OrdersContext'
 
 type Errors = Partial<
@@ -76,6 +71,7 @@ function isAbortError(error: unknown) {
 function PedidoForm({ editingId }: { editingId?: string }) {
   const navigate = useNavigate()
   const { orders, addOrder, updateOrder } = useOrders()
+  const { sellers, propertyTypes, timeWindows, transporters, zones } = useCatalog()
   const existing = orders.find((order) => order.id === editingId)
   const [seller, setSeller] = useState(existing?.seller ?? '')
   const [client, setClient] = useState(existing?.client ?? '')
@@ -85,7 +81,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   )
   const [collectOnDelivery, setCollectOnDelivery] = useState(existing?.collectOnDelivery ?? false)
   const [amount, setAmount] = useState(existing?.amount ?? '')
-  const savedZone = asDeliveryZone(existing?.zone)
+  const savedZone = existing?.zone ?? ''
   const [address, setAddress] = useState(existing?.address ?? '')
   const [lookup, setLookup] = useState('')
   const [suggestions, setSuggestions] = useState<GeocodeHit[]>([])
@@ -99,9 +95,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [betweenStreet2, setBetweenStreet2] = useState(existing?.betweenStreet2 ?? '')
   const [propertyType, setPropertyType] = useState(existing?.propertyType ?? '')
   const [deliveryDate, setDeliveryDate] = useState(existing?.deliveryDate ?? '')
-  const [timeWindow, setTimeWindow] = useState(existing?.timeWindow ?? TIME_WINDOWS[0])
+  const [timeWindow, setTimeWindow] = useState(existing?.timeWindow ?? timeWindows[0] ?? '')
   const [requiresPickup, setRequiresPickup] = useState(existing?.requiresPickup ?? false)
-  const [transporter, setTransporter] = useState(existing?.transporter ?? TRANSPORTERS[0])
+  const [transporter, setTransporter] = useState(existing?.transporter ?? transporters[0] ?? '')
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [storedId, setStoredId] = useState<string | undefined>(existing?.id)
   const [attachmentName, setAttachmentName] = useState(existing?.attachmentName ?? '')
@@ -380,8 +376,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
+    const knownZone = asDeliveryZone(deliveryZone, zones)
+    const keptZone = existing?.zone && existing.zone === deliveryZone ? existing.zone : undefined
     const resolvedZone = zoneManual
-      ? asDeliveryZone(deliveryZone)
+      ? knownZone ?? keptZone
       : inferZone({
           address: address.trim(),
           displayName: zoneHint?.displayName,
@@ -438,7 +436,15 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     navigate(storedId ? '/pedidos' : '/')
   }
 
-  const dayWarning = zoneDayWarning(deliveryZone, deliveryDate)
+  const dayWarning = zoneDayWarning(deliveryZone, deliveryDate, zones)
+  const sellerOptions = withCurrent(sellers, seller)
+  const propertyOptions = withCurrent(propertyTypes, propertyType)
+  const zoneOptions = withCurrent(
+    zones.map((item) => item.name),
+    deliveryZone,
+  )
+  const timeOptions = withCurrent(timeWindows, timeWindow)
+  const transporterOptions = withCurrent(transporters, transporter)
 
   return (
     <section className="page">
@@ -462,7 +468,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               onChange={(event) => setSeller(event.target.value)}
             >
               <option value="">Seleccioná vendedor</option>
-              {SELLERS.map((name) => (
+              {sellerOptions.map((name) => (
                 <option key={name} value={name}>
                   {name}
                 </option>
@@ -657,7 +663,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 onChange={(event) => setPropertyType(event.target.value)}
               >
                 <option value="">Seleccioná tipo</option>
-                {PROPERTY_TYPES.map((type) => (
+                {propertyOptions.map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
@@ -679,9 +685,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               }}
             >
               <option value="">Sin zona</option>
-              {DELIVERY_ZONES.map((item) => (
-                <option key={item.name} value={item.name}>
-                  {item.name}
+              {zoneOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
                 </option>
               ))}
             </select>
@@ -691,7 +697,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 : deliveryZone
                   ? zoneManual
                     ? `${deliveryZone}. Se mantiene hasta que cambies la dirección.`
-                    : `Detectada: ${deliveryZone}${zoneDays(deliveryZone) ? ` · ${zoneDays(deliveryZone)}` : ''}.`
+                    : `Detectada: ${deliveryZone}${zoneDays(deliveryZone, zones) ? ` · ${zoneDays(deliveryZone, zones)}` : ''}.`
                   : zoneManual
                     ? 'Sin zona. Si cambiás la dirección, se vuelve a calcular.'
                     : 'Se calcula con la dirección. Podés elegirla a mano.'}
@@ -699,7 +705,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           </label>
           <p className="zone-title">Días de reparto por zona</p>
           <div className="zone-list">
-            {DELIVERY_ZONES.map((item) => (
+            {zones.map((item) => (
               <span key={item.name} className={!zonePending && item.name === deliveryZone ? 'zone-chip active' : 'zone-chip'}>
                 <strong>{item.name}</strong> {item.days}
               </span>
@@ -728,7 +734,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             <label className="field">
               <span>Franja Horaria</span>
               <select value={timeWindow} onChange={(event) => setTimeWindow(event.target.value)}>
-                {TIME_WINDOWS.map((window) => (
+                {timeOptions.map((window) => (
                   <option key={window} value={window}>
                     {window}
                   </option>
@@ -756,7 +762,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           <h2>Transportista</h2>
           <label className="field">
             <select value={transporter} onChange={(event) => setTransporter(event.target.value)}>
-              {TRANSPORTERS.map((name) => (
+              {transporterOptions.map((name) => (
                 <option key={name} value={name}>
                   {name}
                 </option>

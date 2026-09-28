@@ -70,6 +70,7 @@ p {
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow: hidden;
 }
 
 .brand {
@@ -99,6 +100,9 @@ p {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .nav-link {
@@ -769,6 +773,68 @@ p {
   color: var(--ink);
 }
 
+.master-card h2 {
+  margin-bottom: 4px;
+}
+
+.master-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.master-empty {
+  margin-top: 12px;
+}
+
+.master-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.master-row > span:first-child,
+.master-row .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.master-zone-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.master-actions,
+.master-confirm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.master-add {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.master-add .field {
+  flex: 1;
+}
+
+.master-add .btn-primary,
+.master-row .btn-primary,
+.master-row .btn-ghost {
+  flex: 0 0 auto;
+  height: 44px;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -809,6 +875,12 @@ p {
     width: 100%;
     height: auto;
     position: static;
+    overflow: visible;
+  }
+
+  .nav {
+    flex: none;
+    overflow: visible;
   }
 
   .main {
@@ -835,6 +907,15 @@ p {
     display: grid;
     grid-template-columns: 1fr;
   }
+
+  .master-add,
+  .master-row {
+    flex-wrap: wrap;
+  }
+
+  .master-add .btn-primary {
+    width: 100%;
+  }
 }
 
 @media print {
@@ -849,5 +930,27 @@ p {
 
   .main {
     padding: 0;
+  }
+
+  html:has(body.printing-cover),
+  body.printing-cover {
+    background: #fff !important;
+  }
+
+  body.printing-cover #root {
+    display: none !important;
+  }
+
+  body.printing-cover .cover-print-frame {
+    position: static !important;
+    display: block !important;
+    inset: auto !important;
+    padding: 0 !important;
+  }
+
+  body.printing-cover #cover-print {
+    max-width: 420px;
+    margin: 0 auto;
+    box-shadow: none !important;
   }
 }

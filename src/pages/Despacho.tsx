@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
-import { TRANSPORTERS } from '../data/catalog'
+import { withExtras } from '../data/catalog'
 import {
   type Order,
   type OrderStatus,
@@ -13,6 +13,7 @@ import {
   weekDays,
   weekOffsetForIso,
 } from '../lib/week'
+import { useCatalog } from '../state/CatalogContext'
 import { useOrders } from '../state/OrdersContext'
 
 type DispatchTab = 'pendiente' | 'preparado' | 'viaje' | 'entregado'
@@ -133,6 +134,7 @@ function CodeDialog({
 
 export function Despacho() {
   const { orders, updateOrder } = useOrders()
+  const { transporters: catalogTransporters } = useCatalog()
   const [tab, setTab] = useState<DispatchTab>('viaje')
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
@@ -148,11 +150,9 @@ export function Despacho() {
   const selectedDate = days.find((day) => toIso(day) === selectedIso) ?? days[0]
   const searching = query.trim().length > 0
 
-  const transporters = Array.from(
-    new Set([
-      ...TRANSPORTERS,
-      ...orders.map((order) => order.transporter).filter((name): name is string => Boolean(name)),
-    ]),
+  const transporters = withExtras(
+    catalogTransporters,
+    orders.map((order) => order.transporter),
   )
 
   function inScope(order: Order) {

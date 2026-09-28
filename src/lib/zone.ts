@@ -1,4 +1,4 @@
-import { DELIVERY_ZONES } from '../data/catalog'
+import { DELIVERY_ZONES, type DeliveryZone } from '../data/catalog'
 import { DAY_LONG, DAY_SHORT, parseIso } from './week'
 
 export type DeliveryZoneName = (typeof DELIVERY_ZONES)[number]['name']
@@ -313,12 +313,16 @@ function bareBuenosAires(address: string) {
   return address.split(',').some((part) => fold(part).trim() === 'buenos aires')
 }
 
-export function asDeliveryZone(value: string | undefined): DeliveryZoneName | undefined {
-  return DELIVERY_ZONES.find((item) => item.name === value)?.name
+export function asDeliveryZone(
+  value: string | undefined,
+  zones: readonly Pick<DeliveryZone, 'name'>[],
+): string | undefined {
+  if (!value) return undefined
+  return zones.find((item) => item.name === value)?.name
 }
 
-export function zoneDays(zone: string | undefined) {
-  return DELIVERY_ZONES.find((item) => item.name === zone)?.days
+export function zoneDays(zone: string | undefined, zones: readonly DeliveryZone[]) {
+  return zones.find((item) => item.name === zone)?.days
 }
 
 export function inferZone(input: string | ZoneQuery): DeliveryZoneName | undefined {
@@ -349,8 +353,12 @@ export function inferZone(input: string | ZoneQuery): DeliveryZoneName | undefin
   return undefined
 }
 
-export function zoneDayWarning(zone: string | undefined, isoDate: string | undefined) {
-  const days = zoneDays(zone)
+export function zoneDayWarning(
+  zone: string | undefined,
+  isoDate: string | undefined,
+  zones: readonly DeliveryZone[],
+) {
+  const days = zoneDays(zone, zones)
   if (!zone || !isoDate || !days || fold(days) === 'sin dias') return undefined
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate)
   if (!match) return undefined

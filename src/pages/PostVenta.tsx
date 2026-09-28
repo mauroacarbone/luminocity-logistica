@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
 import * as XLSX from 'xlsx'
-import { SELLERS } from '../data/catalog'
+import { withCurrent, withExtras } from '../data/catalog'
 import {
   CLAIM_MOTIVES,
   CLAIM_STATUS_LABEL,
@@ -18,6 +18,7 @@ import {
   openAttachment,
   readAttachmentFile,
 } from '../lib/attachment'
+import { useCatalog } from '../state/CatalogContext'
 import { useClaims } from '../state/ClaimsContext'
 import { useOrders } from '../state/OrdersContext'
 
@@ -177,6 +178,7 @@ function ClaimFileButton({
 function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
   const { orders } = useOrders()
   const { addClaim } = useClaims()
+  const { sellers } = useCatalog()
   const [lookup, setLookup] = useState('')
   const [client, setClient] = useState('')
   const [invoices, setInvoices] = useState([''])
@@ -453,7 +455,7 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
             <span>Vendedor</span>
             <select value={seller} onChange={(event) => setSeller(event.target.value)}>
               <option value="">Seleccioná vendedor</option>
-              {SELLERS.map((name) => (
+              {withCurrent(sellers, seller).map((name) => (
                 <option key={name} value={name}>
                   {name}
                 </option>
@@ -776,6 +778,12 @@ function FilterBar({
   onPeriod: (value: Period) => void
   claims: Claim[]
 }) {
+  const { sellers } = useCatalog()
+  const sellerOptions = withExtras(
+    sellers,
+    claims.map((claim) => claim.seller),
+  )
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <select
@@ -785,7 +793,7 @@ function FilterBar({
         className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
       >
         <option value="todos">Todos los vendedores</option>
-        {SELLERS.map((name) => (
+        {sellerOptions.map((name) => (
           <option key={name} value={name}>
             {name}
           </option>

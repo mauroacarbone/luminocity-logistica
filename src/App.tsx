@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import { AppShell } from './layout/AppShell'
+import { DatosMaestros } from './pages/DatosMaestros'
 import { Despacho } from './pages/Despacho'
 import { NuevoPedido } from './pages/NuevoPedido'
 import { PlanificadorRutas } from './pages/PlanificadorRutas'
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/rutas" element={<PlanificadorRutas />} />
         <Route path="/pendientes" element={<PendientesEntregas />} />
         <Route path="/post-venta" element={<PostVenta />} />
+        <Route path="/datos-maestros" element={<DatosMaestros />} />
       </Routes>
     </AppShell>
   )

@@ -8,6 +8,7 @@ const NAV = [
   { to: '/rutas', label: 'Planificador de Rutas', icon: 'route' },
   { to: '/pendientes', label: 'Pendientes de Entregas', icon: 'pin' },
   { to: '/post-venta', label: 'Post Venta', icon: 'refresh' },
+  { to: '/datos-maestros', label: 'Datos maestros', icon: 'settings' },
 ] as const
 
 function Icon({ name }: { name: (typeof NAV)[number]['icon'] }) {
@@ -58,6 +59,14 @@ function Icon({ name }: { name: (typeof NAV)[number]['icon'] }) {
       )}
       {name === 'refresh' && (
         <path d="M20 12a8 8 0 1 1-2.3-5.6M20 5v5h-5" {...common} />
+      )}
+      {name === 'settings' && (
+        <>
+          <path d="M4 7h16M4 12h16M4 17h16" {...common} />
+          <circle cx="8" cy="7" r="1.6" {...common} />
+          <circle cx="15" cy="12" r="1.6" {...common} />
+          <circle cx="10" cy="17" r="1.6" {...common} />
+        </>
       )}
     </svg>
   )
