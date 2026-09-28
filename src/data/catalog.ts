@@ -6,6 +6,8 @@ export const SELLERS = [
   'Cristian Ciuffo',
   'Fernanda Casas',
   'Leandro Cuba',
+  'Yishelle Guzman',
+  'Agustina X',
 ]
 
 export const PROPERTY_TYPES = [

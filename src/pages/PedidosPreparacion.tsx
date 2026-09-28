@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import type { Order } from '../data/orders'
 import {
   DAY_LONG,
@@ -10,6 +11,82 @@ import {
 } from '../lib/week'
 import { useOrders } from '../state/OrdersContext'
 
+function readPackages(raw: string) {
+  const trimmed = raw.trim()
+  if (!/^[1-9]\d*$/.test(trimmed)) return null
+  return Number(trimmed)
+}
+
+function PackagesDialog({
+  orderId,
+  onClose,
+  onConfirm,
+}: {
+  orderId: string
+  onClose: () => void
+  onConfirm: (packages: number) => void
+}) {
+  const [value, setValue] = useState('')
+  const [error, setError] = useState('')
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault()
+    const packages = readPackages(value)
+    if (packages == null) {
+      setError('Ingresá una cantidad entera de bultos (1 o más).')
+      return
+    }
+    onConfirm(packages)
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4">
+      <form
+        noValidate
+        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg"
+        onSubmit={onSubmit}
+      >
+        <h2 className="text-xl font-semibold">Marcar preparado</h2>
+        <p className="mt-1 text-sm text-lumi-muted">
+          Indicá cuántos bultos tiene el pedido {orderId}.
+        </p>
+        <label className="mt-4 block text-sm font-medium">
+          Cantidad de bultos
+          <input
+            autoFocus
+            type="number"
+            inputMode="numeric"
+            min={1}
+            step={1}
+            value={value}
+            onChange={(event) => {
+              setValue(event.target.value)
+              setError('')
+            }}
+            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+          />
+        </label>
+        {error && <p className="mt-2 text-sm text-lumi-danger">{error}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea]"
+            onClick={onClose}
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink"
+          >
+            Confirmar
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 function addressLine(order: Order) {
   const between = [order.betweenStreet1, order.betweenStreet2].filter(Boolean)
   if (!order.address) return between.join(' y ')
@@ -19,9 +96,10 @@ function addressLine(order: Order) {
 
 export function PedidosPreparacion() {
   const navigate = useNavigate()
-  const { orders, removeOrder } = useOrders()
+  const { orders, removeOrder, updateOrder } = useOrders()
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
+  const [preparing, setPreparing] = useState<Order | null>(null)
   const days = weekDays(weekOffset)
   const pending = orders.filter((order) => order.status === 'pendiente')
   const selectedDate = days.find((day) => toIso(day) === selectedIso) ?? days[0]
@@ -122,20 +200,29 @@ export function PedidosPreparacion() {
                     <p className="mt-1 text-sm text-lumi-muted">{addressLine(order)}</p>
                   )}
                   <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
+                    {order.zone && <p>Zona: {order.zone}</p>}
                     {order.transporter && <p>Transportista: {order.transporter}</p>}
                     {order.timeWindow && <p>{order.timeWindow}</p>}
                     {order.invoices && order.invoices.length > 0 && (
                       <p>{order.invoices.join(', ')}</p>
                     )}
                     {order.seller && <p>{order.seller}</p>}
-                    <p>Bultos: a definir</p>
+                    <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
                     <p>Cargado: {order.loadedAt}</p>
+                    <OrderAttachmentLink name={order.attachmentName} dataUrl={order.attachmentDataUrl} />
                   </div>
                   {order.notes && (
                     <p className="mt-3 rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm">{order.notes}</p>
                   )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink"
+                    onClick={() => setPreparing(order)}
+                  >
+                    Marcar preparado
+                  </button>
                   <button
                     type="button"
                     className="text-sm text-lumi-ink hover:underline"
@@ -157,6 +244,17 @@ export function PedidosPreparacion() {
             </article>
           ))}
         </div>
+      )}
+
+      {preparing && (
+        <PackagesDialog
+          orderId={preparing.id}
+          onClose={() => setPreparing(null)}
+          onConfirm={(packages) => {
+            updateOrder({ ...preparing, status: 'preparado', packages })
+            setPreparing(null)
+          }}
+        />
       )}
     </section>
   )

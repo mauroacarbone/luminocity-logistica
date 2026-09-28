@@ -91,7 +91,7 @@ export function PendientesEntregas() {
       const loaded = parsePickingWorkbook(await file.arrayBuffer())
       loadLines(loaded)
       setExpanded(null)
-      setMessage(`${groupLines(loaded).length} pedidos cargados en esta sesión.`)
+      setMessage(`${groupLines(loaded).length} pedidos cargados.`)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo leer el archivo.')
     }

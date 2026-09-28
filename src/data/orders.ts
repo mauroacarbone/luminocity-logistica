@@ -13,6 +13,7 @@ export type Order = {
   loadedAt: string
   deliveryDate: string
   status: OrderStatus
+  packages?: number
   seller?: string
   phone?: string
   invoices?: string[]
@@ -26,6 +27,7 @@ export type Order = {
   transporter?: string
   notes?: string
   attachmentName?: string
+  attachmentDataUrl?: string
   receiverName?: string
   receiverDni?: string
 }
@@ -36,6 +38,14 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
   asignado: 'Asignados',
   'en-viaje': 'En viaje',
   entregado: 'Entregados',
+}
+
+export const STATUS_PILL: Record<OrderStatus, string> = {
+  pendiente: 'Pendiente',
+  preparado: 'Preparado',
+  asignado: 'Asignado',
+  'en-viaje': 'En viaje',
+  entregado: 'Entregado',
 }
 
 export const STATUS_ORDER: OrderStatus[] = [

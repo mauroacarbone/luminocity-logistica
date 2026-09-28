@@ -6,7 +6,7 @@ import { PlanificadorRutas } from './pages/PlanificadorRutas'
 import { PanelOperativo } from './pages/PanelOperativo'
 import { PedidosPreparacion } from './pages/PedidosPreparacion'
 import { PendientesEntregas } from './pages/PendientesEntregas'
-import { Proximamente } from './pages/Proximamente'
+import { PostVenta } from './pages/PostVenta'
 
 export default function App() {
   return (
@@ -18,15 +18,7 @@ export default function App() {
         <Route path="/despacho" element={<Despacho />} />
         <Route path="/rutas" element={<PlanificadorRutas />} />
         <Route path="/pendientes" element={<PendientesEntregas />} />
-        <Route
-          path="/post-venta"
-          element={
-            <Proximamente
-              title="Post Venta"
-              description="Cargá y seguí los reclamos de clientes."
-            />
-          }
-        />
+        <Route path="/post-venta" element={<PostVenta />} />
       </Routes>
     </AppShell>
   )

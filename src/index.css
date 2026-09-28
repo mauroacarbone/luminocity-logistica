@@ -241,19 +241,27 @@ p {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 14px;
   margin: 22px 0 18px;
 }
 
 .stat-card {
   background: var(--card);
+  border: 2px solid transparent;
   border-radius: 18px;
   padding: 18px 18px 16px;
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
   gap: 4px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.stat-card.active {
+  border-color: var(--yellow);
 }
 
 .stat-card strong {
@@ -276,6 +284,10 @@ p {
   grid-template-columns: repeat(5, minmax(210px, 1fr));
   gap: 14px;
   align-items: start;
+}
+
+.kanban.filtered {
+  grid-template-columns: minmax(210px, 360px);
 }
 
 .column-head {
@@ -421,6 +433,14 @@ p {
   background: #fff4cc;
 }
 
+.status-preparado {
+  background: #fde8d4;
+}
+
+.status-asignado {
+  background: #efe6ff;
+}
+
 .status-en-viaje {
   background: #e7f0ff;
 }
@@ -472,6 +492,7 @@ p {
 }
 
 .field span,
+.field > label,
 .form-card h2 {
   color: var(--ink);
 }
@@ -499,7 +520,8 @@ p {
 }
 
 .field input[aria-invalid='true'],
-.field select[aria-invalid='true'] {
+.field select[aria-invalid='true'],
+.field textarea[aria-invalid='true'] {
   border-color: var(--danger);
 }
 
@@ -517,6 +539,50 @@ p {
 .field-error {
   color: #d24b4b;
   font-size: 13px;
+}
+
+.field-warn {
+  color: #8a5a12;
+  font-size: 13px;
+}
+
+.attachment-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.attachment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+
+.attachment-actions strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.attachment-preview {
+  display: block;
+  max-width: min(100%, 280px);
+  max-height: 200px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  object-fit: contain;
+  background: #f7f4ea;
+}
+
+.btn-primary:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.zone-field {
+  margin-top: 14px;
 }
 
 .inline-field {
@@ -592,12 +658,62 @@ p {
 .address-row {
   display: flex;
   gap: 8px;
+  align-items: stretch;
 }
 
-.address-row input {
+.address-input-wrap {
+  position: relative;
   flex: 1;
-  width: auto;
   min-width: 0;
+}
+
+.address-input-wrap input {
+  width: 100%;
+}
+
+.address-suggest {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e4e0d8;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  max-height: 240px;
+  overflow: auto;
+}
+
+.address-suggest button {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.address-suggest button[aria-selected='true'],
+.address-suggest button:hover {
+  background: #fff6cc;
+}
+
+.address-suggest strong {
+  font-weight: 600;
+}
+
+.address-suggest small {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .detect-btn {
@@ -611,6 +727,10 @@ p {
 
 .detect-btn:disabled {
   color: var(--muted);
+  cursor: not-allowed;
+}
+
+.detect-btn[aria-busy='true'] {
   cursor: wait;
 }
 
@@ -641,6 +761,12 @@ p {
 .zone-chip strong {
   color: var(--ink);
   font-weight: 600;
+}
+
+.zone-chip.active {
+  border-color: var(--yellow);
+  background: #fff6cc;
+  color: var(--ink);
 }
 
 .form-actions {
@@ -693,6 +819,16 @@ p {
   .field-grid,
   .address-row {
     flex-direction: column;
+  }
+
+  .detect-btn {
+    width: 100%;
+    padding: 11px 14px;
+  }
+
+  .address-suggest {
+    position: static;
+    margin-top: 4px;
   }
 
   .field-grid {
