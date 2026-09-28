@@ -1,20 +1,26 @@
-export function loadList<T>(key: string, isItem: (value: unknown) => value is T): T[] {
+export type StoredList<T> = {
+  items: T[]
+  /** Había datos y no se pudieron leer. */
+  rejected: boolean
+}
+
+export function loadList<T>(key: string, isItem: (value: unknown) => value is T): StoredList<T> {
   try {
     const raw = localStorage.getItem(key)
-    if (!raw) return []
+    if (!raw) return { items: [], rejected: false }
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed) || !parsed.every(isItem)) {
       localStorage.removeItem(key)
-      return []
+      return { items: [], rejected: true }
     }
-    return parsed
+    return { items: parsed, rejected: false }
   } catch {
     try {
       localStorage.removeItem(key)
     } catch {
       // El navegador puede bloquear el almacenamiento.
     }
-    return []
+    return { items: [], rejected: true }
   }
 }
 

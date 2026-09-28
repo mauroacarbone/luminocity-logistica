@@ -30,7 +30,7 @@ function isPickingLine(value: unknown): value is PickingLine {
 }
 
 export function PickingProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<PickingLine[]>(() => loadList(PICKING_KEY, isPickingLine))
+  const [lines, setLines] = useState<PickingLine[]>(() => loadList(PICKING_KEY, isPickingLine).items)
 
   useEffect(() => {
     saveList(PICKING_KEY, lines)

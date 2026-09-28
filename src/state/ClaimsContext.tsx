@@ -124,8 +124,11 @@ function withoutFiles(claim: Claim): Claim {
 }
 
 export function ClaimsProvider({ children }: { children: ReactNode }) {
-  const [claims, setClaims] = useState<Claim[]>(() => loadList(CLAIMS_KEY, isClaim))
-  const [notice, setNotice] = useState('')
+  const [stored] = useState(() => loadList(CLAIMS_KEY, isClaim))
+  const [claims, setClaims] = useState(stored.items)
+  const [notice, setNotice] = useState(
+    stored.rejected ? 'No se pudieron leer los reclamos guardados en este navegador.' : '',
+  )
   const claimsRef = useRef(claims)
 
   function commit(next: Claim[], focusId: string): ClaimSaveResult {
@@ -151,8 +154,7 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
       if (saveList(CLAIMS_KEY, stripped) === 'ok') return apply(stripped, 'saved-without-files')
     }
 
-    if (written === 'quota') return apply(next, 'not-saved')
-    return apply(next, 'saved')
+    return apply(next, 'not-saved')
   }
 
   function addClaim(input: NewClaim): ClaimSaveResult {

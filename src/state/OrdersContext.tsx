@@ -99,7 +99,7 @@ function withoutNewAttachment(next: Order[], focusId: string, previous?: Order) 
 }
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-  const [orders, setOrders] = useState<Order[]>(() => loadList(ORDERS_KEY, isOrder))
+  const [orders, setOrders] = useState<Order[]>(() => loadList(ORDERS_KEY, isOrder).items)
   const ordersRef = useRef(orders)
 
   function commit(next: Order[], focusId?: string): OrderSaveResult {
@@ -131,8 +131,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       return apply(next, { status: 'not-saved' })
     }
 
-    if (written === 'quota') return apply(next, { status: 'not-saved' })
-    return apply(next, { status: 'saved' })
+    return apply(next, { status: 'not-saved' })
   }
 
   function addOrder(order: Order) {

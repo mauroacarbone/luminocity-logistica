@@ -8,6 +8,7 @@ import {
   type Order,
   type OrderStatus,
 } from '../data/orders'
+import { formatIsoDate } from '../lib/week'
 import { useOrders } from '../state/OrdersContext'
 
 type View = 'kanban' | 'tabla'
@@ -68,7 +69,7 @@ function OrderCard({ order }: { order: Order }) {
           <rect x="4" y="5" width="16" height="15" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
           <path d="M8 3v4M16 3v4M4 10h16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
-        {order.deliveryDate}
+        {formatIsoDate(order.deliveryDate)}
       </p>
     </article>
   )
@@ -156,7 +157,7 @@ export function PanelOperativo() {
                     <span className="count">{column.length}</span>
                   </header>
                   {column.length === 0 ? (
-                    <p className="empty">Sin pedidos</p>
+                    <p className="empty">Todavía no hay pedidos en este estado.</p>
                   ) : (
                     <div className="column-cards">
                       {column.map((order) => (
@@ -187,7 +188,9 @@ export function PanelOperativo() {
               {visibleOrders.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="empty">
-                    Sin pedidos
+                    {orders.length === 0
+                      ? 'Todavía no hay pedidos cargados.'
+                      : 'Ningún pedido coincide con el filtro.'}
                   </td>
                 </tr>
               ) : (
@@ -204,7 +207,7 @@ export function PanelOperativo() {
                     <td>{order.transporter || '—'}</td>
                     <td>{order.packages != null ? order.packages : '—'}</td>
                     <td>{order.loadedAt}</td>
-                    <td>{order.deliveryDate}</td>
+                    <td>{formatIsoDate(order.deliveryDate)}</td>
                   </tr>
                 ))
               )}

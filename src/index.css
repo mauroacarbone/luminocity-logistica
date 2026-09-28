@@ -183,6 +183,11 @@ p {
   border-radius: 8px;
 }
 
+.logout:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .logout svg {
   width: 16px;
   height: 16px;
@@ -385,20 +390,11 @@ p {
   margin-top: 4px;
 }
 
-.soon-card,
 .table-wrap {
   margin-top: 22px;
   background: var(--card);
   border-radius: 18px;
   box-shadow: var(--shadow);
-}
-
-.soon-card {
-  padding: 28px;
-  color: var(--muted);
-}
-
-.table-wrap {
   overflow: auto;
 }
 
@@ -435,22 +431,27 @@ p {
 
 .status-pendiente {
   background: #fff4cc;
+  color: #3f3c37;
 }
 
 .status-preparado {
   background: #fde8d4;
+  color: #8a4b12;
 }
 
 .status-asignado {
   background: #efe6ff;
+  color: #5b3d99;
 }
 
 .status-en-viaje {
   background: #e7f0ff;
+  color: #2458a6;
 }
 
 .status-entregado {
   background: #e5f6ea;
+  color: #1d7a3a;
 }
 
 .form-stack {

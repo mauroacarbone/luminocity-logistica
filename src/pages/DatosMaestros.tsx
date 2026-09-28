@@ -17,12 +17,14 @@ function StringList({
   title,
   hint,
   placeholder,
+  empty,
   items,
   onSave,
 }: {
   title: string
   hint: string
   placeholder: string
+  empty: string
   items: string[]
   onSave: (next: string[]) => boolean
 }) {
@@ -97,7 +99,7 @@ function StringList({
       <h2>{title}</h2>
       <p className="hint">{hint}</p>
       {items.length === 0 ? (
-        <p className="hint master-empty">Todavía no hay ítems.</p>
+        <p className="hint master-empty">{empty}</p>
       ) : (
         <ul className="master-list">
           {items.map((item, index) => (
@@ -290,7 +292,7 @@ function ZoneList({
         Nombre y días de reparto. Nuevo Pedido usa estos días en el aviso de fecha.
       </p>
       {zones.length === 0 ? (
-        <p className="hint master-empty">Todavía no hay ítems.</p>
+        <p className="hint master-empty">Todavía no hay zonas de entrega.</p>
       ) : (
         <ul className="master-list">
           {zones.map((zone, index) => (
@@ -425,6 +427,7 @@ export function DatosMaestros() {
           title="Vendedores"
           hint="Aparecen en Nuevo Pedido y Post Venta."
           placeholder="Nuevo vendedor"
+          empty="Todavía no hay vendedores."
           items={sellers}
           onSave={(next) => save({ sellers: next })}
         />
@@ -432,6 +435,7 @@ export function DatosMaestros() {
           title="Transportistas"
           hint="Aparecen en Nuevo Pedido y en el filtro de Despacho."
           placeholder="Nuevo transportista"
+          empty="Todavía no hay transportistas."
           items={transporters}
           onSave={(next) => save({ transporters: next })}
         />
@@ -440,6 +444,7 @@ export function DatosMaestros() {
           title="Tipos de propiedad"
           hint="Opciones del formulario de Nuevo Pedido."
           placeholder="Nuevo tipo"
+          empty="Todavía no hay tipos de propiedad."
           items={propertyTypes}
           onSave={(next) => save({ propertyTypes: next })}
         />
@@ -447,6 +452,7 @@ export function DatosMaestros() {
           title="Franjas horarias"
           hint="Opciones del formulario de Nuevo Pedido."
           placeholder="Ej. 10:00-15:00"
+          empty="Todavía no hay franjas horarias."
           items={timeWindows}
           onSave={(next) => save({ timeWindows: next })}
         />

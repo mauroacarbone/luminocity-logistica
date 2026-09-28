@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
-import type { Order, OrderStatus } from '../data/orders'
+import { STATUS_PILL, type Order } from '../data/orders'
 import { MONTH_SHORT, formatDayLabel, toIso, weekDays } from '../lib/week'
 import {
   drivingRoute,
@@ -13,22 +13,6 @@ import { useOrders } from '../state/OrdersContext'
 import 'leaflet/dist/leaflet.css'
 
 const DEFAULT_ORIGIN = 'Warnes 986, Buenos Aires'
-
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  pendiente: 'Pendiente',
-  preparado: 'Preparado',
-  asignado: 'Asignado',
-  'en-viaje': 'En viaje',
-  entregado: 'Entregado',
-}
-
-const BADGE: Record<OrderStatus, string> = {
-  pendiente: 'bg-[#fff4cc] text-lumi-ink',
-  preparado: 'bg-[#e7f0ff] text-[#2458a6]',
-  asignado: 'bg-[#efe8ff] text-[#5b3d99]',
-  'en-viaje': 'bg-[#ffe8cc] text-[#9a4d00]',
-  entregado: 'bg-[#e5f6ea] text-[#1d7a3a]',
-}
 
 type Stop = {
   key: string
@@ -390,10 +374,8 @@ export function PlanificadorRutas() {
                         <span className="mt-1 block text-sm text-lumi-muted">{order.address}</span>
                       )}
                     </span>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${BADGE[order.status]}`}
-                    >
-                      {STATUS_LABEL[order.status]}
+                    <span className={`status-pill status-${order.status} shrink-0`}>
+                      {STATUS_PILL[order.status]}
                     </span>
                   </span>
                 </label>

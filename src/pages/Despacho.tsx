@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
+import { QrCoverDialog } from '../components/QrCoverDialog'
+import { QrScanDialog } from '../components/QrScanDialog'
 import { withExtras } from '../data/catalog'
 import {
+  STATUS_ORDER,
+  STATUS_PILL,
   type Order,
   type OrderStatus,
 } from '../data/orders'
@@ -9,6 +13,7 @@ import {
   DAY_LONG,
   MONTH_SHORT,
   formatDayLabel,
+  formatIsoDate,
   toIso,
   weekDays,
   weekOffsetForIso,
@@ -25,22 +30,6 @@ const TABS: { id: DispatchTab; label: string }[] = [
   { id: 'viaje', label: 'En viaje / Asignados' },
   { id: 'entregado', label: 'Entregados' },
 ]
-
-const STATUS_CHOICES: { status: OrderStatus; label: string }[] = [
-  { status: 'pendiente', label: 'Pendiente' },
-  { status: 'preparado', label: 'Preparado' },
-  { status: 'asignado', label: 'Asignado' },
-  { status: 'en-viaje', label: 'En viaje' },
-  { status: 'entregado', label: 'Entregado' },
-]
-
-const BADGE: Record<OrderStatus, string> = {
-  pendiente: 'bg-[#fff4cc] text-lumi-ink',
-  preparado: 'bg-[#e7f0ff] text-[#2458a6]',
-  asignado: 'bg-[#efe8ff] text-[#5b3d99]',
-  'en-viaje': 'bg-[#ffe8cc] text-[#9a4d00]',
-  entregado: 'bg-[#e5f6ea] text-[#1d7a3a]',
-}
 
 function matchesTab(order: Order, tab: DispatchTab) {
   if (tab === 'viaje') return order.status === 'asignado' || order.status === 'en-viaje'
@@ -73,65 +62,6 @@ function findOrder(orders: Order[], raw: string) {
   )
 }
 
-function CodeDialog({
-  title,
-  hint,
-  confirmLabel,
-  error,
-  onClose,
-  onSubmit,
-}: {
-  title: string
-  hint: string
-  confirmLabel: string
-  error: string
-  onClose: () => void
-  onSubmit: (code: string) => void
-}) {
-  const [code, setCode] = useState('')
-
-  return (
-    <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4">
-      <form
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg"
-        onSubmit={(event) => {
-          event.preventDefault()
-          onSubmit(code)
-        }}
-      >
-        <h2 className="text-xl font-semibold">{title}</h2>
-        <p className="mt-1 text-sm text-lumi-muted">{hint}</p>
-        <label className="mt-4 block text-sm font-medium">
-          N° de pedido o factura
-          <input
-            autoFocus
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-            placeholder="P-1234567"
-            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
-          />
-        </label>
-        {error && <p className="mt-2 text-sm text-lumi-danger">{error}</p>}
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea]"
-            onClick={onClose}
-          >
-            Cerrar
-          </button>
-          <button
-            type="submit"
-            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink"
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </form>
-    </div>
-  )
-}
-
 export function Despacho() {
   const { orders, updateOrder } = useOrders()
   const { transporters: catalogTransporters } = useCatalog()
@@ -143,6 +73,7 @@ export function Despacho() {
   const [openStatusId, setOpenStatusId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<DialogKind | null>(null)
   const [dialogError, setDialogError] = useState('')
+  const [coverId, setCoverId] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
   const [highlightId, setHighlightId] = useState<string | null>(null)
 
@@ -223,6 +154,8 @@ export function Despacho() {
     if (!highlightId) return
     document.getElementById(`order-${highlightId}`)?.scrollIntoView({ block: 'nearest' })
   }, [highlightId, tab, selectedIso, dayOrders.length])
+
+  const coverOrder = coverId ? orders.find((order) => order.id === coverId) : undefined
 
   const weekTitle =
     weekOffset === 0
@@ -384,11 +317,7 @@ export function Despacho() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <strong>{order.id}</strong>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${BADGE[order.status]}`}
-                    >
-                      {STATUS_CHOICES.find((item) => item.status === order.status)?.label}
-                    </span>
+                    <span className={`status-pill status-${order.status}`}>{STATUS_PILL[order.status]}</span>
                   </div>
                   <p className="mt-2 font-semibold uppercase">{order.client}</p>
                   {addressLine(order) && (
@@ -402,42 +331,54 @@ export function Despacho() {
                     {order.invoices && order.invoices.length > 0 && (
                       <p>{order.invoices.join(', ')}</p>
                     )}
-                    {searching && <p>Entrega: {order.deliveryDate}</p>}
+                    {searching && <p>Entrega: {formatIsoDate(order.deliveryDate)}</p>}
                     <OrderAttachmentLink name={order.attachmentName} dataUrl={order.attachmentDataUrl} />
                   </div>
                 </div>
-                <div className="relative shrink-0">
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea]"
+                      aria-expanded={openStatusId === order.id}
+                      aria-haspopup="menu"
+                      onClick={() =>
+                        setOpenStatusId((current) => (current === order.id ? null : order.id))
+                      }
+                    >
+                      Estado
+                    </button>
+                    {openStatusId === order.id && (
+                      <div
+                        role="menu"
+                        className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
+                      >
+                        {STATUS_ORDER.map((status) => (
+                          <button
+                            key={status}
+                            type="button"
+                            role="menuitem"
+                            className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] ${
+                              order.status === status ? 'font-semibold' : ''
+                            }`}
+                            onClick={() => changeStatus(order, status)}
+                          >
+                            {STATUS_PILL[status]}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button
                     type="button"
                     className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea]"
-                    aria-expanded={openStatusId === order.id}
-                    aria-haspopup="menu"
-                    onClick={() =>
-                      setOpenStatusId((current) => (current === order.id ? null : order.id))
-                    }
+                    onClick={() => {
+                      setOpenStatusId(null)
+                      setCoverId(order.id)
+                    }}
                   >
-                    Estado
+                    Carátula
                   </button>
-                  {openStatusId === order.id && (
-                    <div
-                      role="menu"
-                      className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
-                    >
-                      {STATUS_CHOICES.map((choice) => (
-                        <button
-                          key={choice.status}
-                          type="button"
-                          role="menuitem"
-                          className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] ${
-                            order.status === choice.status ? 'font-semibold' : ''
-                          }`}
-                          onClick={() => changeStatus(order, choice.status)}
-                        >
-                          {choice.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             </article>
@@ -455,15 +396,17 @@ export function Despacho() {
       )}
 
       {dialog && (
-        <CodeDialog
+        <QrScanDialog
+          key={dialog}
           title={dialog === 'entrega' ? 'Confirmar entrega' : 'Buscar carátula'}
-          hint="Pegá el N° de pedido o la factura que figura en el QR."
+          hint="Apuntá la cámara al QR, o pegá el N° de pedido o la factura."
           confirmLabel={dialog === 'entrega' ? 'Confirmar entrega' : 'Buscar'}
           error={dialogError}
           onClose={() => setDialog(null)}
           onSubmit={submitCode}
         />
       )}
+      {coverOrder && <QrCoverDialog order={coverOrder} onClose={() => setCoverId(null)} />}
     </section>
   )
 }

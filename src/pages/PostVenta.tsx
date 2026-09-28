@@ -1070,7 +1070,11 @@ export function PostVenta() {
       {tab === 'reclamos' && (
         <ClaimList
           claims={reclamos}
-          empty="No hay reclamos en curso para esos filtros."
+          empty={
+            claims.length === 0
+              ? 'Todavía no hay reclamos cargados.'
+              : 'No hay reclamos en curso para esos filtros.'
+          }
           highlightId={highlightId}
           seller={seller}
           period={period}
@@ -1081,7 +1085,11 @@ export function PostVenta() {
       {tab === 'finalizados' && (
         <ClaimList
           claims={finalizados}
-          empty="No hay reclamos finalizados para esos filtros."
+          empty={
+            claims.length === 0
+              ? 'Todavía no hay reclamos cargados.'
+              : 'No hay reclamos finalizados para esos filtros.'
+          }
           highlightId={highlightId}
           seller={seller}
           period={period}
@@ -1092,7 +1100,11 @@ export function PostVenta() {
       {tab === 'cancelados' && (
         <ClaimList
           claims={cancelados}
-          empty="No hay reclamos cancelados para esos filtros."
+          empty={
+            claims.length === 0
+              ? 'Todavía no hay reclamos cargados.'
+              : 'No hay reclamos cancelados para esos filtros.'
+          }
           highlightId={highlightId}
           seller={seller}
           period={period}

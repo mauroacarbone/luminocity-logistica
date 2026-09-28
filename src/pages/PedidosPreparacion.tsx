@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
-import type { Order } from '../data/orders'
+import { STATUS_PILL, type Order } from '../data/orders'
 import {
   DAY_LONG,
   MONTH_SHORT,
@@ -191,9 +191,7 @@ export function PedidosPreparacion() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <strong>{order.id}</strong>
-                    <span className="rounded-full bg-[#fff4cc] px-2 py-0.5 text-xs font-medium">
-                      Pendiente
-                    </span>
+                    <span className="status-pill status-pendiente">{STATUS_PILL.pendiente}</span>
                   </div>
                   <p className="mt-2 font-semibold uppercase">{order.client}</p>
                   {addressLine(order) && (

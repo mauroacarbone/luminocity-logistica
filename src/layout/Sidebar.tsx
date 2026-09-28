@@ -106,7 +106,7 @@ export function Sidebar() {
             <span className="user-role">Vendedor</span>
           </span>
         </div>
-        <button type="button" className="logout">
+        <button type="button" className="logout" disabled title="Próximo: login">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M10 7V5a2 2 0 0 1 2-2h7v18h-7a2 2 0 0 1-2-2v-2M4 12h11M8 8l-4 4 4 4"

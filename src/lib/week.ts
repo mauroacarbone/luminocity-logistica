@@ -63,3 +63,10 @@ export function weekOffsetForIso(iso: string) {
 export function formatDayLabel(date: Date) {
   return `${DAY_SHORT[date.getDay()]} ${date.getDate()}/${MONTH_SHORT[date.getMonth()]}`
 }
+
+export function formatIsoDate(iso: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!match) return iso
+  const [, year, month, day] = match
+  return `${day}/${month}/${year}`
+}
