@@ -1,6 +1,6 @@
-# Roadmap
+# History
 
-Hecho es lo que ya está en `main`. El orden 1–6 entró junto en un merge; el tema sale de lo que hace el código, no de un título guardado en el commit.
+Hecho es lo que ya está en `main`. El orden 1–6 entró junto en un merge; el tema sale de lo que hace el código.
 
 ## Hechos
 
