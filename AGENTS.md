@@ -134,8 +134,12 @@ Datos maestros puede cambiar zonas, franjas (`10:00-15:00`, `09:00-13:00`, `15:0
 
 ## Commits
 
-- Mensaje en español, en infinitivo, una línea que diga para qué.
-- Sin `Co-authored-by` ni otros trailers.
+- Escribir como un dev del equipo: corto, en español, en imperativo/infinitivo y sin punto final. Ejemplos: `Agregar tipo de despacho en Nuevo Pedido`, `Corregir zona en GBA Sur`.
+- Una línea de hasta ~60 caracteres, que diga para qué. Cuerpo solo si hace falta explicar el porqué, en 1 o 2 líneas.
+- Sin emojis ni prefijos tipo `feat:` / `fix:`.
+- Sin frases armadas o de IA ("se implementó exitosamente", "mejora robusta", "para una mejor experiencia").
+- Sin `Co-authored-by` ni otros trailers. Sin menciones a Cursor o IA en el mensaje.
+- Un commit por brief o por cambio lógico, no un commit gigante.
 - En `main`. Un brief a la vez.
 - Al terminar cada brief, actualizar `HISTORY.md`.
 - Antes de commitear código, `npm run build` y `npm run lint` tienen que pasar.
