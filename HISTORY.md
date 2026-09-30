@@ -40,3 +40,6 @@ En este orden. No adelantar el siguiente.
 - Entrega propia y correo tienen listas de transportistas distintas, editables en Datos maestros.
 - El QR de la carátula busca el pedido o confirma la entrega.
 - Despacho ya filtra por transportista y agrupa `asignado` con `en-viaje`. El Brief 16 los pide en la vista del chofer.
+- La vista Chofer (Brief 16) va después del backend, porque necesita ubicación en vivo.
+- El backend va con Express + JWT, en línea con RendiYa (otro proyecto del mismo autor).
+- Se trabaja en `main` para no perder avances en ramas sueltas; primero que funcione, después el pulido visual.
