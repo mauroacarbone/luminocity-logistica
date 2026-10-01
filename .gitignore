@@ -16,6 +16,7 @@ dist-ssr
 server/.env
 server/data/users.json
 server/data/orders.json
+server/data/authorizations.json
 
 # Editor directories and files
 .vscode/*

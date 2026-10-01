@@ -1,8 +1,10 @@
+import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Router } from 'express'
-import { assertPatch, canCreate, canSeeOrder, diffOrder, normalizeName } from './access.js'
+import { assertPatch, canCreate, canSeeOrder, commercialKeys, diffOrder, normalizeName } from './access.js'
+import { takeAuthorization } from './authorizations.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { readUsersList } from './users.js'
@@ -66,6 +68,16 @@ ordersRouter.post('/', async (req, res) => {
       return
     }
     res.status(201).json(result.order)
+  })
+})
+ordersRouter.patch('/:id/edits/:editId', async (req, res) => {
+  await send(res, async () => {
+    const result = await reviewEdit(req.params.id, req.params.editId, req.body, req.user)
+    if (result.error) {
+      res.status(result.status).json({ message: result.error })
+      return
+    }
+    res.json(result.order)
   })
 })
 ordersRouter.patch('/:id', async (req, res) => {
@@ -146,9 +158,8 @@ function createOrder(body, user) {
     if (user.role === 'vendedor' && (parsed.order.packages != null || parsed.order.driverId)) {
       return fail('No podés asignar bultos ni chofer al cargar el pedido.', 403)
     }
-    if (user.role === 'vendedor' && normalizeName(parsed.order.seller) !== normalizeName(user.name)) {
-      return fail('Necesitás una autorización aprobada para cargar a nombre de ese vendedor.', 403)
-    }
+    const otherSeller =
+      user.role === 'vendedor' && normalizeName(parsed.order.seller) !== normalizeName(user.name)
     const driver = await checkDriver(parsed.order.driverId)
     if (driver.error) return driver
     const order = {
@@ -156,6 +167,12 @@ function createOrder(body, user) {
       id: nextId(orders),
       createdBy: user.id,
       createdAt: new Date().toISOString(),
+    }
+    if (otherSeller) {
+      const used = await takeAuthorization(user.id, parsed.order.seller, order.id)
+      if (!used) {
+        return fail('Necesitás una autorización aprobada para cargar a nombre de ese vendedor.', 403)
+      }
     }
     orders.push(order)
     await writeOrders(orders)
@@ -174,14 +191,75 @@ function patchOrder(id, body, user) {
     if (!hasChange(body)) return fail('No hay cambios para guardar.')
     const parsed = readOrderFields(body, current)
     if (parsed.error) return parsed
+    const reason = readReason(body)
+    if (reason.error) return reason
     const changes = diffOrder(current, parsed.order)
     if (Object.keys(changes).length === 0) return fail('No hay cambios para guardar.')
     const allowed = assertPatch(user, current, changes)
     if (allowed.error) return allowed
     const driver = await checkDriver(parsed.order.driverId, current.driverId)
     if (driver.error) return driver
+    if (needsReason(user, changes) && !reason.value) return fail('Ingresá el motivo de la edición.')
+
+    if (user.role === 'vendedor' && current.status === 'preparado') {
+      if (hasPending(current)) {
+        return fail('Este pedido ya tiene una edición esperando confirmación.')
+      }
+      const order = {
+        ...current,
+        edits: [...editsOf(current), makeEdit(user, reason.value, changes, 'pendiente')],
+      }
+      orders[index] = order
+      await writeOrders(orders)
+      return { order }
+    }
+
     const order = {
       ...parsed.order,
+      edits: editsOf(current),
+      updatedAt: new Date().toISOString(),
+    }
+    if (reason.value && (user.role === 'vendedor' || commercialKeys(changes).length > 0)) {
+      order.edits = [...order.edits, makeEdit(user, reason.value, changes, 'aplicada')]
+    }
+    orders[index] = order
+    await writeOrders(orders)
+    return { order }
+  })
+}
+
+function reviewEdit(orderId, editId, body, user) {
+  return locked(async () => {
+    if (user.role !== 'encargado_deposito' && user.role !== 'admin') {
+      return fail('No tenés permiso para confirmar ediciones.', 403)
+    }
+    const decision = body?.status
+    if (decision !== 'aplicada' && decision !== 'rechazada') {
+      return fail('Indicá si aprobás o rechazás la edición.')
+    }
+    const orders = await readOrders()
+    const index = orders.findIndex((item) => item.id === orderId)
+    if (index < 0) return fail('No existe ese pedido.', 404)
+    const current = orders[index]
+    const edits = editsOf(current)
+    const editIndex = edits.findIndex((item) => item.id === editId)
+    if (editIndex < 0) return fail('No existe esa edición.', 404)
+    if (edits[editIndex].status !== 'pendiente') {
+      return fail('Esa edición ya no está esperando confirmación.')
+    }
+    if (decision === 'rechazada') {
+      edits[editIndex] = { ...edits[editIndex], status: 'rechazada' }
+      const order = { ...current, edits }
+      orders[index] = order
+      await writeOrders(orders)
+      return { order }
+    }
+    const parsed = readOrderFields(bodyFrom(current, edits[editIndex].changes), current)
+    if (parsed.error) return parsed
+    edits[editIndex] = { ...edits[editIndex], status: 'aplicada' }
+    const order = {
+      ...parsed.order,
+      edits,
       updatedAt: new Date().toISOString(),
     }
     orders[index] = order
@@ -202,6 +280,44 @@ function deleteOrder(id, user) {
     await writeOrders(orders.filter((item) => item.id !== id))
     return { ok: true }
   })
+}
+
+function editsOf(order) {
+  return Array.isArray(order.edits) ? order.edits.map((edit) => ({ ...edit, changes: { ...edit.changes } })) : []
+}
+
+function hasPending(order) {
+  return Array.isArray(order.edits) && order.edits.some((edit) => edit.status === 'pendiente')
+}
+
+function needsReason(user, changes) {
+  if (user.role === 'vendedor') return true
+  if (user.role === 'encargado_deposito') return commercialKeys(changes).length > 0
+  return false
+}
+
+function readReason(body) {
+  if (!Object.prototype.hasOwnProperty.call(body, 'reason')) return { value: '' }
+  if (typeof body.reason !== 'string') return fail('El motivo no es válido.')
+  const value = body.reason.trim()
+  if (!value) return { value: '' }
+  if (value.length > 300) return fail('El motivo es demasiado largo.')
+  return { value }
+}
+
+function makeEdit(user, reason, changes, status) {
+  return {
+    id: randomUUID(),
+    by: user.id,
+    at: new Date().toISOString(),
+    reason,
+    changes,
+    status,
+  }
+}
+
+function bodyFrom(order, changes) {
+  return { ...order, ...changes }
 }
 
 async function checkDriver(driverId, previous) {

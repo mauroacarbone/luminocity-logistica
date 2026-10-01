@@ -2,6 +2,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
 import express from 'express'
+import { authorizationsRouter } from './authorizations.js'
 import { authRouter } from './auth.js'
 import { ordersRouter } from './orders.js'
 import { usersRouter } from './usersRoute.js'
@@ -35,6 +36,7 @@ app.use((error, _req, res, next) => {
 })
 app.use('/api/auth', authRouter)
 app.use('/api/users', usersRouter)
+app.use('/api/authorizations', authorizationsRouter)
 app.use('/api/orders', ordersRouter)
 
 await ensureDemoUser()
