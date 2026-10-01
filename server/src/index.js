@@ -1,6 +1,5 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import cors from 'cors'
 import dotenv from 'dotenv'
 import express from 'express'
 import { authRouter } from './auth.js'
@@ -16,7 +15,7 @@ if (!process.env.JWT_SECRET) {
 }
 
 const app = express()
-app.use(cors())
+// El front llama a /api por el proxy de Vite, así que no hace falta CORS.
 // Adjuntos del pedido van en el JSON (data URL, tope 2 MB de archivo).
 // 10mb alcanza para el base64 y el resto de los campos.
 app.use(express.json({ limit: '10mb' }))

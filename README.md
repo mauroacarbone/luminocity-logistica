@@ -31,6 +31,12 @@ cp .env.example .env
 npm run dev
 ```
 
+Cambiá `JWT_SECRET` en `server/.env`. El valor de `.env.example` es solo un ejemplo y no hay que dejarlo. Generá uno con:
+
+```
+openssl rand -hex 32
+```
+
 La app queda en el puerto de Vite y proxea `/api` a `http://localhost:3001`. En `server/`, `npm start` levanta la API sin recargar al cambiar archivos.
 
 ## Scripts de la app

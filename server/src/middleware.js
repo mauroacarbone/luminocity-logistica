@@ -10,7 +10,7 @@ export async function requireAuth(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(match[1], process.env.JWT_SECRET)
+    const payload = jwt.verify(match[1], process.env.JWT_SECRET, { algorithms: ['HS256'] })
     const id = typeof payload.sub === 'string' ? payload.sub : ''
     const user = await findUserById(id)
     if (!user) {
