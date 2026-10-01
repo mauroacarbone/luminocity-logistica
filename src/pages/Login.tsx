@@ -27,15 +27,7 @@ export function Login() {
     setPending(true)
     try {
       const result = await login(email, password)
-      if (result === 'invalid') {
-        setErrors({ form: 'Email o contraseña incorrectos.' })
-        return
-      }
-      if (result === 'error') {
-        setErrors({ form: 'No se pudo guardar la sesión en este navegador.' })
-      }
-    } catch {
-      setErrors({ form: 'No se pudo iniciar sesión.' })
+      if (!result.ok) setErrors({ form: result.message })
     } finally {
       setPending(false)
     }

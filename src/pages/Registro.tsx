@@ -37,15 +37,9 @@ export function Registro() {
     setPending(true)
     try {
       const result = await register({ name, email, password, role })
-      if (result === 'exists') {
-        setErrors({ email: 'Ya hay una cuenta con ese email.' })
-        return
+      if (!result.ok) {
+        setErrors(result.field === 'email' ? { email: result.message } : { form: result.message })
       }
-      if (result === 'error') {
-        setErrors({ form: 'No se pudo guardar la cuenta en este navegador.' })
-      }
-    } catch {
-      setErrors({ form: 'No se pudo crear la cuenta.' })
     } finally {
       setPending(false)
     }

@@ -1,18 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { loginRequest, meRequest, registerRequest, type AuthFailure } from '../lib/authApi'
 import {
-  clearSession,
-  createStoredUser,
-  ensureUsers,
-  loadSession,
-  matchSession,
-  saveSession,
-  saveUsers,
-  sessionFromUser,
+  clearToken,
+  loadToken,
+  saveToken,
+  tokenExpiresAt,
   type Role,
   type Session,
-  type StoredUser,
 } from '../lib/authStore'
-import { verifyPassword } from '../lib/password'
 
 type RegisterInput = {
   name: string
@@ -24,65 +19,73 @@ type RegisterInput = {
 type AuthContextValue = {
   ready: boolean
   user: Session | null
-  login: (email: string, password: string) => Promise<'ok' | 'invalid' | 'error'>
-  register: (input: RegisterInput) => Promise<'ok' | 'exists' | 'error'>
+  login: (email: string, password: string) => Promise<{ ok: true } | AuthFailure>
+  register: (input: RegisterInput) => Promise<{ ok: true } | AuthFailure>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers] = useState<StoredUser[]>([])
   const [user, setUser] = useState<Session | null>(null)
-  const [ready, setReady] = useState(false)
+  const [ready, setReady] = useState(() => loadToken() === null)
 
   useEffect(() => {
+    const token = loadToken()
+    if (!token) return
     let cancelled = false
-    void ensureUsers()
-      .then((list) => {
-        if (cancelled) return
-        const session = matchSession(list, loadSession())
-        if (session) saveSession(session)
-        else clearSession()
-        setUsers(list)
-        setUser(session)
-        setReady(true)
-      })
-      .catch(() => {
-        if (cancelled) return
-        setUsers([])
+    void meRequest(token).then((session) => {
+      if (cancelled) return
+      if (session === 'unauthorized') {
+        clearToken()
         setUser(null)
-        setReady(true)
-      })
+      } else if (session === 'error') {
+        setUser(null)
+      } else {
+        setUser(session)
+      }
+      setReady(true)
+    })
     return () => {
       cancelled = true
     }
   }, [])
 
+  useEffect(() => {
+    if (!user) return
+    const token = loadToken()
+    const expiresAt = token ? tokenExpiresAt(token) : null
+    if (!expiresAt) return
+    const delay = Math.max(0, expiresAt - Date.now())
+    const timeout = window.setTimeout(() => {
+      clearToken()
+      setUser(null)
+    }, delay)
+    return () => window.clearTimeout(timeout)
+  }, [user])
+
   async function login(email: string, password: string) {
-    const found = users.find((item) => item.email === email.trim().toLowerCase())
-    if (!found || !(await verifyPassword(password, found.passwordHash))) return 'invalid' as const
-    const session = sessionFromUser(found)
-    if (!saveSession(session)) return 'error' as const
-    setUser(session)
-    return 'ok' as const
+    const result = await loginRequest(email, password)
+    if (!result.ok) return result
+    if (!saveToken(result.token)) {
+      return { ok: false as const, message: 'No se pudo guardar la sesión en este navegador.' }
+    }
+    setUser(result.user)
+    return { ok: true as const }
   }
 
   async function register(input: RegisterInput) {
-    const email = input.email.trim().toLowerCase()
-    if (users.some((item) => item.email === email)) return 'exists' as const
-    const stored = await createStoredUser({ ...input, email })
-    const next = [...users, stored]
-    if (saveUsers(next) !== 'ok') return 'error' as const
-    setUsers(next)
-    const session = sessionFromUser(stored)
-    if (!saveSession(session)) return 'error' as const
-    setUser(session)
-    return 'ok' as const
+    const result = await registerRequest(input)
+    if (!result.ok) return result
+    if (!saveToken(result.token)) {
+      return { ok: false as const, message: 'No se pudo guardar la sesión en este navegador.' }
+    }
+    setUser(result.user)
+    return { ok: true as const }
   }
 
   function logout() {
-    clearSession()
+    clearToken()
     setUser(null)
   }
 
