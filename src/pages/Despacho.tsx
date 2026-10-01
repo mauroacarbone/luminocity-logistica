@@ -75,6 +75,7 @@ export function Despacho() {
   const [dialogError, setDialogError] = useState('')
   const [coverId, setCoverId] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
+  const [actionError, setActionError] = useState('')
   const [highlightId, setHighlightId] = useState<string | null>(null)
 
   const days = weekDays(weekOffset)
@@ -123,12 +124,17 @@ export function Despacho() {
     setOpenStatusId(null)
   }
 
-  function changeStatus(order: Order, status: OrderStatus) {
-    updateOrder({ ...order, status })
+  async function changeStatus(order: Order, status: OrderStatus) {
+    const result = await updateOrder({ ...order, status })
     setOpenStatusId(null)
+    if (result.status === 'not-saved') {
+      setActionError(result.message)
+      return
+    }
+    setActionError('')
   }
 
-  function submitCode(code: string) {
+  async function submitCode(code: string) {
     const order = findOrder(orders, code)
     if (!order) {
       setDialogError('No encontré un pedido con ese código.')
@@ -139,9 +145,14 @@ export function Despacho() {
         setDialogError('Ese pedido ya está entregado.')
         return
       }
-      updateOrder({ ...order, status: 'entregado' })
-      focusOrder({ ...order, status: 'entregado' })
-      setNotice(`Entrega confirmada: ${order.id}`)
+      const result = await updateOrder({ ...order, status: 'entregado' })
+      if (result.status === 'not-saved') {
+        setDialogError(result.message)
+        return
+      }
+      focusOrder(result.order)
+      setNotice(`Entrega confirmada: ${result.order.id}`)
+      setActionError('')
     } else {
       focusOrder(order)
       setNotice(`Pedido encontrado: ${order.id}`)
@@ -183,6 +194,11 @@ export function Despacho() {
 
       {notice && (
         <p className="mt-4 rounded-xl bg-[#e5f6ea] px-4 py-2 text-sm text-[#1d7a3a]">{notice}</p>
+      )}
+      {actionError && (
+        <p className="mt-4 text-sm font-semibold text-lumi-danger" role="alert">
+          {actionError}
+        </p>
       )}
 
       <div className="mt-6 flex flex-wrap gap-1 border-b border-lumi-line">
@@ -362,7 +378,7 @@ export function Despacho() {
                             className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] ${
                               order.status === status ? 'font-semibold' : ''
                             }`}
-                            onClick={() => changeStatus(order, status)}
+                            onClick={() => void changeStatus(order, status)}
                           >
                             {STATUS_PILL[status]}
                           </button>

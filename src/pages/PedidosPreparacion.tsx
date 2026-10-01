@@ -20,10 +20,12 @@ function readPackages(raw: string) {
 
 function PackagesDialog({
   orderId,
+  saveError,
   onClose,
   onConfirm,
 }: {
   orderId: string
+  saveError: string
   onClose: () => void
   onConfirm: (packages: number) => void
 }) {
@@ -68,6 +70,11 @@ function PackagesDialog({
           />
         </label>
         {error && <p className="mt-2 text-sm text-lumi-danger">{error}</p>}
+        {saveError && (
+          <p className="mt-2 text-sm text-lumi-danger" role="alert">
+            {saveError}
+          </p>
+        )}
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
@@ -101,6 +108,8 @@ export function PedidosPreparacion() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
   const [preparing, setPreparing] = useState<Order | null>(null)
+  const [prepareError, setPrepareError] = useState('')
+  const [actionError, setActionError] = useState('')
   const days = weekDays(weekOffset)
   const pending = orders.filter((order) => order.status === 'pendiente')
   const selectedDate = days.find((day) => toIso(day) === selectedIso) ?? days[0]
@@ -125,6 +134,12 @@ export function PedidosPreparacion() {
         <h1>Pedidos y Preparación</h1>
         <p>Pedidos de la semana, listos para preparar y editar.</p>
       </header>
+
+      {actionError && (
+        <p className="mt-4 text-sm font-semibold text-lumi-danger" role="alert">
+          {actionError}
+        </p>
+      )}
 
       <div className="mt-6 grid grid-cols-3 items-center gap-2">
         <button
@@ -235,7 +250,11 @@ export function PedidosPreparacion() {
                   <button
                     type="button"
                     className="text-sm text-lumi-danger hover:underline"
-                    onClick={() => removeOrder(order.id)}
+                    onClick={() => {
+                      void removeOrder(order.id).then((result) => {
+                        setActionError(result.status === 'not-saved' ? result.message : '')
+                      })
+                    }}
                   >
                     Cancelar
                   </button>
@@ -249,10 +268,21 @@ export function PedidosPreparacion() {
       {preparing && (
         <PackagesDialog
           orderId={preparing.id}
-          onClose={() => setPreparing(null)}
-          onConfirm={(packages) => {
-            updateOrder({ ...preparing, status: 'preparado', packages })
+          saveError={prepareError}
+          onClose={() => {
+            setPrepareError('')
             setPreparing(null)
+          }}
+          onConfirm={(packages) => {
+            void updateOrder({ ...preparing, status: 'preparado', packages }).then((result) => {
+              if (result.status === 'not-saved') {
+                setPrepareError(result.message)
+                return
+              }
+              setPrepareError('')
+              setActionError('')
+              setPreparing(null)
+            })
           }}
         />
       )}

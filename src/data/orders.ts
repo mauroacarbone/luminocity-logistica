@@ -31,6 +31,9 @@ export type Order = {
   attachmentDataUrl?: string
   receiverName?: string
   receiverDni?: string
+  createdBy?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {

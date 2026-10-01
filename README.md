@@ -1,6 +1,6 @@
 # Luminocity Logística
 
-App interna para cargar pedidos, prepararlos, despacharlos y seguir reclamos de post venta. Los pedidos viven en el navegador (localStorage). El login y el registro pasan por el backend de `server/`.
+App interna para cargar pedidos, prepararlos, despacharlos y seguir reclamos de post venta. Los pedidos se guardan en el backend de `server/` (`server/data/orders.json`, fuera de git). El login y el registro también pasan por ese backend. Los datos maestros siguen en el navegador.
 
 ## Acceso
 

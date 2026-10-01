@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { loginRequest, meRequest, registerRequest, type AuthFailure } from '../lib/authApi'
 import {
   clearToken,
@@ -84,10 +84,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true as const }
   }
 
-  function logout() {
+  const logout = useCallback(() => {
     clearToken()
     setUser(null)
-  }
+  }, [])
 
   return (
     <AuthContext.Provider value={{ ready, user, login, register, logout }}>

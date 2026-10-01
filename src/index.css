@@ -226,6 +226,40 @@ p {
   font-weight: 500;
 }
 
+.orders-note {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.orders-note.error {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.orders-import {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--card);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.orders-import p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.orders-import .error {
+  flex-basis: 100%;
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .auth-screen,
 .auth-boot {
   min-height: 100vh;

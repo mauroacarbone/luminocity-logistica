@@ -1,7 +1,18 @@
-import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { isDispatchType } from '../data/catalog'
 import type { Order, OrderStatus } from '../data/orders'
 import { loadList, saveList } from '../lib/localStore'
+import {
+  createOrder,
+  deleteOrder,
+  listOrders,
+  orderBody,
+  patchOrder,
+  withoutNewAttachment,
+  type ApiResult,
+  type OrderDraft,
+} from '../lib/ordersApi'
+import { useAuth } from './AuthContext'
 
 const ORDERS_KEY = 'luminocity.orders.v1'
 
@@ -29,18 +40,29 @@ const OPTIONAL_STRINGS = [
   'attachmentDataUrl',
   'receiverName',
   'receiverDni',
+  'createdBy',
+  'createdAt',
+  'updatedAt',
 ] as const
 
 export type OrderSaveResult =
-  | { status: 'saved' }
+  | { status: 'saved'; order: Order }
   | { status: 'saved-without-attachment'; order: Order }
-  | { status: 'not-saved' }
+  | { status: 'not-saved'; message: string }
+
+export type OrderDeleteResult = { status: 'deleted' } | { status: 'not-saved'; message: string }
 
 type OrdersContextValue = {
   orders: Order[]
-  addOrder: (order: Order) => OrderSaveResult
-  updateOrder: (order: Order) => OrderSaveResult
-  removeOrder: (id: string) => void
+  loading: boolean
+  error: string
+  legacyCount: number
+  importing: boolean
+  importError: string
+  importLegacy: () => Promise<void>
+  addOrder: (order: OrderDraft) => Promise<OrderSaveResult>
+  updateOrder: (order: Order) => Promise<OrderSaveResult>
+  removeOrder: (id: string) => Promise<OrderDeleteResult>
 }
 
 const OrdersContext = createContext<OrdersContextValue | null>(null)
@@ -75,84 +97,221 @@ function isOrder(value: unknown): value is Order {
   return OPTIONAL_STRINGS.every((key) => optionalString(order[key]))
 }
 
-function omitAttachment(order: Order): Order {
-  const next: Order = { ...order }
-  delete next.attachmentName
-  delete next.attachmentDataUrl
-  return next
+function asOrder(value: unknown) {
+  return isOrder(value) ? value : null
 }
 
-function withoutNewAttachment(next: Order[], focusId: string, previous?: Order) {
-  return next.map((item) => {
-    if (item.id !== focusId) return item
-    if (previous?.attachmentDataUrl && previous.attachmentDataUrl !== item.attachmentDataUrl) {
-      return {
-        ...item,
-        attachmentName: previous.attachmentName,
-        attachmentDataUrl: previous.attachmentDataUrl,
-      }
+function asOrderList(value: unknown) {
+  if (!Array.isArray(value) || !value.every(isOrder)) return null
+  return value
+}
+
+function draftOf(order: Order): OrderDraft {
+  return {
+    client: order.client,
+    zone: order.zone,
+    address: order.address,
+    loadedAt: order.loadedAt,
+    deliveryDate: order.deliveryDate,
+    status: order.status,
+    packages: order.packages,
+    seller: order.seller,
+    phone: order.phone,
+    invoices: order.invoices,
+    collectOnDelivery: order.collectOnDelivery,
+    amount: order.amount,
+    betweenStreet1: order.betweenStreet1,
+    betweenStreet2: order.betweenStreet2,
+    propertyType: order.propertyType,
+    timeWindow: order.timeWindow,
+    requiresPickup: order.requiresPickup,
+    dispatchType: order.dispatchType,
+    transporter: order.transporter,
+    notes: order.notes,
+    attachmentName: order.attachmentName,
+    attachmentDataUrl: order.attachmentDataUrl,
+    receiverName: order.receiverName,
+    receiverDni: order.receiverDni,
+  }
+}
+
+function remember(list: Order[]) {
+  if (list.length === 0) {
+    try {
+      localStorage.removeItem(ORDERS_KEY)
+    } catch {
+      // Si no se puede borrar, el botón no vuelve a aparecer porque la API ya tiene pedidos.
     }
-    const cleared = omitAttachment(item)
-    if (previous?.attachmentName && !previous.attachmentDataUrl) {
-      return { ...cleared, attachmentName: previous.attachmentName }
-    }
-    return cleared
-  })
+    return
+  }
+  saveList(ORDERS_KEY, list)
 }
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-  const [orders, setOrders] = useState<Order[]>(() => loadList(ORDERS_KEY, isOrder).items)
+  const { user, logout } = useAuth()
+  const [orders, setOrders] = useState<Order[]>([])
+  const [legacyOrders, setLegacyOrders] = useState<Order[]>([])
+  const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [error, setError] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
   const ordersRef = useRef(orders)
+  const legacyRef = useRef(legacyOrders)
+  const importingRef = useRef(false)
+  const userId = user?.id ?? null
+  const [trackedUserId, setTrackedUserId] = useState(userId)
 
-  function commit(next: Order[], focusId?: string): OrderSaveResult {
-    const apply = (list: Order[], result: OrderSaveResult) => {
-      ordersRef.current = list
-      setOrders(list)
-      return result
-    }
-
-    const written = saveList(ORDERS_KEY, next)
-    if (written === 'ok') return apply(next, { status: 'saved' })
-
-    const focus = focusId ? next.find((item) => item.id === focusId) : undefined
-    if (written === 'quota' && focus?.attachmentDataUrl) {
-      const previous = ordersRef.current.find((item) => item.id === focus.id)
-      const restored = withoutNewAttachment(next, focus.id, previous)
-      if (saveList(ORDERS_KEY, restored) === 'ok') {
-        const order = restored.find((item) => item.id === focus.id) ?? omitAttachment(focus)
-        return apply(restored, { status: 'saved-without-attachment', order })
-      }
-      const restoredFocus = restored.find((item) => item.id === focus.id)
-      if (restoredFocus?.attachmentDataUrl) {
-        const omitted = next.map((item) => (item.id === focus.id ? omitAttachment(item) : item))
-        if (saveList(ORDERS_KEY, omitted) === 'ok') {
-          const order = omitted.find((item) => item.id === focus.id) ?? omitAttachment(focus)
-          return apply(omitted, { status: 'saved-without-attachment', order })
-        }
-      }
-      return apply(next, { status: 'not-saved' })
-    }
-
-    return apply(next, { status: 'not-saved' })
+  if (userId !== trackedUserId) {
+    setTrackedUserId(userId)
+    setOrders([])
+    setLegacyOrders([])
+    setError('')
+    setImportError('')
+    setStatus(userId ? 'loading' : 'idle')
   }
 
-  function addOrder(order: Order) {
-    return commit([order, ...ordersRef.current], order.id)
+  const loading = Boolean(user) && status !== 'ready' && status !== 'error'
+
+  useEffect(() => {
+    ordersRef.current = []
+    legacyRef.current = []
+    if (!userId) return
+
+    let cancelled = false
+    void listOrders().then((result) => {
+      if (cancelled) return
+      if (!result.ok) {
+        if (result.status === 401) {
+          logout()
+          return
+        }
+        setError(result.message)
+        setStatus('error')
+        return
+      }
+      const list = asOrderList(result.data)
+      if (!list) {
+        setError('El servidor no devolvió los pedidos.')
+        setStatus('error')
+        return
+      }
+      ordersRef.current = list
+      setOrders(list)
+      const legacy = list.length === 0 ? loadList(ORDERS_KEY, isOrder).items : []
+      legacyRef.current = legacy
+      setLegacyOrders(legacy)
+      setStatus('ready')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId, logout])
+
+  function replaceOrders(list: Order[]) {
+    ordersRef.current = list
+    setOrders(list)
+  }
+
+  function replaceLegacy(list: Order[]) {
+    legacyRef.current = list
+    setLegacyOrders(list)
+    remember(list)
+  }
+
+  function fail(result: Extract<ApiResult, { ok: false }>): OrderSaveResult {
+    if (result.status === 401) logout()
+    return { status: 'not-saved', message: result.message }
+  }
+
+  async function write(mode: 'create' | 'patch', order: OrderDraft, id?: string): Promise<OrderSaveResult> {
+    const body = orderBody(order, mode)
+    const previous = id ? ordersRef.current.find((item) => item.id === id) : undefined
+    let dropped = false
+    let result = mode === 'create' ? await createOrder(body) : await patchOrder(id ?? '', body)
+    if (!result.ok && result.status === 413 && typeof body.attachmentDataUrl === 'string') {
+      const retry = withoutNewAttachment(body, mode, previous)
+      if (retry.attachmentDataUrl !== body.attachmentDataUrl) {
+        result = mode === 'create' ? await createOrder(retry) : await patchOrder(id ?? '', retry)
+        dropped = result.ok
+      }
+    }
+    if (!result.ok) return fail(result)
+    const saved = asOrder(result.data)
+    if (!saved) return { status: 'not-saved', message: 'El servidor no devolvió un pedido válido.' }
+    if (mode === 'create') {
+      replaceOrders([saved, ...ordersRef.current.filter((item) => item.id !== saved.id)])
+    } else {
+      const exists = ordersRef.current.some((item) => item.id === saved.id)
+      replaceOrders(
+        exists
+          ? ordersRef.current.map((item) => (item.id === saved.id ? saved : item))
+          : [saved, ...ordersRef.current],
+      )
+    }
+    if (dropped) return { status: 'saved-without-attachment', order: saved }
+    return { status: 'saved', order: saved }
+  }
+
+  function addOrder(order: OrderDraft) {
+    return write('create', order)
   }
 
   function updateOrder(order: Order) {
-    return commit(
-      ordersRef.current.map((item) => (item.id === order.id ? order : item)),
-      order.id,
-    )
+    return write('patch', draftOf(order), order.id)
   }
 
-  function removeOrder(id: string) {
-    commit(ordersRef.current.filter((item) => item.id !== id))
+  async function removeOrder(id: string): Promise<OrderDeleteResult> {
+    const result = await deleteOrder(id)
+    if (!result.ok) {
+      if (result.status === 401) logout()
+      if (result.status === 404) {
+        replaceOrders(ordersRef.current.filter((item) => item.id !== id))
+      }
+      return { status: 'not-saved', message: result.message }
+    }
+    replaceOrders(ordersRef.current.filter((item) => item.id !== id))
+    return { status: 'deleted' }
+  }
+
+  async function importLegacy() {
+    if (importingRef.current || ordersRef.current.length > 0 || legacyRef.current.length === 0) return
+    importingRef.current = true
+    setImporting(true)
+    setImportError('')
+    const queue = [...legacyRef.current].reverse()
+    const created: Order[] = []
+    for (let index = 0; index < queue.length; index += 1) {
+      const result = await write('create', draftOf(queue[index]))
+      if (result.status === 'not-saved') {
+        replaceLegacy(queue.slice(index).reverse())
+        setImportError(result.message)
+        importingRef.current = false
+        setImporting(false)
+        return
+      }
+      created.push(result.order)
+    }
+    replaceLegacy([])
+    replaceOrders([...created].reverse())
+    importingRef.current = false
+    setImporting(false)
   }
 
   return (
-    <OrdersContext.Provider value={{ orders, addOrder, updateOrder, removeOrder }}>
+    <OrdersContext.Provider
+      value={{
+        orders,
+        loading,
+        error,
+        legacyCount: legacyOrders.length,
+        importing,
+        importError,
+        importLegacy,
+        addOrder,
+        updateOrder,
+        removeOrder,
+      }}
+    >
       {children}
     </OrdersContext.Provider>
   )

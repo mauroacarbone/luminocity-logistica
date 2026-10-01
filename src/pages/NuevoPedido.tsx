@@ -7,7 +7,6 @@ import {
   withCurrent,
   type DispatchType,
 } from '../data/catalog'
-import type { Order } from '../data/orders'
 import {
   ATTACHMENT_ACCEPT,
   ATTACHMENT_SAVE_ERROR,
@@ -125,6 +124,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [locateError, setLocateError] = useState('')
   const [betweenNote, setBetweenNote] = useState('')
   const [errors, setErrors] = useState<Errors>({})
+  const [saveError, setSaveError] = useState('')
+  const [saving, setSaving] = useState(false)
   const addressRef = useRef<HTMLDivElement>(null)
   const searchAbort = useRef<AbortController | null>(null)
   const locateAbort = useRef<AbortController | null>(null)
@@ -371,7 +372,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       })
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const nextErrors: Errors = {}
     if (!seller) nextErrors.seller = 'Seleccioná un vendedor.'
@@ -389,6 +390,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     if (readingFile) {
       nextErrors.file = 'Esperá a que se termine de leer el archivo.'
     }
+    setSaveError('')
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -402,9 +404,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           place: zoneHint?.place,
         })
     const stored = storedId ? orders.find((order) => order.id === storedId) : undefined
-    const id = storedId ?? `P-${Math.floor(1000000 + Math.random() * 9000000)}`
-    const order: Order = {
-      id,
+    const draft = {
       client: client.trim(),
       zone: resolvedZone,
       address: address.trim(),
@@ -430,7 +430,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       receiverName: receiverName.trim() || undefined,
       receiverDni: receiverDni.trim() || undefined,
     }
-    const result = storedId ? updateOrder(order) : addOrder(order)
+    setSaving(true)
+    const result = storedId ? await updateOrder({ ...draft, id: storedId }) : await addOrder(draft)
+    setSaving(false)
     if (result.status === 'saved-without-attachment') {
       setStoredId(result.order.id)
       setAttachmentName(result.order.attachmentName ?? '')
@@ -441,13 +443,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       return
     }
     if (result.status === 'not-saved') {
-      setStoredId(id)
-      setErrors({
-        file: attachmentDataUrl
-          ? ATTACHMENT_SAVE_ERROR
-          : 'No se pudo guardar el pedido en este navegador.',
-      })
-      attachmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setSaveError(result.message)
       return
     }
     navigate(storedId ? '/pedidos' : '/')
@@ -901,6 +897,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           </div>
         </section>
 
+        {saveError && (
+          <p className="field-error" role="alert">
+            {saveError}
+          </p>
+        )}
+
         <div className="form-actions">
           <button
             type="button"
@@ -909,8 +911,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           >
             Cancelar
           </button>
-          <button type="submit" className="btn-primary" disabled={readingFile}>
-            {storedId ? 'Guardar cambios' : 'Crear Pedido'}
+          <button type="submit" className="btn-primary" disabled={readingFile || saving}>
+            {saving ? 'Guardando…' : storedId ? 'Guardar cambios' : 'Crear Pedido'}
           </button>
         </div>
       </form>
