@@ -32,8 +32,10 @@ En este orden. No adelantar el siguiente.
 | Brief | Tema | Estado |
 | --- | --- | --- |
 | 15 | Roles y menús. `encargado_deposito` ya se puede guardar; el menú todavía no filtra. | **Pendiente** |
-| 16 | Vista Chofer: orden por cercanía, filtro por transportista, asignado / en viaje, GPS en vivo para el seguimiento del cliente, WhatsApp "en camino", marcar entregado. | **Pendiente** |
-| 17 | Pulido visual. | **Pendiente** |
+| 16 | Vista Chofer: orden por cercanía, filtro por transportista, asignado / en viaje, GPS en vivo para el seguimiento del cliente, WhatsApp "en camino", marcar entregado. Avisar al vendedor por WhatsApp cuando se carga su pedido y seguirlo hasta la entrega, con aviso de entregado. Primero con un link `wa.me`; después con WhatsApp Business Cloud API si la empresa lo aprueba. | **Pendiente** |
+| 17 | Pulido visual. Confirmaciones con SweetAlert2 para las acciones que cambian datos: cambiar estado, asignar transportista, marcar entregado y borrar. | **Pendiente** |
+| 18 | Reclamos (`R-`) a la API. | **Pendiente** |
+| 19 | Sacar los adjuntos del listado de pedidos y que el PATCH mande solo lo que cambia. | **Pendiente** |
 
 ## Decisiones
 

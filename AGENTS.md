@@ -1,7 +1,7 @@
 # Luminocity Logística
 
 Luminocity vende artefactos lumínicos. Esta app es la operación de logística: cargar pedidos, prepararlos, despacharlos y seguir reclamos.
-Los pedidos viven en el navegador hasta el Brief 14. La auth está en `server/`. Qué brief está hecho y cuál sigue: `HISTORY.md`.
+Los pedidos y la auth están en `server/`. Los datos maestros siguen en el navegador. Qué brief está hecho y cuál sigue: `HISTORY.md`.
 
 ## Stack y carpetas
 
@@ -11,7 +11,7 @@ React 19, Vite, TypeScript, React Router. Estilos en `src/index.css` (Tailwind 4
 | --- | --- |
 | `src/pages/` | Una pantalla por ruta |
 | `src/state/` | Contextos: auth, pedidos, picking, reclamos, catálogo |
-| `server/` | Auth: Express, JWT y usuarios en JSON |
+| `server/` | Auth y pedidos: Express, JWT, usuarios y pedidos en JSON |
 | `src/lib/` | Persistencia, token de sesión, zona, geocodificación, rutas, adjuntos, Excel de picking |
 | `src/data/` | Tipos y semillas: pedido, reclamo, catálogo |
 | `src/layout/` | Sidebar, shell y tarjeta de login |
@@ -25,7 +25,7 @@ Rutas: `src/App.tsx`. Menú: `src/layout/Sidebar.tsx`.
 - Al terminar cada brief, actualizar `HISTORY.md`.
 - No agregar features fuera del brief. No dejar código muerto.
 - No inventar pantallas, datos ni integraciones. Lo que no está en el código es **Pendiente**.
-- No adelantar los briefs 14 (API de pedidos) ni 15 (menú por rol).
+- No adelantar el Brief 15 (menú por rol).
 - El login acepta `vendedor`, `deposito`, `encargado_deposito`, `chofer` o `admin`. Cualquier usuario logueado ve todo el menú. El filtro por rol es el Brief 15. La matriz de abajo es la regla prevista, no un permiso que el código ya aplique.
 
 ## Roles
