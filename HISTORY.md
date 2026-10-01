@@ -19,8 +19,11 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 11 | Tipo de despacho (`ff33bc5`) | Hecho |
 | 12 | Login local (`894b6aa`) | Hecho |
 | 13 | Auth con Express + JWT y bcrypt en el server | Hecho |
+| 14 | API de pedidos. Salen de `localStorage` | Hecho |
 
-El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`. Los pedidos siguen en el navegador.
+El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
+
+El Brief 14 guarda los pedidos en `server/data/orders.json`; el navegador los usa por la API y los datos maestros siguen en localStorage.
 
 ## Pendientes
 
@@ -28,14 +31,13 @@ En este orden. No adelantar el siguiente.
 
 | Brief | Tema | Estado |
 | --- | --- | --- |
-| 14 | API de pedidos. Salen de `localStorage`. | **Pendiente** |
 | 15 | Roles y menús. `encargado_deposito` ya se puede guardar; el menú todavía no filtra. | **Pendiente** |
 | 16 | Vista Chofer: orden por cercanía, filtro por transportista, asignado / en viaje, GPS en vivo para el seguimiento del cliente, WhatsApp "en camino", marcar entregado. | **Pendiente** |
 | 17 | Pulido visual. | **Pendiente** |
 
 ## Decisiones
 
-- Los pedidos quedan en el navegador hasta el Brief 14. La auth ya está en el server.
+- Los pedidos se guardan en el server (`server/data/orders.json`). Los datos maestros siguen en el navegador. La auth ya está en el server.
 - La contraseña se hashea con bcrypt en el server. El navegador solo guarda el JWT.
 - El rol se guarda en el usuario y no cambia el menú. `encargado_deposito` ya es un rol válido de auth; el filtro del menú es el Brief 15.
 - A `preparado` se pasa solo con una cantidad de bultos.
