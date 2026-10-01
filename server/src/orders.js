@@ -263,6 +263,9 @@ function readOrderFields(body, current) {
   if (packages.error) return packages
   if (packages.value !== undefined) order.packages = packages.value
 
+  if (order.status === 'preparado' && order.packages == null) {
+    return fail('Indicá la cantidad de bultos.')
+  }
   if (!order.betweenStreet1 && !order.betweenStreet2) {
     return fail('Completá al menos una entre calle.')
   }
