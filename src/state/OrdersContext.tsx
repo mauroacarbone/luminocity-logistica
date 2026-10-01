@@ -197,7 +197,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       }
       ordersRef.current = list
       setOrders(list)
-      const legacy = list.length === 0 ? loadList(ORDERS_KEY, isOrder).items : []
+      const legacy = loadList(ORDERS_KEY, isOrder).items
       legacyRef.current = legacy
       setLegacyOrders(legacy)
       setStatus('ready')
@@ -274,25 +274,29 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }
 
   async function importLegacy() {
-    if (importingRef.current || ordersRef.current.length > 0 || legacyRef.current.length === 0) return
+    if (importingRef.current || legacyRef.current.length === 0) return
     importingRef.current = true
     setImporting(true)
     setImportError('')
-    const queue = [...legacyRef.current].reverse()
-    const created: Order[] = []
-    for (let index = 0; index < queue.length; index += 1) {
-      const result = await write('create', draftOf(queue[index]))
+    const source = legacyRef.current
+    const failed: Order[] = []
+    const lines: string[] = []
+    let imported = 0
+    for (let index = source.length - 1; index >= 0; index -= 1) {
+      const legacy = source[index]
+      const result = await write('create', draftOf(legacy))
       if (result.status === 'not-saved') {
-        replaceLegacy(queue.slice(index).reverse())
-        setImportError(result.message)
-        importingRef.current = false
-        setImporting(false)
-        return
+        failed.push(legacy)
+        lines.push(`${legacy.id}: ${result.message}`)
+      } else {
+        imported += 1
       }
-      created.push(result.order)
     }
-    replaceLegacy([])
-    replaceOrders([...created].reverse())
+    failed.reverse()
+    lines.reverse()
+    replaceLegacy(failed)
+    const summary = [`Se importaron ${imported} de ${source.length}.`, ...lines]
+    setImportError(summary.join('\n'))
     importingRef.current = false
     setImporting(false)
   }
