@@ -1,24 +1,41 @@
 # Luminocity Logística
 
-App interna para cargar pedidos, prepararlos, despacharlos y seguir reclamos de post venta. Los datos viven en el navegador (localStorage) hasta que haya backend.
+App interna para cargar pedidos, prepararlos, despacharlos y seguir reclamos de post venta. Los pedidos viven en el navegador (localStorage). El login y el registro pasan por el backend de `server/`.
 
 ## Acceso
 
 El panel pide sesión. Sin login, cualquier ruta de la app vuelve a `/login`. `/login` y `/registro` son públicas.
 
-La primera vez se crea un usuario demo:
+Si `server/data/users.json` no existe, al arrancar el backend se crea un usuario demo:
 
 - Email: `mauro@luminocity.local`
 - Contraseña: `demo1234`
-- Rol: Vendedor
+- Rol: Admin
 
-También se puede crear una cuenta (nombre, email, contraseña y rol: vendedor, depósito, chofer o admin). Los usuarios quedan en `luminocity.users.v1` y la sesión en `luminocity.session.v1`.
+También se puede crear una cuenta (nombre, email, contraseña y rol: vendedor, depósito, encargado de depósito, chofer o admin). Los usuarios quedan en `server/data/users.json`, con la contraseña hasheada con bcrypt. El navegador guarda solo el token.
 
-La contraseña no se guarda en texto plano: es un SHA-256 con salt por usuario, calculado en el navegador. El Brief 13 lo reemplaza por bcrypt en el servidor.
+## Cómo levantarlo
 
-## Scripts
+En la raíz:
 
-- `npm run dev` — servidor de desarrollo
+```
+npm install
+npm run dev
+```
+
+En `server/`:
+
+```
+npm install
+cp .env.example .env
+npm run dev
+```
+
+La app queda en el puerto de Vite y proxea `/api` a `http://localhost:3001`. En `server/`, `npm start` levanta la API sin recargar al cambiar archivos.
+
+## Scripts de la app
+
+- `npm run dev` — Vite
 - `npm run build` — compilación
 - `npm run lint` — ESLint
 - `npm run preview` — vista de la build
