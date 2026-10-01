@@ -12,9 +12,10 @@ dist
 dist-ssr
 *.local
 
-# Auth del servidor: secreto y usuarios locales
+# Datos locales del servidor
 server/.env
 server/data/users.json
+server/data/orders.json
 
 # Editor directories and files
 .vscode/*

@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
+import { locked } from './lock.js'
 
 const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
 const usersFile = path.join(dataDir, 'users.json')
@@ -14,17 +15,6 @@ const DEMO = {
   email: 'mauro@luminocity.local',
   password: 'demo1234',
   role: 'admin',
-}
-
-let queue = Promise.resolve()
-
-function locked(task) {
-  const run = queue.then(task, task)
-  queue = run.then(
-    () => undefined,
-    () => undefined,
-  )
-  return run
 }
 
 export function toPublicUser(user) {

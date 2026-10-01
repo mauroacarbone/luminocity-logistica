@@ -4,6 +4,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import express from 'express'
 import { authRouter } from './auth.js'
+import { ordersRouter } from './orders.js'
 import { ensureDemoUser } from './users.js'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -16,8 +17,16 @@ if (!process.env.JWT_SECRET) {
 
 const app = express()
 app.use(cors())
-app.use(express.json())
+// Adjuntos del pedido van en el JSON (data URL, tope 2 MB de archivo).
+// 10mb alcanza para el base64 y el resto de los campos.
+app.use(express.json({ limit: '10mb' }))
 app.use((error, _req, res, next) => {
+  if (error && (error.type === 'entity.too.large' || error.status === 413)) {
+    res.status(413).json({
+      message: 'El pedido es demasiado grande. Probá un adjunto más chico.',
+    })
+    return
+  }
   if (error instanceof SyntaxError && 'body' in error) {
     res.status(400).json({ message: 'No se pudo leer la solicitud.' })
     return
@@ -25,10 +34,11 @@ app.use((error, _req, res, next) => {
   next(error)
 })
 app.use('/api/auth', authRouter)
+app.use('/api/orders', ordersRouter)
 
 await ensureDemoUser()
 
 const port = Number(process.env.PORT) || 3001
 app.listen(port, () => {
-  console.log(`Auth escuchando en http://localhost:${port}`)
+  console.log(`API escuchando en http://localhost:${port}`)
 })
