@@ -2,8 +2,10 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Router } from 'express'
+import { assertPatch, canCreate, canSeeOrder, diffOrder, normalizeName } from './access.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
+import { readUsersList } from './users.js'
 
 const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
 const ordersFile = path.join(dataDir, 'orders.json')
@@ -36,9 +38,10 @@ const OPTIONAL_TEXT = [
 
 export const ordersRouter = Router()
 ordersRouter.use(requireAuth)
-ordersRouter.get('/', async (_req, res) => {
+ordersRouter.get('/', async (req, res) => {
   await send(res, async () => {
-    res.json(byNewest(await readOrders()))
+    const orders = await readOrders()
+    res.json(byNewest(orders.filter((order) => canSeeOrder(req.user, order))))
   })
 })
 ordersRouter.get('/:id', async (req, res) => {
@@ -48,12 +51,16 @@ ordersRouter.get('/:id', async (req, res) => {
       notFound(res)
       return
     }
+    if (!canSeeOrder(req.user, order)) {
+      res.status(403).json({ message: 'No tenés permiso para ver este pedido.' })
+      return
+    }
     res.json(order)
   })
 })
 ordersRouter.post('/', async (req, res) => {
   await send(res, async () => {
-    const result = await createOrder(req.body, req.user.id)
+    const result = await createOrder(req.body, req.user)
     if (result.error) {
       res.status(result.status).json({ message: result.error })
       return
@@ -63,7 +70,7 @@ ordersRouter.post('/', async (req, res) => {
 })
 ordersRouter.patch('/:id', async (req, res) => {
   await send(res, async () => {
-    const result = await patchOrder(req.params.id, req.body)
+    const result = await patchOrder(req.params.id, req.body, req.user)
     if (result.error) {
       res.status(result.status).json({ message: result.error })
       return
@@ -71,9 +78,9 @@ ordersRouter.patch('/:id', async (req, res) => {
     res.json(result.order)
   })
 })
-ordersRouter.delete('/:id', requireRole('admin'), async (req, res) => {
+ordersRouter.delete('/:id', requireRole('admin', 'encargado_deposito'), async (req, res) => {
   await send(res, async () => {
-    const result = await deleteOrder(req.params.id)
+    const result = await deleteOrder(req.params.id, req.user)
     if (result.error) {
       res.status(result.status).json({ message: result.error })
       return
@@ -126,16 +133,28 @@ function getOrder(id) {
   })
 }
 
-function createOrder(body, userId) {
+function createOrder(body, user) {
   return locked(async () => {
+    if (!canCreate(user)) return fail('No podés cargar pedidos.', 403)
     if (!isRecord(body)) return fail('El pedido no es válido.')
     const orders = await readOrders()
     const parsed = readOrderFields(body, null)
     if (parsed.error) return parsed
+    if (user.role === 'vendedor' && parsed.order.status !== 'pendiente') {
+      return fail('El pedido se carga en pendiente.', 403)
+    }
+    if (user.role === 'vendedor' && (parsed.order.packages != null || parsed.order.driverId)) {
+      return fail('No podés asignar bultos ni chofer al cargar el pedido.', 403)
+    }
+    if (user.role === 'vendedor' && normalizeName(parsed.order.seller) !== normalizeName(user.name)) {
+      return fail('Necesitás una autorización aprobada para cargar a nombre de ese vendedor.', 403)
+    }
+    const driver = await checkDriver(parsed.order.driverId)
+    if (driver.error) return driver
     const order = {
       ...parsed.order,
       id: nextId(orders),
-      createdBy: userId,
+      createdBy: user.id,
       createdAt: new Date().toISOString(),
     }
     orders.push(order)
@@ -144,15 +163,23 @@ function createOrder(body, userId) {
   })
 }
 
-function patchOrder(id, body) {
+function patchOrder(id, body, user) {
   return locked(async () => {
     if (!isRecord(body)) return fail('El pedido no es válido.')
     const orders = await readOrders()
     const index = orders.findIndex((item) => item.id === id)
     if (index < 0) return fail('No existe ese pedido.', 404)
+    const current = orders[index]
+    if (!canSeeOrder(user, current)) return fail('No tenés permiso para modificar este pedido.', 403)
     if (!hasChange(body)) return fail('No hay cambios para guardar.')
-    const parsed = readOrderFields(body, orders[index])
+    const parsed = readOrderFields(body, current)
     if (parsed.error) return parsed
+    const changes = diffOrder(current, parsed.order)
+    if (Object.keys(changes).length === 0) return fail('No hay cambios para guardar.')
+    const allowed = assertPatch(user, current, changes)
+    if (allowed.error) return allowed
+    const driver = await checkDriver(parsed.order.driverId, current.driverId)
+    if (driver.error) return driver
     const order = {
       ...parsed.order,
       updatedAt: new Date().toISOString(),
@@ -163,14 +190,26 @@ function patchOrder(id, body) {
   })
 }
 
-function deleteOrder(id) {
+function deleteOrder(id, user) {
   return locked(async () => {
     const orders = await readOrders()
-    const next = orders.filter((item) => item.id !== id)
-    if (next.length === orders.length) return fail('No existe ese pedido.', 404)
-    await writeOrders(next)
+    const current = orders.find((item) => item.id === id)
+    if (!current) return fail('No existe ese pedido.', 404)
+    if (!canSeeOrder(user, current)) return fail('No tenés permiso para cancelar este pedido.', 403)
+    if (user.role === 'encargado_deposito' && (current.status === 'en-viaje' || current.status === 'entregado')) {
+      return fail('No podés cancelar un pedido que ya salió.', 403)
+    }
+    await writeOrders(orders.filter((item) => item.id !== id))
     return { ok: true }
   })
+}
+
+async function checkDriver(driverId, previous) {
+  if (!driverId || driverId === previous) return { ok: true }
+  const users = await readUsersList()
+  const driver = users.find((item) => item.id === driverId)
+  if (!driver || driver.role !== 'chofer') return fail('Elegí un chofer.')
+  return { ok: true }
 }
 
 function fail(error, status = 400) {
@@ -192,6 +231,7 @@ function hasChange(body) {
     'requiresPickup',
     'dispatchType',
     'packages',
+    'driverId',
   ]
   return keys.some((key) => Object.prototype.hasOwnProperty.call(body, key))
 }
@@ -262,6 +302,10 @@ function readOrderFields(body, current) {
   const packages = readPackages(body, current)
   if (packages.error) return packages
   if (packages.value !== undefined) order.packages = packages.value
+
+  const driver = readDriver(body, current)
+  if (driver.error) return driver
+  if (driver.value !== undefined) order.driverId = driver.value
 
   if (order.status === 'preparado' && order.packages == null) {
     return fail('Indicá la cantidad de bultos.')
@@ -345,6 +389,16 @@ function readDispatch(body, current) {
     return fail('El tipo de despacho no es válido.')
   }
   return { value }
+}
+
+function readDriver(body, current) {
+  if (!Object.prototype.hasOwnProperty.call(body, 'driverId')) {
+    return { value: current ? current.driverId : undefined }
+  }
+  const value = body.driverId
+  if (value === null || value === '') return { value: undefined }
+  if (typeof value !== 'string' || !value.trim()) return fail('Elegí un chofer.')
+  return { value: value.trim() }
 }
 
 function readPackages(body, current) {

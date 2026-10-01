@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import jwt from 'jsonwebtoken'
 import { requireAuth } from './middleware.js'
-import { ROLES, authenticate, createUser, toPublicUser } from './users.js'
+import { authenticate, createUser, toPublicUser } from './users.js'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const TOKEN_EXPIRES = '8h'
@@ -20,7 +20,6 @@ authRouter.post('/register', async (req, res) => {
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const email = typeof body.email === 'string' ? body.email.trim() : ''
   const password = typeof body.password === 'string' ? body.password : ''
-  const role = body.role
 
   if (!name) {
     res.status(400).json({ message: 'Ingresá tu nombre.' })
@@ -34,12 +33,8 @@ authRouter.post('/register', async (req, res) => {
     res.status(400).json({ message: 'Usá al menos 6 caracteres.' })
     return
   }
-  if (typeof role !== 'string' || !ROLES.includes(role)) {
-    res.status(400).json({ message: 'El rol no es válido.' })
-    return
-  }
 
-  const result = await createUser({ name, email, password, role })
+  const result = await createUser({ name, email, password, role: 'vendedor' })
   if (result.error === 'exists') {
     res.status(409).json({ message: 'Ya hay una cuenta con ese email.' })
     return

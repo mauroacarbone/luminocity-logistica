@@ -23,6 +23,7 @@ export function toPublicUser(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    phone: typeof user.phone === 'string' ? user.phone : '',
   }
 }
 
@@ -77,6 +78,39 @@ export function findUserById(id) {
   return locked(async () => {
     const users = await readUsers()
     return users.find((item) => item.id === id) ?? null
+  })
+}
+
+export function listUsers() {
+  return locked(async () => (await readUsers()).map(toPublicUser))
+}
+
+export function readUsersList() {
+  return readUsers()
+}
+
+export function setUserRole(id, role) {
+  return locked(async () => {
+    const users = await readUsers()
+    const index = users.findIndex((item) => item.id === id)
+    if (index < 0) return { error: 'missing' }
+    users[index] = { ...users[index], role }
+    await writeUsers(users)
+    return { user: users[index] }
+  })
+}
+
+export function setUserPhone(id, phone) {
+  return locked(async () => {
+    const users = await readUsers()
+    const index = users.findIndex((item) => item.id === id)
+    if (index < 0) return { error: 'missing' }
+    const next = { ...users[index] }
+    if (phone) next.phone = phone
+    else delete next.phone
+    users[index] = next
+    await writeUsers(users)
+    return { user: next }
   })
 }
 

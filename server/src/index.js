@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import express from 'express'
 import { authRouter } from './auth.js'
 import { ordersRouter } from './orders.js'
+import { usersRouter } from './usersRoute.js'
 import { ensureDemoUser } from './users.js'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -33,6 +34,7 @@ app.use((error, _req, res, next) => {
   next(error)
 })
 app.use('/api/auth', authRouter)
+app.use('/api/users', usersRouter)
 app.use('/api/orders', ordersRouter)
 
 await ensureDemoUser()

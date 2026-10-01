@@ -24,7 +24,6 @@ export async function requireAuth(req, res, next) {
   }
 }
 
-/** Listo para el Brief 15. Todavía ninguna ruta lo usa. */
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
