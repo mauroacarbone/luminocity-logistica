@@ -3,13 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { DISPATCH_LABEL } from '../data/catalog'
 import {
   ordersByStatus,
+  pendingEdit,
   STATUS_LABEL,
   STATUS_ORDER,
   STATUS_PILL,
   type Order,
   type OrderStatus,
 } from '../data/orders'
+import { canEditOrder } from '../lib/access'
 import { formatIsoDate } from '../lib/week'
+import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 
 type View = 'kanban' | 'tabla'
@@ -30,11 +33,14 @@ function countFor(list: Order[], key: 'total' | OrderStatus) {
 
 function OrderCard({ order }: { order: Order }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const waiting = pendingEdit(order)
 
   return (
     <article className="order-card">
       <div className="order-card-top">
         <strong>{order.id}</strong>
+        {user && canEditOrder(user, order) && (
         <button
           type="button"
           className="icon-button"
@@ -52,8 +58,10 @@ function OrderCard({ order }: { order: Order }) {
             />
           </svg>
         </button>
+        )}
       </div>
       <p className="order-client">{order.client}</p>
+      {waiting && <p className="order-zone">Esperando confirmación</p>}
       {order.address && <p className="order-zone">{order.address}</p>}
       {order.zone && <p className="order-zone">{order.zone}</p>}
       {order.dispatchType && (

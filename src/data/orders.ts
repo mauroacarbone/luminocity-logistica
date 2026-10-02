@@ -5,6 +5,17 @@ export type OrderStatus =
   | 'en-viaje'
   | 'entregado'
 
+export type OrderEditStatus = 'aplicada' | 'pendiente' | 'rechazada'
+
+export type OrderEdit = {
+  id: string
+  by: string
+  at: string
+  reason: string
+  changes: Record<string, unknown>
+  status: OrderEditStatus
+}
+
 export type Order = {
   id: string
   client: string
@@ -31,9 +42,31 @@ export type Order = {
   attachmentDataUrl?: string
   receiverName?: string
   receiverDni?: string
+  driverId?: string
+  edits?: OrderEdit[]
   createdBy?: string
   createdAt?: string
   updatedAt?: string
+}
+
+export function pendingEdit(order: Order) {
+  return order.edits?.find((edit) => edit.status === 'pendiente')
+}
+
+export function isOrderEdit(value: unknown): value is OrderEdit {
+  if (!value || typeof value !== 'object') return false
+  const edit = value as Record<string, unknown>
+  return (
+    typeof edit.id === 'string' &&
+    edit.id.length > 0 &&
+    typeof edit.by === 'string' &&
+    typeof edit.at === 'string' &&
+    typeof edit.reason === 'string' &&
+    (edit.status === 'aplicada' || edit.status === 'pendiente' || edit.status === 'rechazada') &&
+    Boolean(edit.changes) &&
+    typeof edit.changes === 'object' &&
+    !Array.isArray(edit.changes)
+  )
 }
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {

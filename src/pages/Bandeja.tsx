@@ -1,0 +1,214 @@
+import { useEffect, useState } from 'react'
+import { pendingEdit, type Order, type OrderEdit } from '../data/orders'
+import {
+  isAuthorization,
+  listAuthorizations,
+  resolveAuthorization,
+  type SellerAuthorization,
+} from '../lib/authorizationsApi'
+import { isSession } from '../lib/authStore'
+import { listUsers } from '../lib/usersApi'
+import { useAuth } from '../state/AuthContext'
+import { useOrders } from '../state/OrdersContext'
+
+const FIELD_LABEL: Record<string, string> = {
+  client: 'Cliente',
+  seller: 'Vendedor',
+  phone: 'Teléfono',
+  address: 'Dirección',
+  propertyType: 'Propiedad',
+  loadedAt: 'Carga',
+  deliveryDate: 'Entrega',
+  zone: 'Zona',
+  amount: 'Monto',
+  timeWindow: 'Franja',
+  transporter: 'Transportista',
+  notes: 'Notas',
+  attachmentName: 'Adjunto',
+  attachmentDataUrl: 'Archivo',
+  receiverName: 'Recibe',
+  receiverDni: 'DNI',
+  betweenStreet1: 'Entrecalle',
+  betweenStreet2: 'Entrecalle 2',
+  invoices: 'Facturas',
+  collectOnDelivery: 'Cobro',
+  requiresPickup: 'Retiro',
+  dispatchType: 'Despacho',
+}
+
+function formatChange(key: string, value: unknown) {
+  if (key === 'attachmentDataUrl') return value ? 'archivo nuevo' : 'sin archivo'
+  if (value == null || value === '') return 'vacío'
+  if (typeof value === 'boolean') return value ? 'sí' : 'no'
+  if (Array.isArray(value)) return value.join(', ') || 'vacío'
+  return String(value)
+}
+
+function changeLines(changes: OrderEdit['changes']) {
+  return Object.entries(changes).map(([key, value]) => ({
+    key,
+    label: FIELD_LABEL[key] ?? key,
+    value: formatChange(key, value),
+  }))
+}
+
+export function Bandeja() {
+  const { logout } = useAuth()
+  const { orders, reviewEdit } = useOrders()
+  const [authorizations, setAuthorizations] = useState<SellerAuthorization[]>([])
+  const [names, setNames] = useState<Record<string, string>>({})
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void Promise.all([listAuthorizations(), listUsers()]).then(([authResult, usersResult]) => {
+      if (cancelled) return
+      if (!authResult.ok) {
+        if (authResult.status === 401) logout()
+        else setError(authResult.message)
+        return
+      }
+      if (!Array.isArray(authResult.data) || !authResult.data.every(isAuthorization)) {
+        setError('No se pudieron leer las autorizaciones.')
+        return
+      }
+      setAuthorizations(authResult.data)
+      if (usersResult.ok && Array.isArray(usersResult.data)) {
+        const next: Record<string, string> = {}
+        for (const item of usersResult.data) {
+          if (isSession(item)) next[item.id] = item.name
+        }
+        setNames(next)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [logout])
+
+  const pendingAuth = authorizations.filter((item) => item.status === 'pendiente')
+  const pendingEdits = orders.flatMap((order) => {
+    const edit = pendingEdit(order)
+    return edit ? [{ order, edit }] : []
+  })
+
+  async function decideAuth(id: string, status: 'aprobada' | 'rechazada') {
+    setBusy(id)
+    const result = await resolveAuthorization(id, status)
+    setBusy('')
+    if (!result.ok) {
+      if (result.status === 401) logout()
+      else setError(result.message)
+      return
+    }
+    if (!isAuthorization(result.data)) {
+      setError('No se pudo leer la autorización.')
+      return
+    }
+    const saved = result.data
+    setError('')
+    setAuthorizations((current) => current.map((item) => (item.id === id ? saved : item)))
+  }
+
+  async function decideEdit(order: Order, edit: OrderEdit, status: 'aplicada' | 'rechazada') {
+    setBusy(edit.id)
+    const result = await reviewEdit(order.id, edit.id, status)
+    setBusy('')
+    if (result.status === 'not-saved') setError(result.message)
+    else setError('')
+  }
+
+  return (
+    <section className="page">
+      <header className="page-header">
+        <h1>Bandeja</h1>
+        <p>Autorizaciones y ediciones que esperan confirmación.</p>
+      </header>
+      {error && (
+        <p className="mt-4 text-sm font-semibold text-lumi-danger" role="alert">
+          {error}
+        </p>
+      )}
+
+      <h2 className="mt-6 text-xl font-semibold">Autorizaciones</h2>
+      {pendingAuth.length === 0 ? (
+        <div className="mt-3 rounded-2xl bg-white px-5 py-6 text-sm text-lumi-muted shadow-sm">
+          No hay autorizaciones pendientes.
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-col gap-3">
+          {pendingAuth.map((item) => (
+            <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
+              <p className="font-semibold">{names[item.requestedBy] ?? 'Vendedor'}</p>
+              <p className="mt-1 text-sm text-lumi-muted">Quiere cargar a nombre de {item.seller}.</p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink"
+                  disabled={busy === item.id}
+                  onClick={() => void decideAuth(item.id, 'aprobada')}
+                >
+                  Aprobar
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl px-3 py-1.5 text-sm text-lumi-danger hover:bg-[#fde8e7]"
+                  disabled={busy === item.id}
+                  onClick={() => void decideAuth(item.id, 'rechazada')}
+                >
+                  Rechazar
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <h2 className="mt-8 text-xl font-semibold">Ediciones</h2>
+      {pendingEdits.length === 0 ? (
+        <div className="mt-3 rounded-2xl bg-white px-5 py-6 text-sm text-lumi-muted shadow-sm">
+          No hay ediciones pendientes.
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-col gap-3">
+          {pendingEdits.map(({ order, edit }) => (
+            <article key={edit.id} className="rounded-2xl bg-white p-4 shadow-sm">
+              <p className="font-semibold">
+                {order.id} · {order.client}
+              </p>
+              <p className="mt-1 text-sm text-lumi-muted">
+                {names[edit.by] ?? 'Vendedor'} · {edit.reason}
+              </p>
+              <ul className="mt-2 text-sm">
+                {changeLines(edit.changes).map((line) => (
+                  <li key={line.key}>
+                    {line.label}: {line.value}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink"
+                  disabled={busy === edit.id}
+                  onClick={() => void decideEdit(order, edit, 'aplicada')}
+                >
+                  Aprobar
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl px-3 py-1.5 text-sm text-lumi-danger hover:bg-[#fde8e7]"
+                  disabled={busy === edit.id}
+                  onClick={() => void decideEdit(order, edit, 'rechazada')}
+                >
+                  Rechazar
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}

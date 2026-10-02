@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { isDispatchType } from '../data/catalog'
-import type { Order, OrderStatus } from '../data/orders'
+import { isOrderEdit, type Order, type OrderStatus } from '../data/orders'
 import { loadList, saveList } from '../lib/localStore'
 import {
   createOrder,
@@ -8,6 +8,7 @@ import {
   listOrders,
   orderBody,
   patchOrder,
+  reviewOrderEdit,
   withoutNewAttachment,
   type ApiResult,
   type OrderDraft,
@@ -40,6 +41,7 @@ const OPTIONAL_STRINGS = [
   'attachmentDataUrl',
   'receiverName',
   'receiverDni',
+  'driverId',
   'createdBy',
   'createdAt',
   'updatedAt',
@@ -61,7 +63,9 @@ type OrdersContextValue = {
   importError: string
   importLegacy: () => Promise<void>
   addOrder: (order: OrderDraft) => Promise<OrderSaveResult>
-  updateOrder: (order: Order) => Promise<OrderSaveResult>
+  updateOrder: (order: Order, reason?: string) => Promise<OrderSaveResult>
+  patchFields: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
+  reviewEdit: (orderId: string, editId: string, status: 'aplicada' | 'rechazada') => Promise<OrderSaveResult>
   removeOrder: (id: string) => Promise<OrderDeleteResult>
 }
 
@@ -88,6 +92,9 @@ function isOrder(value: unknown): value is Order {
   if (order.collectOnDelivery !== undefined && typeof order.collectOnDelivery !== 'boolean') return false
   if (order.requiresPickup !== undefined && typeof order.requiresPickup !== 'boolean') return false
   if (order.dispatchType !== undefined && !isDispatchType(order.dispatchType)) return false
+  if (order.edits !== undefined && (!Array.isArray(order.edits) || !order.edits.every(isOrderEdit))) {
+    return false
+  }
   if (
     order.packages !== undefined &&
     (typeof order.packages !== 'number' || !Number.isInteger(order.packages) || order.packages < 1)
@@ -223,8 +230,23 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return { status: 'not-saved', message: result.message }
   }
 
-  async function write(mode: 'create' | 'patch', order: OrderDraft, id?: string): Promise<OrderSaveResult> {
+  function adopt(saved: Order) {
+    const exists = ordersRef.current.some((item) => item.id === saved.id)
+    replaceOrders(
+      exists
+        ? ordersRef.current.map((item) => (item.id === saved.id ? saved : item))
+        : [saved, ...ordersRef.current],
+    )
+  }
+
+  async function write(
+    mode: 'create' | 'patch',
+    order: OrderDraft,
+    id?: string,
+    reason?: string,
+  ): Promise<OrderSaveResult> {
     const body = orderBody(order, mode)
+    if (reason) body.reason = reason
     const previous = id ? ordersRef.current.find((item) => item.id === id) : undefined
     let dropped = false
     let result = mode === 'create' ? await createOrder(body) : await patchOrder(id ?? '', body)
@@ -241,12 +263,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     if (mode === 'create') {
       replaceOrders([saved, ...ordersRef.current.filter((item) => item.id !== saved.id)])
     } else {
-      const exists = ordersRef.current.some((item) => item.id === saved.id)
-      replaceOrders(
-        exists
-          ? ordersRef.current.map((item) => (item.id === saved.id ? saved : item))
-          : [saved, ...ordersRef.current],
-      )
+      adopt(saved)
     }
     if (dropped) return { status: 'saved-without-attachment', order: saved }
     return { status: 'saved', order: saved }
@@ -256,8 +273,30 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return write('create', order)
   }
 
-  function updateOrder(order: Order) {
-    return write('patch', draftOf(order), order.id)
+  function updateOrder(order: Order, reason?: string) {
+    return write('patch', draftOf(order), order.id, reason)
+  }
+
+  async function patchFields(id: string, fields: Record<string, unknown>): Promise<OrderSaveResult> {
+    const result = await patchOrder(id, fields)
+    if (!result.ok) return fail(result)
+    const saved = asOrder(result.data)
+    if (!saved) return { status: 'not-saved', message: 'El servidor no devolvió un pedido válido.' }
+    adopt(saved)
+    return { status: 'saved', order: saved }
+  }
+
+  async function reviewEdit(
+    orderId: string,
+    editId: string,
+    status: 'aplicada' | 'rechazada',
+  ): Promise<OrderSaveResult> {
+    const result = await reviewOrderEdit(orderId, editId, status)
+    if (!result.ok) return fail(result)
+    const saved = asOrder(result.data)
+    if (!saved) return { status: 'not-saved', message: 'El servidor no devolvió un pedido válido.' }
+    adopt(saved)
+    return { status: 'saved', order: saved }
   }
 
   async function removeOrder(id: string): Promise<OrderDeleteResult> {
@@ -313,6 +352,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         importLegacy,
         addOrder,
         updateOrder,
+        patchFields,
+        reviewEdit,
         removeOrder,
       }}
     >

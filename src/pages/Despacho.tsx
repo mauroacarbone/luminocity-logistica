@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
-import { DISPATCH_LABEL, withExtras } from '../data/catalog'
+import { DISPATCH_LABEL, listForDispatch, withCurrent, withExtras } from '../data/catalog'
 import {
-  STATUS_ORDER,
+  pendingEdit,
   STATUS_PILL,
   type Order,
   type OrderStatus,
@@ -18,6 +19,10 @@ import {
   weekDays,
   weekOffsetForIso,
 } from '../lib/week'
+import { canAssignDispatch, canConfirmDelivery, canEditOrder, statusChoices } from '../lib/access'
+import { isSession } from '../lib/authStore'
+import { listUsers } from '../lib/usersApi'
+import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 import { useOrders } from '../state/OrdersContext'
 
@@ -63,8 +68,11 @@ function findOrder(orders: Order[], raw: string) {
 }
 
 export function Despacho() {
-  const { orders, updateOrder } = useOrders()
-  const { transporters: catalogTransporters } = useCatalog()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
+  const { orders, patchFields } = useOrders()
+  const { transporters: catalogTransporters, ownTransporters, courierTransporters } = useCatalog()
+  const [drivers, setDrivers] = useState<{ id: string; name: string }[]>([])
   const [tab, setTab] = useState<DispatchTab>('viaje')
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
@@ -77,6 +85,30 @@ export function Despacho() {
   const [notice, setNotice] = useState('')
   const [actionError, setActionError] = useState('')
   const [highlightId, setHighlightId] = useState<string | null>(null)
+
+  const assign = Boolean(user && canAssignDispatch(user.role))
+  const confirmDelivery = Boolean(user && canConfirmDelivery(user.role))
+
+  useEffect(() => {
+    if (!assign) return
+    let cancelled = false
+    void listUsers().then((result) => {
+      if (cancelled) return
+      if (!result.ok) {
+        if (result.status === 401) logout()
+        return
+      }
+      if (!Array.isArray(result.data)) return
+      setDrivers(
+        result.data.filter(isSession).flatMap((item) =>
+          item.role === 'chofer' ? [{ id: item.id, name: item.name }] : [],
+        ),
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [assign, logout])
 
   const days = weekDays(weekOffset)
   const selectedDate = days.find((day) => toIso(day) === selectedIso) ?? days[0]
@@ -125,7 +157,7 @@ export function Despacho() {
   }
 
   async function changeStatus(order: Order, status: OrderStatus) {
-    const result = await updateOrder({ ...order, status })
+    const result = await patchFields(order.id, { status })
     setOpenStatusId(null)
     if (result.status === 'not-saved') {
       setActionError(result.message)
@@ -145,7 +177,7 @@ export function Despacho() {
         setDialogError('Ese pedido ya está entregado.')
         return
       }
-      const result = await updateOrder({ ...order, status: 'entregado' })
+      const result = await patchFields(order.id, { status: 'entregado' })
       if (result.status === 'not-saved') {
         setDialogError(result.message)
         return
@@ -180,16 +212,18 @@ export function Despacho() {
           <h1>Despacho</h1>
           <p>Seguimiento de pedidos en viaje y entregados</p>
         </div>
-        <button
-          type="button"
-          className="shrink-0 rounded-xl bg-lumi-yellow px-4 py-2.5 text-sm font-semibold text-lumi-yellow-ink"
-          onClick={() => {
-            setDialogError('')
-            setDialog('entrega')
-          }}
-        >
-          Escanear QR y confirmar entrega
-        </button>
+        {confirmDelivery && (
+          <button
+            type="button"
+            className="shrink-0 rounded-xl bg-lumi-yellow px-4 py-2.5 text-sm font-semibold text-lumi-yellow-ink"
+            onClick={() => {
+              setDialogError('')
+              setDialog('entrega')
+            }}
+          >
+            Escanear QR y confirmar entrega
+          </button>
+        )}
       </header>
 
       {notice && (
@@ -343,6 +377,7 @@ export function Despacho() {
                     {order.zone && <p>Zona: {order.zone}</p>}
                     {order.dispatchType && <p>Despacho: {DISPATCH_LABEL[order.dispatchType]}</p>}
                     {order.transporter && <p>Transportista: {order.transporter}</p>}
+                    {pendingEdit(order) && <p>Esperando confirmación</p>}
                     <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
                     {order.timeWindow && <p>{order.timeWindow}</p>}
                     {order.invoices && order.invoices.length > 0 && (
@@ -353,49 +388,121 @@ export function Despacho() {
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
-                  <div className="relative">
+                  {assign && (
+                    <>
+                      <label className="text-xs text-lumi-muted">
+                        Transportista
+                        <select
+                          value={order.transporter ?? ''}
+                          className="mt-1 block max-w-44 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink"
+                          onChange={(event) => {
+                            const transporter = event.target.value
+                            void patchFields(order.id, { transporter: transporter || null }).then((result) => {
+                              setActionError(result.status === 'not-saved' ? result.message : '')
+                            })
+                          }}
+                        >
+                          <option value="">Sin transportista</option>
+                          {withCurrent(
+                            listForDispatch(order.dispatchType ?? 'propia', {
+                              ownTransporters,
+                              courierTransporters,
+                            }),
+                            order.transporter,
+                          ).map((name) => (
+                            <option key={name} value={name}>
+                              {name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="text-xs text-lumi-muted">
+                        Chofer
+                        <select
+                          value={order.driverId ?? ''}
+                          className="mt-1 block max-w-44 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink"
+                          onChange={(event) => {
+                            const driverId = event.target.value
+                            const fields: Record<string, unknown> = { driverId: driverId || null }
+                            if (driverId && (order.status === 'pendiente' || order.status === 'preparado')) {
+                              fields.status = 'asignado'
+                            }
+                            void patchFields(order.id, fields).then((result) => {
+                              setActionError(result.status === 'not-saved' ? result.message : '')
+                            })
+                          }}
+                        >
+                          <option value="">Sin chofer</option>
+                          {drivers.map((driver) => (
+                            <option key={driver.id} value={driver.id}>
+                              {driver.name}
+                            </option>
+                          ))}
+                          {order.driverId && !drivers.some((driver) => driver.id === order.driverId) && (
+                            <option value={order.driverId}>{order.driverId}</option>
+                          )}
+                        </select>
+                      </label>
+                    </>
+                  )}
+                  {user && statusChoices(user.role, order.status).length > 0 && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea]"
+                        aria-expanded={openStatusId === order.id}
+                        aria-haspopup="menu"
+                        onClick={() =>
+                          setOpenStatusId((current) => (current === order.id ? null : order.id))
+                        }
+                      >
+                        Estado
+                      </button>
+                      {openStatusId === order.id && (
+                        <div
+                          role="menu"
+                          className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
+                        >
+                          {statusChoices(user.role, order.status)
+                            .filter((status) => status !== order.status)
+                            .map((status) => (
+                            <button
+                              key={status}
+                              type="button"
+                              role="menuitem"
+                              className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] ${
+                                order.status === status ? 'font-semibold' : ''
+                              }`}
+                              onClick={() => void changeStatus(order, status)}
+                            >
+                              {STATUS_PILL[status]}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {user && canEditOrder(user, order) && (
+                    <button
+                      type="button"
+                      className="text-sm text-lumi-ink hover:underline"
+                      onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
+                    >
+                      Editar
+                    </button>
+                  )}
+                  {(assign || confirmDelivery) && (
                     <button
                       type="button"
                       className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea]"
-                      aria-expanded={openStatusId === order.id}
-                      aria-haspopup="menu"
-                      onClick={() =>
-                        setOpenStatusId((current) => (current === order.id ? null : order.id))
-                      }
+                      onClick={() => {
+                        setOpenStatusId(null)
+                        setCoverId(order.id)
+                      }}
                     >
-                      Estado
+                      Carátula
                     </button>
-                    {openStatusId === order.id && (
-                      <div
-                        role="menu"
-                        className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
-                      >
-                        {STATUS_ORDER.map((status) => (
-                          <button
-                            key={status}
-                            type="button"
-                            role="menuitem"
-                            className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] ${
-                              order.status === status ? 'font-semibold' : ''
-                            }`}
-                            onClick={() => void changeStatus(order, status)}
-                          >
-                            {STATUS_PILL[status]}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea]"
-                    onClick={() => {
-                      setOpenStatusId(null)
-                      setCoverId(order.id)
-                    }}
-                  >
-                    Carátula
-                  </button>
+                  )}
                 </div>
               </div>
             </article>

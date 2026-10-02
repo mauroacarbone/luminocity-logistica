@@ -1,0 +1,73 @@
+import { useState, type FormEvent } from 'react'
+
+export function EditReasonDialog({
+  prepared,
+  error,
+  onClose,
+  onConfirm,
+}: {
+  prepared: boolean
+  error: string
+  onClose: () => void
+  onConfirm: (reason: string) => void
+}) {
+  const [reason, setReason] = useState('')
+  const [localError, setLocalError] = useState('')
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault()
+    const next = reason.trim()
+    if (!next) {
+      setLocalError('Ingresá el motivo.')
+      return
+    }
+    onConfirm(next)
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4">
+      <form noValidate className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg" onSubmit={onSubmit}>
+        <h2 className="text-xl font-semibold">Motivo de la edición</h2>
+        <p className="mt-1 text-sm text-lumi-muted">Contá por qué cambia el pedido.</p>
+        {prepared && (
+          <p className="mt-3 rounded-xl bg-[#fff6d8] px-3 py-2 text-sm text-lumi-ink">
+            El pedido ya está preparado. El cambio queda esperando confirmación del encargado.
+          </p>
+        )}
+        <label className="mt-4 block text-sm font-medium">
+          Motivo
+          <textarea
+            autoFocus
+            value={reason}
+            rows={3}
+            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            onChange={(event) => {
+              setReason(event.target.value)
+              setLocalError('')
+            }}
+          />
+        </label>
+        {(localError || error) && (
+          <p className="mt-2 text-sm text-lumi-danger" role="alert">
+            {localError || error}
+          </p>
+        )}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea]"
+            onClick={onClose}
+          >
+            Volver
+          </button>
+          <button
+            type="submit"
+            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink"
+          >
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}

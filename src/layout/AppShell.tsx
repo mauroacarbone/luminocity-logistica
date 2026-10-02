@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { NotificationBell } from '../components/NotificationBell'
 import { ROLE_LABEL } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -31,6 +32,7 @@ export function AppShell() {
       <main className="main">
         {user && (
           <header className="session-banner no-print">
+            <NotificationBell />
             <p>
               <strong>{user.name}</strong>
               <span> · {ROLE_LABEL[user.role]}</span>

@@ -5,7 +5,6 @@ import {
   loadToken,
   saveToken,
   tokenExpiresAt,
-  type Role,
   type Session,
 } from '../lib/authStore'
 
@@ -13,7 +12,6 @@ type RegisterInput = {
   name: string
   email: string
   password: string
-  role: Role
 }
 
 type AuthContextValue = {

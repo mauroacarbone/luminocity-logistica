@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AuthScreen } from '../layout/AuthScreen'
-import { ROLE_LABEL, ROLES, type Role } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
 
 type Errors = {
@@ -20,7 +19,6 @@ export function Registro() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [role, setRole] = useState<Role>('vendedor')
   const [errors, setErrors] = useState<Errors>({})
   const [pending, setPending] = useState(false)
 
@@ -36,7 +34,7 @@ export function Registro() {
 
     setPending(true)
     try {
-      const result = await register({ name, email, password, role })
+      const result = await register({ name, email, password })
       if (!result.ok) {
         setErrors(result.field === 'email' ? { email: result.message } : { form: result.message })
       }
@@ -100,16 +98,6 @@ export function Registro() {
             onChange={(event) => setConfirm(event.target.value)}
           />
           {errors.confirm && <small className="field-error">{errors.confirm}</small>}
-        </label>
-        <label className="field">
-          <span>Rol</span>
-          <select value={role} onChange={(event) => setRole(event.target.value as Role)}>
-            {ROLES.map((item) => (
-              <option key={item} value={item}>
-                {ROLE_LABEL[item]}
-              </option>
-            ))}
-          </select>
         </label>
         {errors.form && (
           <p className="auth-error" role="alert">

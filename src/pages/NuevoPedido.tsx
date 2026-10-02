@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { EditReasonDialog } from '../components/EditReasonDialog'
+import { NoAccess } from '../components/NoAccess'
 import {
   DISPATCH_LABEL,
   defaultDispatchType,
@@ -15,8 +17,17 @@ import {
   openAttachment,
   readAttachmentFile,
 } from '../lib/attachment'
+import { namesMatch } from '../lib/access'
+import {
+  isAuthorization,
+  listAuthorizations,
+  requestAuthorization,
+  type SellerAuthorization,
+} from '../lib/authorizationsApi'
 import { geocodeSearch, locateAddress, locatePoint, type GeocodeHit, type LocatedAddress } from '../lib/geocode'
+import type { OrderDraft } from '../lib/ordersApi'
 import { asDeliveryZone, inferZone, zoneDayWarning, zoneDays, type ZoneQuery } from '../lib/zone'
+import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 import { useOrders } from '../state/OrdersContext'
 
@@ -75,12 +86,13 @@ function isAbortError(error: unknown) {
 
 function PedidoForm({ editingId }: { editingId?: string }) {
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
   const { orders, addOrder, updateOrder } = useOrders()
   const { sellers, propertyTypes, timeWindows, ownTransporters, courierTransporters, zones } =
     useCatalog()
   const transporterLists = { ownTransporters, courierTransporters }
   const existing = orders.find((order) => order.id === editingId)
-  const [seller, setSeller] = useState(existing?.seller ?? '')
+  const [seller, setSeller] = useState(existing?.seller ?? (user?.role === 'vendedor' ? user.name : ''))
   const [client, setClient] = useState(existing?.client ?? '')
   const [phone, setPhone] = useState(existing?.phone ?? '')
   const [invoices, setInvoices] = useState(
@@ -125,7 +137,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [betweenNote, setBetweenNote] = useState('')
   const [errors, setErrors] = useState<Errors>({})
   const [saveError, setSaveError] = useState('')
+  const [holdNotice, setHoldNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const [reasonOpen, setReasonOpen] = useState(false)
+  const [authorizations, setAuthorizations] = useState<SellerAuthorization[]>([])
+  const [authError, setAuthError] = useState('')
+  const [askingAuth, setAskingAuth] = useState(false)
+  const draftRef = useRef<OrderDraft | null>(null)
   const addressRef = useRef<HTMLDivElement>(null)
   const searchAbort = useRef<AbortController | null>(null)
   const locateAbort = useRef<AbortController | null>(null)
@@ -136,6 +154,24 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const readCancel = useRef<(() => void) | null>(null)
   const fileRequest = useRef(0)
   const listId = useId()
+
+  useEffect(() => {
+    if (user?.role !== 'vendedor') return
+    let cancelled = false
+    void listAuthorizations().then((result) => {
+      if (cancelled) return
+      if (!result.ok) {
+        if (result.status === 401) logout()
+        return
+      }
+      if (Array.isArray(result.data) && result.data.every(isAuthorization)) {
+        setAuthorizations(result.data)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user, logout])
 
   function updateInvoice(index: number, value: string) {
     setInvoices((current) =>
@@ -430,8 +466,15 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       receiverName: receiverName.trim() || undefined,
       receiverDni: receiverDni.trim() || undefined,
     }
+    if (storedId) {
+      draftRef.current = draft
+      setSaveError('')
+      setHoldNotice('')
+      setReasonOpen(true)
+      return
+    }
     setSaving(true)
-    const result = storedId ? await updateOrder({ ...draft, id: storedId }) : await addOrder(draft)
+    const result = await addOrder(draft)
     setSaving(false)
     if (result.status === 'saved-without-attachment') {
       setStoredId(result.order.id)
@@ -446,11 +489,62 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       setSaveError(result.message)
       return
     }
-    navigate(storedId ? '/pedidos' : '/')
+    navigate('/')
+  }
+
+  async function confirmReason(reason: string) {
+    const draft = draftRef.current
+    if (!draft || !storedId) return
+    setSaving(true)
+    const result = await updateOrder({ ...draft, id: storedId }, reason)
+    setSaving(false)
+    if (result.status === 'saved-without-attachment') {
+      setReasonOpen(false)
+      setStoredId(result.order.id)
+      setAttachmentName(result.order.attachmentName ?? '')
+      setAttachmentDataUrl(result.order.attachmentDataUrl ?? '')
+      if (fileRef.current) fileRef.current.value = ''
+      setErrors({ file: ATTACHMENT_SAVE_ERROR })
+      attachmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+    if (result.status === 'not-saved') {
+      setSaveError(result.message)
+      return
+    }
+    setReasonOpen(false)
+    if (result.order.edits?.some((edit) => edit.status === 'pendiente')) {
+      setHoldNotice('El cambio quedó esperando confirmación del encargado.')
+      return
+    }
+    navigate('/pedidos')
+  }
+
+  async function askAuthorization() {
+    setAskingAuth(true)
+    setAuthError('')
+    const result = await requestAuthorization(seller)
+    setAskingAuth(false)
+    if (!result.ok) {
+      if (result.status === 401) logout()
+      else setAuthError(result.message)
+      return
+    }
+    if (!isAuthorization(result.data)) {
+      setAuthError('No se pudo leer la autorización.')
+      return
+    }
+    const saved = result.data
+    setAuthorizations((current) => [saved, ...current.filter((item) => item.id !== saved.id)])
   }
 
   const dayWarning = zoneDayWarning(deliveryZone, deliveryDate, zones)
   const sellerOptions = withCurrent(sellers, seller)
+  const otherSeller = Boolean(user?.role === 'vendedor' && seller && !namesMatch(seller, user.name))
+  const openAuth = authorizations.find(
+    (item) =>
+      namesMatch(item.seller, seller) && (item.status === 'pendiente' || item.status === 'aprobada'),
+  )
   const propertyOptions = withCurrent(propertyTypes, propertyType)
   const zoneOptions = withCurrent(
     zones.map((item) => item.name),
@@ -495,6 +589,29 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             </select>
             {errors.seller && <small className="field-error">{errors.seller}</small>}
           </label>
+          {otherSeller && (
+            <div className="mt-3 text-sm">
+              {openAuth?.status === 'aprobada' && (
+                <p>Autorización aprobada. Podés cargar este pedido una sola vez.</p>
+              )}
+              {openAuth?.status === 'pendiente' && <p>Autorización pendiente de un encargado.</p>}
+              {!openAuth && (
+                <button
+                  type="button"
+                  className="text-sm font-semibold underline"
+                  disabled={askingAuth}
+                  onClick={() => void askAuthorization()}
+                >
+                  Pedir autorización al encargado
+                </button>
+              )}
+              {authError && (
+                <p className="field-error" role="alert">
+                  {authError}
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="form-card">
@@ -897,7 +1014,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           </div>
         </section>
 
-        {saveError && (
+        {holdNotice && (
+          <p className="rounded-xl bg-[#fff6d8] px-3 py-2 text-sm" role="status">
+            {holdNotice}
+          </p>
+        )}
+        {saveError && !reasonOpen && (
           <p className="field-error" role="alert">
             {saveError}
           </p>
@@ -916,12 +1038,25 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           </button>
         </div>
       </form>
+      {reasonOpen && (
+        <EditReasonDialog
+          prepared={user?.role === 'vendedor' && existing?.status === 'preparado'}
+          error={saveError}
+          onClose={() => {
+            setReasonOpen(false)
+            setSaveError('')
+          }}
+          onConfirm={(reason) => void confirmReason(reason)}
+        />
+      )}
     </section>
   )
 }
 
 export function NuevoPedido() {
+  const { user } = useAuth()
   const location = useLocation()
   const editingId = (location.state as { orderId?: string } | null)?.orderId
+  if (user?.role === 'encargado_deposito' && !editingId) return <NoAccess />
   return <PedidoForm key={editingId ?? 'nuevo'} editingId={editingId} />
 }

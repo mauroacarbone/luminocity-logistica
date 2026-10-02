@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { DISPATCH_LABEL } from '../data/catalog'
-import { STATUS_PILL, type Order } from '../data/orders'
+import { pendingEdit, STATUS_PILL, type Order } from '../data/orders'
+import { canCancelOrder, canEditOrder, canPrepare } from '../lib/access'
 import {
   DAY_LONG,
   MONTH_SHORT,
@@ -10,6 +11,7 @@ import {
   toIso,
   weekDays,
 } from '../lib/week'
+import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 
 function readPackages(raw: string) {
@@ -104,6 +106,7 @@ function addressLine(order: Order) {
 
 export function PedidosPreparacion() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { orders, removeOrder, updateOrder } = useOrders()
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
@@ -222,6 +225,7 @@ export function PedidosPreparacion() {
                       <p>{order.invoices.join(', ')}</p>
                     )}
                     {order.seller && <p>{order.seller}</p>}
+                    {pendingEdit(order) && <p>Esperando confirmación</p>}
                     <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
                     <p>Cargado: {order.loadedAt}</p>
                     <OrderAttachmentLink name={order.attachmentName} dataUrl={order.attachmentDataUrl} />
@@ -231,33 +235,39 @@ export function PedidosPreparacion() {
                   )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink"
-                    onClick={() => setPreparing(order)}
-                  >
-                    Marcar preparado
-                  </button>
-                  <button
-                    type="button"
-                    className="text-sm text-lumi-ink hover:underline"
-                    onClick={() =>
-                      navigate('/nuevo-pedido', { state: { orderId: order.id } })
-                    }
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    className="text-sm text-lumi-danger hover:underline"
-                    onClick={() => {
-                      void removeOrder(order.id).then((result) => {
-                        setActionError(result.status === 'not-saved' ? result.message : '')
-                      })
-                    }}
-                  >
-                    Cancelar
-                  </button>
+                  {user && canPrepare(user.role) && (
+                    <button
+                      type="button"
+                      className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink"
+                      onClick={() => setPreparing(order)}
+                    >
+                      Marcar preparado
+                    </button>
+                  )}
+                  {user && canEditOrder(user, order) && (
+                    <button
+                      type="button"
+                      className="text-sm text-lumi-ink hover:underline"
+                      onClick={() =>
+                        navigate('/nuevo-pedido', { state: { orderId: order.id } })
+                      }
+                    >
+                      Editar
+                    </button>
+                  )}
+                  {user && canCancelOrder(user.role) && (
+                    <button
+                      type="button"
+                      className="text-sm text-lumi-danger hover:underline"
+                      onClick={() => {
+                        void removeOrder(order.id).then((result) => {
+                          setActionError(result.status === 'not-saved' ? result.message : '')
+                        })
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  )}
                 </div>
               </div>
             </article>

@@ -1,4 +1,4 @@
-import { isSession, type Role, type Session } from './authStore'
+import { isSession, type Session } from './authStore'
 
 export type AuthFailure = {
   ok: false
@@ -53,7 +53,7 @@ export function loginRequest(email: string, password: string) {
   )
 }
 
-export function registerRequest(input: { name: string; email: string; password: string; role: Role }) {
+export function registerRequest(input: { name: string; email: string; password: string }) {
   return postAuth('/api/auth/register', input, 'No se pudo crear la cuenta.')
 }
 

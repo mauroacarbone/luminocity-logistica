@@ -73,6 +73,15 @@ export function patchOrder(id: string, body: Record<string, unknown>) {
   return request(`/api/orders/${encodeURIComponent(id)}`, 'PATCH', body, 'No se pudo guardar el pedido.')
 }
 
+export function reviewOrderEdit(id: string, editId: string, status: 'aplicada' | 'rechazada') {
+  return request(
+    `/api/orders/${encodeURIComponent(id)}/edits/${encodeURIComponent(editId)}`,
+    'PATCH',
+    { status },
+    'No se pudo resolver la edición.',
+  )
+}
+
 export function deleteOrder(id: string) {
   return request(`/api/orders/${encodeURIComponent(id)}`, 'DELETE', undefined, 'No se pudo cancelar el pedido.')
 }
