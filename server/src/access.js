@@ -93,9 +93,12 @@ export function commercialKeys(changes) {
   return Object.keys(changes).filter((key) => DATA_FIELDS.includes(key))
 }
 
+const DRIVER_STATUSES = ['preparado', 'asignado', 'en-viaje']
+
 function driverSees(user, order) {
   const carrier = normalizeName(user.carrierName)
   if (!carrier) return false
+  if (!DRIVER_STATUSES.includes(order.status)) return false
   return normalizeName(order.transporter) === carrier && nearbyDelivery(order.deliveryDate)
 }
 
