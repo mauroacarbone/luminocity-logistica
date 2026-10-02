@@ -103,6 +103,11 @@ export async function notifyEncargados({ text, orderId, whatsapp }) {
   await pushNotifications(items)
 }
 
+/** Se llama dentro del lock de pedidos. */
+export async function notifyUser(userId, { text, orderId }) {
+  await pushNotifications([buildNote({ to: userId, text, orderId, channel: 'app' })])
+}
+
 /** Se llama dentro del lock de pedidos. Avisa al vendedor del pedido. */
 export async function notifySeller(order, editor, text) {
   const users = await readUsersList()

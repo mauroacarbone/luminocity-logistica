@@ -4,10 +4,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Router } from 'express'
 import { assertPatch, canCreate, canSeeOrder, commercialKeys, diffOrder, normalizeName } from './access.js'
-import { takeAuthorization } from './authorizations.js'
+import { saveAuthorizations, stageAuthorization } from './authorizations.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
-import { notifyEncargados, notifySeller } from './notifications.js'
+import { notifyEncargados, notifySeller, notifyUser } from './notifications.js'
 import { readUsersList } from './users.js'
 
 const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
@@ -176,14 +176,23 @@ function createOrder(body, user) {
       createdBy: user.id,
       createdAt: new Date().toISOString(),
     }
+    let staged = null
     if (otherSeller) {
-      const used = await takeAuthorization(user.id, parsed.order.seller, order.id)
-      if (!used) {
+      staged = await stageAuthorization(user.id, parsed.order.seller, order.id)
+      if (!staged) {
         return fail('Necesitás una autorización aprobada para cargar a nombre de ese vendedor.', 403)
       }
     }
     orders.push(order)
     await writeOrders(orders)
+    if (staged) {
+      try {
+        await saveAuthorizations(staged)
+      } catch (error) {
+        await writeOrders(orders.filter((item) => item.id !== order.id))
+        throw error
+      }
+    }
     return { order }
   })
 }
@@ -270,19 +279,24 @@ function reviewEdit(orderId, editId, body, user) {
     const edits = editsOf(current)
     const editIndex = edits.findIndex((item) => item.id === editId)
     if (editIndex < 0) return fail('No existe esa edición.', 404)
-    if (edits[editIndex].status !== 'pendiente') {
+    const pending = edits[editIndex]
+    if (pending.status !== 'pendiente') {
       return fail('Esa edición ya no está esperando confirmación.')
     }
+    if (decision === 'aplicada' && current.status !== 'preparado') {
+      return fail('El pedido ya avanzó, no se puede aplicar el cambio.', 409)
+    }
     if (decision === 'rechazada') {
-      edits[editIndex] = { ...edits[editIndex], status: 'rechazada' }
+      edits[editIndex] = { ...pending, status: 'rechazada' }
       const order = { ...current, edits }
       orders[index] = order
       await writeOrders(orders)
+      await notifyEditReview(pending, user, current.id, decision)
       return { order }
     }
-    const parsed = readOrderFields(bodyFrom(current, edits[editIndex].changes), current)
+    const parsed = readOrderFields(bodyFrom(current, pending.changes), current)
     if (parsed.error) return parsed
-    edits[editIndex] = { ...edits[editIndex], status: 'aplicada' }
+    edits[editIndex] = { ...pending, status: 'aplicada' }
     const order = {
       ...parsed.order,
       edits,
@@ -290,6 +304,7 @@ function reviewEdit(orderId, editId, body, user) {
     }
     orders[index] = order
     await writeOrders(orders)
+    await notifyEditReview(pending, user, current.id, decision)
     return { order }
   })
 }
@@ -306,6 +321,15 @@ function deleteOrder(id, user) {
     await writeOrders(orders.filter((item) => item.id !== id))
     return { ok: true }
   })
+}
+
+async function notifyEditReview(edit, reviewer, orderId, decision) {
+  if (!edit.by || edit.by === reviewer.id) return
+  const text =
+    decision === 'aplicada'
+      ? `Se aprobó tu edición del pedido ${orderId}.`
+      : `Se rechazó tu edición del pedido ${orderId}.`
+  await notifyUser(edit.by, { text, orderId })
 }
 
 function editsOf(order) {

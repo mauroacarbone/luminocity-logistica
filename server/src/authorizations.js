@@ -6,6 +6,7 @@ import { Router } from 'express'
 import { normalizeName } from './access.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
+import { notifyEncargados } from './notifications.js'
 
 const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
 const authorizationsFile = path.join(dataDir, 'authorizations.json')
@@ -90,6 +91,10 @@ function requestAuthorization(user, seller) {
     }
     list.push(authorization)
     await writeAuthorizations(list)
+    await notifyEncargados({
+      text: `${user.name} pidió autorización para cargar a nombre de ${name}.`,
+      whatsapp: false,
+    })
     return { authorization }
   })
 }
@@ -117,8 +122,8 @@ function resolveAuthorization(id, status, userId) {
   })
 }
 
-/** Se llama dentro del lock de pedidos. Marca usada la aprobación más vieja. */
-export async function takeAuthorization(userId, seller, orderId) {
+/** Se llama dentro del lock de pedidos. Arma la lista con la aprobación usada, sin escribir. */
+export async function stageAuthorization(userId, seller, orderId) {
   const list = await readAuthorizations()
   const index = list.findIndex(
     (item) =>
@@ -127,13 +132,19 @@ export async function takeAuthorization(userId, seller, orderId) {
       normalizeName(item.seller) === normalizeName(seller),
   )
   if (index < 0) return null
-  const authorization = {
-    ...list[index],
-    status: 'usada',
-    usedAt: new Date().toISOString(),
-    orderId,
-  }
-  list[index] = authorization
+  const next = list.map((item, itemIndex) =>
+    itemIndex === index
+      ? {
+          ...item,
+          status: 'usada',
+          usedAt: new Date().toISOString(),
+          orderId,
+        }
+      : item,
+  )
+  return next
+}
+
+export async function saveAuthorizations(list) {
   await writeAuthorizations(list)
-  return authorization
 }

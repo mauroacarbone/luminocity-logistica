@@ -99,6 +99,10 @@ export function setUserRole(id, role) {
     const users = await readUsers()
     const index = users.findIndex((item) => item.id === id)
     if (index < 0) return { error: 'missing' }
+    if (users[index].role === 'admin' && role !== 'admin') {
+      const admins = users.filter((item) => item.role === 'admin').length
+      if (admins <= 1) return { error: 'last-admin' }
+    }
     users[index] = { ...users[index], role }
     await writeUsers(users)
     return { user: users[index] }

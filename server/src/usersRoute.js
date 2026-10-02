@@ -27,6 +27,10 @@ usersRouter.patch('/:id/role', requireRole('admin'), async (req, res) => {
     res.status(404).json({ message: 'No existe ese usuario.' })
     return
   }
+  if (result.error === 'last-admin') {
+    res.status(403).json({ message: 'No podés quitar el rol al último administrador.' })
+    return
+  }
   res.json(toPublicUser(result.user))
 })
 
