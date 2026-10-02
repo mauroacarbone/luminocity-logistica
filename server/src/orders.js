@@ -7,7 +7,7 @@ import { assertPatch, canCreate, canSeeOrder, commercialKeys, diffOrder, normali
 import { saveAuthorizations, stageAuthorization } from './authorizations.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
-import { notifyEncargados, notifySeller, notifyUser } from './notifications.js'
+import { notifyDelivered, notifyEncargados, notifySeller, notifyUser } from './notifications.js'
 import { readUsersList } from './users.js'
 
 const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
@@ -232,6 +232,7 @@ function patchOrder(id, body, user) {
         text: `${user.name} pidió editar el pedido ${order.id} y quedó esperando confirmación: ${reason.value}`,
         orderId: order.id,
         whatsapp: true,
+        phone: user.phone,
       })
       return { order }
     }
@@ -258,6 +259,9 @@ function patchOrder(id, body, user) {
         user,
         `${user.name} editó el pedido ${current.id}: ${reason.value}`,
       )
+    }
+    if (changes.status === 'entregado' && current.status !== 'entregado') {
+      await notifyDelivered(order)
     }
     return { order }
   })

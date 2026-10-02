@@ -29,6 +29,15 @@ notificationsRouter.patch('/:id/read', async (req, res) => {
   res.json(result.notification)
 })
 
+notificationsRouter.patch('/:id/sent', async (req, res) => {
+  const result = await markSent(req.params.id, req.user)
+  if (result.error) {
+    res.status(result.status).json({ message: result.error })
+    return
+  }
+  res.json(result.notification)
+})
+
 function byNewest(list) {
   return [...list].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
 }
@@ -61,7 +70,26 @@ function markRead(id, userId) {
   })
 }
 
-function buildNote({ to, text, orderId, channel, status }) {
+function markSent(id, user) {
+  return locked(async () => {
+    if (user.role !== 'encargado_deposito' && user.role !== 'admin') {
+      return { error: 'No tenés permiso para enviar este aviso.', status: 403 }
+    }
+    const list = await readNotifications()
+    const index = list.findIndex((item) => item.id === id && item.to === user.id)
+    if (index < 0) return { error: 'No existe ese aviso.', status: 404 }
+    const current = list[index]
+    if (current.channel !== 'whatsapp' || current.status !== 'pendiente') {
+      return { error: 'Ese aviso ya no está pendiente.', status: 400 }
+    }
+    const notification = { ...current, status: 'enviado' }
+    list[index] = notification
+    await writeNotifications(list)
+    return { notification }
+  })
+}
+
+function buildNote({ to, text, orderId, channel, status, phone }) {
   const note = {
     id: randomUUID(),
     to,
@@ -72,6 +100,7 @@ function buildNote({ to, text, orderId, channel, status }) {
     channel,
   }
   if (status) note.status = status
+  if (typeof phone === 'string' && phone.trim()) note.phone = phone.trim()
   return note
 }
 
@@ -83,12 +112,12 @@ async function pushNotifications(items) {
 }
 
 /** Se llama dentro del lock de pedidos. */
-export async function notifyEncargados({ text, orderId, whatsapp }) {
+export async function notifyEncargados({ text, orderId, whatsapp, phone }) {
   const encargados = (await readUsersList()).filter((user) => user.role === 'encargado_deposito')
   const items = []
   for (const user of encargados) {
     items.push(buildNote({ to: user.id, text, orderId, channel: 'app' }))
-    if (whatsapp && typeof user.phone === 'string' && user.phone.trim()) {
+    if (whatsapp) {
       items.push(
         buildNote({
           to: user.id,
@@ -96,6 +125,7 @@ export async function notifyEncargados({ text, orderId, whatsapp }) {
           orderId,
           channel: 'whatsapp',
           status: 'pendiente',
+          phone,
         }),
       )
     }
@@ -110,15 +140,50 @@ export async function notifyUser(userId, { text, orderId }) {
 
 /** Se llama dentro del lock de pedidos. Avisa al vendedor del pedido. */
 export async function notifySeller(order, editor, text) {
-  const users = await readUsersList()
-  const bySeller = users.find(
-    (user) =>
-      user.role === 'vendedor' && normalizeName(user.sellerName) === normalizeName(order.seller),
-  )
-  const target =
-    bySeller ?? users.find((user) => user.id === order.createdBy && user.role === 'vendedor')
+  const target = sellerUser(await readUsersList(), order)
   if (!target || target.id === editor.id) return
   await pushNotifications([
     buildNote({ to: target.id, text, orderId: order.id, channel: 'app' }),
   ])
+}
+
+function sellerUser(users, order) {
+  const bySeller = users.find(
+    (user) =>
+      user.role === 'vendedor' && normalizeName(user.sellerName) === normalizeName(order.seller),
+  )
+  return bySeller ?? users.find((user) => user.id === order.createdBy && user.role === 'vendedor')
+}
+
+/** Se llama dentro del lock de pedidos. Aviso in-app y WhatsApp pendiente al entregar. */
+export async function notifyDelivered(order) {
+  const users = await readUsersList()
+  const seller = sellerUser(users, order)
+  if (!seller) return
+  const phone = typeof seller.phone === 'string' ? seller.phone.trim() : ''
+  const text = `Tu pedido ${order.id} fue entregado.`
+  const items = [
+    buildNote({ to: seller.id, text, orderId: order.id, channel: 'app' }),
+    buildNote({
+      to: seller.id,
+      text,
+      orderId: order.id,
+      channel: 'whatsapp',
+      status: 'pendiente',
+      phone,
+    }),
+  ]
+  for (const encargado of users.filter((user) => user.role === 'encargado_deposito')) {
+    items.push(
+      buildNote({
+        to: encargado.id,
+        text,
+        orderId: order.id,
+        channel: 'whatsapp',
+        status: 'pendiente',
+        phone,
+      }),
+    )
+  }
+  await pushNotifications(items)
 }

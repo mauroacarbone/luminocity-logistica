@@ -8,7 +8,8 @@ export type AppNotification = {
   read: boolean
   createdAt: string
   channel: 'app' | 'whatsapp'
-  status?: string
+  status?: 'pendiente' | 'enviado'
+  phone?: string
 }
 
 export function isNotification(value: unknown): value is AppNotification {
@@ -20,12 +21,23 @@ export function isNotification(value: unknown): value is AppNotification {
     typeof item.text === 'string' &&
     typeof item.read === 'boolean' &&
     typeof item.createdAt === 'string' &&
-    (item.channel === 'app' || item.channel === 'whatsapp')
+    (item.channel === 'app' || item.channel === 'whatsapp') &&
+    (item.phone === undefined || typeof item.phone === 'string') &&
+    (item.status === undefined || item.status === 'pendiente' || item.status === 'enviado')
   )
 }
 
 export function listNotifications() {
   return apiRequest('/api/notifications', 'GET', undefined, 'No se pudieron cargar los avisos.')
+}
+
+export function markNotificationSent(id: string) {
+  return apiRequest(
+    `/api/notifications/${encodeURIComponent(id)}/sent`,
+    'PATCH',
+    {},
+    'No se pudo marcar el aviso como enviado.',
+  )
 }
 
 export function markNotificationRead(id: string) {
