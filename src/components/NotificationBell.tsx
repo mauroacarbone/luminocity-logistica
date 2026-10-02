@@ -86,7 +86,7 @@ export function NotificationBell() {
     ? items.filter((item) => item.channel === 'whatsapp' && item.status === 'pendiente')
     : []
   const visible = [...appItems, ...whatsappItems]
-  const unread = appItems.filter((item) => !item.read).length
+  const unread = appItems.filter((item) => !item.read).length + whatsappItems.length
 
   async function markRead(id: string) {
     const result = await markNotificationRead(id)
