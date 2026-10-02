@@ -23,6 +23,15 @@ export function updateUserPhone(id: string, phone: string) {
   )
 }
 
+export function updateUserCarrier(id: string, carrierName: string) {
+  return apiRequest(
+    `/api/users/${encodeURIComponent(id)}`,
+    'PATCH',
+    { carrierName },
+    'No se pudo vincular el transportista.',
+  )
+}
+
 export function updateUserSeller(id: string, sellerName: string) {
   return apiRequest(
     `/api/users/${encodeURIComponent(id)}`,

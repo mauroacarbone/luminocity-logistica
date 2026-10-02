@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { withCurrent } from '../data/catalog'
 import { isSession, ROLE_LABEL, ROLES, type Role, type Session } from '../lib/authStore'
-import { listUsers, updateUserPhone, updateUserRole, updateUserSeller } from '../lib/usersApi'
+import { listUsers, updateUserCarrier, updateUserPhone, updateUserRole, updateUserSeller } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 
@@ -11,6 +11,7 @@ type Draft = {
   role: Role
   phone: string
   sellerName: string
+  carrierName: string
 }
 
 function isAccount(value: unknown): value is Account {
@@ -27,9 +28,13 @@ function sellerOf(value: Account) {
   return value.sellerName ?? ''
 }
 
+function carrierOf(value: Account) {
+  return value.carrierName ?? ''
+}
+
 export function Usuarios() {
   const { logout } = useAuth()
-  const { sellers } = useCatalog()
+  const { sellers, transporters } = useCatalog()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   const [error, setError] = useState('')
@@ -55,7 +60,12 @@ export function Usuarios() {
         Object.fromEntries(
           next.map((item) => [
             item.id,
-            { role: item.role, phone: item.phone, sellerName: sellerOf(item) },
+            {
+              role: item.role,
+              phone: item.phone,
+              sellerName: sellerOf(item),
+              carrierName: carrierOf(item),
+            },
           ]),
         ),
       )
@@ -121,10 +131,30 @@ export function Usuarios() {
       }
       next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
     }
+    if (draft.role === 'chofer' && draft.carrierName.trim() !== carrierOf(next)) {
+      const result = await updateUserCarrier(account.id, draft.carrierName.trim())
+      if (!result.ok) {
+        setBusy('')
+        if (result.status === 401) logout()
+        else setError(result.message)
+        return
+      }
+      if (!isAccount(result.data)) {
+        setBusy('')
+        setError('No se pudo leer el usuario.')
+        return
+      }
+      next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
+    }
     setAccounts((current) => current.map((item) => (item.id === next.id ? next : item)))
     setDrafts((current) => ({
       ...current,
-      [next.id]: { role: next.role, phone: next.phone, sellerName: sellerOf(next) },
+      [next.id]: {
+        role: next.role,
+        phone: next.phone,
+        sellerName: sellerOf(next),
+        carrierName: carrierOf(next),
+      },
     }))
     setBusy('')
     setNotice(`Se guardó ${next.name}.`)
@@ -134,7 +164,7 @@ export function Usuarios() {
     <section className="page">
       <header className="page-header">
         <h1>Usuarios</h1>
-        <p>Roles, celular corporativo y el vendedor de datos maestros.</p>
+        <p>Roles, celular corporativo, vendedor y transportista.</p>
       </header>
       {error && (
         <p className="mt-4 text-sm font-semibold text-lumi-danger" role="alert">
@@ -150,12 +180,15 @@ export function Usuarios() {
             role: account.role,
             phone: account.phone,
             sellerName: sellerOf(account),
+            carrierName: carrierOf(account),
           }
           const sellerOptions = withCurrent(sellers, draft.sellerName)
+          const carrierOptions = withCurrent(transporters, draft.carrierName)
           const dirty =
             draft.role !== account.role ||
             draft.phone.trim() !== account.phone ||
-            (draft.role === 'vendedor' && draft.sellerName.trim() !== sellerOf(account))
+            (draft.role === 'vendedor' && draft.sellerName.trim() !== sellerOf(account)) ||
+            (draft.role === 'chofer' && draft.carrierName.trim() !== carrierOf(account))
           return (
             <article key={account.id} className="rounded-2xl bg-white p-4 shadow-sm">
               <p className="font-semibold">{account.name}</p>
@@ -185,6 +218,23 @@ export function Usuarios() {
                     >
                       <option value="">Sin vincular</option>
                       {sellerOptions.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {draft.role === 'chofer' && (
+                  <label className="text-sm">
+                    Transportista
+                    <select
+                      value={draft.carrierName}
+                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+                      onChange={(event) => setDraft(account.id, { carrierName: event.target.value })}
+                    >
+                      <option value="">Sin vincular</option>
+                      {carrierOptions.map((name) => (
                         <option key={name} value={name}>
                           {name}
                         </option>

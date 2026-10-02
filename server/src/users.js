@@ -29,6 +29,9 @@ export function toPublicUser(user) {
   if (typeof user.sellerName === 'string' && user.sellerName.trim()) {
     publicUser.sellerName = user.sellerName.trim()
   }
+  if (typeof user.carrierName === 'string' && user.carrierName.trim()) {
+    publicUser.carrierName = user.carrierName.trim()
+  }
   return publicUser
 }
 
@@ -131,6 +134,20 @@ export function setUserSellerName(id, sellerName) {
     const next = { ...users[index] }
     if (sellerName) next.sellerName = sellerName
     else delete next.sellerName
+    users[index] = next
+    await writeUsers(users)
+    return { user: next }
+  })
+}
+
+export function setUserCarrierName(id, carrierName) {
+  return locked(async () => {
+    const users = await readUsers()
+    const index = users.findIndex((item) => item.id === id)
+    if (index < 0) return { error: 'missing' }
+    const next = { ...users[index] }
+    if (carrierName) next.carrierName = carrierName
+    else delete next.carrierName
     users[index] = next
     await writeUsers(users)
     return { user: next }

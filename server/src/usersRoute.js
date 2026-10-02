@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from './middleware.js'
 import {
   ROLES,
   listUsers,
+  setUserCarrierName,
   setUserPhone,
   setUserRole,
   setUserSellerName,
@@ -38,7 +39,8 @@ usersRouter.patch('/:id', requireRole('admin'), async (req, res) => {
   const body = req.body ?? {}
   const hasPhone = Object.prototype.hasOwnProperty.call(body, 'phone')
   const hasSeller = Object.prototype.hasOwnProperty.call(body, 'sellerName')
-  if (!hasPhone && !hasSeller) {
+  const hasCarrier = Object.prototype.hasOwnProperty.call(body, 'carrierName')
+  if (!hasPhone && !hasSeller && !hasCarrier) {
     res.status(400).json({ message: 'No hay cambios para guardar.' })
     return
   }
@@ -71,6 +73,20 @@ usersRouter.patch('/:id', requireRole('admin'), async (req, res) => {
     }
   }
 
+  let carrierName = ''
+  if (hasCarrier) {
+    const raw = body.carrierName
+    if (raw !== null && typeof raw !== 'string') {
+      res.status(400).json({ message: 'El transportista no es válido.' })
+      return
+    }
+    carrierName = typeof raw === 'string' ? raw.trim() : ''
+    if (carrierName.length > 80) {
+      res.status(400).json({ message: 'El transportista es demasiado largo.' })
+      return
+    }
+  }
+
   let result
   if (hasPhone) {
     result = await setUserPhone(req.params.id, phone)
@@ -81,6 +97,13 @@ usersRouter.patch('/:id', requireRole('admin'), async (req, res) => {
   }
   if (hasSeller) {
     result = await setUserSellerName(req.params.id, sellerName)
+    if (result.error === 'missing') {
+      res.status(404).json({ message: 'No existe ese usuario.' })
+      return
+    }
+  }
+  if (hasCarrier) {
+    result = await setUserCarrierName(req.params.id, carrierName)
     if (result.error === 'missing') {
       res.status(404).json({ message: 'No existe ese usuario.' })
       return
