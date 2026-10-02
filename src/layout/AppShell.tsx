@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { ServerDown, Spinner } from '../components/LoadState'
 import { NotificationBell } from '../components/NotificationBell'
 import { ROLE_LABEL } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
@@ -23,7 +24,7 @@ function ImportReport({ text }: { text: string }) {
 
 export function AppShell() {
   const { user } = useAuth()
-  const { loading, error, legacyCount, importing, importError, importLegacy } = useOrders()
+  const { loading, error, legacyCount, importing, importError, importLegacy, reload } = useOrders()
   const showImport = !loading && !error && legacyCount > 0
 
   return (
@@ -39,16 +40,8 @@ export function AppShell() {
             </p>
           </header>
         )}
-        {loading && (
-          <p className="orders-note" role="status">
-            Cargando pedidos…
-          </p>
-        )}
-        {error && (
-          <p className="orders-note error" role="alert">
-            {error}
-          </p>
-        )}
+        {loading && <Spinner label="Cargando pedidos…" />}
+        {error && <ServerDown message={error} onRetry={reload} />}
         {showImport && (
           <div className="orders-import no-print">
             <p>Hay pedidos guardados solo en este navegador.</p>
@@ -59,7 +52,7 @@ export function AppShell() {
           </div>
         )}
         {!showImport && importError && <ImportReport text={importError} />}
-        {!loading && <Outlet />}
+        {!loading && !error && <Outlet />}
       </main>
     </div>
   )

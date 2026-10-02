@@ -239,6 +239,79 @@ p {
   font-weight: 600;
 }
 
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--line);
+  border-top-color: var(--yellow);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.server-down {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--card);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.lumi-swal {
+  border-radius: 18px !important;
+  font-family: inherit;
+}
+
+.lumi-swal-title {
+  color: #1c1b19 !important;
+  font-size: 1.25rem !important;
+  padding-top: 0.25rem !important;
+}
+
+.lumi-swal-text {
+  color: #5f5b55 !important;
+}
+
+.lumi-swal-actions {
+  gap: 8px;
+}
+
+.lumi-swal-confirm,
+.lumi-swal-danger,
+.lumi-swal-cancel {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lumi-swal-confirm {
+  background: #f5c400;
+  color: #1a1a1a;
+}
+
+.lumi-swal-danger {
+  background: #e25b57;
+  color: #fff;
+}
+
+.lumi-swal-cancel {
+  background: #f3f1ea;
+  color: #1c1b19;
+}
+
 .orders-import {
   display: flex;
   flex-wrap: wrap;
@@ -1056,6 +1129,16 @@ p {
 
   .main {
     padding: 20px 16px 32px;
+  }
+
+  .view-toggle {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .view-toggle button {
+    flex: 1;
+    justify-content: center;
   }
 
   .page-header.row,

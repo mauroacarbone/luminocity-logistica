@@ -62,6 +62,7 @@ type OrdersContextValue = {
   importing: boolean
   importError: string
   importLegacy: () => Promise<void>
+  reload: () => void
   addOrder: (order: OrderDraft) => Promise<OrderSaveResult>
   updateOrder: (order: Order, reason?: string) => Promise<OrderSaveResult>
   patchFields: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
@@ -160,6 +161,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const [legacyOrders, setLegacyOrders] = useState<Order[]>([])
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
   const ordersRef = useRef(orders)
@@ -192,7 +194,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           logout()
           return
         }
-        setError(result.message)
+        setError(result.status === 0 ? 'No se pudo conectar con el servidor' : result.message)
         setStatus('error')
         return
       }
@@ -212,7 +214,13 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [userId, logout])
+  }, [userId, logout, attempt])
+
+  function reload() {
+    setError('')
+    setStatus('loading')
+    setAttempt((current) => current + 1)
+  }
 
   function replaceOrders(list: Order[]) {
     ordersRef.current = list
@@ -350,6 +358,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         importing,
         importError,
         importLegacy,
+        reload,
         addOrder,
         updateOrder,
         patchFields,
