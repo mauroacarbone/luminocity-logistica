@@ -1,4 +1,4 @@
-/** Arma un link wa.me. El número queda en 549 + área + número, sin 0 ni 15. */
+/** Arma un link wa.me. El número queda en 549 más 10 dígitos de área y número. */
 export function whatsappLink(phone: string, text: string) {
   const number = normalizeArWhatsapp(phone)
   if (!number) return ''
@@ -13,7 +13,7 @@ export function normalizeArWhatsapp(raw: string) {
   if (digits.startsWith('9') && digits.length >= 11) digits = digits.slice(1)
   while (digits.startsWith('0')) digits = digits.slice(1)
   digits = stripFifteen(digits)
-  if (digits.length < 8 || digits.length > 13) return ''
+  if (digits.length !== 10) return ''
   return `549${digits}`
 }
 
