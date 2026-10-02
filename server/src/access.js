@@ -147,8 +147,7 @@ export function assertPatch(user, current, changes) {
     const next = changes.status
     const from = current.status
     const allowed =
-      (from === 'asignado' && (next === 'en-viaje' || next === 'entregado')) ||
-      (from === 'en-viaje' && next === 'entregado')
+      (from === 'asignado' && next === 'en-viaje') || (from === 'en-viaje' && next === 'entregado')
     if (!allowed) return deny('Solo podés pasar a en viaje o marcar entregado.')
     return { ok: true }
   }

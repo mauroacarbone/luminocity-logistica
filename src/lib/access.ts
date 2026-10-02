@@ -68,7 +68,7 @@ export function canReview(role: Role) {
 export function statusChoices(role: Role, current: OrderStatus): OrderStatus[] {
   if (role === 'admin') return ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
   if (role === 'encargado_deposito') return ['pendiente', 'preparado', 'asignado']
-  if (role === 'chofer' && current === 'asignado') return ['en-viaje', 'entregado']
+  if (role === 'chofer' && current === 'asignado') return ['en-viaje']
   if (role === 'chofer' && current === 'en-viaje') return ['entregado']
   return []
 }

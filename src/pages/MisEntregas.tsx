@@ -14,7 +14,7 @@ function byZoneThenAddress(left: Order, right: Order) {
 }
 
 export function MisEntregas() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const { orders, patchFields } = useOrders()
   const [tab, setTab] = useState<Tab>('asignados')
   const [busy, setBusy] = useState('')
@@ -44,7 +44,6 @@ export function MisEntregas() {
     const result = await patchFields(order.id, { status })
     setBusy('')
     if (result.status === 'not-saved') {
-      if (result.message === 'Tenés que iniciar sesión.') logout()
       setError(result.message)
       return
     }
@@ -119,8 +118,9 @@ function DeliveryCard({
 }) {
   const maps = mapsLink(order.address ?? '')
   const notice = whatsappLink(order.phone ?? '', onTheWayText(order.client, order.id))
+  const waiting = order.status === 'preparado'
   const canLeave = order.status === 'asignado'
-  const canDeliver = order.status === 'asignado' || order.status === 'en-viaje'
+  const canDeliver = order.status === 'en-viaje'
 
   return (
     <article className="rounded-2xl bg-white p-4 shadow-sm">
@@ -130,57 +130,61 @@ function DeliveryCard({
       <p className="text-sm text-lumi-muted">{order.zone || 'Sin zona'}</p>
       <p className="mt-2 text-sm">Bultos: {order.packages ?? '—'}</p>
       <p className="text-sm">Teléfono: {order.phone || '—'}</p>
-      <div className="mt-4 flex flex-col gap-2">
-        {maps ? (
-          <a
-            className="grid min-h-12 place-items-center rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white"
-            href={maps}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Cómo llegar
-          </a>
-        ) : (
-          <button type="button" className="min-h-12 rounded-xl bg-lumi-line px-4 text-base font-semibold" disabled>
-            Cómo llegar
-          </button>
-        )}
-        {canLeave && (
-          <button
-            type="button"
-            className="min-h-12 rounded-xl bg-lumi-yellow px-4 text-base font-semibold text-lumi-yellow-ink disabled:opacity-50"
-            disabled={busy}
-            onClick={onLeave}
-          >
-            Salir a reparto
-          </button>
-        )}
-        {order.status === 'en-viaje' &&
-          (notice ? (
+      {waiting ? (
+        <p className="mt-4 text-sm font-semibold">Esperando asignación del encargado</p>
+      ) : (
+        <div className="mt-4 flex flex-col gap-2">
+          {maps ? (
             <a
-              className="grid min-h-12 place-items-center rounded-xl border border-lumi-line px-4 text-base font-semibold"
-              href={notice}
+              className="grid min-h-12 place-items-center rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white"
+              href={maps}
               target="_blank"
               rel="noreferrer"
             >
-              Avisar al cliente
+              Cómo llegar
             </a>
           ) : (
-            <button type="button" className="min-h-12 rounded-xl border border-lumi-line px-4 text-base font-semibold" disabled>
-              Avisar al cliente
+            <button type="button" className="min-h-12 rounded-xl bg-lumi-line px-4 text-base font-semibold" disabled>
+              Cómo llegar
             </button>
-          ))}
-        {canDeliver && (
-          <button
-            type="button"
-            className="min-h-12 rounded-xl bg-[#1d7a3a] px-4 text-base font-semibold text-white disabled:opacity-50"
-            disabled={busy}
-            onClick={onDelivered}
-          >
-            Entregado
-          </button>
-        )}
-      </div>
+          )}
+          {canLeave && (
+            <button
+              type="button"
+              className="min-h-12 rounded-xl bg-lumi-yellow px-4 text-base font-semibold text-lumi-yellow-ink disabled:opacity-50"
+              disabled={busy}
+              onClick={onLeave}
+            >
+              Salir a reparto
+            </button>
+          )}
+          {order.status === 'en-viaje' &&
+            (notice ? (
+              <a
+                className="grid min-h-12 place-items-center rounded-xl border border-lumi-line px-4 text-base font-semibold"
+                href={notice}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Avisar al cliente
+              </a>
+            ) : (
+              <button type="button" className="min-h-12 rounded-xl border border-lumi-line px-4 text-base font-semibold" disabled>
+                Avisar al cliente
+              </button>
+            ))}
+          {canDeliver && (
+            <button
+              type="button"
+              className="min-h-12 rounded-xl bg-[#1d7a3a] px-4 text-base font-semibold text-white disabled:opacity-50"
+              disabled={busy}
+              onClick={onDelivered}
+            >
+              Entregado
+            </button>
+          )}
+        </div>
+      )}
     </article>
   )
 }
