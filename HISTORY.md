@@ -22,6 +22,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 14 | API de pedidos. Salen de `localStorage` | Hecho |
 | 15 | Roles, menús y permisos | Hecho |
 | 16 | Vista Chofer y avisos por WhatsApp (`wa.me`) | Hecho |
+| 16.1 | Ajustes del chofer y avisos de WhatsApp | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -30,6 +31,8 @@ El Brief 14 guarda los pedidos en `server/data/orders.json`; el navegador los us
 El Brief 15 filtra menú y API por rol. El registro crea vendedor. El encargado autoriza cargas a nombre de otro y confirma ediciones de un preparado. Los avisos de la app ya se guardan.
 
 El Brief 16 deja al chofer en Mis entregas: el server filtra por su transportista y por la fecha de ayer, hoy o mañana. Sale a reparto, marca entregado y avisa al cliente con `wa.me`. El encargado manda los avisos de WhatsApp pendientes desde la campanita. Al entregar, el vendedor recibe el aviso in-app y otro con `channel` `whatsapp`.
+
+El Brief 16.1 obliga a pasar por `en-viaje` antes de `entregado`. El listado del chofer trae solo `preparado`, `asignado` o `en-viaje`. Un preparado sin asignar espera al encargado, sin botones. Al entregar queda un solo WhatsApp pendiente para la campanita de los encargados, y el celular tiene que quedar en 10 dígitos.
 
 ## Pendientes
 
