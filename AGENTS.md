@@ -11,7 +11,7 @@ React 19, Vite, TypeScript, React Router. Estilos en `src/index.css` (Tailwind 4
 | --- | --- |
 | `src/pages/` | Una pantalla por ruta |
 | `src/state/` | Contextos: auth, pedidos, picking, reclamos, catálogo |
-| `server/` | Auth y pedidos: Express, JWT, usuarios y pedidos en JSON |
+| `server/` | Auth, pedidos, autorizaciones y avisos: Express, JWT y JSON |
 | `src/lib/` | Persistencia, token de sesión, zona, geocodificación, rutas, adjuntos, Excel de picking |
 | `src/data/` | Tipos y semillas: pedido, reclamo, catálogo |
 | `src/layout/` | Sidebar, shell y tarjeta de login |
@@ -25,8 +25,8 @@ Rutas: `src/App.tsx`. Menú: `src/layout/Sidebar.tsx`.
 - Al terminar cada brief, actualizar `HISTORY.md`.
 - No agregar features fuera del brief. No dejar código muerto.
 - No inventar pantallas, datos ni integraciones. Lo que no está en el código es **Pendiente**.
-- No adelantar el Brief 15 (menú por rol).
-- El login acepta `vendedor`, `deposito`, `encargado_deposito`, `chofer` o `admin`. Cualquier usuario logueado ve todo el menú. El filtro por rol es el Brief 15. La matriz de abajo es la regla prevista, no un permiso que el código ya aplique.
+- No adelantar el Brief 16 (vista chofer con GPS y WhatsApp).
+- El login acepta `vendedor`, `deposito`, `encargado_deposito`, `chofer` o `admin`. El menú y la API filtran por rol. El registro público siempre crea `vendedor`; solo admin cambia roles.
 
 ## Roles
 
@@ -34,76 +34,70 @@ Pantallas reales de `src/App.tsx`. `/login` y `/registro` son públicas.
 
 ### Vendedor
 
-Cargar el pedido y saber si ya se preparó o salió.
+Carga pedidos con su usuario y ve solo los suyos (`createdBy` o `seller` con su nombre).
 
-- Pantallas: Panel (ver), Nuevo Pedido (editar), Pedidos y Preparación (ver), Despacho (ver), Post Venta (editar).
-- Puede: crear y editar el pedido en `pendiente`, adjuntar un archivo, abrir un reclamo.
-- No puede: pasar a `preparado`, picking, estados de despacho, planificar la ruta, datos maestros.
-- Estados: crea en `pendiente`. No mueve la cadena operativa.
-- Primero: el Panel y Nuevo Pedido.
+- Pantallas: Panel (ver), Nuevo Pedido (editar), Pedidos y Preparación (editar los suyos), Despacho (ver), Post Venta (editar).
+- Puede cargar a nombre de otro vendedor solo si un encargado lo autorizó antes. La autorización se usa una sola vez.
+- Edita sus pedidos con motivo. En `pendiente` el cambio se aplica y se avisa al encargado. En `preparado` queda esperando confirmación. Después de `preparado` no edita.
+- No puede: pasar a `preparado`, asignar chofer, picking, estados de despacho, planificar la ruta, datos maestros, usuarios.
 
 ### Depósito
 
-Dejar listo lo que se entrega hoy.
+Deja listo lo que se entrega hoy. Ve pendientes y preparados.
 
 - Pantallas: Panel (ver), Pedidos y Preparación (editar), Despacho (ver), Pendientes de Entregas (editar).
 - Puede: `pendiente` → `preparado` con cantidad de bultos. Cargar el Excel de picking y tildar líneas.
-- No puede: alta comercial, pasar de `preparado`, confirmar entrega, reclamos, datos maestros.
-- Estados: `pendiente` → `preparado`.
-- Primero: Pedidos y Preparación del día, y el picking.
+- No puede: alta comercial, editar datos del pedido, asignar transportista, cancelar, confirmar entrega, reclamos, datos maestros.
 
 ### Encargado de depósito
 
-**Pendiente** (Brief 15). Supervisar la preparación y corregir si hay que rearmar.
+Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar solo.
 
-- Pantallas: las de depósito, más Planificador de Rutas (ver).
-- Puede: lo de depósito, volver `preparado` → `pendiente` y cancelar un pedido que no salió.
-- No puede: despachar, confirmar entrega, datos maestros.
-- Estados: `pendiente` ↔ `preparado`, y cancelar antes del despacho.
-- Primero: qué sigue en `pendiente` y qué volvió a preparación.
+- Pantallas: las de depósito, más Despacho (editar), Planificador de Rutas (editar), Post Venta (editar) y Bandeja (editar).
+- Puede: asignar transportista y chofer, armar rutas, autorizar una carga a nombre de otro, aprobar o rechazar ediciones, cargar reclamos, editar y cancelar pedidos que no salieron.
+- Si edita un pedido, se avisa al vendedor de ese pedido.
+- No puede: marcar `en-viaje` o `entregado`, datos maestros, usuarios.
 
 ### Chofer
 
-Entregar y dejar constancia.
+Entrega y deja constancia. Ve solo los pedidos con su `driverId` y fecha de entrega de ayer, hoy o mañana.
 
 - Pantallas: Panel (ver), Despacho (editar), Planificador de Rutas (ver).
-- Puede: `preparado` → `asignado` → `en-viaje` → `entregado`. Confirmar con el QR de la carátula.
-- No puede: crear ni editar el pedido, preparar, picking, reclamos, datos maestros.
-- Estados: de `preparado` hasta `entregado`.
-- Primero: Despacho del día (dirección, bultos, franja, transportista).
-- GPS, orden por cercanía y WhatsApp "en camino" son **Pendiente**, Brief 16. Hoy el menú Estado de Despacho deja cualquier estado a cualquiera; el límite es el Brief 15.
+- Puede: pasar a `en-viaje` y marcar `entregado`, también con el QR de la carátula.
+- No puede: crear ni editar el pedido, preparar, asignar, picking, reclamos, datos maestros.
+- GPS, orden por cercanía y el envío del WhatsApp "en camino" son **Pendiente**, Brief 16.
 
 ### Admin
 
-Que la operación no se trabe y los listados estén bien.
+Mauro, desarrollador. Todo, más usuarios, roles y datos maestros.
 
-- Pantallas: todas, Datos maestros incluido (editar).
-- Puede: cualquier estado del pedido y del reclamo.
-- Primero: el Panel y Datos maestros.
+- Pantallas: todas, Datos maestros y Usuarios incluidos (editar).
+- Puede: cualquier estado del pedido y del reclamo. Carga el celular corporativo y cambia roles.
+- Primero: el Panel, Datos maestros y Usuarios.
 
 ### Rol × pantalla
-
-Previsto para el Brief 15. Hoy, con sesión, todo es editar.
 
 | Pantalla | Ruta | Vendedor | Depósito | Encargado | Chofer | Admin |
 | --- | --- | --- | --- | --- | --- | --- |
 | Panel Operativo | `/` | ver | ver | ver | ver | ver |
-| Nuevo Pedido | `/nuevo-pedido` | editar | sin acceso | sin acceso | sin acceso | editar |
-| Pedidos y Preparación | `/pedidos` | ver | editar | editar | sin acceso | editar |
-| Despacho | `/despacho` | ver | ver | ver | editar | editar |
-| Planificador de Rutas | `/rutas` | sin acceso | sin acceso | ver | ver | editar |
+| Nuevo Pedido | `/nuevo-pedido` | editar | sin acceso | editar uno existente | sin acceso | editar |
+| Pedidos y Preparación | `/pedidos` | editar los suyos | editar | editar | sin acceso | editar |
+| Despacho | `/despacho` | ver | ver | editar | editar | editar |
+| Planificador de Rutas | `/rutas` | sin acceso | sin acceso | editar | ver | editar |
 | Pendientes de Entregas | `/pendientes` | sin acceso | editar | editar | sin acceso | editar |
-| Post Venta | `/post-venta` | editar | sin acceso | sin acceso | sin acceso | editar |
+| Post Venta | `/post-venta` | editar | sin acceso | editar | sin acceso | editar |
+| Bandeja | `/bandeja` | sin acceso | sin acceso | editar | sin acceso | editar |
 | Datos maestros | `/datos-maestros` | sin acceso | sin acceso | sin acceso | sin acceso | editar |
+| Usuarios | `/usuarios` | sin acceso | sin acceso | sin acceso | sin acceso | editar |
 
-`ver` es consulta. `editar` incluye las acciones de esa pantalla. `sin acceso` no muestra el ítem.
+`ver` es consulta. `editar` incluye las acciones de esa pantalla. `sin acceso` no muestra el ítem y la ruta dice que no hay acceso. Una URL ajena no alcanza: la API responde 403.
 
 ## Negocio
 
 Estados del pedido: `pendiente` → `preparado` → `asignado` → `en-viaje` → `entregado`.
 
 1. Carga en Nuevo Pedido (`P-` y siete dígitos). Queda en `pendiente`. Pide vendedor, cliente, teléfono, dirección, al menos una entrecalle, tipo de propiedad y fecha. La zona sale de la dirección o se elige a mano.
-2. Depósito lo marca `preparado` e indica bultos. Desde ahí se edita o se cancela.
+2. Depósito lo marca `preparado` e indica bultos. El encargado asigna transportista y chofer (`driverId`). Puede editar o cancelar antes de que salga. El vendedor, si edita un preparado, deja el cambio en espera.
 3. Despacho lo sigue por día. `asignado` y `en-viaje` van en la solapa de viaje. La carátula lleva QR: buscar el pedido o confirmar `entregado`.
 4. Post venta es un reclamo aparte (`R-`), no un estado del pedido.
 
@@ -123,6 +117,8 @@ El transportista se elige al cargar. Despacho filtra por esa lista.
 | Provincia | Sin días |
 
 Datos maestros puede cambiar zonas, franjas (`10:00-15:00`, `09:00-13:00`, `15:00-19:00`) y tipos de propiedad (casa, departamento, obra, local, edificio, oficina). El planificador arma la recorrida de lo que no está `entregado`. Origen por defecto: Warnes 986, Buenos Aires. Sin GPS del chofer: **Pendiente**, Brief 16.
+
+Cada pedido guarda `edits`: `{ by, at, reason, changes, status }` con `aplicada`, `pendiente` o `rechazada`. Una edición pendiente no toca los datos hasta que el encargado la aprueba. Los avisos viven en `server/data/notifications.json` (`id`, `to`, `text`, `orderId`, `read`, `createdAt`, `channel`). `channel` es `app` y, cuando corresponde el celular corporativo, también `whatsapp` con `status` `pendiente`. Ese envío no está hecho: es el Brief 16.
 
 | Término | Qué es |
 | --- | --- |
