@@ -14,9 +14,14 @@ const notificationsFile = path.join(dataDir, 'notifications.json')
 export const notificationsRouter = Router()
 notificationsRouter.use(requireAuth)
 
+const WHATSAPP_INBOX = 'encargados'
+
 notificationsRouter.get('/', async (req, res) => {
   const list = await locked(() => readNotifications())
-  const mine = list.filter((item) => item.to === req.user.id)
+  const shared = canSendWhatsapp(req.user)
+  const mine = list.filter(
+    (item) => item.to === req.user.id || (shared && item.channel === 'whatsapp' && item.to === WHATSAPP_INBOX),
+  )
   res.json(byNewest(mine))
 })
 
@@ -72,11 +77,13 @@ function markRead(id, userId) {
 
 function markSent(id, user) {
   return locked(async () => {
-    if (user.role !== 'encargado_deposito' && user.role !== 'admin') {
+    if (!canSendWhatsapp(user)) {
       return { error: 'No tenés permiso para enviar este aviso.', status: 403 }
     }
     const list = await readNotifications()
-    const index = list.findIndex((item) => item.id === id && item.to === user.id)
+    const index = list.findIndex(
+      (item) => item.id === id && (item.to === user.id || item.to === WHATSAPP_INBOX),
+    )
     if (index < 0) return { error: 'No existe ese aviso.', status: 404 }
     const current = list[index]
     if (current.channel !== 'whatsapp' || current.status !== 'pendiente') {
@@ -111,25 +118,15 @@ async function pushNotifications(items) {
   await writeNotifications(list)
 }
 
+function canSendWhatsapp(user) {
+  return user.role === 'encargado_deposito' || user.role === 'admin'
+}
+
 /** Se llama dentro del lock de pedidos. */
 export async function notifyEncargados({ text, orderId, whatsapp, phone }) {
   const encargados = (await readUsersList()).filter((user) => user.role === 'encargado_deposito')
-  const items = []
-  for (const user of encargados) {
-    items.push(buildNote({ to: user.id, text, orderId, channel: 'app' }))
-    if (whatsapp) {
-      items.push(
-        buildNote({
-          to: user.id,
-          text,
-          orderId,
-          channel: 'whatsapp',
-          status: 'pendiente',
-          phone,
-        }),
-      )
-    }
-  }
+  const items = encargados.map((user) => buildNote({ to: user.id, text, orderId, channel: 'app' }))
+  if (whatsapp) items.push(whatsappNote({ text, orderId, phone }))
   await pushNotifications(items)
 }
 
@@ -155,35 +152,25 @@ function sellerUser(users, order) {
   return bySeller ?? users.find((user) => user.id === order.createdBy && user.role === 'vendedor')
 }
 
-/** Se llama dentro del lock de pedidos. Aviso in-app y WhatsApp pendiente al entregar. */
+function whatsappNote({ text, orderId, phone }) {
+  return buildNote({
+    to: WHATSAPP_INBOX,
+    text,
+    orderId,
+    channel: 'whatsapp',
+    status: 'pendiente',
+    phone,
+  })
+}
+
+/** Se llama dentro del lock de pedidos. Aviso in-app al vendedor y un WhatsApp para los encargados. */
 export async function notifyDelivered(order) {
-  const users = await readUsersList()
-  const seller = sellerUser(users, order)
+  const seller = sellerUser(await readUsersList(), order)
   if (!seller) return
   const phone = typeof seller.phone === 'string' ? seller.phone.trim() : ''
   const text = `Tu pedido ${order.id} fue entregado.`
-  const items = [
+  await pushNotifications([
     buildNote({ to: seller.id, text, orderId: order.id, channel: 'app' }),
-    buildNote({
-      to: seller.id,
-      text,
-      orderId: order.id,
-      channel: 'whatsapp',
-      status: 'pendiente',
-      phone,
-    }),
-  ]
-  for (const encargado of users.filter((user) => user.role === 'encargado_deposito')) {
-    items.push(
-      buildNote({
-        to: encargado.id,
-        text,
-        orderId: order.id,
-        channel: 'whatsapp',
-        status: 'pendiente',
-        phone,
-      }),
-    )
-  }
-  await pushNotifications(items)
+    whatsappNote({ text, orderId: order.id, phone }),
+  ])
 }
