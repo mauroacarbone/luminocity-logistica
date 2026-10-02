@@ -169,7 +169,7 @@ export function PanelOperativo() {
                     <span className="count">{column.length}</span>
                   </header>
                   {column.length === 0 ? (
-                    <p className="empty">Todavía no hay pedidos en este estado.</p>
+                    <p className="empty">No hay pedidos.</p>
                   ) : (
                     <div className="column-cards">
                       {column.map((order) => (
@@ -200,9 +200,7 @@ export function PanelOperativo() {
               {visibleOrders.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="empty">
-                    {orders.length === 0
-                      ? 'Todavía no hay pedidos cargados.'
-                      : 'Ningún pedido coincide con el filtro.'}
+                    {orders.length === 0 ? 'No hay pedidos.' : 'Ningún pedido coincide con el filtro.'}
                   </td>
                 </tr>
               ) : (

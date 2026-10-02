@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ServerDown, Spinner } from './LoadState'
+import { confirm, error as showError, success } from '../lib/alerts'
 import { namesMatch } from '../lib/access'
 import { isSession, type Session } from '../lib/authStore'
 import {
@@ -40,6 +42,9 @@ export function NotificationBell() {
   const [users, setUsers] = useState<Session[]>([])
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [attempt, setAttempt] = useState(0)
+  const [sending, setSending] = useState('')
   const canSend = user?.role === 'encargado_deposito' || user?.role === 'admin'
 
   useEffect(() => {
@@ -48,9 +53,10 @@ export function NotificationBell() {
     async function load() {
       const result = await listNotifications()
       if (cancelled) return
+      setLoading(false)
       if (!result.ok) {
         if (result.status === 401) logout()
-        else setError(result.message)
+        else setError(result.status === 0 ? 'No se pudo conectar con el servidor' : result.message)
         return
       }
       if (!Array.isArray(result.data) || !result.data.every(isNotification)) {
@@ -67,7 +73,7 @@ export function NotificationBell() {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [logout])
+  }, [logout, attempt])
 
   useEffect(() => {
     if (!canSend) return
@@ -101,17 +107,30 @@ export function NotificationBell() {
   async function sendWhatsapp(item: AppNotification) {
     const phone = sellerPhone(item, orders, users)
     const url = whatsappLink(phone, item.text)
-    if (!url) return
-    window.open(url, '_blank', 'noopener,noreferrer')
-    const result = await markNotificationSent(item.id)
-    if (!result.ok) {
-      if (result.status === 401) logout()
-      else setError(result.message)
+    if (!url || sending) return
+    const popup = window.open('about:blank', '_blank')
+    const accepted = await confirm('Enviar por WhatsApp', 'El aviso queda marcado como enviado.')
+    if (!accepted) {
+      popup?.close()
       return
     }
+    setSending(item.id)
+    const result = await markNotificationSent(item.id)
+    setSending('')
+    if (!result.ok) {
+      popup?.close()
+      if (result.status === 401) logout()
+      else if (result.status === 400) {
+        setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, status: 'enviado' } : entry)))
+        await showError('Otro encargado ya lo envió')
+      } else await showError(result.message)
+      return
+    }
+    if (popup) popup.location.href = url
     setItems((current) =>
       current.map((entry) => (entry.id === item.id ? { ...entry, status: 'enviado' } : entry)),
     )
+    await success('Aviso enviado')
   }
 
   return (
@@ -140,16 +159,17 @@ export function NotificationBell() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-30 mt-2 w-80 max-w-[80vw] rounded-2xl border border-lumi-line bg-white p-3 shadow-lg">
+        <div className="fixed inset-x-4 z-30 mt-2 w-auto rounded-2xl border border-lumi-line bg-white p-3 shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:w-80">
           <p className="text-sm font-semibold">Avisos</p>
-          {error && (
-            <p className="mt-2 text-sm text-lumi-danger" role="alert">
-              {error}
-            </p>
-          )}
-          {visible.length === 0 ? (
+          {loading && items.length === 0 && <Spinner compact label="Cargando avisos…" />}
+          {error && <ServerDown message={error} onRetry={() => {
+            setError('')
+            setLoading(true)
+            setAttempt((current) => current + 1)
+          }} />}
+          {!loading && !error && visible.length === 0 ? (
             <p className="mt-3 text-sm text-lumi-muted">No hay avisos.</p>
-          ) : (
+          ) : visible.length > 0 ? (
             <ul className="mt-2 flex max-h-80 flex-col gap-2 overflow-auto">
               {visible.map((item) => {
                 const phone = item.channel === 'whatsapp' ? sellerPhone(item, orders, users) : ''
@@ -169,7 +189,8 @@ export function NotificationBell() {
                       (canOpen ? (
                         <button
                           type="button"
-                          className="mt-2 w-full rounded-lg bg-lumi-yellow px-3 py-2 text-sm font-semibold text-lumi-yellow-ink"
+                          className="mt-2 w-full rounded-lg bg-lumi-yellow px-3 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                          disabled={sending === item.id}
                           onClick={() => void sendWhatsapp(item)}
                         >
                           Enviar por WhatsApp
@@ -186,7 +207,7 @@ export function NotificationBell() {
                 )
               })}
             </ul>
-          )}
+          ) : null}
         </div>
       )}
     </div>

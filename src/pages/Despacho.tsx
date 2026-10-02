@@ -12,6 +12,7 @@ import {
 } from '../data/orders'
 import {
   DAY_LONG,
+  DAY_SHORT,
   MONTH_SHORT,
   formatDayLabel,
   formatIsoDate,
@@ -19,6 +20,7 @@ import {
   weekDays,
   weekOffsetForIso,
 } from '../lib/week'
+import { confirm, error, success } from '../lib/alerts'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder, statusChoices } from '../lib/access'
 import { isSession } from '../lib/authStore'
 import { listUsers } from '../lib/usersApi'
@@ -39,6 +41,24 @@ const TABS: { id: DispatchTab; label: string }[] = [
 function matchesTab(order: Order, tab: DispatchTab) {
   if (tab === 'viaje') return order.status === 'asignado' || order.status === 'en-viaje'
   return order.status === tab
+}
+
+function statusPrompt(id: string, status: OrderStatus) {
+  if (status === 'preparado') {
+    return { title: 'Marcar preparado', text: `El pedido ${id} pasa a preparado.`, done: 'Pedido preparado', peligro: false }
+  }
+  if (status === 'en-viaje') {
+    return { title: 'Salir a reparto', text: `El pedido ${id} sale a reparto.`, done: 'Pedido en viaje', peligro: false }
+  }
+  if (status === 'entregado') {
+    return { title: 'Entregado', text: `El pedido ${id} queda entregado.`, done: 'Pedido entregado', peligro: false }
+  }
+  return {
+    title: 'Cambiar estado',
+    text: `El pedido ${id} pasa a ${STATUS_PILL[status].toLowerCase()}.`,
+    done: 'Estado actualizado',
+    peligro: false,
+  }
 }
 
 function tabFor(status: OrderStatus): DispatchTab {
@@ -83,7 +103,8 @@ export function Despacho() {
   const [dialogError, setDialogError] = useState('')
   const [coverId, setCoverId] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
-  const [actionError, setActionError] = useState('')
+  const [busyId, setBusyId] = useState('')
+  const [scanBusy, setScanBusy] = useState(false)
   const [highlightId, setHighlightId] = useState<string | null>(null)
 
   const assign = Boolean(user && canAssignDispatch(user.role))
@@ -156,14 +177,37 @@ export function Despacho() {
     setOpenStatusId(null)
   }
 
-  async function changeStatus(order: Order, status: OrderStatus) {
-    const result = await patchFields(order.id, { status })
-    setOpenStatusId(null)
+  async function assignTransporter(order: Order, next: string) {
+    const name = next.trim()
+    const accepted = await confirm(
+      name ? 'Asignar transportista' : 'Quitar transportista',
+      name ? `El pedido ${order.id} queda con ${name}.` : `El pedido ${order.id} queda sin transportista.`,
+    )
+    if (!accepted) return false
+    setBusyId(order.id)
+    const result = await patchFields(order.id, { transporter: name || null })
+    setBusyId('')
     if (result.status === 'not-saved') {
-      setActionError(result.message)
+      await error(result.message)
+      return false
+    }
+    await success(name ? 'Transportista asignado' : 'Transportista quitado')
+    return true
+  }
+
+  async function changeStatus(order: Order, status: OrderStatus) {
+    setOpenStatusId(null)
+    const prompt = statusPrompt(order.id, status)
+    const accepted = await confirm(prompt.title, prompt.text, { peligro: prompt.peligro })
+    if (!accepted) return
+    setBusyId(order.id)
+    const result = await patchFields(order.id, { status })
+    setBusyId('')
+    if (result.status === 'not-saved') {
+      await error(result.message)
       return
     }
-    setActionError('')
+    await success(prompt.done)
   }
 
   async function submitCode(code: string) {
@@ -177,14 +221,19 @@ export function Despacho() {
         setDialogError('Ese pedido ya está entregado.')
         return
       }
+      const accepted = await confirm('Entregado', `El pedido ${order.id} queda entregado.`)
+      if (!accepted) return
+      setScanBusy(true)
       const result = await patchFields(order.id, { status: 'entregado' })
+      setScanBusy(false)
       if (result.status === 'not-saved') {
-        setDialogError(result.message)
+        await error(result.message)
         return
       }
       focusOrder(result.order)
       setNotice(`Entrega confirmada: ${result.order.id}`)
-      setActionError('')
+      setDialog(null)
+      await success('Pedido entregado')
     } else {
       focusOrder(order)
       setNotice(`Pedido encontrado: ${order.id}`)
@@ -229,20 +278,15 @@ export function Despacho() {
       {notice && (
         <p className="mt-4 rounded-xl bg-[#e5f6ea] px-4 py-2 text-sm text-[#1d7a3a]">{notice}</p>
       )}
-      {actionError && (
-        <p className="mt-4 text-sm font-semibold text-lumi-danger" role="alert">
-          {actionError}
-        </p>
-      )}
 
-      <div className="mt-6 flex flex-wrap gap-1 border-b border-lumi-line">
+      <div className="mt-6 flex gap-1 overflow-x-auto border-b border-lumi-line">
         {TABS.map((item) => {
           const active = tab === item.id
           return (
             <button
               key={item.id}
               type="button"
-              className={`border-b-2 px-3 py-2 text-sm ${
+              className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm ${
                 active
                   ? 'border-lumi-yellow font-semibold text-lumi-ink'
                   : 'border-transparent text-lumi-muted'
@@ -261,18 +305,20 @@ export function Despacho() {
       <div className="mt-4 grid grid-cols-3 items-center gap-2">
         <button
           type="button"
-          className="justify-self-start rounded-xl px-3 py-2 text-sm text-lumi-ink hover:bg-white"
+          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
           onClick={() => showWeek(weekOffset - 1)}
         >
-          ‹ Sem. anterior
+          <span className="sm:hidden">‹</span>
+          <span className="hidden sm:inline">‹ Sem. anterior</span>
         </button>
-        <p className="text-center font-semibold">{weekTitle}</p>
+        <p className="text-center text-sm font-semibold sm:text-base">{weekTitle}</p>
         <button
           type="button"
-          className="justify-self-end rounded-xl px-3 py-2 text-sm text-lumi-ink hover:bg-white"
+          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
           onClick={() => showWeek(weekOffset + 1)}
         >
-          Sem. siguiente ›
+          <span className="sm:hidden">›</span>
+          <span className="hidden sm:inline">Sem. siguiente ›</span>
         </button>
       </div>
 
@@ -295,7 +341,8 @@ export function Despacho() {
                 setQuery('')
               }}
             >
-              <span className="truncate">{formatDayLabel(day)}</span>
+              <span className="truncate sm:hidden">{DAY_SHORT[day.getDay()]}</span>
+              <span className="hidden truncate sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
                   selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-white text-lumi-muted'
@@ -351,7 +398,7 @@ export function Despacho() {
 
       {dayOrders.length === 0 ? (
         <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-lumi-muted shadow-sm">
-          {searching ? 'Ningún pedido coincide con la búsqueda.' : 'Sin pedidos para este día.'}
+          {searching ? 'Ningún pedido coincide con la búsqueda.' : 'No hay pedidos.'}
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
@@ -363,7 +410,7 @@ export function Despacho() {
                 highlightId === order.id ? 'ring-2 ring-lumi-yellow' : ''
               } ${openStatusId === order.id ? 'relative z-20' : ''}`}
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <strong>{order.id}</strong>
@@ -387,18 +434,21 @@ export function Despacho() {
                     <OrderAttachmentLink name={order.attachmentName} dataUrl={order.attachmentDataUrl} />
                   </div>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-56 sm:shrink-0 sm:items-end">
                   {assign && (
                     <>
                       <label className="text-xs text-lumi-muted">
                         Transportista
                         <select
                           value={order.transporter ?? ''}
-                          className="mt-1 block max-w-44 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink"
+                          disabled={busyId === order.id}
+                          className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
                           onChange={(event) => {
-                            const transporter = event.target.value
-                            void patchFields(order.id, { transporter: transporter || null }).then((result) => {
-                              setActionError(result.status === 'not-saved' ? result.message : '')
+                            const select = event.target
+                            const next = select.value
+                            const previous = order.transporter ?? ''
+                            void assignTransporter(order, next).then((saved) => {
+                              if (!saved) select.value = previous
                             })
                           }}
                         >
@@ -420,15 +470,18 @@ export function Despacho() {
                         Chofer
                         <select
                           value={order.driverId ?? ''}
-                          className="mt-1 block max-w-44 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink"
+                          disabled={busyId === order.id}
+                          className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
                           onChange={(event) => {
                             const driverId = event.target.value
                             const fields: Record<string, unknown> = { driverId: driverId || null }
                             if (driverId && (order.status === 'pendiente' || order.status === 'preparado')) {
                               fields.status = 'asignado'
                             }
-                            void patchFields(order.id, fields).then((result) => {
-                              setActionError(result.status === 'not-saved' ? result.message : '')
+                            setBusyId(order.id)
+                            void patchFields(order.id, fields).then(async (result) => {
+                              setBusyId('')
+                              if (result.status === 'not-saved') await error(result.message)
                             })
                           }}
                         >
@@ -449,7 +502,8 @@ export function Despacho() {
                     <div className="relative">
                       <button
                         type="button"
-                        className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea]"
+                        className="min-h-11 rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea] disabled:opacity-50"
+                        disabled={busyId === order.id}
                         aria-expanded={openStatusId === order.id}
                         aria-haspopup="menu"
                         onClick={() =>
@@ -526,7 +580,11 @@ export function Despacho() {
           hint="Apuntá la cámara al QR, o pegá el N° de pedido o la factura."
           confirmLabel={dialog === 'entrega' ? 'Confirmar entrega' : 'Buscar'}
           error={dialogError}
-          onClose={() => setDialog(null)}
+          pending={scanBusy}
+          onClose={() => {
+            if (scanBusy) return
+            setDialog(null)
+          }}
           onSubmit={submitCode}
         />
       )}

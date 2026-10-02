@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { ServerDown, Spinner } from '../components/LoadState'
 import { withCurrent } from '../data/catalog'
+import { confirm, error as showError, success } from '../lib/alerts'
 import { isSession, ROLE_LABEL, ROLES, type Role, type Session } from '../lib/authStore'
 import { listUsers, updateUserCarrier, updateUserPhone, updateUserRole, updateUserSeller } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
@@ -40,14 +42,17 @@ export function Usuarios() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     void listUsers().then((result) => {
       if (cancelled) return
+      setLoading(false)
       if (!result.ok) {
         if (result.status === 401) logout()
-        else setError(result.message)
+        else setError(result.status === 0 ? 'No se pudo conectar con el servidor' : result.message)
         return
       }
       if (!Array.isArray(result.data) || !result.data.every(isAccount)) {
@@ -73,7 +78,13 @@ export function Usuarios() {
     return () => {
       cancelled = true
     }
-  }, [logout])
+  }, [logout, attempt])
+
+  function retry() {
+    setError('')
+    setLoading(true)
+    setAttempt((current) => current + 1)
+  }
 
   function setDraft(id: string, patch: Partial<Draft>) {
     setDrafts((current) => ({ ...current, [id]: { ...current[id], ...patch } }))
@@ -82,6 +93,13 @@ export function Usuarios() {
   async function save(account: Account) {
     const draft = drafts[account.id]
     if (!draft) return
+    if (draft.role !== account.role) {
+      const accepted = await confirm(
+        'Cambiar el rol',
+        `${account.name} pasa a ${ROLE_LABEL[draft.role]}.`,
+      )
+      if (!accepted) return
+    }
     setBusy(account.id)
     setError('')
     setNotice('')
@@ -91,12 +109,12 @@ export function Usuarios() {
       if (!result.ok) {
         setBusy('')
         if (result.status === 401) logout()
-        else setError(result.message)
+        else await showError(result.message)
         return
       }
       if (!isAccount(result.data)) {
         setBusy('')
-        setError('No se pudo leer el usuario.')
+        await showError('No se pudo leer el usuario.')
         return
       }
       next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
@@ -106,12 +124,12 @@ export function Usuarios() {
       if (!result.ok) {
         setBusy('')
         if (result.status === 401) logout()
-        else setError(result.message)
+        else await showError(result.message)
         return
       }
       if (!isAccount(result.data)) {
         setBusy('')
-        setError('No se pudo leer el usuario.')
+        await showError('No se pudo leer el usuario.')
         return
       }
       next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
@@ -121,12 +139,12 @@ export function Usuarios() {
       if (!result.ok) {
         setBusy('')
         if (result.status === 401) logout()
-        else setError(result.message)
+        else await showError(result.message)
         return
       }
       if (!isAccount(result.data)) {
         setBusy('')
-        setError('No se pudo leer el usuario.')
+        await showError('No se pudo leer el usuario.')
         return
       }
       next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
@@ -136,12 +154,12 @@ export function Usuarios() {
       if (!result.ok) {
         setBusy('')
         if (result.status === 401) logout()
-        else setError(result.message)
+        else await showError(result.message)
         return
       }
       if (!isAccount(result.data)) {
         setBusy('')
-        setError('No se pudo leer el usuario.')
+        await showError('No se pudo leer el usuario.')
         return
       }
       next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
@@ -158,6 +176,7 @@ export function Usuarios() {
     }))
     setBusy('')
     setNotice(`Se guardó ${next.name}.`)
+    await success('Cambios guardados')
   }
 
   return (
@@ -166,14 +185,12 @@ export function Usuarios() {
         <h1>Usuarios</h1>
         <p>Roles, celular corporativo, vendedor y transportista.</p>
       </header>
-      {error && (
-        <p className="mt-4 text-sm font-semibold text-lumi-danger" role="alert">
-          {error}
-        </p>
-      )}
+      {loading && <Spinner label="Cargando usuarios…" />}
+      {error && <ServerDown message={error} onRetry={retry} />}
       {notice && (
         <p className="mt-4 rounded-xl bg-[#e5f6ea] px-4 py-2 text-sm text-[#1d7a3a]">{notice}</p>
       )}
+      {!loading && !error && (
       <div className="mt-6 flex flex-col gap-3">
         {accounts.map((account) => {
           const draft = drafts[account.id] ?? {
@@ -264,6 +281,7 @@ export function Usuarios() {
           )
         })}
       </div>
+      )}
     </section>
   )
 }

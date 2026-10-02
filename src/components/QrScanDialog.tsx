@@ -48,6 +48,7 @@ export function QrScanDialog({
   hint,
   confirmLabel,
   error,
+  pending = false,
   onClose,
   onSubmit,
 }: {
@@ -55,6 +56,7 @@ export function QrScanDialog({
   hint: string
   confirmLabel: string
   error: string
+  pending?: boolean
   onClose: () => void
   onSubmit: (code: string) => void
 }) {
@@ -202,14 +204,16 @@ export function QrScanDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea]"
+            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea] disabled:opacity-50"
+            disabled={pending}
             onClick={onClose}
           >
             Cerrar
           </button>
           <button
             type="submit"
-            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink"
+            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+            disabled={pending}
           >
             {confirmLabel}
           </button>

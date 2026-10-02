@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { Order } from '../data/orders'
+import { STATUS_PILL, type Order } from '../data/orders'
+import { confirm, error, success } from '../lib/alerts'
 import { mapsLink, onTheWayText, whatsappLink } from '../lib/whatsapp'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -18,7 +19,6 @@ export function MisEntregas() {
   const { orders, patchFields } = useOrders()
   const [tab, setTab] = useState<Tab>('asignados')
   const [busy, setBusy] = useState('')
-  const [error, setError] = useState('')
 
   if (!user?.carrierName?.trim()) {
     return (
@@ -38,16 +38,23 @@ export function MisEntregas() {
   const visible = tab === 'asignados' ? assigned : traveling
 
   async function changeStatus(order: Order, status: 'en-viaje' | 'entregado') {
-    if (status === 'entregado' && !window.confirm(`¿Marcar el pedido ${order.id} como entregado?`)) return
+    const leaving = status === 'en-viaje'
+    const accepted = await confirm(
+      leaving ? 'Salir a reparto' : 'Entregado',
+      leaving
+        ? `El pedido ${order.id} pasa a en viaje.`
+        : `El pedido ${order.id} queda entregado.`,
+    )
+    if (!accepted) return
     setBusy(order.id)
-    setError('')
     const result = await patchFields(order.id, { status })
     setBusy('')
     if (result.status === 'not-saved') {
-      setError(result.message)
+      await error(result.message)
       return
     }
-    if (status === 'en-viaje') setTab('en-viaje')
+    if (leaving) setTab('en-viaje')
+    await success(leaving ? 'Pedido en viaje' : 'Pedido entregado')
   }
 
   return (
@@ -78,14 +85,9 @@ export function MisEntregas() {
           <span>{traveling.length}</span>
         </button>
       </div>
-      {error && (
-        <p className="mt-4 text-sm font-semibold text-lumi-danger" role="alert">
-          {error}
-        </p>
-      )}
       {visible.length === 0 ? (
-        <p className="mt-6 text-sm text-lumi-muted">
-          {tab === 'asignados' ? 'No hay pedidos asignados.' : 'No hay pedidos en viaje.'}
+        <p className="mt-6 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+          No hay entregas.
         </p>
       ) : (
         <ul className="mt-4 flex flex-col gap-3">
@@ -124,7 +126,10 @@ function DeliveryCard({
 
   return (
     <article className="rounded-2xl bg-white p-4 shadow-sm">
-      <p className="text-lg font-bold">{order.id}</p>
+      <div className="flex items-center gap-2">
+        <p className="text-lg font-bold">{order.id}</p>
+        <span className={`status-pill status-${order.status}`}>{STATUS_PILL[order.status]}</span>
+      </div>
       <p className="mt-1 text-base font-semibold">{order.client}</p>
       <p className="mt-2 text-sm">{order.address || 'Sin dirección'}</p>
       <p className="text-sm text-lumi-muted">{order.zone || 'Sin zona'}</p>

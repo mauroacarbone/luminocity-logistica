@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { ServerDown, Spinner } from '../components/LoadState'
 import { pendingEdit, type Order, type OrderEdit } from '../data/orders'
+import { confirm, error as showError, success } from '../lib/alerts'
 import {
   isAuthorization,
   listAuthorizations,
@@ -58,15 +60,18 @@ export function Bandeja() {
   const [authorizations, setAuthorizations] = useState<SellerAuthorization[]>([])
   const [names, setNames] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [attempt, setAttempt] = useState(0)
   const [busy, setBusy] = useState('')
 
   useEffect(() => {
     let cancelled = false
     void Promise.all([listAuthorizations(), listUsers()]).then(([authResult, usersResult]) => {
       if (cancelled) return
+      setLoading(false)
       if (!authResult.ok) {
         if (authResult.status === 401) logout()
-        else setError(authResult.message)
+        else setError(authResult.status === 0 ? 'No se pudo conectar con el servidor' : authResult.message)
         return
       }
       if (!Array.isArray(authResult.data) || !authResult.data.every(isAuthorization)) {
@@ -85,7 +90,13 @@ export function Bandeja() {
     return () => {
       cancelled = true
     }
-  }, [logout])
+  }, [logout, attempt])
+
+  function retry() {
+    setError('')
+    setLoading(true)
+    setAttempt((current) => current + 1)
+  }
 
   const pendingAuth = authorizations.filter((item) => item.status === 'pendiente')
   const pendingEdits = orders.flatMap((order) => {
@@ -112,11 +123,20 @@ export function Bandeja() {
   }
 
   async function decideEdit(order: Order, edit: OrderEdit, status: 'aplicada' | 'rechazada') {
+    const rejecting = status === 'rechazada'
+    const accepted = await confirm(
+      rejecting ? 'Rechazar edición' : 'Aprobar edición',
+      rejecting
+        ? `Se rechaza la edición del pedido ${order.id}.`
+        : `Se aplica la edición del pedido ${order.id}.`,
+      { peligro: rejecting },
+    )
+    if (!accepted) return
     setBusy(edit.id)
     const result = await reviewEdit(order.id, edit.id, status)
     setBusy('')
-    if (result.status === 'not-saved') setError(result.message)
-    else setError('')
+    if (result.status === 'not-saved') await showError(result.message)
+    else await success(rejecting ? 'Edición rechazada' : 'Edición aprobada')
   }
 
   return (
@@ -125,12 +145,11 @@ export function Bandeja() {
         <h1>Bandeja</h1>
         <p>Autorizaciones y ediciones que esperan confirmación.</p>
       </header>
-      {error && (
-        <p className="mt-4 text-sm font-semibold text-lumi-danger" role="alert">
-          {error}
-        </p>
-      )}
+      {loading && <Spinner label="Cargando bandeja…" />}
+      {error && <ServerDown message={error} onRetry={retry} />}
 
+      {!loading && !error && (
+      <>
       <h2 className="mt-6 text-xl font-semibold">Autorizaciones</h2>
       {pendingAuth.length === 0 ? (
         <div className="mt-3 rounded-2xl bg-white px-5 py-6 text-sm text-lumi-muted shadow-sm">
@@ -208,6 +227,8 @@ export function Bandeja() {
             </article>
           ))}
         </div>
+      )}
+      </>
       )}
     </section>
   )

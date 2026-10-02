@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { DISPATCH_LABEL } from '../data/catalog'
 import { pendingEdit, STATUS_PILL, type Order } from '../data/orders'
+import { confirm, error, success } from '../lib/alerts'
 import { canCancelOrder, canEditOrder, canPrepare } from '../lib/access'
 import {
   DAY_LONG,
+  DAY_SHORT,
   MONTH_SHORT,
   formatDayLabel,
   toIso,
@@ -23,11 +25,13 @@ function readPackages(raw: string) {
 function PackagesDialog({
   orderId,
   saveError,
+  saving,
   onClose,
   onConfirm,
 }: {
   orderId: string
   saveError: string
+  saving: boolean
   onClose: () => void
   onConfirm: (packages: number) => void
 }) {
@@ -80,14 +84,16 @@ function PackagesDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea]"
+            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea] disabled:opacity-50"
+            disabled={saving}
             onClick={onClose}
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink"
+            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+            disabled={saving}
           >
             Confirmar
           </button>
@@ -112,7 +118,8 @@ export function PedidosPreparacion() {
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
   const [preparing, setPreparing] = useState<Order | null>(null)
   const [prepareError, setPrepareError] = useState('')
-  const [actionError, setActionError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [busyId, setBusyId] = useState('')
   const days = weekDays(weekOffset)
   const pending = orders.filter((order) => order.status === 'pendiente')
   const selectedDate = days.find((day) => toIso(day) === selectedIso) ?? days[0]
@@ -124,6 +131,41 @@ export function PedidosPreparacion() {
     const match = nextDays.find((day) => toIso(day) === today)
     setWeekOffset(offset)
     setSelectedIso(toIso(match ?? nextDays[0]))
+  }
+
+  async function markPrepared(packages: number) {
+    if (!preparing) return
+    const accepted = await confirm(
+      'Marcar preparado',
+      `El pedido ${preparing.id} queda preparado con ${packages} bulto${packages === 1 ? '' : 's'}.`,
+    )
+    if (!accepted) return
+    setSaving(true)
+    const result = await updateOrder({ ...preparing, status: 'preparado', packages })
+    setSaving(false)
+    if (result.status === 'not-saved') {
+      setPrepareError(result.message)
+      await error(result.message)
+      return
+    }
+    setPrepareError('')
+    setPreparing(null)
+    await success('Pedido preparado')
+  }
+
+  async function cancelOrder(order: Order) {
+    const admin = user?.role === 'admin'
+    const accepted = await confirm(
+      admin ? 'Borrar pedido' : 'Cancelar pedido',
+      admin ? `Se borra el pedido ${order.id}.` : `Se cancela el pedido ${order.id}.`,
+      { peligro: true },
+    )
+    if (!accepted) return
+    setBusyId(order.id)
+    const result = await removeOrder(order.id)
+    setBusyId('')
+    if (result.status === 'not-saved') await error(result.message)
+    else await success(admin ? 'Pedido borrado' : 'Pedido cancelado')
   }
 
   const weekTitle =
@@ -138,27 +180,23 @@ export function PedidosPreparacion() {
         <p>Pedidos de la semana, listos para preparar y editar.</p>
       </header>
 
-      {actionError && (
-        <p className="mt-4 text-sm font-semibold text-lumi-danger" role="alert">
-          {actionError}
-        </p>
-      )}
-
       <div className="mt-6 grid grid-cols-3 items-center gap-2">
         <button
           type="button"
-          className="justify-self-start rounded-xl px-3 py-2 text-sm text-lumi-ink hover:bg-white"
+          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
           onClick={() => showWeek(weekOffset - 1)}
         >
-          ‹ Sem. anterior
+          <span className="sm:hidden">‹</span>
+          <span className="hidden sm:inline">‹ Sem. anterior</span>
         </button>
-        <p className="text-center font-semibold">{weekTitle}</p>
+        <p className="text-center text-sm font-semibold sm:text-base">{weekTitle}</p>
         <button
           type="button"
-          className="justify-self-end rounded-xl px-3 py-2 text-sm text-lumi-ink hover:bg-white"
+          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
           onClick={() => showWeek(weekOffset + 1)}
         >
-          Sem. siguiente ›
+          <span className="sm:hidden">›</span>
+          <span className="hidden sm:inline">Sem. siguiente ›</span>
         </button>
       </div>
 
@@ -178,7 +216,8 @@ export function PedidosPreparacion() {
               }`}
               onClick={() => setSelectedIso(iso)}
             >
-              <span className="truncate">{formatDayLabel(day)}</span>
+              <span className="truncate sm:hidden">{DAY_SHORT[day.getDay()]}</span>
+              <span className="hidden truncate sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
                   selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-white text-lumi-muted'
@@ -200,17 +239,17 @@ export function PedidosPreparacion() {
 
       {dayOrders.length === 0 ? (
         <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-lumi-muted shadow-sm">
-          Sin pedidos para este día.
+          No hay pedidos.
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
           {dayOrders.map((order) => (
             <article key={order.id} className="rounded-2xl bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <strong>{order.id}</strong>
-                    <span className="status-pill status-pendiente">{STATUS_PILL.pendiente}</span>
+                    <span className={`status-pill status-${order.status}`}>{STATUS_PILL[order.status]}</span>
                   </div>
                   <p className="mt-2 font-semibold uppercase">{order.client}</p>
                   {addressLine(order) && (
@@ -234,11 +273,12 @@ export function PedidosPreparacion() {
                     <p className="mt-3 rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm">{order.notes}</p>
                   )}
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:items-end">
                   {user && canPrepare(user.role) && (
                     <button
                       type="button"
-                      className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink"
+                      className="min-h-11 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                      disabled={busyId === order.id}
                       onClick={() => setPreparing(order)}
                     >
                       Marcar preparado
@@ -258,14 +298,11 @@ export function PedidosPreparacion() {
                   {user && canCancelOrder(user.role) && (
                     <button
                       type="button"
-                      className="text-sm text-lumi-danger hover:underline"
-                      onClick={() => {
-                        void removeOrder(order.id).then((result) => {
-                          setActionError(result.status === 'not-saved' ? result.message : '')
-                        })
-                      }}
+                      className="min-h-11 text-sm text-lumi-danger hover:underline disabled:opacity-50"
+                      disabled={busyId === order.id}
+                      onClick={() => void cancelOrder(order)}
                     >
-                      Cancelar
+                      {user.role === 'admin' ? 'Borrar' : 'Cancelar'}
                     </button>
                   )}
                 </div>
@@ -279,21 +316,13 @@ export function PedidosPreparacion() {
         <PackagesDialog
           orderId={preparing.id}
           saveError={prepareError}
+          saving={saving}
           onClose={() => {
+            if (saving) return
             setPrepareError('')
             setPreparing(null)
           }}
-          onConfirm={(packages) => {
-            void updateOrder({ ...preparing, status: 'preparado', packages }).then((result) => {
-              if (result.status === 'not-saved') {
-                setPrepareError(result.message)
-                return
-              }
-              setPrepareError('')
-              setActionError('')
-              setPreparing(null)
-            })
-          }}
+          onConfirm={(packages) => void markPrepared(packages)}
         />
       )}
     </section>
