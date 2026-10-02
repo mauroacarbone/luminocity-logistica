@@ -23,6 +23,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 15 | Roles, menús y permisos | Hecho |
 | 16 | Vista Chofer y avisos por WhatsApp (`wa.me`) | Hecho |
 | 16.1 | Ajustes del chofer y avisos de WhatsApp | Hecho |
+| 17 | Pulido visual y confirmaciones con SweetAlert2 | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -30,9 +31,11 @@ El Brief 14 guarda los pedidos en `server/data/orders.json`; el navegador los us
 
 El Brief 15 filtra menú y API por rol. El registro crea vendedor. El encargado autoriza cargas a nombre de otro y confirma ediciones de un preparado. Los avisos de la app ya se guardan.
 
-El Brief 16 deja al chofer en Mis entregas: el server filtra por su transportista y por la fecha de ayer, hoy o mañana. Sale a reparto, marca entregado y avisa al cliente con `wa.me`. El encargado manda los avisos de WhatsApp pendientes desde la campanita. Al entregar, el vendedor recibe el aviso in-app y otro con `channel` `whatsapp`.
+El Brief 16 deja al chofer en Mis entregas: el server filtra por su transportista y por la fecha de ayer, hoy o mañana. Sale a reparto, marca entregado y avisa al cliente con `wa.me`. El encargado manda los avisos de WhatsApp pendientes desde la campanita. Al entregar, el vendedor recibe el aviso in-app y queda un solo WhatsApp pendiente para la campanita de los encargados.
 
 El Brief 16.1 obliga a pasar por `en-viaje` antes de `entregado`. El listado del chofer trae solo `preparado`, `asignado` o `en-viaje`. Un preparado sin asignar espera al encargado, sin botones. Al entregar queda un solo WhatsApp pendiente para la campanita de los encargados, y el celular tiene que quedar en 10 dígitos.
+
+El Brief 17 confirma con SweetAlert2 antes de cancelar, borrar, preparar, asignar transportista, salir a reparto, entregar, aprobar o rechazar una edición, cambiar un rol y marcar un WhatsApp. Al guardar muestra un toast y, si falla, el mensaje del server. La carga usa un spinner y, si no hay server, se puede reintentar.
 
 ## Pendientes
 
@@ -41,7 +44,6 @@ En este orden. No adelantar el siguiente.
 | Brief | Tema | Estado |
 | --- | --- | --- |
 | 16b | GPS en vivo del chofer y orden de la recorrida por cercanía. WhatsApp Business Cloud API, si la empresa lo aprueba. | **Pendiente** |
-| 17 | Pulido visual. Confirmaciones con SweetAlert2 para las acciones que cambian datos: cambiar estado, asignar transportista, marcar entregado y borrar. | **Pendiente** |
 | 18 | Reclamos (`R-`) a la API. | **Pendiente** |
 | 19 | Sacar los adjuntos del listado de pedidos y que el PATCH mande solo lo que cambia. | **Pendiente** |
 
