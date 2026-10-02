@@ -63,7 +63,7 @@ export function canSeeOrder(user, order) {
   if (user.role === 'admin' || user.role === 'encargado_deposito') return true
   if (user.role === 'vendedor') return ownsOrder(user, order)
   if (user.role === 'deposito') return order.status === 'pendiente' || order.status === 'preparado'
-  if (user.role === 'chofer') return order.driverId === user.id && nearbyDelivery(order.deliveryDate)
+  if (user.role === 'chofer') return driverSees(user, order)
   return false
 }
 
@@ -91,6 +91,12 @@ export function diffOrder(current, next) {
 
 export function commercialKeys(changes) {
   return Object.keys(changes).filter((key) => DATA_FIELDS.includes(key))
+}
+
+function driverSees(user, order) {
+  const carrier = normalizeName(user.carrierName)
+  if (!carrier) return false
+  return normalizeName(order.transporter) === carrier && nearbyDelivery(order.deliveryDate)
 }
 
 function deny(error) {
@@ -132,7 +138,7 @@ export function assertPatch(user, current, changes) {
   }
 
   if (user.role === 'chofer') {
-    if (current.driverId !== user.id || !nearbyDelivery(current.deliveryDate)) {
+    if (!driverSees(user, current)) {
       return deny('No tenés permiso para modificar este pedido.')
     }
     if (keys.length !== 1 || keys[0] !== 'status') {
