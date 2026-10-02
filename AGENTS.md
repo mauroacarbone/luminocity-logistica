@@ -12,10 +12,10 @@ React 19, Vite, TypeScript, React Router. Estilos en `src/index.css` (Tailwind 4
 | `src/pages/` | Una pantalla por ruta |
 | `src/state/` | Contextos: auth, pedidos, picking, reclamos, catálogo |
 | `server/` | Auth, pedidos, autorizaciones y avisos: Express, JWT y JSON |
-| `src/lib/` | Persistencia, token de sesión, zona, geocodificación, rutas, adjuntos, Excel de picking |
+| `src/lib/` | Persistencia, token de sesión, zona, geocodificación, rutas, adjuntos, Excel de picking, `access.ts` y las API (`api.ts`, `authApi.ts`, `ordersApi.ts`, `authorizationsApi.ts`, `notificationsApi.ts`, `usersApi.ts`) |
 | `src/data/` | Tipos y semillas: pedido, reclamo, catálogo |
 | `src/layout/` | Sidebar, shell y tarjeta de login |
-| `src/components/` | Diálogos de QR, carátula y link del adjunto |
+| `src/components/` | Diálogos de QR, carátula, link del adjunto, `NotificationBell`, `EditReasonDialog` y `NoAccess` |
 
 Rutas: `src/App.tsx`. Menú: `src/layout/Sidebar.tsx`.
 
