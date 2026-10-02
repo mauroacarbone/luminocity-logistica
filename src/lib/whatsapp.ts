@@ -18,14 +18,11 @@ export function normalizeArWhatsapp(raw: string) {
 }
 
 function stripFifteen(digits: string) {
-  if (digits.startsWith('15') && digits.length >= 8 && digits.length <= 12) {
-    return digits.slice(2)
-  }
+  if (digits.length !== 12) return digits
   for (const length of [2, 3, 4]) {
-    if (digits.length <= length + 2) continue
     if (digits.slice(length, length + 2) !== '15') continue
     const rest = digits.slice(length + 2)
-    if (rest.length >= 6 && rest.length <= 8) return digits.slice(0, length) + rest
+    if (length + rest.length === 10) return digits.slice(0, length) + rest
   }
   return digits
 }
