@@ -10,6 +10,7 @@ import { Despacho } from './pages/Despacho'
 import { Login } from './pages/Login'
 import { NuevoPedido } from './pages/NuevoPedido'
 import { PlanificadorRutas } from './pages/PlanificadorRutas'
+import { MisEntregas } from './pages/MisEntregas'
 import { PanelOperativo } from './pages/PanelOperativo'
 import { PedidosPreparacion } from './pages/PedidosPreparacion'
 import { PendientesEntregas } from './pages/PendientesEntregas'
@@ -29,6 +30,12 @@ function Gate({ path, children }: { path: string; children: ReactNode }) {
   const { user } = useAuth()
   if (!user || !canOpen(user.role, path)) return <NoAccess />
   return children
+}
+
+function Home() {
+  const { user } = useAuth()
+  if (user?.role === 'chofer') return <Navigate to="/mis-entregas" replace />
+  return <PanelOperativo />
 }
 
 function ProtectedShell() {
@@ -58,7 +65,15 @@ export default function App() {
         }
       />
       <Route element={<ProtectedShell />}>
-        <Route path="/" element={<PanelOperativo />} />
+        <Route path="/" element={<Home />} />
+        <Route
+          path="/mis-entregas"
+          element={
+            <Gate path="/mis-entregas">
+              <MisEntregas />
+            </Gate>
+          }
+        />
         <Route
           path="/nuevo-pedido"
           element={

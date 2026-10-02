@@ -5,7 +5,7 @@ const MENU: Record<Role, readonly string[]> = {
   vendedor: ['/', '/nuevo-pedido', '/pedidos', '/despacho', '/post-venta'],
   deposito: ['/', '/pedidos', '/despacho', '/pendientes'],
   encargado_deposito: ['/', '/pedidos', '/despacho', '/rutas', '/pendientes', '/post-venta', '/bandeja'],
-  chofer: ['/', '/despacho', '/rutas'],
+  chofer: ['/mis-entregas'],
   admin: [
     '/',
     '/nuevo-pedido',

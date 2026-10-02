@@ -5,6 +5,7 @@ import { useAuth } from '../state/AuthContext'
 
 const NAV = [
   { to: '/', label: 'Panel Operativo', end: true, icon: 'panel' },
+  { to: '/mis-entregas', label: 'Mis entregas', icon: 'truck' },
   { to: '/nuevo-pedido', label: 'Nuevo Pedido', icon: 'plus' },
   { to: '/pedidos', label: 'Pedidos y Preparación', icon: 'box' },
   { to: '/despacho', label: 'Despacho', icon: 'truck' },
