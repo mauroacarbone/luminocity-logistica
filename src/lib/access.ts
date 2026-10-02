@@ -16,6 +16,7 @@ const MENU: Record<Role, readonly string[]> = {
     '/post-venta',
     '/datos-maestros',
     '/bandeja',
+    '/usuarios',
   ],
 }
 

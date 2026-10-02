@@ -13,6 +13,7 @@ const NAV = [
   { to: '/post-venta', label: 'Post Venta', icon: 'refresh' },
   { to: '/bandeja', label: 'Bandeja', icon: 'inbox' },
   { to: '/datos-maestros', label: 'Datos maestros', icon: 'settings' },
+  { to: '/usuarios', label: 'Usuarios', icon: 'users' },
 ] as const
 
 function Icon({ name }: { name: (typeof NAV)[number]['icon'] }) {
@@ -66,6 +67,12 @@ function Icon({ name }: { name: (typeof NAV)[number]['icon'] }) {
       )}
       {name === 'inbox' && (
         <path d="M4 6h16v12H4zM4 13h4l1.5 2h5L16 13h4" {...common} />
+      )}
+      {name === 'users' && (
+        <>
+          <circle cx="9" cy="8" r="2.2" {...common} />
+          <path d="M4.5 18a4.5 4.5 0 0 1 9 0M16 11a2 2 0 1 0 0-4M16.5 18a4 4 0 0 0-2-3.4" {...common} />
+        </>
       )}
       {name === 'settings' && (
         <>

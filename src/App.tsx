@@ -15,6 +15,7 @@ import { PedidosPreparacion } from './pages/PedidosPreparacion'
 import { PendientesEntregas } from './pages/PendientesEntregas'
 import { PostVenta } from './pages/PostVenta'
 import { Registro } from './pages/Registro'
+import { Usuarios } from './pages/Usuarios'
 import { useAuth } from './state/AuthContext'
 
 function PublicOnly({ children }: { children: ReactNode }) {
@@ -119,6 +120,14 @@ export default function App() {
           element={
             <Gate path="/bandeja">
               <Bandeja />
+            </Gate>
+          }
+        />
+        <Route
+          path="/usuarios"
+          element={
+            <Gate path="/usuarios">
+              <Usuarios />
             </Gate>
           }
         />
