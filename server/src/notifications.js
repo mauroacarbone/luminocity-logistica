@@ -106,11 +106,12 @@ export async function notifyEncargados({ text, orderId, whatsapp }) {
 /** Se llama dentro del lock de pedidos. Avisa al vendedor del pedido. */
 export async function notifySeller(order, editor, text) {
   const users = await readUsersList()
-  const byName = users.find(
-    (user) => user.role === 'vendedor' && normalizeName(user.name) === normalizeName(order.seller),
+  const bySeller = users.find(
+    (user) =>
+      user.role === 'vendedor' && normalizeName(user.sellerName) === normalizeName(order.seller),
   )
   const target =
-    byName ?? users.find((user) => user.id === order.createdBy && user.role === 'vendedor')
+    bySeller ?? users.find((user) => user.id === order.createdBy && user.role === 'vendedor')
   if (!target || target.id === editor.id) return
   await pushNotifications([
     buildNote({ to: target.id, text, orderId: order.id, channel: 'app' }),

@@ -34,7 +34,7 @@ Pantallas reales de `src/App.tsx`. `/login` y `/registro` son públicas.
 
 ### Vendedor
 
-Carga pedidos con su usuario y ve solo los suyos (`createdBy` o `seller` con su nombre).
+Carga pedidos con su usuario y ve solo los suyos (`createdBy` o `seller` igual a `sellerName`). Sin `sellerName` no puede cargar.
 
 - Pantallas: Panel (ver), Nuevo Pedido (editar), Pedidos y Preparación (editar los suyos), Despacho (ver), Post Venta (editar).
 - Puede cargar a nombre de otro vendedor solo si un encargado lo autorizó antes. La autorización se usa una sola vez.
@@ -72,7 +72,7 @@ Entrega y deja constancia. Ve solo los pedidos con su `driverId` y fecha de entr
 Mauro, desarrollador. Todo, más usuarios, roles y datos maestros.
 
 - Pantallas: todas, Datos maestros y Usuarios incluidos (editar).
-- Puede: cualquier estado del pedido y del reclamo. Carga el celular corporativo y cambia roles.
+- Puede: cualquier estado del pedido y del reclamo. Carga el celular corporativo, vincula cada vendedor con su cuenta y cambia roles.
 - Primero: el Panel, Datos maestros y Usuarios.
 
 ### Rol × pantalla

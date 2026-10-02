@@ -36,7 +36,7 @@ export function namesMatch(left: string | undefined, right: string | undefined) 
 }
 
 export function ownsOrder(user: Session, order: Order) {
-  return order.createdBy === user.id || namesMatch(order.seller, user.name)
+  return order.createdBy === user.id || namesMatch(order.seller, user.sellerName)
 }
 
 export function canPrepare(role: Role) {

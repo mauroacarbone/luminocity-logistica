@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
+import { withCurrent } from '../data/catalog'
 import { isSession, ROLE_LABEL, ROLES, type Role, type Session } from '../lib/authStore'
-import { listUsers, updateUserPhone, updateUserRole } from '../lib/usersApi'
+import { listUsers, updateUserPhone, updateUserRole, updateUserSeller } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
+import { useCatalog } from '../state/CatalogContext'
 
 type Account = Session & { phone: string }
 
 type Draft = {
   role: Role
   phone: string
+  sellerName: string
 }
 
 function isAccount(value: unknown): value is Account {
@@ -20,8 +23,13 @@ function phoneOf(value: Account) {
   return value.phone ?? ''
 }
 
+function sellerOf(value: Account) {
+  return value.sellerName ?? ''
+}
+
 export function Usuarios() {
   const { logout } = useAuth()
+  const { sellers } = useCatalog()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   const [error, setError] = useState('')
@@ -44,7 +52,12 @@ export function Usuarios() {
       const next = result.data.map((item) => ({ ...item, phone: phoneOf(item) }))
       setAccounts(next)
       setDrafts(
-        Object.fromEntries(next.map((item) => [item.id, { role: item.role, phone: item.phone }])),
+        Object.fromEntries(
+          next.map((item) => [
+            item.id,
+            { role: item.role, phone: item.phone, sellerName: sellerOf(item) },
+          ]),
+        ),
       )
     })
     return () => {
@@ -76,7 +89,7 @@ export function Usuarios() {
         setError('No se pudo leer el usuario.')
         return
       }
-      next = { ...result.data, phone: phoneOf(result.data) }
+      next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
     }
     if (draft.phone.trim() !== next.phone) {
       const result = await updateUserPhone(account.id, draft.phone.trim())
@@ -91,10 +104,28 @@ export function Usuarios() {
         setError('No se pudo leer el usuario.')
         return
       }
-      next = { ...result.data, phone: phoneOf(result.data) }
+      next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
+    }
+    if (draft.role === 'vendedor' && draft.sellerName.trim() !== sellerOf(next)) {
+      const result = await updateUserSeller(account.id, draft.sellerName.trim())
+      if (!result.ok) {
+        setBusy('')
+        if (result.status === 401) logout()
+        else setError(result.message)
+        return
+      }
+      if (!isAccount(result.data)) {
+        setBusy('')
+        setError('No se pudo leer el usuario.')
+        return
+      }
+      next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
     }
     setAccounts((current) => current.map((item) => (item.id === next.id ? next : item)))
-    setDrafts((current) => ({ ...current, [next.id]: { role: next.role, phone: next.phone } }))
+    setDrafts((current) => ({
+      ...current,
+      [next.id]: { role: next.role, phone: next.phone, sellerName: sellerOf(next) },
+    }))
     setBusy('')
     setNotice(`Se guardó ${next.name}.`)
   }
@@ -103,7 +134,7 @@ export function Usuarios() {
     <section className="page">
       <header className="page-header">
         <h1>Usuarios</h1>
-        <p>Roles y celular corporativo. El registro público crea vendedores.</p>
+        <p>Roles, celular corporativo y el vendedor de datos maestros.</p>
       </header>
       {error && (
         <p className="mt-4 text-sm font-semibold text-lumi-danger" role="alert">
@@ -115,13 +146,21 @@ export function Usuarios() {
       )}
       <div className="mt-6 flex flex-col gap-3">
         {accounts.map((account) => {
-          const draft = drafts[account.id] ?? { role: account.role, phone: account.phone }
-          const dirty = draft.role !== account.role || draft.phone.trim() !== account.phone
+          const draft = drafts[account.id] ?? {
+            role: account.role,
+            phone: account.phone,
+            sellerName: sellerOf(account),
+          }
+          const sellerOptions = withCurrent(sellers, draft.sellerName)
+          const dirty =
+            draft.role !== account.role ||
+            draft.phone.trim() !== account.phone ||
+            (draft.role === 'vendedor' && draft.sellerName.trim() !== sellerOf(account))
           return (
             <article key={account.id} className="rounded-2xl bg-white p-4 shadow-sm">
               <p className="font-semibold">{account.name}</p>
               <p className="text-sm text-lumi-muted">{account.email}</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,16rem)_auto] sm:items-end">
+              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,16rem)_minmax(0,16rem)_auto] sm:items-end">
                 <label className="text-sm">
                   Rol
                   <select
@@ -136,6 +175,23 @@ export function Usuarios() {
                     ))}
                   </select>
                 </label>
+                {draft.role === 'vendedor' && (
+                  <label className="text-sm">
+                    Vendedor
+                    <select
+                      value={draft.sellerName}
+                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+                      onChange={(event) => setDraft(account.id, { sellerName: event.target.value })}
+                    >
+                      <option value="">Sin vincular</option>
+                      {sellerOptions.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label className="text-sm">
                   Celular corporativo
                   <input

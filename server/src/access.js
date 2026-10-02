@@ -34,7 +34,7 @@ export function normalizeName(value) {
 export function ownsOrder(user, order) {
   if (order.createdBy === user.id) return true
   const seller = normalizeName(order.seller)
-  return seller.length > 0 && seller === normalizeName(user.name)
+  return seller.length > 0 && seller === normalizeName(user.sellerName)
 }
 
 export function businessToday() {

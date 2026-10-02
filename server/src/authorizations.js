@@ -68,7 +68,7 @@ function requestAuthorization(user, seller) {
       return { error: 'Indicá el vendedor.', status: 400 }
     }
     const name = seller.trim()
-    if (normalizeName(name) === normalizeName(user.name)) {
+    if (normalizeName(name) === normalizeName(user.sellerName)) {
       return { error: 'No hace falta autorización para cargar a tu nombre.', status: 400 }
     }
     const list = await readAuthorizations()

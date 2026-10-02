@@ -3,13 +3,19 @@ import { isSession, type Session } from './authStore'
 export type AuthFailure = {
   ok: false
   message: string
-  field?: 'email'
+  field?: 'email' | 'name'
 }
 
 export type AuthSuccess = {
   ok: true
   token: string
   user: Session
+}
+
+function fieldFrom(data: unknown) {
+  if (!data || typeof data !== 'object' || !('field' in data)) return undefined
+  const field = data.field
+  return field === 'email' || field === 'name' ? field : undefined
 }
 
 function messageFrom(data: unknown, fallback: string) {
@@ -33,7 +39,9 @@ async function postAuth(path: string, body: unknown, fallback: string): Promise<
   const data: unknown = await response.json().catch(() => null)
   if (!response.ok) {
     const message = messageFrom(data, fallback)
-    return response.status === 409 ? { ok: false, message, field: 'email' } : { ok: false, message }
+    const field = fieldFrom(data)
+    if (response.status === 409 && field) return { ok: false, message, field }
+    return { ok: false, message }
   }
   if (!data || typeof data !== 'object' || !('token' in data) || !('user' in data)) {
     return { ok: false, message: 'El servidor no devolvió una sesión válida.' }

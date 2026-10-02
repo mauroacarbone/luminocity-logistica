@@ -43,7 +43,8 @@ En este orden. No adelantar el siguiente.
 
 - Los pedidos se guardan en el server (`server/data/orders.json`). Los datos maestros siguen en el navegador. La auth ya está en el server.
 - La contraseña se hashea con bcrypt en el server. El navegador solo guarda el JWT.
-- El rol filtra el menú y la API. El registro público crea `vendedor`. Solo admin cambia el rol y el celular corporativo.
+- El rol filtra el menú y la API. El registro público crea `vendedor` y rechaza un nombre o email que ya use otra cuenta. No carga `sellerName`.
+- El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. Solo admin lo elige en Usuarios, desde los vendedores de datos maestros.
 - Una carga a nombre de otro vendedor exige una autorización aprobada y sin usar. Al crear el pedido se marca usada.
 - La edición de un preparado por el vendedor no cambia el pedido hasta que el encargado la aprueba o la rechaza.
 - A `preparado` se pasa solo con una cantidad de bultos.

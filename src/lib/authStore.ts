@@ -14,6 +14,7 @@ export type Session = {
   name: string
   email: string
   role: Role
+  sellerName?: string
 }
 
 const TOKEN_KEY = 'luminocity.token.v1'
@@ -32,7 +33,8 @@ export function isSession(value: unknown): value is Session {
     user.name.trim().length > 0 &&
     typeof user.email === 'string' &&
     user.email.includes('@') &&
-    isRole(user.role)
+    isRole(user.role) &&
+    (user.sellerName === undefined || typeof user.sellerName === 'string')
   )
 }
 

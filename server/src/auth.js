@@ -35,8 +35,12 @@ authRouter.post('/register', async (req, res) => {
   }
 
   const result = await createUser({ name, email, password, role: 'vendedor' })
-  if (result.error === 'exists') {
-    res.status(409).json({ message: 'Ya hay una cuenta con ese email.' })
+  if (result.error === 'email') {
+    res.status(409).json({ message: 'Ya hay una cuenta con ese email.', field: 'email' })
+    return
+  }
+  if (result.error === 'name') {
+    res.status(409).json({ message: 'Ya hay una cuenta con ese nombre.', field: 'name' })
     return
   }
   res.status(201).json(sign(result.user))

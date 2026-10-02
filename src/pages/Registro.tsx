@@ -36,7 +36,9 @@ export function Registro() {
     try {
       const result = await register({ name, email, password })
       if (!result.ok) {
-        setErrors(result.field === 'email' ? { email: result.message } : { form: result.message })
+        if (result.field === 'email') setErrors({ email: result.message })
+        else if (result.field === 'name') setErrors({ name: result.message })
+        else setErrors({ form: result.message })
       }
     } finally {
       setPending(false)

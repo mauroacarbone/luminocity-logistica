@@ -22,3 +22,12 @@ export function updateUserPhone(id: string, phone: string) {
     'No se pudo guardar el celular.',
   )
 }
+
+export function updateUserSeller(id: string, sellerName: string) {
+  return apiRequest(
+    `/api/users/${encodeURIComponent(id)}`,
+    'PATCH',
+    { sellerName },
+    'No se pudo vincular el vendedor.',
+  )
+}

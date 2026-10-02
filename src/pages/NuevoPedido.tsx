@@ -92,7 +92,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     useCatalog()
   const transporterLists = { ownTransporters, courierTransporters }
   const existing = orders.find((order) => order.id === editingId)
-  const [seller, setSeller] = useState(existing?.seller ?? (user?.role === 'vendedor' ? user.name : ''))
+  const [seller, setSeller] = useState(
+    existing?.seller ?? (user?.role === 'vendedor' ? (user.sellerName ?? '') : ''),
+  )
   const [client, setClient] = useState(existing?.client ?? '')
   const [phone, setPhone] = useState(existing?.phone ?? '')
   const [invoices, setInvoices] = useState(
@@ -429,6 +431,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     setSaveError('')
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
+    if (!storedId && user?.role === 'vendedor' && !user.sellerName?.trim()) {
+      setSaveError('Tu usuario todavía no está vinculado a un vendedor. Pedíselo al administrador.')
+      return
+    }
 
     const knownZone = asDeliveryZone(deliveryZone, zones)
     const keptZone = existing?.zone && existing.zone === deliveryZone ? existing.zone : undefined
@@ -540,7 +546,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
   const dayWarning = zoneDayWarning(deliveryZone, deliveryDate, zones)
   const sellerOptions = withCurrent(sellers, seller)
-  const otherSeller = Boolean(user?.role === 'vendedor' && seller && !namesMatch(seller, user.name))
+  const unlinkedSeller = Boolean(!storedId && user?.role === 'vendedor' && !user.sellerName?.trim())
+  const otherSeller = Boolean(
+    user?.role === 'vendedor' &&
+      user.sellerName?.trim() &&
+      seller &&
+      !namesMatch(seller, user.sellerName),
+  )
   const openAuth = authorizations.find(
     (item) =>
       namesMatch(item.seller, seller) && (item.status === 'pendiente' || item.status === 'aprobada'),
@@ -589,6 +601,11 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             </select>
             {errors.seller && <small className="field-error">{errors.seller}</small>}
           </label>
+          {unlinkedSeller && (
+            <p className="field-error mt-3" role="alert">
+              Tu usuario todavía no está vinculado a un vendedor. Pedíselo al administrador.
+            </p>
+          )}
           {otherSeller && (
             <div className="mt-3 text-sm">
               {openAuth?.status === 'aprobada' && (

@@ -149,6 +149,12 @@ function getOrder(id) {
 function createOrder(body, user) {
   return locked(async () => {
     if (!canCreate(user)) return fail('No podés cargar pedidos.', 403)
+    if (user.role === 'vendedor' && !normalizeName(user.sellerName)) {
+      return fail(
+        'Tu usuario todavía no está vinculado a un vendedor. Pedíselo al administrador.',
+        403,
+      )
+    }
     if (!isRecord(body)) return fail('El pedido no es válido.')
     const orders = await readOrders()
     const parsed = readOrderFields(body, null)
@@ -160,7 +166,8 @@ function createOrder(body, user) {
       return fail('No podés asignar bultos ni chofer al cargar el pedido.', 403)
     }
     const otherSeller =
-      user.role === 'vendedor' && normalizeName(parsed.order.seller) !== normalizeName(user.name)
+      user.role === 'vendedor' &&
+      normalizeName(parsed.order.seller) !== normalizeName(user.sellerName)
     const driver = await checkDriver(parsed.order.driverId)
     if (driver.error) return driver
     const order = {

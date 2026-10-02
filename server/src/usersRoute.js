@@ -1,6 +1,13 @@
 import { Router } from 'express'
 import { requireAuth, requireRole } from './middleware.js'
-import { ROLES, listUsers, setUserPhone, setUserRole, toPublicUser } from './users.js'
+import {
+  ROLES,
+  listUsers,
+  setUserPhone,
+  setUserRole,
+  setUserSellerName,
+  toPublicUser,
+} from './users.js'
 
 export const usersRouter = Router()
 usersRouter.use(requireAuth)
@@ -24,20 +31,56 @@ usersRouter.patch('/:id/role', requireRole('admin'), async (req, res) => {
 })
 
 usersRouter.patch('/:id', requireRole('admin'), async (req, res) => {
-  const raw = req.body?.phone
-  if (raw !== null && typeof raw !== 'string') {
-    res.status(400).json({ message: 'El celular no es válido.' })
+  const body = req.body ?? {}
+  const hasPhone = Object.prototype.hasOwnProperty.call(body, 'phone')
+  const hasSeller = Object.prototype.hasOwnProperty.call(body, 'sellerName')
+  if (!hasPhone && !hasSeller) {
+    res.status(400).json({ message: 'No hay cambios para guardar.' })
     return
   }
-  const phone = typeof raw === 'string' ? raw.trim() : ''
-  if (phone.length > 40) {
-    res.status(400).json({ message: 'El celular es demasiado largo.' })
-    return
+
+  let phone = ''
+  if (hasPhone) {
+    const raw = body.phone
+    if (raw !== null && typeof raw !== 'string') {
+      res.status(400).json({ message: 'El celular no es válido.' })
+      return
+    }
+    phone = typeof raw === 'string' ? raw.trim() : ''
+    if (phone.length > 40) {
+      res.status(400).json({ message: 'El celular es demasiado largo.' })
+      return
+    }
   }
-  const result = await setUserPhone(req.params.id, phone)
-  if (result.error === 'missing') {
-    res.status(404).json({ message: 'No existe ese usuario.' })
-    return
+
+  let sellerName = ''
+  if (hasSeller) {
+    const raw = body.sellerName
+    if (raw !== null && typeof raw !== 'string') {
+      res.status(400).json({ message: 'El vendedor no es válido.' })
+      return
+    }
+    sellerName = typeof raw === 'string' ? raw.trim() : ''
+    if (sellerName.length > 80) {
+      res.status(400).json({ message: 'El vendedor es demasiado largo.' })
+      return
+    }
+  }
+
+  let result
+  if (hasPhone) {
+    result = await setUserPhone(req.params.id, phone)
+    if (result.error === 'missing') {
+      res.status(404).json({ message: 'No existe ese usuario.' })
+      return
+    }
+  }
+  if (hasSeller) {
+    result = await setUserSellerName(req.params.id, sellerName)
+    if (result.error === 'missing') {
+      res.status(404).json({ message: 'No existe ese usuario.' })
+      return
+    }
   }
   res.json(toPublicUser(result.user))
 })

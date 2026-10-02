@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
+import { normalizeName } from './access.js'
 import { locked } from './lock.js'
 
 const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
@@ -18,13 +19,17 @@ const DEMO = {
 }
 
 export function toPublicUser(user) {
-  return {
+  const publicUser = {
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
     phone: typeof user.phone === 'string' ? user.phone : '',
   }
+  if (typeof user.sellerName === 'string' && user.sellerName.trim()) {
+    publicUser.sellerName = user.sellerName.trim()
+  }
+  return publicUser
 }
 
 async function readUsers() {
@@ -114,11 +119,27 @@ export function setUserPhone(id, phone) {
   })
 }
 
+export function setUserSellerName(id, sellerName) {
+  return locked(async () => {
+    const users = await readUsers()
+    const index = users.findIndex((item) => item.id === id)
+    if (index < 0) return { error: 'missing' }
+    const next = { ...users[index] }
+    if (sellerName) next.sellerName = sellerName
+    else delete next.sellerName
+    users[index] = next
+    await writeUsers(users)
+    return { user: next }
+  })
+}
+
 export function createUser({ name, email, password, role }) {
   return locked(async () => {
     const users = await readUsers()
     const normalized = email.trim().toLowerCase()
-    if (users.some((item) => item.email === normalized)) return { error: 'exists' }
+    if (users.some((item) => item.email === normalized)) return { error: 'email' }
+    const nameKey = normalizeName(name)
+    if (nameKey && users.some((item) => normalizeName(item.name) === nameKey)) return { error: 'name' }
     const user = {
       id: randomUUID(),
       name: name.trim(),
