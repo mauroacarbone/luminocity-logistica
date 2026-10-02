@@ -7,6 +7,7 @@ import { assertPatch, canCreate, canSeeOrder, commercialKeys, diffOrder, normali
 import { takeAuthorization } from './authorizations.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
+import { notifyEncargados, notifySeller } from './notifications.js'
 import { readUsersList } from './users.js'
 
 const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
@@ -211,6 +212,11 @@ function patchOrder(id, body, user) {
       }
       orders[index] = order
       await writeOrders(orders)
+      await notifyEncargados({
+        text: `${user.name} pidió editar el pedido ${order.id} y quedó esperando confirmación: ${reason.value}`,
+        orderId: order.id,
+        whatsapp: true,
+      })
       return { order }
     }
 
@@ -224,6 +230,19 @@ function patchOrder(id, body, user) {
     }
     orders[index] = order
     await writeOrders(orders)
+    if (user.role === 'vendedor') {
+      await notifyEncargados({
+        text: `${user.name} editó el pedido ${order.id}: ${reason.value}`,
+        orderId: order.id,
+        whatsapp: false,
+      })
+    } else if (user.role === 'encargado_deposito' && commercialKeys(changes).length > 0) {
+      await notifySeller(
+        current,
+        user,
+        `${user.name} editó el pedido ${current.id}: ${reason.value}`,
+      )
+    }
     return { order }
   })
 }

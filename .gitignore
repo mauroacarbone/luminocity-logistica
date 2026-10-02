@@ -17,6 +17,7 @@ server/.env
 server/data/users.json
 server/data/orders.json
 server/data/authorizations.json
+server/data/notifications.json
 
 # Editor directories and files
 .vscode/*
