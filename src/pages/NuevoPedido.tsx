@@ -590,6 +590,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             <select
               value={seller}
               aria-invalid={Boolean(errors.seller)}
+              disabled={Boolean(storedId && user?.role === 'vendedor')}
               onChange={(event) => setSeller(event.target.value)}
             >
               <option value="">Seleccioná vendedor</option>

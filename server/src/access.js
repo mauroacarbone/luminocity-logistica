@@ -118,6 +118,9 @@ export function assertPatch(user, current, changes) {
 
   if (user.role === 'vendedor') {
     if (!ownsOrder(user, current)) return deny('No tenés permiso para modificar este pedido.')
+    if (Object.prototype.hasOwnProperty.call(changes, 'seller') && changes.seller !== current.seller) {
+      return deny('No podés cambiar el vendedor del pedido.')
+    }
     if (current.status !== 'pendiente' && current.status !== 'preparado') {
       return deny('No podés editar un pedido que ya salió de preparación.')
     }
