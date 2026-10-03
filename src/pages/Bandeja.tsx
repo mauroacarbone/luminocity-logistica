@@ -105,6 +105,16 @@ export function Bandeja() {
   })
 
   async function decideAuth(id: string, status: 'aprobada' | 'rechazada') {
+    const rejecting = status === 'rechazada'
+    const item = authorizations.find((entry) => entry.id === id)
+    const accepted = await confirm(
+      rejecting ? 'Rechazar autorización' : 'Aprobar autorización',
+      rejecting
+        ? `No va a poder cargar a nombre de ${item?.seller ?? 'ese vendedor'}.`
+        : `Va a poder cargar a nombre de ${item?.seller ?? 'ese vendedor'}.`,
+      { peligro: rejecting },
+    )
+    if (!accepted) return
     setBusy(id)
     const result = await resolveAuthorization(id, status)
     setBusy('')

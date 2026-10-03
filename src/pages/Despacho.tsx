@@ -195,6 +195,30 @@ export function Despacho() {
     return true
   }
 
+  async function assignDriver(order: Order, driverId: string) {
+    const assigns =
+      Boolean(driverId) && (order.status === 'pendiente' || order.status === 'preparado')
+    if (assigns) {
+      const name = drivers.find((driver) => driver.id === driverId)?.name ?? 'el chofer'
+      const accepted = await confirm(
+        'Asignar chofer',
+        `El pedido ${order.id} pasa a asignado con ${name}.`,
+      )
+      if (!accepted) return false
+    }
+    setBusyId(order.id)
+    const fields: Record<string, unknown> = { driverId: driverId || null }
+    if (assigns) fields.status = 'asignado'
+    const result = await patchFields(order.id, fields)
+    setBusyId('')
+    if (result.status === 'not-saved') {
+      await error(result.message)
+      return false
+    }
+    if (assigns) await success('Chofer asignado')
+    return true
+  }
+
   async function changeStatus(order: Order, status: OrderStatus) {
     setOpenStatusId(null)
     const prompt = statusPrompt(order.id, status)
@@ -473,15 +497,11 @@ export function Despacho() {
                           disabled={busyId === order.id}
                           className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
                           onChange={(event) => {
-                            const driverId = event.target.value
-                            const fields: Record<string, unknown> = { driverId: driverId || null }
-                            if (driverId && (order.status === 'pendiente' || order.status === 'preparado')) {
-                              fields.status = 'asignado'
-                            }
-                            setBusyId(order.id)
-                            void patchFields(order.id, fields).then(async (result) => {
-                              setBusyId('')
-                              if (result.status === 'not-saved') await error(result.message)
+                            const select = event.target
+                            const driverId = select.value
+                            const previous = order.driverId ?? ''
+                            void assignDriver(order, driverId).then((saved) => {
+                              if (!saved) select.value = previous
                             })
                           }}
                         >
