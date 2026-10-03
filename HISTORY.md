@@ -24,6 +24,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 16 | Vista Chofer y avisos por WhatsApp (`wa.me`) | Hecho |
 | 16.1 | Ajustes del chofer y avisos de WhatsApp | Hecho |
 | 17 | Pulido visual y confirmaciones con SweetAlert2 | Hecho |
+| 17.1 | Envío de WhatsApp desde la campanita | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -36,6 +37,8 @@ El Brief 16 deja al chofer en Mis entregas: el server filtra por su transportist
 El Brief 16.1 obliga a pasar por `en-viaje` antes de `entregado`. El listado del chofer trae solo `preparado`, `asignado` o `en-viaje`. Un preparado sin asignar espera al encargado, sin botones. Al entregar queda un solo WhatsApp pendiente para la campanita de los encargados, y el celular tiene que quedar en 10 dígitos.
 
 El Brief 17 confirma con SweetAlert2 antes de cancelar, borrar, preparar, asignar transportista, salir a reparto, entregar, aprobar o rechazar una edición, cambiar un rol y marcar un WhatsApp. Al guardar muestra un toast y, si falla, el mensaje del server. La carga usa un spinner y, si no hay server, se puede reintentar.
+
+El Brief 17.1 abre WhatsApp recién al confirmar, en el mismo click. El aviso pasa a `enviado` si el server responde bien; si responde 400, se cierra la ventana y avisa que otro encargado ya lo envió. Si el navegador bloquea la ventana, el chat se abre en la misma pestaña. Un teléfono con letras, `#`, interno, extensión o un 15 sin característica no arma link. Aprobar o rechazar una autorización, y elegir chofer en Despacho, también piden confirmación.
 
 ## Pendientes
 
