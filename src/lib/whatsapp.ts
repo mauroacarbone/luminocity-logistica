@@ -6,15 +6,22 @@ export function whatsappLink(phone: string, text: string) {
 }
 
 export function normalizeArWhatsapp(raw: string) {
+  if (rejectedPhone(raw)) return ''
   let digits = raw.replace(/\D/g, '')
   if (!digits) return ''
   if (digits.startsWith('00')) digits = digits.slice(2)
   if (digits.startsWith('54')) digits = digits.slice(2)
   if (digits.startsWith('9') && digits.length >= 11) digits = digits.slice(1)
   while (digits.startsWith('0')) digits = digits.slice(1)
+  if (digits.startsWith('15')) return ''
   digits = stripFifteen(digits)
   if (digits.length !== 10) return ''
   return `549${digits}`
+}
+
+function rejectedPhone(raw: string) {
+  if (/[#\p{L}]/u.test(raw)) return true
+  return /\b(?:int|ext|interno)\b/i.test(raw)
 }
 
 function stripFifteen(digits: string) {
