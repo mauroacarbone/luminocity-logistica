@@ -108,17 +108,31 @@ export function NotificationBell() {
     const phone = sellerPhone(item, orders, users)
     const url = whatsappLink(phone, item.text)
     if (!url || sending) return
-    const popup = window.open('about:blank', '_blank')
-    const accepted = await confirm('Enviar por WhatsApp', 'El aviso queda marcado como enviado.')
+
+    const holder: { popup: Window | null } = { popup: null }
+    const openBlank = () => {
+      if (holder.popup && !holder.popup.closed) return holder.popup
+      holder.popup = window.open('about:blank')
+      if (holder.popup) holder.popup.opener = null
+      return holder.popup
+    }
+    const accepted = await confirm('Enviar por WhatsApp', 'El aviso queda marcado como enviado.', {
+      didOpen: (element) => {
+        element.querySelector('.swal2-confirm')?.addEventListener('click', () => openBlank(), true)
+      },
+      preConfirm: () => openBlank(),
+    })
     if (!accepted) {
-      popup?.close()
+      if (holder.popup && !holder.popup.closed) holder.popup.close()
       return
     }
+
+    const opened = holder.popup && !holder.popup.closed ? holder.popup : null
     setSending(item.id)
     const result = await markNotificationSent(item.id)
     setSending('')
     if (!result.ok) {
-      popup?.close()
+      if (opened && !opened.closed) opened.close()
       if (result.status === 401) logout()
       else if (result.status === 400) {
         setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, status: 'enviado' } : entry)))
@@ -126,7 +140,11 @@ export function NotificationBell() {
       } else await showError(result.message)
       return
     }
-    if (popup) popup.location.href = url
+    if (!opened || opened.closed) {
+      window.location.href = url
+      return
+    }
+    opened.location.href = url
     setItems((current) =>
       current.map((entry) => (entry.id === item.id ? { ...entry, status: 'enviado' } : entry)),
     )

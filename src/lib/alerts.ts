@@ -1,7 +1,9 @@
-import Swal from 'sweetalert2'
+import Swal, { type SweetAlertOptions } from 'sweetalert2'
 
 type ConfirmOptions = {
   peligro?: boolean
+  preConfirm?: SweetAlertOptions['preConfirm']
+  didOpen?: SweetAlertOptions['didOpen']
 }
 
 /** Confirmación en español, con el amarillo de la app o rojo si es destructiva. */
@@ -24,6 +26,8 @@ export async function confirm(titulo: string, texto: string, options?: ConfirmOp
       cancelButton: 'lumi-swal-cancel',
       actions: 'lumi-swal-actions',
     },
+    preConfirm: options?.preConfirm,
+    didOpen: options?.didOpen,
   })
   return result.isConfirmed
 }
