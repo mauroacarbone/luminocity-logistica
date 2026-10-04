@@ -83,7 +83,7 @@ app.use('/api/notifications', notificationsRouter)
 app.use('/api/orders', ordersRouter)
 app.use('/api/drivers', driversRouter)
 app.use('/api', (_req, res) => {
-  res.status(404).json({ error: 'No existe' })
+  res.status(404).json({ message: 'No existe' })
 })
 
 if (production) {
