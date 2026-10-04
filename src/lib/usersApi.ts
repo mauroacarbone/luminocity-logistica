@@ -25,29 +25,38 @@ export function updateUserRole(id: string, role: Role) {
   )
 }
 
-export function updateUserPhone(id: string, phone: string) {
+export function updateUser(
+  id: string,
+  patch: {
+    name?: string
+    email?: string
+    phone?: string
+    sellerName?: string
+    carrierName?: string
+  },
+) {
   return apiRequest(
     `/api/users/${encodeURIComponent(id)}`,
     'PATCH',
-    { phone },
-    'No se pudo guardar el celular.',
+    patch,
+    'No se pudo guardar el usuario.',
   )
 }
 
-export function updateUserCarrier(id: string, carrierName: string) {
+export function updateUserActive(id: string, active: boolean) {
   return apiRequest(
-    `/api/users/${encodeURIComponent(id)}`,
+    `/api/users/${encodeURIComponent(id)}/active`,
     'PATCH',
-    { carrierName },
-    'No se pudo vincular el transportista.',
+    { active },
+    'No se pudo cambiar el estado.',
   )
 }
 
-export function updateUserSeller(id: string, sellerName: string) {
+export function updateUserPassword(id: string, password: string) {
   return apiRequest(
-    `/api/users/${encodeURIComponent(id)}`,
+    `/api/users/${encodeURIComponent(id)}/password`,
     'PATCH',
-    { sellerName },
-    'No se pudo vincular el vendedor.',
+    { password },
+    'No se pudo cambiar la contraseña.',
   )
 }

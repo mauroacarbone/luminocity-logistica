@@ -6,10 +6,10 @@ import { isSession, ROLE_LABEL, ROLES, type Role, type Session } from '../lib/au
 import {
   createUserAccount,
   listUsers,
-  updateUserCarrier,
-  updateUserPhone,
+  updateUser,
+  updateUserActive,
+  updateUserPassword,
   updateUserRole,
-  updateUserSeller,
 } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
@@ -28,6 +28,8 @@ function formatCreatedAt(value: unknown) {
 }
 
 type Draft = {
+  name: string
+  email: string
   role: Role
   phone: string
   sellerName: string
@@ -54,6 +56,8 @@ function carrierOf(value: Account) {
 
 function draftFrom(item: Account): Draft {
   return {
+    name: item.name,
+    email: item.email,
     role: item.role,
     phone: phoneOf(item),
     sellerName: sellerOf(item),
@@ -61,7 +65,34 @@ function draftFrom(item: Account): Draft {
   }
 }
 
+function draftDirty(draft: Draft, account: Account) {
+  return (
+    draft.name.trim() !== account.name ||
+    draft.email.trim().toLowerCase() !== account.email ||
+    draft.role !== account.role ||
+    draft.phone.trim() !== phoneOf(account) ||
+    (draft.role === 'vendedor' && draft.sellerName.trim() !== sellerOf(account)) ||
+    (draft.role === 'chofer' && draft.carrierName.trim() !== carrierOf(account))
+  )
+}
+
+function roleChoices(actor: Role | undefined, locked: boolean, current: Role): Role[] {
+  if (locked) return [current]
+  if (actor === 'admin') return [...ROLES]
+  return ROLES.filter((role) => role !== 'admin')
+}
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function useEscape(onClose: () => void) {
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+}
 
 type NewUserInput = {
   name: string
@@ -73,12 +104,14 @@ type NewUserInput = {
 }
 
 function NewUserDialog({
+  roles,
   sellers,
   transporters,
   onClose,
   onCreated,
   onUnauthorized,
 }: {
+  roles: Role[]
   sellers: string[]
   transporters: string[]
   onClose: () => void
@@ -97,6 +130,7 @@ function NewUserDialog({
   const [pending, setPending] = useState(false)
   const sellerOptions = withCurrent(sellers, form.sellerName)
   const carrierOptions = withCurrent(transporters, form.carrierName)
+  useEscape(onClose)
 
   function patch(next: Partial<NewUserInput>) {
     setForm((current) => ({ ...current, ...next }))
@@ -106,8 +140,10 @@ function NewUserDialog({
     event.preventDefault()
     const nextErrors: Partial<Record<keyof NewUserInput | 'form', string>> = {}
     if (!form.name.trim()) nextErrors.name = 'Ingresá el nombre.'
+    else if (form.name.trim().length > 80) nextErrors.name = 'El nombre es demasiado largo.'
     if (!EMAIL_PATTERN.test(form.email.trim())) nextErrors.email = 'Ingresá un email válido.'
     if (form.password.length < 8) nextErrors.password = 'Usá al menos 8 caracteres.'
+    else if (form.password.length > 72) nextErrors.password = 'La contraseña puede tener hasta 72 caracteres.'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -126,7 +162,8 @@ function NewUserDialog({
         onUnauthorized()
         return
       }
-      if (result.status === 409) setErrors({ email: result.message })
+      if (result.status === 409 && result.message.includes('nombre')) setErrors({ name: result.message })
+      else if (result.status === 409) setErrors({ email: result.message })
       else setErrors({ form: result.message })
       return
     }
@@ -138,9 +175,16 @@ function NewUserDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-user-title"
+      className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4"
+    >
       <form noValidate className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg" onSubmit={(event) => void onSubmit(event)}>
-        <h2 className="text-xl font-semibold">Nuevo usuario</h2>
+        <h2 id="new-user-title" className="text-xl font-semibold">
+          Nuevo usuario
+        </h2>
         <p className="mt-1 text-sm text-lumi-muted">Nombre, email, contraseña inicial y rol.</p>
         <label className="mt-4 block text-sm font-medium">
           Nombre
@@ -183,7 +227,7 @@ function NewUserDialog({
             className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
             onChange={(event) => patch({ role: event.target.value as Role })}
           >
-            {ROLES.map((role) => (
+            {roles.map((role) => (
               <option key={role} value={role}>
                 {ROLE_LABEL[role]}
               </option>
@@ -250,12 +294,101 @@ function NewUserDialog({
   )
 }
 
-function draftDirty(draft: Draft, account: Account) {
+function PasswordDialog({
+  account,
+  onClose,
+  onUnauthorized,
+  onSaved,
+}: {
+  account: Account
+  onClose: () => void
+  onUnauthorized: () => void
+  onSaved: () => void
+}) {
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [errors, setErrors] = useState<{ password?: string; confirm?: string; form?: string }>({})
+  const [pending, setPending] = useState(false)
+  useEscape(onClose)
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault()
+    const next: { password?: string; confirm?: string } = {}
+    if (password.length < 8) next.password = 'Usá al menos 8 caracteres.'
+    else if (password.length > 72) next.password = 'La contraseña puede tener hasta 72 caracteres.'
+    if (confirmPassword !== password) next.confirm = 'Las contraseñas no coinciden.'
+    setErrors(next)
+    if (next.password || next.confirm) return
+
+    setPending(true)
+    const result = await updateUserPassword(account.id, password)
+    setPending(false)
+    if (!result.ok) {
+      if (result.status === 401) onUnauthorized()
+      else setErrors({ form: result.message })
+      return
+    }
+    onSaved()
+  }
+
   return (
-    draft.role !== account.role ||
-    draft.phone.trim() !== phoneOf(account) ||
-    (draft.role === 'vendedor' && draft.sellerName.trim() !== sellerOf(account)) ||
-    (draft.role === 'chofer' && draft.carrierName.trim() !== carrierOf(account))
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reset-password-title"
+      className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4"
+    >
+      <form noValidate className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg" onSubmit={(event) => void onSubmit(event)}>
+        <h2 id="reset-password-title" className="text-xl font-semibold">
+          Resetear contraseña
+        </h2>
+        <p className="mt-1 text-sm text-lumi-muted">Nueva contraseña para {account.name}.</p>
+        <label className="mt-4 block text-sm font-medium">
+          Nueva contraseña
+          <input
+            autoFocus
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            onChange={(event) => setPassword(event.target.value)}
+          />
+          {errors.password && <small className="field-error">{errors.password}</small>}
+        </label>
+        <label className="mt-3 block text-sm font-medium">
+          Confirmar contraseña
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            onChange={(event) => setConfirmPassword(event.target.value)}
+          />
+          {errors.confirm && <small className="field-error">{errors.confirm}</small>}
+        </label>
+        {errors.form && (
+          <p className="field-error mt-3" role="alert">
+            {errors.form}
+          </p>
+        )}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea]"
+            onClick={onClose}
+          >
+            Volver
+          </button>
+          <button
+            type="submit"
+            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+            disabled={pending}
+          >
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }
 
@@ -270,6 +403,8 @@ export function Usuarios() {
   const [loading, setLoading] = useState(true)
   const [attempt, setAttempt] = useState(0)
   const [creating, setCreating] = useState(false)
+  const [resetAccount, setResetAccount] = useState<Account | null>(null)
+  const roles = roleChoices(user?.role, false, 'vendedor')
 
   useEffect(() => {
     let cancelled = false
@@ -318,9 +453,28 @@ export function Usuarios() {
     setDrafts((current) => ({ ...current, [id]: { ...current[id], ...patch } }))
   }
 
+  function applyAccount(next: Account) {
+    setAccounts((current) => current.map((item) => (item.id === next.id ? next : item)))
+    setDrafts((current) => ({ ...current, [next.id]: draftFrom(next) }))
+  }
+
   async function save(account: Account) {
     const draft = drafts[account.id]
-    if (!draft) return
+    if (!draft || (user?.role === 'encargado_deposito' && account.role === 'admin')) return
+    const name = draft.name.trim()
+    const email = draft.email.trim()
+    if (!name) {
+      await showError('Ingresá el nombre.')
+      return
+    }
+    if (name.length > 80) {
+      await showError('El nombre es demasiado largo.')
+      return
+    }
+    if (!EMAIL_PATTERN.test(email)) {
+      await showError('Ingresá un email válido.')
+      return
+    }
     if (draft.role !== account.role) {
       const accepted = await confirm(
         'Cambiar el rol',
@@ -345,40 +499,26 @@ export function Usuarios() {
         await showError('No se pudo leer el usuario.')
         return
       }
-      next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
+      next = { ...result.data, phone: phoneOf(result.data) }
     }
-    if (draft.phone.trim() !== next.phone) {
-      const result = await updateUserPhone(account.id, draft.phone.trim())
-      if (!result.ok) {
-        setBusy('')
-        if (result.status === 401) logout()
-        else await showError(result.message)
-        return
-      }
-      if (!isAccount(result.data)) {
-        setBusy('')
-        await showError('No se pudo leer el usuario.')
-        return
-      }
-      next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
-    }
+    const patch: {
+      name?: string
+      email?: string
+      phone?: string
+      sellerName?: string
+      carrierName?: string
+    } = {}
+    if (name !== next.name) patch.name = name
+    if (email.toLowerCase() !== next.email) patch.email = email
+    if (draft.phone.trim() !== phoneOf(next)) patch.phone = draft.phone.trim()
     if (draft.role === 'vendedor' && draft.sellerName.trim() !== sellerOf(next)) {
-      const result = await updateUserSeller(account.id, draft.sellerName.trim())
-      if (!result.ok) {
-        setBusy('')
-        if (result.status === 401) logout()
-        else await showError(result.message)
-        return
-      }
-      if (!isAccount(result.data)) {
-        setBusy('')
-        await showError('No se pudo leer el usuario.')
-        return
-      }
-      next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
+      patch.sellerName = draft.sellerName.trim()
     }
     if (draft.role === 'chofer' && draft.carrierName.trim() !== carrierOf(next)) {
-      const result = await updateUserCarrier(account.id, draft.carrierName.trim())
+      patch.carrierName = draft.carrierName.trim()
+    }
+    if (Object.keys(patch).length > 0) {
+      const result = await updateUser(account.id, patch)
       if (!result.ok) {
         setBusy('')
         if (result.status === 401) logout()
@@ -390,18 +530,44 @@ export function Usuarios() {
         await showError('No se pudo leer el usuario.')
         return
       }
-      next = { ...result.data, phone: phoneOf(result.data), sellerName: sellerOf(result.data) }
+      next = { ...result.data, phone: phoneOf(result.data) }
     }
-    setAccounts((current) => current.map((item) => (item.id === next.id ? next : item)))
-    setDrafts((current) => ({
-      ...current,
-      [next.id]: draftFrom(next),
-    }))
+    applyAccount(next)
     setBusy('')
     setNotice(`Se guardó ${next.name}.`)
     if (user && next.id === user.id) await refreshSession()
     await success('Cambios guardados')
   }
+
+  async function toggleActive(account: Account) {
+    if (user?.id === account.id) return
+    if (user?.role === 'encargado_deposito' && account.role === 'admin') return
+    const nextActive = !account.active
+    if (!nextActive) {
+      const accepted = await confirm(
+        'Desactivar usuario',
+        `${account.name} no va a poder iniciar sesión.`,
+      )
+      if (!accepted) return
+    }
+    setBusy(account.id)
+    const result = await updateUserActive(account.id, nextActive)
+    setBusy('')
+    if (!result.ok) {
+      if (result.status === 401) logout()
+      else await showError(result.message)
+      return
+    }
+    if (!isAccount(result.data)) {
+      await showError('No se pudo leer el usuario.')
+      return
+    }
+    const next = { ...result.data, phone: phoneOf(result.data) }
+    setAccounts((current) => current.map((item) => (item.id === next.id ? next : item)))
+    await success(next.active ? 'Usuario activado' : 'Usuario desactivado')
+  }
+
+  const ordered = [...accounts].sort((left, right) => Number(!left.active) - Number(!right.active))
 
   return (
     <section className="page">
@@ -416,11 +582,23 @@ export function Usuarios() {
       </header>
       {creating && (
         <NewUserDialog
+          roles={roles}
           sellers={sellers}
           transporters={transporters}
           onClose={() => setCreating(false)}
           onCreated={addAccount}
           onUnauthorized={logout}
+        />
+      )}
+      {resetAccount && (
+        <PasswordDialog
+          account={resetAccount}
+          onClose={() => setResetAccount(null)}
+          onUnauthorized={logout}
+          onSaved={() => {
+            setResetAccount(null)
+            void success('Contraseña actualizada')
+          }}
         />
       )}
       {loading && <Spinner label="Cargando usuarios…" />}
@@ -430,25 +608,61 @@ export function Usuarios() {
       )}
       {!loading && !error && (
       <div className="mt-6 flex flex-col gap-3">
-        {accounts.map((account) => {
+        {ordered.map((account) => {
           const draft = drafts[account.id] ?? draftFrom(account)
           const sellerOptions = withCurrent(sellers, draft.sellerName)
           const carrierOptions = withCurrent(transporters, draft.carrierName)
+          const locked = user?.role === 'encargado_deposito' && account.role === 'admin'
+          const mine = user?.id === account.id
           const dirty = draftDirty(draft, account)
+          const choices = roleChoices(user?.role, locked, draft.role)
           return (
-            <article key={account.id} className="rounded-2xl bg-white p-4 shadow-sm">
-              <p className="font-semibold">{account.name}</p>
-              <p className="text-sm text-lumi-muted">{account.email}</p>
-              <p className="text-sm text-lumi-muted">{formatCreatedAt(account.createdAt)}</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,16rem)_minmax(0,16rem)_auto] sm:items-end">
+            <article
+              key={account.id}
+              className={`rounded-2xl bg-white p-4 shadow-sm ${account.active ? '' : 'opacity-60'}`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    account.active ? 'bg-[#e5f6ea] text-[#1d7a3a]' : 'bg-[#f3f1ea] text-lumi-muted'
+                  }`}
+                >
+                  {account.active ? 'Activo' : 'Inactivo'}
+                </span>
+                <span className="text-sm text-lumi-muted">{formatCreatedAt(account.createdAt)}</span>
+              </div>
+              {locked && (
+                <p className="mt-2 text-xs text-lumi-muted">Solo el admin puede modificar esta cuenta</p>
+              )}
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="text-sm">
+                  Nombre
+                  <input
+                    value={draft.name}
+                    disabled={locked}
+                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
+                    onChange={(event) => setDraft(account.id, { name: event.target.value })}
+                  />
+                </label>
+                <label className="text-sm">
+                  Email
+                  <input
+                    type="email"
+                    value={draft.email}
+                    disabled={locked}
+                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
+                    onChange={(event) => setDraft(account.id, { email: event.target.value })}
+                  />
+                </label>
                 <label className="text-sm">
                   Rol
                   <select
                     value={draft.role}
-                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+                    disabled={locked}
+                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
                     onChange={(event) => setDraft(account.id, { role: event.target.value as Role })}
                   >
-                    {ROLES.map((role) => (
+                    {choices.map((role) => (
                       <option key={role} value={role}>
                         {ROLE_LABEL[role]}
                       </option>
@@ -460,7 +674,8 @@ export function Usuarios() {
                     Vendedor
                     <select
                       value={draft.sellerName}
-                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+                      disabled={locked}
+                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
                       onChange={(event) => setDraft(account.id, { sellerName: event.target.value })}
                     >
                       <option value="">Sin vincular</option>
@@ -477,7 +692,8 @@ export function Usuarios() {
                     Transportista
                     <select
                       value={draft.carrierName}
-                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+                      disabled={locked}
+                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
                       onChange={(event) => setDraft(account.id, { carrierName: event.target.value })}
                     >
                       <option value="">Sin vincular</option>
@@ -493,19 +709,40 @@ export function Usuarios() {
                   Celular corporativo
                   <input
                     value={draft.phone}
+                    disabled={locked}
                     placeholder="11 5555 0101"
-                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
                     onChange={(event) => setDraft(account.id, { phone: event.target.value })}
                   />
                 </label>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
                   className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
-                  disabled={!dirty || busy === account.id}
+                  disabled={locked || !dirty || busy === account.id}
                   onClick={() => void save(account)}
                 >
                   Guardar
                 </button>
+                <button
+                  type="button"
+                  className="rounded-xl px-4 py-2 text-sm font-semibold hover:bg-[#f7f4ea] disabled:opacity-50"
+                  disabled={locked || busy === account.id}
+                  onClick={() => setResetAccount(account)}
+                >
+                  Resetear contraseña
+                </button>
+                {!mine && (
+                  <button
+                    type="button"
+                    className="rounded-xl px-4 py-2 text-sm font-semibold hover:bg-[#f7f4ea] disabled:opacity-50"
+                    disabled={locked || busy === account.id}
+                    onClick={() => void toggleActive(account)}
+                  >
+                    {account.active ? 'Desactivar' : 'Activar'}
+                  </button>
+                )}
               </div>
             </article>
           )
