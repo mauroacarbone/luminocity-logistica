@@ -1,6 +1,17 @@
 import { apiRequest } from './api'
 import type { Role } from './authStore'
 
+export function createUserAccount(input: {
+  name: string
+  email: string
+  password: string
+  role: Role
+  sellerName?: string
+  carrierName?: string
+}) {
+  return apiRequest('/api/users', 'POST', input, 'No se pudo crear el usuario.')
+}
+
 export function listUsers() {
   return apiRequest('/api/users', 'GET', undefined, 'No se pudieron cargar los usuarios.')
 }

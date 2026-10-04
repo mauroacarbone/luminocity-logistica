@@ -12,9 +12,9 @@ Si no hay `DATABASE_URL` y `server/data/users.json` no existe, al arrancar el ba
 - Contraseña: `demo1234`
 - Rol: Admin
 
-También se puede crear una cuenta (nombre, email, contraseña y rol: vendedor, depósito, encargado de depósito, chofer o admin). La contraseña se hashea con bcrypt. El navegador guarda solo el token.
+En desarrollo, `/registro` crea un vendedor. El admin da de alta y administra las cuentas desde Usuarios: nombre, email, contraseña inicial y rol (vendedor, depósito, encargado de depósito, chofer o admin). Si el rol es vendedor o chofer, también puede vincular el vendedor o el transportista. La contraseña se hashea con bcrypt. El navegador guarda solo el token.
 
-Ese usuario demo no se crea si hay `DATABASE_URL`, ni en producción. Ahí el primer admin se carga con `npm run create-admin` (ver Deploy).
+Ese usuario demo no se crea si hay `DATABASE_URL`, ni en producción. `npm run create-admin` queda solo para crear el primer admin (ver Deploy).
 
 ## Cómo levantarlo
 
@@ -53,7 +53,7 @@ En `server/`:
 - `npm run dev` — API con recarga
 - `npm start` — API
 - `npm run migrate:json` — copia los JSON de `server/data` a Postgres (hace falta `DATABASE_URL`)
-- `npm run create-admin` — crea el primer admin en Postgres
+- `npm run create-admin` — crea el primer admin en Postgres. El resto de las cuentas las da de alta el admin desde Usuarios
 
 ## Deploy
 
@@ -81,7 +81,7 @@ npm run create-admin
 
 `migrate:json` se puede correr dos veces: hace upsert por id y al final imprime cuántos registros cargó por tabla. No borra filas que solo estén en la base. Si el JSON tiene el usuario demo (`mauro@luminocity.local` / `demo1234`), no lo migres a producción. La contraseña del admin tiene que tener al menos 10 caracteres.
 
-En producción no hay registro público. El admin administra las cuentas en Usuarios.
+En producción no hay registro público. El admin da de alta y administra las cuentas desde Usuarios. `npm run create-admin` queda solo para el primer admin.
 
 6. Abrí `https://<tu-servicio>.onrender.com/api/health`. Tiene que responder 200. Después entrá a la raíz y logueate con el admin.
 

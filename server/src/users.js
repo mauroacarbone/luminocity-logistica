@@ -141,13 +141,25 @@ export function setUserCarrierName(id, carrierName) {
   })
 }
 
-export function createUser({ name, email, password, role }) {
+export function createUser({
+  name,
+  email,
+  password,
+  role,
+  sellerName,
+  carrierName,
+  allowDuplicateName = false,
+}) {
   return locked(async () => {
     const users = await readUsers()
     const normalized = email.trim().toLowerCase()
-    if (users.some((item) => item.email === normalized)) return { error: 'email' }
+    if (users.some((item) => String(item.email ?? '').toLowerCase() === normalized)) {
+      return { error: 'email' }
+    }
     const nameKey = normalizeName(name)
-    if (nameKey && users.some((item) => normalizeName(item.name) === nameKey)) return { error: 'name' }
+    if (!allowDuplicateName && nameKey && users.some((item) => normalizeName(item.name) === nameKey)) {
+      return { error: 'name' }
+    }
     const user = {
       id: randomUUID(),
       name: name.trim(),
@@ -155,6 +167,12 @@ export function createUser({ name, email, password, role }) {
       passwordHash: await bcrypt.hash(password, 10),
       role,
       createdAt: new Date().toISOString(),
+    }
+    if (role === 'vendedor' && typeof sellerName === 'string' && sellerName.trim()) {
+      user.sellerName = sellerName.trim()
+    }
+    if (role === 'chofer' && typeof carrierName === 'string' && carrierName.trim()) {
+      user.carrierName = carrierName.trim()
     }
     users.push(user)
     await writeUsers(users)
