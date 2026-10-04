@@ -87,6 +87,9 @@ function saveSheet(body, user) {
       if (!OPEN_ORDER.has(order.status)) {
         return fail(`El pedido ${id} no está preparado ni asignado.`)
       }
+      if (order.dispatchType === 'correo') {
+        return fail('Los envíos por correo no van en hoja de ruta', 409)
+      }
       if (order.driverId && order.driverId !== parsed.driverId) {
         return fail(`El pedido ${id} ya está asignado a otro chofer`, 409)
       }

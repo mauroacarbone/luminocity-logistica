@@ -96,6 +96,7 @@ export function commercialKeys(changes) {
 const DRIVER_STATUSES = ['preparado', 'asignado', 'en-viaje']
 
 function driverSees(user, order) {
+  if (order.dispatchType === 'correo') return false
   if (!DRIVER_STATUSES.includes(order.status)) return false
   if (!nearbyDelivery(order.deliveryDate)) return false
   if (typeof order.driverId === 'string' && order.driverId) return order.driverId === user.id

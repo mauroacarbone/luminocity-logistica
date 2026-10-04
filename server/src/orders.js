@@ -232,8 +232,7 @@ function createOrder(body, user) {
     const otherSeller =
       user.role === 'vendedor' &&
       normalizeName(parsed.order.seller) !== normalizeName(user.sellerName)
-    const driver = await checkDriver(parsed.order.driverId)
-    if (driver.error) return driver
+    delete parsed.order.driverId
     const createdAt = new Date().toISOString()
     const order = {
       ...parsed.order,
@@ -305,6 +304,9 @@ function patchOrder(id, body, user) {
 
     const driverChanged = Object.prototype.hasOwnProperty.call(changes, 'driverId')
     if (driverChanged) {
+      if (current.dispatchType === 'correo') {
+        return fail('Los envíos por correo no van en hoja de ruta', 409)
+      }
       if (current.status !== 'asignado') {
         return fail('Para cambiar el chofer usá Asignar o Volver a preparado', 409)
       }
