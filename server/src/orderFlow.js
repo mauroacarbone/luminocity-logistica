@@ -158,8 +158,10 @@ export async function applyTransition(orders, current, input, user, via) {
 
   stampStatus(next, current)
 
-  const blocked = await blockPlannedDeparture(user, current, next)
-  if (blocked) return blocked
+  if (via !== 'hoja') {
+    const blocked = await blockPlannedDeparture(user, current, next)
+    if (blocked) return blocked
+  }
   const synced = await syncSheetOnEdit(orders, current, next)
   if (synced.error) return synced
 

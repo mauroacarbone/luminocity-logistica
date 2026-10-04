@@ -3,6 +3,7 @@ import { businessToday } from './access.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
+import { applyTransition } from './orderFlow.js'
 import { checkDriver, checkSlot, normalizeTimeWindow, rememberOverride } from './orders.js'
 
 const OPEN_ORDER = new Set(['preparado', 'asignado'])
@@ -107,13 +108,24 @@ function saveSheet(body, user) {
       }
       const slot = await checkSlot(orders, order, next, user, body.override === true)
       if (slot.error) return slot
-      if (slot.authorized) rememberOverride(next, user)
       if (order.status === 'preparado') {
-        order.status = 'asignado'
-        order.assignedAt = new Date().toISOString()
-        delete order.departedAt
-        delete order.deliveredAt
+        const transition = await applyTransition(
+          orders,
+          order,
+          {
+            to: 'asignado',
+            driverId: parsed.driverId,
+            timeWindow: parsed.slot,
+            override: body.override === true,
+          },
+          user,
+          'hoja',
+        )
+        if (transition.error) return transition
+        byId.set(id, transition.order)
+        continue
       }
+      if (slot.authorized) rememberOverride(order, user)
       order.driverId = parsed.driverId
       if (next.slotOverrides) order.slotOverrides = next.slotOverrides
     }
@@ -202,9 +214,8 @@ function startSheet(id, user) {
       if (order.deliveryDate !== sheet.date) continue
       if (normalizeTimeWindow(order.timeWindow) !== sheet.slot) continue
       if (order.status !== 'asignado') continue
-      order.status = 'en-viaje'
-      order.departedAt = now
-      delete order.deliveredAt
+      const transition = await applyTransition(orders, order, { to: 'en-viaje' }, user, 'hoja')
+      if (transition.error) return transition
       started += 1
     }
     if (started === 0) return fail('No hay pedidos para salir.')

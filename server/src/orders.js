@@ -16,7 +16,7 @@ import { locked } from './lock.js'
 import { forgetUsers, putLocation, readLocations } from './locations.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyDelivered, notifyEncargados, notifySeller, notifyUser } from './notifications.js'
-import { stampStatus } from './orderFlow.js'
+import { applyTransition, stampStatus } from './orderFlow.js'
 import { blockPlannedDeparture, closeFinishedSheets, pullOrderFromSheets, syncSheetOnEdit } from './routeSheets.js'
 import { isActive, readUsersList } from './users.js'
 
@@ -119,6 +119,17 @@ ordersRouter.post('/', async (req, res) => {
 ordersRouter.patch('/:id/edits/:editId', async (req, res) => {
   await send(res, async () => {
     const result = await reviewEdit(req.params.id, req.params.editId, req.body, req.user)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(result.order)
+    queueGeo(result.order)
+  })
+})
+ordersRouter.post('/:id/transition', async (req, res) => {
+  await send(res, async () => {
+    const result = await transitionOrder(req.params.id, req.body, req.user)
     if (result.error) {
       sendError(res, result)
       return
@@ -346,6 +357,30 @@ function patchOrder(id, body, user) {
     }
     await releaseIfIdle(orders, current, order)
     return { order }
+  })
+}
+
+const TRANSITION_VIAS = new Set(['pedidos', 'despacho', 'hoja', 'mis-entregas', 'qr'])
+
+function transitionOrder(id, body, user) {
+  return locked(async () => {
+    if (!isRecord(body)) return fail('La transición no es válida.')
+    const via = typeof body.via === 'string' ? body.via.trim() : ''
+    if (!TRANSITION_VIAS.has(via)) return fail('Indicá desde dónde se cambia el estado.')
+    const orders = await readOrders()
+    const index = orders.findIndex((item) => item.id === id)
+    if (index < 0) return fail('No existe ese pedido.', 404)
+    const current = orders[index]
+    if (!canSeeOrder(user, current)) return fail('No tenés permiso para modificar este pedido.', 403)
+    const result = await applyTransition(orders, current, body, user, via)
+    if (result.error) return result
+    await writeOrders(orders)
+    await closeFinishedSheets(orders)
+    if (result.order.status === 'entregado' && current.status !== 'entregado') {
+      await notifyDelivered(result.order)
+    }
+    await releaseIfIdle(orders, current, result.order)
+    return { order: result.order }
   })
 }
 
