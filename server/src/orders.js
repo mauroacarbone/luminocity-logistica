@@ -297,6 +297,12 @@ function patchOrder(id, body, user) {
     const changes = { ...tracked, ...placeChanges(current, parsed.order) }
     if (Object.keys(changes).length === 0) return fail('No hay cambios para guardar.')
 
+    if (Object.prototype.hasOwnProperty.call(changes, 'dispatchType')) {
+      if (current.status !== 'pendiente' && current.status !== 'preparado') {
+        return fail('Para cambiar el despacho, volvé a preparado', 409)
+      }
+    }
+
     const driverChanged = Object.prototype.hasOwnProperty.call(changes, 'driverId')
     if (driverChanged) {
       if (current.status !== 'asignado') {
