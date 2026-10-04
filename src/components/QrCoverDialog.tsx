@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { DISPATCH_LABEL } from '../data/catalog'
 import type { Order } from '../data/orders'
+import { placeLine } from '../lib/place'
 
 function packagesLabel(order: Order) {
   return order.packages != null ? String(order.packages) : 'a definir'
@@ -27,8 +28,24 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
     window.print()
   }
 
+  const detail = placeLine(order)
   const rows = [
     { label: 'Cliente', value: order.client },
+    ...(order.address || detail
+      ? [
+          {
+            label: 'Dirección',
+            value: (
+              <>
+                {order.address}
+                {detail && (
+                  <span className={order.address ? 'mt-1 block font-normal' : undefined}>{detail}</span>
+                )}
+              </>
+            ),
+          },
+        ]
+      : []),
     ...(order.invoices && order.invoices.length > 0
       ? [{ label: 'Facturas', value: order.invoices.join(', ') }]
       : []),
