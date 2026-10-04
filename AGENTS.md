@@ -38,7 +38,7 @@ Carga pedidos con su usuario y ve solo los suyos (`createdBy` o `seller` igual a
 - Pantallas: Panel (ver), Nuevo Pedido (editar), Pedidos y Preparación (editar los suyos), Despacho (ver), Post Venta (editar).
 - Puede cargar a nombre de otro vendedor solo si un encargado lo autorizó antes. La autorización se usa una sola vez.
 - Edita sus pedidos con motivo. En `pendiente` el cambio se aplica y se avisa al encargado. En `preparado` queda esperando confirmación. Después de `preparado` no edita.
-- No puede: pasar a `preparado`, asignar chofer, picking, estados de despacho, planificar la ruta, datos maestros, usuarios.
+- No puede: pasar a `preparado`, asignar chofer, picking, estados de despacho, planificar la ruta, datos maestros, usuarios. Tampoco puede pasar el límite de 3 pedidos por chofer y franja.
 
 ### Depósito
 
@@ -53,7 +53,7 @@ Deja listo lo que se entrega hoy. Ve pendientes y preparados.
 Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar solo.
 
 - Pantallas: las de depósito, más Despacho (editar), Choferes en ruta (ver), Planificador de Rutas (editar), Post Venta (editar) y Bandeja (editar).
-- Puede: asignar transportista y chofer, armar rutas, autorizar una carga a nombre de otro, aprobar o rechazar ediciones, cargar reclamos, editar y cancelar pedidos que no salieron.
+- Puede: asignar transportista y chofer, armar rutas, autorizar una carga a nombre de otro, aprobar o rechazar ediciones, cargar reclamos, editar y cancelar pedidos que no salieron. Puede pasar el límite de 3 pedidos por chofer y franja si lo confirma.
 - Si edita un pedido, se avisa al vendedor de ese pedido.
 - No puede: marcar `en-viaje` o `entregado`, datos maestros, usuarios.
 
@@ -101,6 +101,8 @@ Estados del pedido: `pendiente` → `preparado` → `asignado` → `en-viaje` �
 2. Depósito lo marca `preparado` e indica bultos. El encargado asigna transportista y chofer (`driverId`). El chofer ve los pedidos por el `carrierName` de su usuario, no por `driverId`. Puede editar o cancelar antes de que salga. El vendedor, si edita un preparado, deja el cambio en espera.
 3. Despacho lo sigue por día. `asignado` y `en-viaje` van en la solapa de viaje. La carátula lleva QR: buscar el pedido o confirmar `entregado`.
 4. Post venta es un reclamo aparte (`R-`), no un estado del pedido.
+
+Un chofer (`driverId`) puede tener como máximo 3 pedidos por franja y por día de entrega. Las franjas (`09:00-13:00`, `10:00-15:00`, `15:00-19:00`) se cuentan por separado, aunque se superpongan. No cuentan los cancelados (borrados, o con estado `cancelado`); los `entregado` sí ocupan la franja. El cupo se controla al asignar el chofer y al cambiar la fecha o la franja de un pedido que ya tiene uno. Si quedaría en 4 o más, el server responde 409 con `code: FRANJA_LLENA` y el detalle del chofer, la fecha, la franja y la cantidad. El encargado o el admin pueden pasarse mandando `override: true`; el pedido guarda quién lo autorizó y cuándo en `slotOverrides`. Otro rol recibe el rechazo. La autorización de un solo uso para cargar a nombre de otro vendedor no cubre este caso.
 
 `dispatchType` es `propia` (entrega propia) o `correo` (correo / courier). Cada tipo tiene su lista, editable en Datos maestros.
 

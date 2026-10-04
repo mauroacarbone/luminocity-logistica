@@ -28,6 +28,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 16b.2 | Recarga silenciosa de Mis entregas y reintento de Nominatim | Hecho |
 | 17 | Pulido visual y confirmaciones con SweetAlert2 | Hecho |
 | 17.1 | Envío de WhatsApp desde la campanita | Hecho |
+| 18 | Límite de 3 pedidos por chofer y franja | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -49,6 +50,8 @@ El Brief 16b.1 no espera a Nominatim para devolver el listado: la geocodificaci�
 
 El Brief 16b.2 recarga Mis entregas sin el spinner, una sola vez por usuario en la sesión. No vuelve a pedir coordenadas si el pedido tiene `geoMiss` o un `geoRetryAt` en el futuro. Un corte de red, un JSON roto, un 5xx o un timeout dejan el reintento para dentro de una hora, sin error en cada consulta. Un 429 corta la tanda.
 
+El Brief 18 limita a 3 los pedidos de un chofer por franja y por día. Las franjas no se suman entre sí. Al asignar el chofer, o al cambiar la fecha o la franja de uno que ya tiene chofer, el server responde 409 `FRANJA_LLENA` si se pasa. El encargado o el admin pueden confirmarlo y queda anotado en el pedido. Cancelar libera el lugar; entregar no. En Despacho, cada chofer muestra el cupo de esa franja y los que ya tienen 3 van en rojo. Reasignar un chofer pide confirmación.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
@@ -57,8 +60,9 @@ En este orden. No adelantar el siguiente.
 | --- | --- | --- |
 | 16c | Link de seguimiento para el cliente | **Pendiente** |
 | 16d | WhatsApp Cloud API | **Pendiente** |
-| 18 | Reclamos (`R-`) a la API. | **Pendiente** |
+| — | Reclamos (`R-`) a la API. | **Pendiente** |
 | 19 | Sacar los adjuntos del listado de pedidos y que el PATCH mande solo lo que cambia. | **Pendiente** |
+| — | Autorizar un cuarto pedido en la franja con el permiso de un solo uso del Brief 15. Esa autorización es para cargar a nombre de otro vendedor y no encaja acá: hoy solo el encargado o el admin lo confirman en el momento. | **Pendiente** |
 
 ## Decisiones
 
@@ -68,6 +72,7 @@ En este orden. No adelantar el siguiente.
 - El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. Solo admin lo elige en Usuarios, desde los vendedores de datos maestros. Al editar no puede cambiar el vendedor del pedido.
 - El chofer ve las entregas de su `carrierName`. Sin vínculo no ve pedidos. Solo admin lo elige en Usuarios, desde los transportistas de datos maestros.
 - Una carga a nombre de otro vendedor exige una autorización aprobada y sin usar. Se marca usada en la misma escritura que guarda el pedido. Al pedirla se avisa al encargado.
+- Un chofer tiene como máximo 3 pedidos por `timeWindow` y `deliveryDate`. El cuarto responde 409 `FRANJA_LLENA`, salvo que encargado o admin manden `override: true`. Eso queda en `slotOverrides` del pedido.
 - La edición de un preparado por el vendedor no cambia el pedido hasta que el encargado la aprueba o la rechaza. Si el pedido ya avanzó, aprobar responde 409. El vendedor recibe el aviso de aprobado o rechazado.
 - No se le puede sacar el rol al último administrador.
 - A `preparado` se pasa solo con una cantidad de bultos.
