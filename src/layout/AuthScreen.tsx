@@ -29,7 +29,7 @@ export function AuthScreen({
         <h1>{title}</h1>
         <p className="auth-sub">{subtitle}</p>
         {children}
-        <p className="auth-switch">{footer}</p>
+        {footer ? <p className="auth-switch">{footer}</p> : null}
       </section>
     </div>
   )

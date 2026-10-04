@@ -84,8 +84,8 @@ async function readInput() {
     console.error('Ingresá un email válido.')
     return null
   }
-  if (password.length < 6) {
-    console.error('Usá al menos 6 caracteres.')
+  if (password.length < 10) {
+    console.error('Usá al menos 10 caracteres.')
     return null
   }
   return { email, password, name }

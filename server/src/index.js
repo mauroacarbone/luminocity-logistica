@@ -26,6 +26,11 @@ if (!jwtSecret) {
   process.exit(1)
 }
 
+if (production && jwtSecret.length < 32) {
+  console.error('JWT_SECRET tiene que tener 32 caracteres o más.')
+  process.exit(1)
+}
+
 if (production && !String(process.env.DATABASE_URL ?? '').trim()) {
   console.error('Falta DATABASE_URL. En producción es obligatorio.')
   process.exit(1)

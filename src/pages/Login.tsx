@@ -38,9 +38,11 @@ export function Login() {
       title="Iniciar sesión"
       subtitle="Accedé con tu email y contraseña."
       footer={
-        <>
-          ¿No tenés cuenta? <Link to="/registro">Crear una</Link>
-        </>
+        import.meta.env.PROD ? null : (
+          <>
+            ¿No tenés cuenta? <Link to="/registro">Crear una</Link>
+          </>
+        )
       }
     >
       <form className="auth-form" onSubmit={onSubmit} noValidate>

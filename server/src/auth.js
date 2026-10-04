@@ -1,10 +1,21 @@
 import { Router } from 'express'
+import rateLimit from 'express-rate-limit'
 import jwt from 'jsonwebtoken'
 import { requireAuth } from './middleware.js'
 import { authenticate, createUser, toPublicUser } from './users.js'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const TOKEN_EXPIRES = '8h'
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler(_req, res) {
+    res.status(429).json({ message: 'Demasiados intentos. Esperá 15 minutos y probá de nuevo.' })
+  },
+})
 
 export const authRouter = Router()
 
@@ -16,6 +27,12 @@ function sign(user) {
 }
 
 authRouter.post('/register', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(403).json({
+      message: 'El registro no está disponible. Pedile al administrador que cree tu usuario.',
+    })
+    return
+  }
   const body = req.body ?? {}
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const email = typeof body.email === 'string' ? body.email.trim() : ''
@@ -46,7 +63,7 @@ authRouter.post('/register', async (req, res) => {
   res.status(201).json(sign(result.user))
 })
 
-authRouter.post('/login', async (req, res) => {
+authRouter.post('/login', loginLimiter, async (req, res) => {
   const body = req.body ?? {}
   const email = typeof body.email === 'string' ? body.email : ''
   const password = typeof body.password === 'string' ? body.password : ''
