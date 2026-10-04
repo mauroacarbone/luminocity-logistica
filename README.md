@@ -33,10 +33,10 @@ cp .env.example .env
 npm run dev
 ```
 
-Cambiá `JWT_SECRET` en `server/.env`. El valor de `.env.example` es solo un ejemplo y no hay que dejarlo. Si vas a usar Postgres, agregá `DATABASE_URL` (en Neon, con `sslmode=require`). Sin esa variable el server sigue con los JSON. Generá el secreto con:
+Cambiá `JWT_SECRET` en `server/.env`. El valor de `.env.example` es solo un ejemplo y no hay que dejarlo. En producción tiene que tener 32 caracteres o más. Si vas a usar Postgres, agregá `DATABASE_URL` (en Neon, con `sslmode=require` y el host `-pooler`). Sin esa variable el server sigue con los JSON. En PowerShell:
 
-```
-openssl rand -hex 32
+```powershell
+$env:JWT_SECRET = -join ((1..48) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
 ```
 
 La app queda en el puerto de Vite y proxea `/api` a `http://localhost:3001`. En `server/`, `npm start` levanta la API sin recargar al cambiar archivos.
@@ -61,25 +61,27 @@ Un solo servicio de Render sirve el build del front y la API (`/api`) por HTTPS.
 
 1. Creá un proyecto en [Neon](https://neon.tech) y copiá la connection string. Tiene que incluir ssl (`sslmode=require`).
 2. En Render, creá el servicio desde este repo con el blueprint `render.yaml` (New → Blueprint). Es un Web Service de Node, plan free, región Ohio. El build instala y compila el front y el server; el start levanta `server/`.
-3. Cargá a mano `DATABASE_URL` y `JWT_SECRET`. No van en el repo. `JWT_SECRET` sale de `openssl rand -hex 32`. `NODE_ENV=production` ya está en el blueprint.
-4. Si en producción falta `DATABASE_URL` o `JWT_SECRET`, el server no arranca.
-5. Los JSON no se suben a git. Para pasar los datos actuales, en una máquina que tenga `server/data` y la connection string:
+3. Cargá a mano `DATABASE_URL` y `JWT_SECRET`. No van en el repo. `NODE_ENV=production` ya está en el blueprint. El secreto tiene que tener 32 caracteres o más. En PowerShell:
 
-```
-cd server
-DATABASE_URL='postgresql://...?...sslmode=require' npm run migrate:json
+```powershell
+$env:JWT_SECRET = -join ((1..48) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
 ```
 
-Se puede correr dos veces: hace upsert por id y al final imprime cuántos registros cargó por tabla. No borra filas que solo estén en la base. Si el JSON tiene el usuario demo (`mauro@luminocity.local` / `demo1234`), no lo migres a producción.
+4. Si en producción falta `DATABASE_URL` o `JWT_SECRET`, o el secreto tiene menos de 32 caracteres, el server no arranca.
+5. El plan gratis de Render no tiene shell. `migrate:json` y `create-admin` se corren en tu PC, con la connection string de Neon. Usá el host que termina en `-pooler`. En PowerShell, desde `server/`:
 
-Si la base está vacía, creá el admin (en el shell de Render o en local, con `DATABASE_URL`):
-
+```powershell
+$env:DATABASE_URL = 'postgresql://user:pass@ep-xxxx-pooler.region.aws.neon.tech/neondb?sslmode=require'
+npm run migrate:json
+$env:ADMIN_EMAIL = 'tu@email.com'
+$env:ADMIN_PASSWORD = 'una-clave-de-10'
+$env:ADMIN_NAME = 'Tu nombre'
+npm run create-admin
 ```
-cd server
-ADMIN_EMAIL=tu@email.com ADMIN_PASSWORD='una-clave-larga' ADMIN_NAME='Tu nombre' npm run create-admin
-```
 
-Sin esas variables, el script las pide en la terminal. No uses `demo1234`.
+`migrate:json` se puede correr dos veces: hace upsert por id y al final imprime cuántos registros cargó por tabla. No borra filas que solo estén en la base. Si el JSON tiene el usuario demo (`mauro@luminocity.local` / `demo1234`), no lo migres a producción. La contraseña del admin tiene que tener al menos 10 caracteres.
+
+En producción no hay registro público. El admin administra las cuentas en Usuarios.
 
 6. Abrí `https://<tu-servicio>.onrender.com/api/health`. Tiene que responder 200. Después entrá a la raíz y logueate con el admin.
 

@@ -34,6 +34,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 18.3 | Piso, depto y timbre según el domicilio | Hecho |
 | 18.4 | El server limpia piso, depto y timbre según el tipo | Hecho |
 | 19 | Postgres (Neon) y deploy en Render | Hecho |
+| 19.1 | Build de Render y escrituras en Postgres | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -67,6 +68,8 @@ El Brief 18.4 limpia esos campos en el server según el tipo: departamento, edif
 
 El Brief 19 pasa pedidos, usuarios, autorizaciones, avisos y ubicaciones a Postgres cuando hay `DATABASE_URL`. Sin esa variable siguen los JSON de `server/data`. Cada colección es una tabla (`id`, `data` jsonb, `updated_at`) y el objeto no cambia de forma. La cola de `lock.js` sigue igual; en Postgres cada vuelta es una transacción, así aprobar una edición y crear el aviso se confirman juntos. Las tablas se crean al arrancar. Los adjuntos siguen dentro del pedido (data URL), no en disco. `npm run migrate:json` hace upsert por id. En producción Express sirve `dist/` y `/api`, escucha `PORT`, responde `/api/health` y no arranca si faltan `DATABASE_URL` o `JWT_SECRET`. No crea el usuario `demo1234`: el primero sale de `npm run create-admin`. El plan gratis de Render se duerme tras unos 15 minutos.
 
+El Brief 19.1 corrige el build de Render: `npm ci` en producción se salteaba Vite y TypeScript, así que el build instala las devDependencies del front y en el server deja solo las de producción. En Postgres cada escritura compara contra la foto leída en la transacción y toca solo las filas nuevas, distintas o borradas. Un cambio de estado escribe una fila. La conexión remota verifica el certificado; la local no usa SSL. `JWT_SECRET` en producción pide 32 caracteres o más. El registro público responde 403 y el login se corta al intento 11 en 15 minutos. `create-admin` pide una contraseña de al menos 10 caracteres. La migración y el admin se corren en la PC, con el host `-pooler` de Neon, porque el plan gratis no tiene shell.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
@@ -78,6 +81,7 @@ En este orden. No adelantar el siguiente.
 | 20 | Reclamos (`R-`) a la API. | **Pendiente** |
 | — | Sacar los adjuntos del listado de pedidos y que el PATCH mande solo lo que cambia. | **Pendiente** |
 | — | Datos maestros siguen en localStorage. Este brief no los pasa a Postgres. | **Pendiente** |
+| — | Los tiles de OpenStreetMap y el OSRM demo no son para producción. Revisar más adelante. | **Pendiente** |
 | — | Autorizar un cuarto pedido en la franja con el permiso de un solo uso del Brief 15. Esa autorización es para cargar a nombre de otro vendedor y no encaja acá: hoy solo el encargado o el admin lo confirman en el momento. | **Pendiente** |
 
 ## Decisiones
@@ -85,7 +89,7 @@ En este orden. No adelantar el siguiente.
 - Los pedidos se guardan en el server. Sin `DATABASE_URL` van a JSON en `server/data`. Con `DATABASE_URL` van a Postgres, una tabla por colección. Los datos maestros siguen en el navegador. La auth ya está en el server.
 - En producción hacen falta `DATABASE_URL` y `JWT_SECRET`. No se crea el usuario demo. El front y la API salen del mismo proceso.
 - La contraseña se hashea con bcrypt en el server. El navegador solo guarda el JWT.
-- El rol filtra el menú y la API. El registro público crea `vendedor` y rechaza un nombre o email que ya use otra cuenta. No carga `sellerName`.
+- El rol filtra el menú y la API. En desarrollo el registro público crea `vendedor` y rechaza un nombre o email que ya use otra cuenta. En producción el registro responde 403. No carga `sellerName`.
 - El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. Solo admin lo elige en Usuarios, desde los vendedores de datos maestros. Al editar no puede cambiar el vendedor del pedido.
 - El chofer ve las entregas de su `carrierName`. Sin vínculo no ve pedidos. Solo admin lo elige en Usuarios, desde los transportistas de datos maestros.
 - Una carga a nombre de otro vendedor exige una autorización aprobada y sin usar. Se marca usada en la misma escritura que guarda el pedido. Al pedirla se avisa al encargado.
