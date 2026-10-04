@@ -56,29 +56,67 @@ export function stampStatus(order, current) {
   }
   if (current && current.status === order.status) return
   const now = new Date().toISOString()
-  const rank = STATUS_RANK[order.status] ?? 0
-  if (rank < STATUS_RANK.asignado) {
-    delete order.assignedAt
-    delete order.departedAt
-    delete order.deliveredAt
-    return
-  }
+  const prev = current ? (STATUS_RANK[current.status] ?? 0) : -1
+  const next = STATUS_RANK[order.status] ?? 0
+  if (next <= prev) return
   if (order.status === 'asignado') {
-    const kept =
+    order.assignedAt =
       current?.status === 'en-viaje' && typeof current.assignedAt === 'string' && current.assignedAt
         ? current.assignedAt
-        : ''
-    order.assignedAt = kept || now
-    delete order.departedAt
-    delete order.deliveredAt
+        : now
     return
   }
   if (order.status === 'en-viaje') {
     order.departedAt = now
-    delete order.deliveredAt
     return
   }
   if (order.status === 'entregado') order.deliveredAt = now
+}
+
+export function withHistory(order) {
+  if (!order || typeof order !== 'object') return order
+  if (Array.isArray(order.history) && order.history.length > 0) return order
+  const at =
+    typeof order.createdAt === 'string' && order.createdAt
+      ? order.createdAt
+      : typeof order.loadedAt === 'string'
+        ? order.loadedAt
+        : new Date().toISOString()
+  return {
+    ...order,
+    history: [
+      {
+        at,
+        by: {
+          id: typeof order.createdBy === 'string' ? order.createdBy : '',
+          name: '',
+        },
+        from: null,
+        to: 'pendiente',
+        reason: 'Creado',
+        via: 'pedidos',
+      },
+    ],
+  }
+}
+
+function historyOf(order) {
+  if (Array.isArray(order.history) && order.history.length > 0) {
+    return order.history.map((entry) => ({ ...entry, by: { ...entry.by } }))
+  }
+  return withHistory(order).history.map((entry) => ({ ...entry, by: { ...entry.by } }))
+}
+
+function pushHistory(order, { at, by, from, to, reason, via }) {
+  const entry = {
+    at,
+    by: { id: by.id, name: by.name },
+    from,
+    to,
+    via,
+  }
+  if (reason) entry.reason = reason
+  order.history = [...historyOf(order), entry]
 }
 
 /**
@@ -164,6 +202,15 @@ export async function applyTransition(orders, current, input, user, via) {
   }
   const synced = await syncSheetOnEdit(orders, current, next)
   if (synced.error) return synced
+
+  pushHistory(next, {
+    at: next.updatedAt,
+    by: { id: user.id, name: typeof user.name === 'string' ? user.name : '' },
+    from: current.status,
+    to,
+    reason: reason.value,
+    via,
+  })
 
   const index = orders.findIndex((item) => item.id === current.id)
   if (index < 0) return fail('No existe ese pedido.', 404)

@@ -16,7 +16,7 @@ import { locked } from './lock.js'
 import { forgetUsers, putLocation, readLocations } from './locations.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyDelivered, notifyEncargados, notifySeller, notifyUser } from './notifications.js'
-import { applyTransition, stampStatus } from './orderFlow.js'
+import { applyTransition, stampStatus, withHistory } from './orderFlow.js'
 import { blockPlannedDeparture, closeFinishedSheets, pullOrderFromSheets, syncSheetOnEdit } from './routeSheets.js'
 import { isActive, readUsersList } from './users.js'
 
@@ -87,7 +87,7 @@ ordersRouter.get('/', async (req, res) => {
     if (req.user.role === 'chofer') {
       queueGeoIds(visible.filter((order) => needsGeo(order)).map((order) => order.id))
     }
-    res.json(byNewest(visible))
+    res.json(byNewest(visible).map(withHistory))
   })
 })
 ordersRouter.get('/:id', async (req, res) => {
@@ -102,7 +102,7 @@ ordersRouter.get('/:id', async (req, res) => {
       return
     }
     if (req.user.role === 'chofer' && needsGeo(order)) queueGeoIds([order.id])
-    res.json(order)
+    res.json(withHistory(order))
   })
 })
 ordersRouter.post('/', async (req, res) => {
@@ -112,7 +112,7 @@ ordersRouter.post('/', async (req, res) => {
       sendError(res, result)
       return
     }
-    res.status(201).json(result.order)
+    res.status(201).json(withHistory(result.order))
     queueGeo(result.order)
   })
 })
@@ -123,7 +123,7 @@ ordersRouter.patch('/:id/edits/:editId', async (req, res) => {
       sendError(res, result)
       return
     }
-    res.json(result.order)
+    res.json(withHistory(result.order))
     queueGeo(result.order)
   })
 })
@@ -134,7 +134,7 @@ ordersRouter.post('/:id/transition', async (req, res) => {
       sendError(res, result)
       return
     }
-    res.json(result.order)
+    res.json(withHistory(result.order))
     queueGeo(result.order)
   })
 })
@@ -145,7 +145,7 @@ ordersRouter.patch('/:id', async (req, res) => {
       sendError(res, result)
       return
     }
-    res.json(result.order)
+    res.json(withHistory(result.order))
     queueGeo(result.order)
   })
 })
@@ -233,11 +233,22 @@ function createOrder(body, user) {
       normalizeName(parsed.order.seller) !== normalizeName(user.sellerName)
     const driver = await checkDriver(parsed.order.driverId)
     if (driver.error) return driver
+    const createdAt = new Date().toISOString()
     const order = {
       ...parsed.order,
       id: nextId(orders),
       createdBy: user.id,
-      createdAt: new Date().toISOString(),
+      createdAt,
+      history: [
+        {
+          at: createdAt,
+          by: { id: user.id, name: typeof user.name === 'string' ? user.name : '' },
+          from: null,
+          to: 'pendiente',
+          reason: 'Creado',
+          via: 'pedidos',
+        },
+      ],
     }
     const windowRule = requireDriverWindow(null, order)
     if (windowRule.error) return windowRule
@@ -323,6 +334,9 @@ function patchOrder(id, body, user) {
     const order = {
       ...parsed.order,
       edits: editsOf(current),
+      history: Array.isArray(current.history)
+        ? current.history.map((entry) => ({ ...entry, by: { ...entry.by } }))
+        : undefined,
       updatedAt: new Date().toISOString(),
     }
     if (slot.authorized) rememberOverride(order, user)
@@ -428,6 +442,9 @@ function reviewEdit(orderId, editId, body, user) {
     const order = {
       ...parsed.order,
       edits,
+      history: Array.isArray(current.history)
+        ? current.history.map((entry) => ({ ...entry, by: { ...entry.by } }))
+        : undefined,
       updatedAt: new Date().toISOString(),
     }
     if (slot.authorized) rememberOverride(order, user)

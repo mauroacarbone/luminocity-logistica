@@ -24,6 +24,17 @@ export type SlotOverride = {
   timeWindow?: string
 }
 
+export type OrderHistoryVia = 'pedidos' | 'despacho' | 'hoja' | 'mis-entregas' | 'qr'
+
+export type OrderHistoryEntry = {
+  at: string
+  by: { id: string; name: string }
+  from: OrderStatus | null
+  to: OrderStatus
+  reason?: string
+  via: OrderHistoryVia
+}
+
 export type Order = {
   id: string
   client: string
@@ -64,6 +75,7 @@ export type Order = {
   geoMiss?: boolean
   geoRetryAt?: string
   edits?: OrderEdit[]
+  history?: OrderHistoryEntry[]
   slotOverrides?: SlotOverride[]
   createdBy?: string
   createdAt?: string

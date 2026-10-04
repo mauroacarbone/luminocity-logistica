@@ -76,7 +76,7 @@ function sortDeliveries(list: Order[], here: Point | null) {
 
 export function MisEntregas() {
   const { user } = useAuth()
-  const { orders, loading, error: ordersError, patchFields, transitionOrder, refresh } = useOrders()
+  const { orders, loading, error: ordersError, transitionOrder, refresh } = useOrders()
   const [tab, setTab] = useState<Tab>('asignados')
   const [busy, setBusy] = useState('')
   const [here, setHere] = useState<Point | null>(null)
