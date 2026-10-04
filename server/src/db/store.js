@@ -68,8 +68,12 @@ function getPool() {
   return pool
 }
 
+function context() {
+  return tx.getStore() ?? null
+}
+
 function queryable() {
-  return tx.getStore() ?? getPool()
+  return context()?.client ?? getPool()
 }
 
 async function readFileCollection(name) {
@@ -121,35 +125,70 @@ const UPSERT = (table) =>
    ON CONFLICT (id) DO UPDATE
    SET data = EXCLUDED.data, updated_at = now()`
 
-async function replaceRows(client, name, rows) {
-  const table = assertCollectionName(name)
-  if (rows.length === 0) {
-    await client.query(`DELETE FROM ${table}`)
-    return
-  }
-  await client.query(`DELETE FROM ${table} WHERE id <> ALL($1::text[])`, [rows.map((row) => row.id)])
-  for (const row of rows) {
-    await client.query(UPSERT(table), [row.id, JSON.stringify(row.data)])
-  }
+function rememberSnapshot(name, rows) {
+  const store = context()
+  if (!store) return
+  const photo = new Map()
+  for (const row of rows) photo.set(row.id, JSON.stringify(row.data))
+  store.snapshots.set(name, photo)
 }
 
 async function readPostgres(name) {
   const table = assertCollectionName(name)
   const spec = specOf(name)
   const result = await queryable().query(`SELECT id, data FROM ${table} ORDER BY id`)
+  rememberSnapshot(
+    name,
+    result.rows.map((row) => ({ id: row.id, data: row.data })),
+  )
   if (spec.kind === 'array') return result.rows.map((row) => row.data)
   const object = {}
   for (const row of result.rows) object[row.id] = row.data
   return object
 }
 
-async function withClient(fn) {
-  const current = tx.getStore()
-  if (current) return fn(current)
+async function snapshotOf(name) {
+  const store = context()
+  if (store?.snapshots.has(name)) return store.snapshots.get(name)
+  await readPostgres(name)
+  return context()?.snapshots.get(name) ?? new Map()
+}
+
+function logDiff(name, written, deleted) {
+  if (process.env.NODE_ENV === 'production') return
+  console.log(`Postgres ${name}: ${written} escritas, ${deleted} borradas`)
+}
+
+async function applyDiff(client, name, rows) {
+  const table = assertCollectionName(name)
+  const snapshot = await snapshotOf(name)
+  const nextIds = new Set(rows.map((row) => row.id))
+  const removed = []
+  for (const id of snapshot.keys()) {
+    if (!nextIds.has(id)) removed.push(id)
+  }
+  const changed = []
+  for (const row of rows) {
+    const json = JSON.stringify(row.data)
+    if (snapshot.get(row.id) !== json) changed.push({ id: row.id, json })
+  }
+  if (removed.length > 0) {
+    await client.query(`DELETE FROM ${table} WHERE id = ANY($1::text[])`, [removed])
+  }
+  for (const row of changed) {
+    await client.query(UPSERT(table), [row.id, row.json])
+  }
+  rememberSnapshot(name, rows)
+  logDiff(name, changed.length, removed.length)
+}
+
+async function runTransaction(task) {
+  if (context()) return task()
   const client = await getPool().connect()
+  const store = { client, snapshots: new Map() }
   try {
     await client.query('BEGIN')
-    const result = await fn(client)
+    const result = await tx.run(store, task)
     await client.query('COMMIT')
     return result
   } catch (error) {
@@ -162,6 +201,10 @@ async function withClient(fn) {
   } finally {
     client.release()
   }
+}
+
+async function withClient(fn) {
+  return runTransaction(() => fn(context().client))
 }
 
 export async function readCollection(name) {
@@ -177,7 +220,7 @@ export async function writeCollection(name, value) {
     return
   }
   const rows = rowsFrom(name, value)
-  await withClient((client) => replaceRows(client, name, rows))
+  await withClient((client) => applyDiff(client, name, rows))
 }
 
 /** Lee el JSON de server/data aunque DATABASE_URL esté definida. */
@@ -223,23 +266,7 @@ export async function checkDatabase() {
 /** En Postgres abre una transacción. Sin base, corre la tarea como está. */
 export async function withTransaction(task) {
   if (!usingDatabase()) return task()
-  if (tx.getStore()) return task()
-  const client = await getPool().connect()
-  try {
-    await client.query('BEGIN')
-    const result = await tx.run(client, () => task())
-    await client.query('COMMIT')
-    return result
-  } catch (error) {
-    try {
-      await client.query('ROLLBACK')
-    } catch {
-      // La conexión ya no sirve; el error original es el que importa.
-    }
-    throw error
-  } finally {
-    client.release()
-  }
+  return runTransaction(task)
 }
 
 export async function closeDatabase() {
