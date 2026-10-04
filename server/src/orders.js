@@ -295,6 +295,19 @@ function patchOrder(id, body, user) {
     const tracked = diffOrder(current, parsed.order)
     const changes = { ...tracked, ...placeChanges(current, parsed.order) }
     if (Object.keys(changes).length === 0) return fail('No hay cambios para guardar.')
+
+    const driverChanged = Object.prototype.hasOwnProperty.call(changes, 'driverId')
+    if (driverChanged) {
+      if (current.status !== 'asignado') {
+        return fail('Para cambiar el chofer usá Asignar o Volver a preparado', 409)
+      }
+      const nextDriver = typeof parsed.order.driverId === 'string' ? parsed.order.driverId : ''
+      const prevDriver = typeof current.driverId === 'string' ? current.driverId : ''
+      if (!nextDriver || nextDriver === prevDriver) {
+        return fail('Para cambiar el chofer usá Asignar o Volver a preparado', 409)
+      }
+    }
+
     const allowed = assertPatch(user, current, tracked)
     if (allowed.error) return allowed
     if (hasPlaceChange(changes) && user.role !== 'vendedor' && user.role !== 'encargado_deposito' && user.role !== 'admin') {
@@ -310,7 +323,9 @@ function patchOrder(id, body, user) {
       slot = await checkSlot(orders, current, parsed.order, user, body.override === true)
       if (slot.error) return slot
     }
-    if (needsReason(user, changes) && !reason.value) return fail('Ingresá el motivo de la edición.')
+    if (needsReason(user, changes) && !reason.value && !driverChanged) {
+      return fail('Ingresá el motivo de la edición.')
+    }
 
     if (user.role === 'vendedor' && current.status === 'preparado') {
       if (hasPending(current)) {
@@ -346,6 +361,23 @@ function patchOrder(id, body, user) {
     ) {
       order.edits = [...order.edits, makeEdit(user, reason.value, changes, 'aplicada')]
     }
+    if (driverChanged) {
+      const users = await readUsersList()
+      const prevName = driverLabel(users, current.driverId)
+      const nextName = driverLabel(users, order.driverId)
+      const history = Array.isArray(order.history)
+        ? order.history.map((entry) => ({ ...entry, by: { ...entry.by } }))
+        : withHistory(current).history.map((entry) => ({ ...entry, by: { ...entry.by } }))
+      history.push({
+        at: order.updatedAt,
+        by: { id: user.id, name: typeof user.name === 'string' ? user.name : '' },
+        from: 'asignado',
+        to: 'asignado',
+        reason: `Cambio de chofer: ${prevName} → ${nextName}`,
+        via: 'despacho',
+      })
+      order.history = history
+    }
     const blocked = await blockPlannedDeparture(user, current, order)
     if (blocked) return blocked
     const synced = await syncSheetOnEdit(orders, current, order)
@@ -375,6 +407,13 @@ function patchOrder(id, body, user) {
     await releaseIfIdle(orders, current, order)
     return { order }
   })
+}
+
+function driverLabel(users, driverId) {
+  if (typeof driverId !== 'string' || !driverId) return 'Sin chofer'
+  const driver = users.find((item) => item.id === driverId)
+  const name = driver && typeof driver.name === 'string' ? driver.name.trim() : ''
+  return name || driverId
 }
 
 const TRANSITION_VIAS = new Set(['pedidos', 'despacho', 'mis-entregas', 'qr'])

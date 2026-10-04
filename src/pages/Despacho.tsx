@@ -705,7 +705,30 @@ export function Despacho() {
                       <div className="text-xs text-lumi-muted">
                         <label htmlFor={`chofer-${order.id}`}>Chofer</label>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
-                          {!normalizeTimeWindow(order.timeWindow) && !order.driverId ? (
+                          {order.status === 'pendiente' ? (
+                            <select
+                              id={`chofer-${order.id}`}
+                              value=""
+                              disabled
+                              className="block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                            >
+                              <option value="">Primero marcá preparado</option>
+                            </select>
+                          ) : order.status === 'en-viaje' || order.status === 'entregado' ? (
+                            <select
+                              id={`chofer-${order.id}`}
+                              value={order.driverId ?? ''}
+                              disabled
+                              className="block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                            >
+                              <option value={order.driverId ?? ''}>
+                                {order.driverId
+                                  ? drivers.find((driver) => driver.id === order.driverId)?.name ??
+                                    order.driverId
+                                  : 'Sin chofer'}
+                              </option>
+                            </select>
+                          ) : !normalizeTimeWindow(order.timeWindow) && !order.driverId ? (
                             <select
                               id={`chofer-${order.id}`}
                               value=""
@@ -754,7 +777,11 @@ export function Despacho() {
                               )}
                             </select>
                           )}
-                          {!normalizeTimeWindow(order.timeWindow) && order.driverId && (
+                          {order.status !== 'pendiente' &&
+                            order.status !== 'en-viaje' &&
+                            order.status !== 'entregado' &&
+                            !normalizeTimeWindow(order.timeWindow) &&
+                            order.driverId && (
                             <p id={`franja-${order.id}`} className="shrink-0">
                               Asigná una franja primero
                             </p>
