@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
@@ -9,13 +9,15 @@ const REFRESH_MS = 30_000
 const STALE_MS = 10 * 60 * 1000
 const CENTER: [number, number] = [-34.6, -58.44]
 
-function FitBounds({ positions }: { positions: [number, number][] }) {
+function FitBounds({ count, positions }: { count: number; positions: [number, number][] }) {
   const map = useMap()
-  const key = positions.map((point) => point.join(',')).join(';')
+  const lastCount = useRef<number | null>(null)
   useEffect(() => {
     if (positions.length === 0) return
+    if (lastCount.current === count) return
+    lastCount.current = count
     map.fitBounds(positions, { padding: [28, 28], maxZoom: 14 })
-  }, [map, key, positions])
+  }, [map, count, positions])
   return null
 }
 
@@ -45,7 +47,7 @@ function DriversMap({ drivers, now }: { drivers: LiveDriver[]; now: number }) {
   return (
     <MapContainer center={CENTER} zoom={11} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
       <TileLayer
-        attribution="&copy; OpenStreetMap"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {drivers.map((driver) => {
@@ -72,7 +74,7 @@ function DriversMap({ drivers, now }: { drivers: LiveDriver[]; now: number }) {
           </CircleMarker>
         )
       })}
-      <FitBounds positions={positions} />
+      <FitBounds count={drivers.length} positions={positions} />
     </MapContainer>
   )
 }

@@ -57,7 +57,7 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
       scrollWheelZoom
     >
       <TileLayer
-        attribution="&copy; OpenStreetMap"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <Polyline positions={line} pathOptions={{ color: '#1c1b19', weight: 4 }} />
