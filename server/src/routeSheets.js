@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { businessToday } from './access.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
@@ -124,8 +125,8 @@ function saveSheet(body, user) {
           orderIds: parsed.orderIds,
           km: parsed.km,
           minutes: parsed.minutes,
-          createdBy: user.id,
-          createdAt: now,
+          updatedBy: user.id,
+          updatedAt: now,
         }
       : {
           id: nextSheetId(sheets),
@@ -191,11 +192,15 @@ function startSheet(id, user) {
     if (sheet.driverId !== user.id) return fail('No tenés permiso para iniciar esta hoja.', 403)
     if (sheet.status === 'en_curso') return fail('Esa hoja ya está en curso', 409)
     if (sheet.status !== 'planificada') return fail('Esa hoja ya está cerrada', 409)
+    if (sheet.date !== businessToday()) return fail('Solo podés iniciar la hoja del día', 409)
     const orders = await readCollection('orders')
     const now = new Date().toISOString()
     let started = 0
     for (const order of orders) {
       if (order.routeId !== sheet.id) continue
+      if (order.driverId !== sheet.driverId) continue
+      if (order.deliveryDate !== sheet.date) continue
+      if (normalizeTimeWindow(order.timeWindow) !== sheet.slot) continue
       if (order.status !== 'asignado') continue
       order.status = 'en-viaje'
       order.departedAt = now
@@ -228,6 +233,89 @@ export async function closeFinishedSheets(orders) {
     changed = true
   }
   if (changed) await writeCollection('routeSheets', sheets)
+}
+
+const BELOW_ASSIGNED = new Set(['pendiente', 'preparado'])
+
+function driverKey(order) {
+  return typeof order?.driverId === 'string' ? order.driverId : ''
+}
+
+function leavesSheet(current, next) {
+  if (!current || typeof current.routeId !== 'string' || !current.routeId) return false
+  if (driverKey(current) !== driverKey(next)) return true
+  if ((current.deliveryDate ?? '') !== (next.deliveryDate ?? '')) return true
+  if (normalizeTimeWindow(current.timeWindow) !== normalizeTimeWindow(next.timeWindow)) return true
+  return current.status === 'asignado' && BELOW_ASSIGNED.has(next.status)
+}
+
+function renumberSheet(orders, sheet) {
+  sheet.orderIds.forEach((id, index) => {
+    const order = orders.find((item) => item.id === id)
+    if (order && order.routeId === sheet.id) order.routeSeq = index + 1
+  })
+}
+
+export async function syncSheetOnEdit(orders, current, next) {
+  if (!leavesSheet(current, next)) return { ok: true }
+  const sheets = await readCollection('routeSheets')
+  const sheet = sheets.find((item) => item.id === current.routeId)
+  if (!sheet || sheet.status === 'cerrada') {
+    delete next.routeId
+    delete next.routeSeq
+    return { ok: true }
+  }
+  if (sheet.status === 'en_curso') {
+    if (next.status === 'entregado') return { ok: true }
+    return fail('Ese pedido está en una hoja de ruta en curso', 409)
+  }
+  delete next.routeId
+  delete next.routeSeq
+  const orderIds = (Array.isArray(sheet.orderIds) ? sheet.orderIds : []).filter((id) => id !== current.id)
+  if (orderIds.length === 0) {
+    await writeCollection(
+      'routeSheets',
+      sheets.filter((item) => item.id !== sheet.id),
+    )
+    return { ok: true }
+  }
+  const updated = { ...sheet, orderIds }
+  renumberSheet(orders, updated)
+  await writeCollection(
+    'routeSheets',
+    sheets.map((item) => (item.id === sheet.id ? updated : item)),
+  )
+  return { ok: true }
+}
+
+export async function pullOrderFromSheets(orders, orderId) {
+  const sheets = await readCollection('routeSheets')
+  let changed = false
+  const nextSheets = []
+  for (const sheet of sheets) {
+    const ids = Array.isArray(sheet.orderIds) ? sheet.orderIds : []
+    if (!ids.includes(orderId)) {
+      nextSheets.push(sheet)
+      continue
+    }
+    changed = true
+    const orderIds = ids.filter((id) => id !== orderId)
+    if (sheet.status === 'planificada' && orderIds.length === 0) continue
+    const updated = { ...sheet, orderIds }
+    renumberSheet(orders, updated)
+    nextSheets.push(updated)
+  }
+  if (changed) await writeCollection('routeSheets', nextSheets)
+}
+
+export async function blockPlannedDeparture(user, current, next) {
+  if (user.role !== 'chofer') return null
+  if (current.status !== 'asignado' || next.status !== 'en-viaje') return null
+  if (typeof current.routeId !== 'string' || !current.routeId) return null
+  const sheets = await readCollection('routeSheets')
+  const sheet = sheets.find((item) => item.id === current.routeId)
+  if (!sheet || sheet.status !== 'planificada') return null
+  return fail('Ese pedido está en una hoja planificada. Usá Iniciar recorrido.', 409)
 }
 
 function readSheetBody(body) {

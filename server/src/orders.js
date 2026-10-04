@@ -16,7 +16,7 @@ import { locked } from './lock.js'
 import { forgetUsers, putLocation, readLocations } from './locations.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyDelivered, notifyEncargados, notifySeller, notifyUser } from './notifications.js'
-import { closeFinishedSheets } from './routeSheets.js'
+import { blockPlannedDeparture, closeFinishedSheets, pullOrderFromSheets, syncSheetOnEdit } from './routeSheets.js'
 import { isActive, readUsersList } from './users.js'
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
@@ -317,6 +317,10 @@ function patchOrder(id, body, user) {
     ) {
       order.edits = [...order.edits, makeEdit(user, reason.value, changes, 'aplicada')]
     }
+    const blocked = await blockPlannedDeparture(user, current, order)
+    if (blocked) return blocked
+    const synced = await syncSheetOnEdit(orders, current, order)
+    if (synced.error) return synced
     orders[index] = order
     await writeOrders(orders)
     await closeFinishedSheets(orders)
@@ -388,8 +392,11 @@ function reviewEdit(orderId, editId, body, user) {
       updatedAt: new Date().toISOString(),
     }
     if (slot.authorized) rememberOverride(order, user)
+    const synced = await syncSheetOnEdit(orders, current, order)
+    if (synced.error) return synced
     orders[index] = order
     await writeOrders(orders)
+    await closeFinishedSheets(orders)
     await notifyEditReview(pending, user, current.id, decision)
     return { order }
   })
@@ -405,6 +412,7 @@ function deleteOrder(id, user) {
       return fail('No podés cancelar un pedido que ya salió.', 403)
     }
     const remaining = orders.filter((item) => item.id !== id)
+    await pullOrderFromSheets(remaining, id)
     await writeOrders(remaining)
     await closeFinishedSheets(remaining)
     if (current.status === 'en-viaje') await releaseIdleDrivers(remaining, current.transporter)
