@@ -46,7 +46,7 @@ function carrierOf(value: Account) {
 }
 
 export function Usuarios() {
-  const { logout } = useAuth()
+  const { user, logout, refreshSession } = useAuth()
   const { sellers, transporters } = useCatalog()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
@@ -187,6 +187,7 @@ export function Usuarios() {
     }))
     setBusy('')
     setNotice(`Se guardó ${next.name}.`)
+    if (user && next.id === user.id) await refreshSession()
     await success('Cambios guardados')
   }
 

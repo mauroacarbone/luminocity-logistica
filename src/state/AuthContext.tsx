@@ -21,6 +21,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<{ ok: true } | AuthFailure>
   register: (input: RegisterInput) => Promise<{ ok: true } | AuthFailure>
   logout: () => void
+  refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -84,6 +85,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true as const }
   }
 
+  const refreshSession = useCallback(async () => {
+    const token = loadToken()
+    if (!token) return
+    const session = await meRequest(token)
+    if (session === 'unauthorized') {
+      clearToken()
+      setUser(null)
+      return
+    }
+    if (session !== 'error') setUser(session)
+  }, [])
+
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return
+      void refreshSession()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [refreshSession])
+
   const logout = useCallback(() => {
     if (user?.role === 'chofer') void clearDriverLocation()
     clearToken()
@@ -91,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user])
 
   return (
-    <AuthContext.Provider value={{ ready, user, login, register, logout }}>
+    <AuthContext.Provider value={{ ready, user, login, register, logout, refreshSession }}>
       {children}
     </AuthContext.Provider>
   )
