@@ -1,5 +1,5 @@
 const GAP_MS = 1100
-const USER_AGENT = 'LuminocityLogistica/1.0 (mauro@luminocity.local)'
+const USER_AGENT = 'LuminocityLogistica/1.0 (mauroacarbone@gmail.com)'
 
 let tail = Promise.resolve()
 let nextAt = 0
@@ -9,9 +9,10 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function retryable(message) {
+function retryable(message, status) {
   const error = new Error(message)
   error.retry = true
+  if (status) error.status = status
   return error
 }
 
@@ -36,9 +37,8 @@ function lookup(address) {
       },
       signal: AbortSignal.timeout(5000),
     })
-    if (response.status === 429 || response.status >= 500) {
-      throw retryable('nominatim')
-    }
+    if (response.status === 429) throw retryable('nominatim', 429)
+    if (response.status >= 500) throw retryable('nominatim')
     if (!response.ok) return null
     const hits = await response.json()
     const hit = Array.isArray(hits) ? hits[0] : null

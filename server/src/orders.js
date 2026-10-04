@@ -720,7 +720,13 @@ function queueGeoIds(ids) {
 }
 
 function isRetryable(error) {
-  return Boolean(error?.retry) || error?.name === 'TimeoutError' || error?.name === 'AbortError'
+  return (
+    Boolean(error?.retry) ||
+    error?.name === 'TimeoutError' ||
+    error?.name === 'AbortError' ||
+    error?.name === 'TypeError' ||
+    error?.name === 'SyntaxError'
+  )
 }
 
 async function fillCoordinates(ids) {
@@ -744,6 +750,7 @@ async function fillCoordinates(ids) {
         order.geoRetryAt = new Date(Date.now() + GEO_RETRY_MS).toISOString()
         await writeOrders(orders)
       })
+      if (error?.status === 429) break
       continue
     }
     await locked(async () => {
