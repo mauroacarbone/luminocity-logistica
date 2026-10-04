@@ -16,6 +16,14 @@ export type OrderEdit = {
   status: OrderEditStatus
 }
 
+export type SlotOverride = {
+  by: string
+  at: string
+  driverId?: string
+  deliveryDate?: string
+  timeWindow?: string
+}
+
 export type Order = {
   id: string
   client: string
@@ -48,9 +56,16 @@ export type Order = {
   geoMiss?: boolean
   geoRetryAt?: string
   edits?: OrderEdit[]
+  slotOverrides?: SlotOverride[]
   createdBy?: string
   createdAt?: string
   updatedAt?: string
+}
+
+export function isSlotOverride(value: unknown): value is SlotOverride {
+  if (!value || typeof value !== 'object') return false
+  const item = value as Record<string, unknown>
+  return typeof item.by === 'string' && item.by.length > 0 && typeof item.at === 'string' && item.at.length > 0
 }
 
 export function pendingEdit(order: Order) {

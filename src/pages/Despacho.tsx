@@ -22,6 +22,7 @@ import {
 } from '../lib/week'
 import { confirm, error, success } from '../lib/alerts'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder, statusChoices } from '../lib/access'
+import { driverSlotCount, SLOT_LIMIT, slotQuestion } from '../lib/slot'
 import { isSession } from '../lib/authStore'
 import { listUsers } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
@@ -59,6 +60,30 @@ function statusPrompt(id: string, status: OrderStatus) {
     done: 'Estado actualizado',
     peligro: false,
   }
+}
+
+function DriverChoice({
+  orders,
+  order,
+  driverId,
+  name,
+}: {
+  orders: Order[]
+  order: Order
+  driverId: string
+  name: string
+}) {
+  const count = driverSlotCount(orders, driverId, order.deliveryDate, order.timeWindow)
+  const full = Boolean(order.timeWindow) && count >= SLOT_LIMIT
+  return (
+    <option
+      value={driverId}
+      className={full ? 'text-lumi-danger' : undefined}
+      style={full ? { color: '#e25b57' } : undefined}
+    >
+      {order.timeWindow ? `${name} (${count}/${SLOT_LIMIT})` : name}
+    </option>
+  )
 }
 
 function tabFor(status: OrderStatus): DispatchTab {
@@ -195,22 +220,49 @@ export function Despacho() {
     return true
   }
 
+  function driverName(driverId: string) {
+    return drivers.find((driver) => driver.id === driverId)?.name ?? 'el chofer'
+  }
+
   async function assignDriver(order: Order, driverId: string) {
     const assigns =
       Boolean(driverId) && (order.status === 'pendiente' || order.status === 'preparado')
-    if (assigns) {
-      const name = drivers.find((driver) => driver.id === driverId)?.name ?? 'el chofer'
+    const reassigns = Boolean(driverId) && Boolean(order.driverId) && order.driverId !== driverId
+    if (reassigns) {
+      const accepted = await confirm(
+        'Reasignar chofer',
+        `El pedido ${order.id} pasa de ${driverName(order.driverId ?? '')} a ${driverName(driverId)}.`,
+      )
+      if (!accepted) return false
+    } else if (assigns) {
       const accepted = await confirm(
         'Asignar chofer',
-        `El pedido ${order.id} pasa a asignado con ${name}.`,
+        `El pedido ${order.id} pasa a asignado con ${driverName(driverId)}.`,
       )
       if (!accepted) return false
     }
+    return saveDriver(order, driverId, assigns)
+  }
+
+  async function saveDriver(order: Order, driverId: string, assigns: boolean, override = false) {
     setBusyId(order.id)
     const fields: Record<string, unknown> = { driverId: driverId || null }
     if (assigns) fields.status = 'asignado'
+    if (override) fields.override = true
     const result = await patchFields(order.id, fields)
     setBusyId('')
+    if (result.status === 'not-saved' && result.code === 'FRANJA_LLENA' && result.slot && !override) {
+      if (user && (user.role === 'encargado_deposito' || user.role === 'admin')) {
+        const accepted = await confirm(
+          'Franja llena',
+          slotQuestion(result.slot.timeWindow, result.slot.deliveryDate, result.slot.count),
+        )
+        if (!accepted) return false
+        return saveDriver(order, driverId, assigns, true)
+      }
+      await error(result.message)
+      return false
+    }
     if (result.status === 'not-saved') {
       await error(result.message)
       return false
@@ -507,12 +559,21 @@ export function Despacho() {
                         >
                           <option value="">Sin chofer</option>
                           {drivers.map((driver) => (
-                            <option key={driver.id} value={driver.id}>
-                              {driver.name}
-                            </option>
+                            <DriverChoice
+                              key={driver.id}
+                              orders={orders}
+                              order={order}
+                              driverId={driver.id}
+                              name={driver.name}
+                            />
                           ))}
                           {order.driverId && !drivers.some((driver) => driver.id === order.driverId) && (
-                            <option value={order.driverId}>{order.driverId}</option>
+                            <DriverChoice
+                              orders={orders}
+                              order={order}
+                              driverId={order.driverId}
+                              name={order.driverId}
+                            />
                           )}
                         </select>
                       </label>

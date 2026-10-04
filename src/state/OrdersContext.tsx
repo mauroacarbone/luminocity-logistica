@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { isDispatchType } from '../data/catalog'
-import { isOrderEdit, type Order, type OrderStatus } from '../data/orders'
+import { isOrderEdit, isSlotOverride, type Order, type OrderStatus } from '../data/orders'
 import { loadList, saveList } from '../lib/localStore'
 import {
   createOrder,
@@ -12,6 +12,7 @@ import {
   withoutNewAttachment,
   type ApiResult,
   type OrderDraft,
+  type SlotFull,
 } from '../lib/ordersApi'
 import { useAuth } from './AuthContext'
 
@@ -50,7 +51,7 @@ const OPTIONAL_STRINGS = [
 export type OrderSaveResult =
   | { status: 'saved'; order: Order }
   | { status: 'saved-without-attachment'; order: Order }
-  | { status: 'not-saved'; message: string }
+  | { status: 'not-saved'; message: string; code?: string; slot?: SlotFull }
 
 export type OrderDeleteResult = { status: 'deleted' } | { status: 'not-saved'; message: string }
 
@@ -65,9 +66,14 @@ type OrdersContextValue = {
   reload: () => void
   refresh: (options?: { silent?: boolean }) => Promise<void>
   addOrder: (order: OrderDraft) => Promise<OrderSaveResult>
-  updateOrder: (order: Order, reason?: string) => Promise<OrderSaveResult>
+  updateOrder: (order: Order, reason?: string, override?: boolean) => Promise<OrderSaveResult>
   patchFields: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
-  reviewEdit: (orderId: string, editId: string, status: 'aplicada' | 'rechazada') => Promise<OrderSaveResult>
+  reviewEdit: (
+    orderId: string,
+    editId: string,
+    status: 'aplicada' | 'rechazada',
+    override?: boolean,
+  ) => Promise<OrderSaveResult>
   removeOrder: (id: string) => Promise<OrderDeleteResult>
 }
 
@@ -95,6 +101,12 @@ function isOrder(value: unknown): value is Order {
   if (order.requiresPickup !== undefined && typeof order.requiresPickup !== 'boolean') return false
   if (order.dispatchType !== undefined && !isDispatchType(order.dispatchType)) return false
   if (order.edits !== undefined && (!Array.isArray(order.edits) || !order.edits.every(isOrderEdit))) {
+    return false
+  }
+  if (
+    order.slotOverrides !== undefined &&
+    (!Array.isArray(order.slotOverrides) || !order.slotOverrides.every(isSlotOverride))
+  ) {
     return false
   }
   if (
@@ -261,7 +273,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
   function fail(result: Extract<ApiResult, { ok: false }>): OrderSaveResult {
     if (result.status === 401) logout()
-    return { status: 'not-saved', message: result.message }
+    return { status: 'not-saved', message: result.message, code: result.code, slot: result.slot }
   }
 
   function adopt(saved: Order) {
@@ -278,9 +290,11 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     order: OrderDraft,
     id?: string,
     reason?: string,
+    override = false,
   ): Promise<OrderSaveResult> {
     const body = orderBody(order, mode)
     if (reason) body.reason = reason
+    if (override) body.override = true
     const previous = id ? ordersRef.current.find((item) => item.id === id) : undefined
     let dropped = false
     let result = mode === 'create' ? await createOrder(body) : await patchOrder(id ?? '', body)
@@ -307,8 +321,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return write('create', order)
   }
 
-  function updateOrder(order: Order, reason?: string) {
-    return write('patch', draftOf(order), order.id, reason)
+  function updateOrder(order: Order, reason?: string, override = false) {
+    return write('patch', draftOf(order), order.id, reason, override)
   }
 
   async function patchFields(id: string, fields: Record<string, unknown>): Promise<OrderSaveResult> {
@@ -324,8 +338,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     orderId: string,
     editId: string,
     status: 'aplicada' | 'rechazada',
+    override = false,
   ): Promise<OrderSaveResult> {
-    const result = await reviewOrderEdit(orderId, editId, status)
+    const result = await reviewOrderEdit(orderId, editId, status, override)
     if (!result.ok) return fail(result)
     const saved = asOrder(result.data)
     if (!saved) return { status: 'not-saved', message: 'El servidor no devolvió un pedido válido.' }

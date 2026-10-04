@@ -18,6 +18,8 @@ import {
   readAttachmentFile,
 } from '../lib/attachment'
 import { namesMatch } from '../lib/access'
+import { confirm } from '../lib/alerts'
+import { slotQuestion } from '../lib/slot'
 import {
   isAuthorization,
   listAuthorizations,
@@ -498,11 +500,25 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     navigate('/')
   }
 
+  function canAuthorizeSlot() {
+    return user?.role === 'encargado_deposito' || user?.role === 'admin'
+  }
+
   async function confirmReason(reason: string) {
     const draft = draftRef.current
     if (!draft || !storedId) return
     setSaving(true)
-    const result = await updateOrder({ ...draft, id: storedId }, reason)
+    let result = await updateOrder({ ...draft, id: storedId }, reason)
+    if (result.status === 'not-saved' && result.code === 'FRANJA_LLENA' && result.slot && canAuthorizeSlot()) {
+      setSaving(false)
+      const accepted = await confirm(
+        'Franja llena',
+        slotQuestion(result.slot.timeWindow, result.slot.deliveryDate, result.slot.count),
+      )
+      if (!accepted) return
+      setSaving(true)
+      result = await updateOrder({ ...draft, id: storedId }, reason, true)
+    }
     setSaving(false)
     if (result.status === 'saved-without-attachment') {
       setReasonOpen(false)

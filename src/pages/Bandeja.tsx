@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { pendingEdit, type Order, type OrderEdit } from '../data/orders'
 import { confirm, error as showError, success } from '../lib/alerts'
+import { slotQuestion } from '../lib/slot'
 import {
   isAuthorization,
   listAuthorizations,
@@ -143,7 +144,17 @@ export function Bandeja() {
     )
     if (!accepted) return
     setBusy(edit.id)
-    const result = await reviewEdit(order.id, edit.id, status)
+    let result = await reviewEdit(order.id, edit.id, status)
+    if (result.status === 'not-saved' && result.code === 'FRANJA_LLENA' && result.slot && status === 'aplicada') {
+      setBusy('')
+      const accepted = await confirm(
+        'Franja llena',
+        slotQuestion(result.slot.timeWindow, result.slot.deliveryDate, result.slot.count),
+      )
+      if (!accepted) return
+      setBusy(edit.id)
+      result = await reviewEdit(order.id, edit.id, status, true)
+    }
     setBusy('')
     if (result.status === 'not-saved') await showError(result.message)
     else await success(rejecting ? 'Edición rechazada' : 'Edición aprobada')

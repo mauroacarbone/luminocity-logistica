@@ -4,7 +4,13 @@ import { loadToken } from './authStore'
 export type OrderDraft = Omit<Order, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>
 
 export type ApiSuccess = { ok: true; data: unknown }
-export type ApiFailure = { ok: false; status: number; message: string }
+export type SlotFull = {
+  driver: string
+  deliveryDate: string
+  timeWindow: string
+  count: number
+}
+export type ApiFailure = { ok: false; status: number; message: string; code?: string; slot?: SlotFull }
 export type ApiResult = ApiSuccess | ApiFailure
 
 const TEXT_FIELDS = [
@@ -25,6 +31,27 @@ function messageFrom(data: unknown, fallback: string) {
   if (!data || typeof data !== 'object' || !('message' in data)) return fallback
   const message = data.message
   return typeof message === 'string' && message.trim() ? message : fallback
+}
+
+function codeFrom(data: unknown) {
+  if (!data || typeof data !== 'object' || !('code' in data)) return undefined
+  const code = data.code
+  return typeof code === 'string' && code.trim() ? code : undefined
+}
+
+function slotFrom(data: unknown): SlotFull | undefined {
+  if (!data || typeof data !== 'object') return undefined
+  const record = data as Record<string, unknown>
+  if (record.code !== 'FRANJA_LLENA') return undefined
+  if (typeof record.driver !== 'string' || !record.driver.trim()) return undefined
+  if (typeof record.deliveryDate !== 'string' || typeof record.timeWindow !== 'string') return undefined
+  if (typeof record.count !== 'number') return undefined
+  return {
+    driver: record.driver,
+    deliveryDate: record.deliveryDate,
+    timeWindow: record.timeWindow,
+    count: record.count,
+  }
 }
 
 function fallbackFor(status: number, fallback: string) {
@@ -56,7 +83,13 @@ async function request(path: string, method: string, body: unknown, fallback: st
   if (response.status === 204) return { ok: true, data: null }
   const data: unknown = await response.json().catch(() => null)
   if (!response.ok) {
-    return { ok: false, status: response.status, message: messageFrom(data, fallbackFor(response.status, fallback)) }
+    return {
+      ok: false,
+      status: response.status,
+      message: messageFrom(data, fallbackFor(response.status, fallback)),
+      code: codeFrom(data),
+      slot: slotFrom(data),
+    }
   }
   return { ok: true, data }
 }
@@ -73,11 +106,18 @@ export function patchOrder(id: string, body: Record<string, unknown>) {
   return request(`/api/orders/${encodeURIComponent(id)}`, 'PATCH', body, 'No se pudo guardar el pedido.')
 }
 
-export function reviewOrderEdit(id: string, editId: string, status: 'aplicada' | 'rechazada') {
+export function reviewOrderEdit(
+  id: string,
+  editId: string,
+  status: 'aplicada' | 'rechazada',
+  override = false,
+) {
+  const body: Record<string, unknown> = { status }
+  if (override) body.override = true
   return request(
     `/api/orders/${encodeURIComponent(id)}/edits/${encodeURIComponent(editId)}`,
     'PATCH',
-    { status },
+    body,
     'No se pudo resolver la edición.',
   )
 }
