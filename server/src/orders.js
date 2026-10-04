@@ -80,7 +80,7 @@ ordersRouter.post('/', async (req, res) => {
   await send(res, async () => {
     const result = await createOrder(req.body, req.user)
     if (result.error) {
-      res.status(result.status).json({ message: result.error })
+      sendError(res, result)
       return
     }
     res.status(201).json(result.order)
@@ -91,7 +91,7 @@ ordersRouter.patch('/:id/edits/:editId', async (req, res) => {
   await send(res, async () => {
     const result = await reviewEdit(req.params.id, req.params.editId, req.body, req.user)
     if (result.error) {
-      res.status(result.status).json({ message: result.error })
+      sendError(res, result)
       return
     }
     res.json(result.order)
@@ -102,7 +102,7 @@ ordersRouter.patch('/:id', async (req, res) => {
   await send(res, async () => {
     const result = await patchOrder(req.params.id, req.body, req.user)
     if (result.error) {
-      res.status(result.status).json({ message: result.error })
+      sendError(res, result)
       return
     }
     res.json(result.order)
@@ -113,7 +113,7 @@ ordersRouter.delete('/:id', requireRole('admin', 'encargado_deposito'), async (r
   await send(res, async () => {
     const result = await deleteOrder(req.params.id, req.user)
     if (result.error) {
-      res.status(result.status).json({ message: result.error })
+      sendError(res, result)
       return
     }
     res.status(204).end()
@@ -122,6 +122,19 @@ ordersRouter.delete('/:id', requireRole('admin', 'encargado_deposito'), async (r
 
 function notFound(res) {
   res.status(404).json({ message: 'No existe ese pedido.' })
+}
+
+function sendError(res, result) {
+  const body = { message: result.error }
+  if (result.code) {
+    body.code = result.code
+    body.driver = result.driver
+    body.driverId = result.driverId
+    body.deliveryDate = result.deliveryDate
+    body.timeWindow = result.timeWindow
+    body.count = result.count
+  }
+  res.status(result.status).json(body)
 }
 
 async function send(res, task) {
@@ -194,6 +207,9 @@ function createOrder(body, user) {
       createdBy: user.id,
       createdAt: new Date().toISOString(),
     }
+    const slot = await checkSlot(orders, null, order, user, body.override === true)
+    if (slot.error) return slot
+    if (slot.authorized) rememberOverride(order, user)
     let staged = null
     if (otherSeller) {
       staged = await stageAuthorization(user.id, parsed.order.seller, order.id)
@@ -234,6 +250,8 @@ function patchOrder(id, body, user) {
     if (allowed.error) return allowed
     const driver = await checkDriver(parsed.order.driverId, current.driverId)
     if (driver.error) return driver
+    const slot = await checkSlot(orders, current, parsed.order, user, body.override === true)
+    if (slot.error) return slot
     if (needsReason(user, changes) && !reason.value) return fail('Ingresá el motivo de la edición.')
 
     if (user.role === 'vendedor' && current.status === 'preparado') {
@@ -260,6 +278,7 @@ function patchOrder(id, body, user) {
       edits: editsOf(current),
       updatedAt: new Date().toISOString(),
     }
+    if (slot.authorized) rememberOverride(order, user)
     if (reason.value && (user.role === 'vendedor' || commercialKeys(changes).length > 0)) {
       order.edits = [...order.edits, makeEdit(user, reason.value, changes, 'aplicada')]
     }
@@ -319,12 +338,15 @@ function reviewEdit(orderId, editId, body, user) {
     }
     const parsed = readOrderFields(bodyFrom(current, pending.changes), current)
     if (parsed.error) return parsed
+    const slot = await checkSlot(orders, current, parsed.order, user, body?.override === true)
+    if (slot.error) return slot
     edits[editIndex] = { ...pending, status: 'aplicada' }
     const order = {
       ...parsed.order,
       edits,
       updatedAt: new Date().toISOString(),
     }
+    if (slot.authorized) rememberOverride(order, user)
     orders[index] = order
     await writeOrders(orders)
     await notifyEditReview(pending, user, current.id, decision)
@@ -401,6 +423,74 @@ async function checkDriver(driverId, previous) {
   const driver = users.find((item) => item.id === driverId)
   if (!driver || driver.role !== 'chofer') return fail('Elegí un chofer.')
   return { ok: true }
+}
+
+const SLOT_LIMIT = 3
+
+function occupiesSlot(order) {
+  return Boolean(order && order.driverId && order.deliveryDate && order.timeWindow)
+}
+
+function sameSlot(left, right) {
+  return (
+    left.driverId === right.driverId &&
+    left.deliveryDate === right.deliveryDate &&
+    left.timeWindow === right.timeWindow
+  )
+}
+
+/** Pedidos del chofer en esa fecha y esa franja. No cuenta cancelados ni el pedido editado. */
+export function countDriverSlot(orders, driverId, deliveryDate, timeWindow, exceptId) {
+  if (!driverId || !deliveryDate || !timeWindow) return 0
+  return orders.filter((order) => {
+    if (order.id === exceptId) return false
+    if (order.status === 'cancelado') return false
+    if (order.driverId !== driverId) return false
+    if (order.deliveryDate !== deliveryDate) return false
+    return order.timeWindow === timeWindow
+  }).length
+}
+
+function shortDate(iso) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!match) return iso
+  return `${match[3]}/${match[2]}`
+}
+
+async function checkSlot(orders, current, next, user, override) {
+  if (!occupiesSlot(next)) return { ok: true }
+  if (current && occupiesSlot(current) && sameSlot(current, next)) return { ok: true }
+  const count = countDriverSlot(orders, next.driverId, next.deliveryDate, next.timeWindow, next.id)
+  if (count < SLOT_LIMIT) return { ok: true }
+  const canOverride = user.role === 'encargado_deposito' || user.role === 'admin'
+  if (override === true && canOverride) return { ok: true, authorized: true }
+  const users = await readUsersList()
+  const driver = users.find((item) => item.id === next.driverId)
+  const name = driver && driver.name && driver.name.trim() ? driver.name.trim() : 'el chofer'
+  return {
+    error: `Hace falta la autorización del encargado. ${name} ya tiene ${count} pedidos en la franja ${next.timeWindow} del ${shortDate(next.deliveryDate)}.`,
+    status: 409,
+    code: 'FRANJA_LLENA',
+    driver: name,
+    driverId: next.driverId,
+    deliveryDate: next.deliveryDate,
+    timeWindow: next.timeWindow,
+    count,
+  }
+}
+
+function rememberOverride(order, user) {
+  const previous = Array.isArray(order.slotOverrides) ? order.slotOverrides : []
+  order.slotOverrides = [
+    ...previous,
+    {
+      by: user.id,
+      at: new Date().toISOString(),
+      driverId: order.driverId,
+      deliveryDate: order.deliveryDate,
+      timeWindow: order.timeWindow,
+    },
+  ]
 }
 
 function fail(error, status = 400) {
@@ -512,6 +602,9 @@ function readOrderFields(body, current) {
     if (typeof current.lng === 'number' && Number.isFinite(current.lng)) order.lng = current.lng
     if (current.geoMiss === true) order.geoMiss = true
     if (typeof current.geoRetryAt === 'string') order.geoRetryAt = current.geoRetryAt
+  }
+  if (Array.isArray(current?.slotOverrides)) {
+    order.slotOverrides = current.slotOverrides.map((item) => ({ ...item }))
   }
   return { order }
 }
