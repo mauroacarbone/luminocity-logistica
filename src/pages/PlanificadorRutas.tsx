@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { STATUS_PILL, type Order } from '../data/orders'
-import { MONTH_SHORT, formatDayLabel, toIso, weekDays } from '../lib/week'
+import { DAY_SHORT, MONTH_SHORT, formatDayLabel, toIso, weekDays } from '../lib/week'
 import {
   drivingRoute,
   geocodeAll,
@@ -217,18 +217,23 @@ export function PlanificadorRutas() {
       <div className="mt-6 grid grid-cols-3 items-center gap-2">
         <button
           type="button"
-          className="justify-self-start rounded-xl px-3 py-2 text-sm text-lumi-ink hover:bg-white"
+          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
           onClick={() => showWeek(weekOffset - 1)}
         >
-          ‹ Sem. anterior
+          <span className="sm:hidden">‹</span>
+          <span className="hidden sm:inline">‹ Sem. anterior</span>
         </button>
-        <p className="text-center font-semibold">{weekTitle}</p>
+        <p className="text-center text-sm font-semibold sm:text-base">
+          <span className="sm:hidden">Esta semana</span>
+          <span className="hidden sm:inline">{weekTitle}</span>
+        </p>
         <button
           type="button"
-          className="justify-self-end rounded-xl px-3 py-2 text-sm text-lumi-ink hover:bg-white"
+          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
           onClick={() => showWeek(weekOffset + 1)}
         >
-          Sem. siguiente ›
+          <span className="sm:hidden">›</span>
+          <span className="hidden sm:inline">Sem. siguiente ›</span>
         </button>
       </div>
 
@@ -241,14 +246,16 @@ export function PlanificadorRutas() {
             <button
               key={iso}
               type="button"
-              className={`flex min-w-0 flex-col items-center gap-1 border-b-2 px-0.5 py-2 text-xs sm:text-sm ${
+              className={`flex w-full min-w-0 flex-col items-center gap-1 overflow-hidden border-b-2 px-0.5 py-2 text-xs sm:text-sm ${
                 selected
                   ? 'border-lumi-yellow font-semibold text-lumi-ink'
                   : 'border-transparent text-lumi-muted'
               }`}
               onClick={() => pickDay(iso)}
             >
-              <span className="truncate">{formatDayLabel(day)}</span>
+              <span className="w-full truncate text-center sm:hidden">{DAY_SHORT[day.getDay()]}</span>
+              <span className="w-full text-center sm:hidden">{day.getDate()}</span>
+              <span className="hidden w-full truncate text-center sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
                   selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-white text-lumi-muted'
@@ -270,11 +277,11 @@ export function PlanificadorRutas() {
             setRoute(null)
           }}
           aria-label="Origen de la ruta"
-          className="min-w-0 flex-1 rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+          className="w-full min-w-0 rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm sm:w-auto sm:min-w-48 sm:flex-1"
         />
         <button
           type="button"
-          className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-60"
+          className="shrink-0 rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-60"
           disabled={loading}
           onClick={() => void plan(false)}
         >
@@ -282,7 +289,7 @@ export function PlanificadorRutas() {
         </button>
         <button
           type="button"
-          className="rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-60"
+          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-60"
           disabled={loading}
           onClick={() => void plan(true)}
         >
@@ -290,14 +297,14 @@ export function PlanificadorRutas() {
         </button>
         <button
           type="button"
-          className="rounded-xl px-3 py-2 text-sm hover:bg-white"
+          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white"
           onClick={() => window.print()}
         >
           Imprimir
         </button>
         <button
           type="button"
-          className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-white"
+          className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-white"
           onClick={clearPlan}
         >
           Limpiar
