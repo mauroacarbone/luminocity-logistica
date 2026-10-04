@@ -52,7 +52,7 @@ Deja listo lo que se entrega hoy. Ve pendientes y preparados.
 
 Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar solo.
 
-- Pantallas: las de depósito, más Despacho (editar), Choferes en ruta (editar), Planificador de Rutas (editar), Post Venta (editar) y Bandeja (editar).
+- Pantallas: las de depósito, más Despacho (editar), Choferes en ruta (ver), Planificador de Rutas (editar), Post Venta (editar) y Bandeja (editar).
 - Puede: asignar transportista y chofer, armar rutas, autorizar una carga a nombre de otro, aprobar o rechazar ediciones, cargar reclamos, editar y cancelar pedidos que no salieron.
 - Si edita un pedido, se avisa al vendedor de ese pedido.
 - No puede: marcar `en-viaje` o `entregado`, datos maestros, usuarios.
@@ -83,7 +83,7 @@ Mauro, desarrollador. Todo, más usuarios, roles y datos maestros.
 | Nuevo Pedido | `/nuevo-pedido` | editar | sin acceso | editar uno existente | sin acceso | editar |
 | Pedidos y Preparación | `/pedidos` | editar los suyos | editar | editar | sin acceso | editar |
 | Despacho | `/despacho` | ver | ver | editar | sin acceso | editar |
-| Choferes en ruta | `/choferes` | sin acceso | sin acceso | editar | sin acceso | editar |
+| Choferes en ruta | `/choferes` | sin acceso | sin acceso | ver | sin acceso | ver |
 | Planificador de Rutas | `/rutas` | sin acceso | sin acceso | editar | sin acceso | editar |
 | Pendientes de Entregas | `/pendientes` | sin acceso | editar | editar | sin acceso | editar |
 | Post Venta | `/post-venta` | editar | sin acceso | editar | sin acceso | editar |
