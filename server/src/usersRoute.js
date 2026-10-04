@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { sign } from './auth.js'
 import { requireAuth, requireRole } from './middleware.js'
 import {
   ROLES,
@@ -173,7 +174,12 @@ usersRouter.patch('/:id/password', requireRole('admin', 'encargado_deposito'), a
     res.status(result.status).json({ message: result.message })
     return
   }
-  res.json(toPublicUser(result.user))
+  const body = toPublicUser(result.user)
+  if (req.user.id === result.user.id) {
+    res.json({ ...body, token: sign(result.user).token })
+    return
+  }
+  res.json(body)
 })
 
 usersRouter.patch('/:id', requireRole('admin', 'encargado_deposito'), async (req, res) => {

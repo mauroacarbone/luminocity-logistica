@@ -314,6 +314,7 @@ function PasswordDialog({
   const [confirmPassword, setConfirmPassword] = useState('')
   const [errors, setErrors] = useState<{ password?: string; confirm?: string; form?: string }>({})
   const [pending, setPending] = useState(false)
+  const { user, replaceToken } = useAuth()
   useEscape(onClose, !pending)
 
   async function onSubmit(event: FormEvent) {
@@ -331,6 +332,14 @@ function PasswordDialog({
     if (!result.ok) {
       if (result.status === 401) onUnauthorized()
       else setErrors({ form: result.message })
+      return
+    }
+    const token =
+      result.data && typeof result.data === 'object' && 'token' in result.data && typeof result.data.token === 'string'
+        ? result.data.token
+        : ''
+    if (user && account.id === user.id && token && !replaceToken(token)) {
+      onUnauthorized()
       return
     }
     onSaved()

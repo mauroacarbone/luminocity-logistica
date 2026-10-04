@@ -76,7 +76,12 @@ export async function meRequest(token: string): Promise<Session | 'unauthorized'
   }
   if (response.status === 401) {
     const data: unknown = await response.json().catch(() => null)
-    if (data && typeof data === 'object' && 'code' in data && data.code === 'USER_INACTIVE') {
+    if (
+      data &&
+      typeof data === 'object' &&
+      'code' in data &&
+      (data.code === 'USER_INACTIVE' || data.code === 'SESSION_REVOKED')
+    ) {
       const message = 'message' in data && typeof data.message === 'string' ? data.message : ''
       if (message) rememberSessionNotice(message)
     }

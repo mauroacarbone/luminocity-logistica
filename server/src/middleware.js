@@ -24,10 +24,13 @@ export async function requireAuth(req, res, next) {
       })
       return
     }
-    const changedAt = Date.parse(user.passwordChangedAt)
-    const issuedAt = typeof payload === 'object' && payload && typeof payload.iat === 'number' ? payload.iat : null
-    if (Number.isFinite(changedAt) && issuedAt !== null && issuedAt < Math.floor(changedAt / 1000)) {
-      res.status(401).json({ message: 'La sesión venció o no es válida.' })
+    const version = user.tokenVersion ?? 0
+    const claim = typeof payload === 'object' && payload && typeof payload.ver === 'number' ? payload.ver : null
+    if (claim !== version) {
+      res.status(401).json({
+        message: 'Tu sesión venció. Volvé a entrar.',
+        code: 'SESSION_REVOKED',
+      })
       return
     }
     req.user = toPublicUser(user)

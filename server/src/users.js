@@ -33,6 +33,12 @@ export function isActive(user) {
   return user.active !== false
 }
 
+function nextTokenVersion(user) {
+  const current = user?.tokenVersion
+  if (typeof current === 'number' && Number.isInteger(current) && current >= 0) return current + 1
+  return 1
+}
+
 export function toPublicUser(user) {
   const publicUser = {
     id: user.id,
@@ -179,11 +185,13 @@ export function setUserPassword(id, password, actor) {
     if (index < 0) return { error: 'missing' }
     const block = denied(actor, users[index], {})
     if (block) return block
-    users[index] = {
+    const next = {
       ...users[index],
       passwordHash: await bcrypt.hash(password, 10),
-      passwordChangedAt: new Date().toISOString(),
+      tokenVersion: nextTokenVersion(users[index]),
     }
+    delete next.passwordChangedAt
+    users[index] = next
     await writeUsers(users)
     return { user: users[index] }
   })
@@ -201,7 +209,9 @@ export function setUserActive(id, active, actor) {
       if (admins <= 1) return { error: 'last-admin' }
     }
     if (active === false && id === actor?.id) return { error: 'self' }
-    users[index] = { ...users[index], active: active === true }
+    const next = { ...users[index], active: active === true }
+    if (active === false) next.tokenVersion = nextTokenVersion(users[index])
+    users[index] = next
     await writeUsers(users)
     if (active === false) await forgetUsers([id])
     return { user: users[index] }

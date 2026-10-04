@@ -20,10 +20,12 @@ const loginLimiter = rateLimit({
 
 export const authRouter = Router()
 
-function sign(user) {
-  const token = jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET, {
-    expiresIn: TOKEN_EXPIRES,
-  })
+export function sign(user) {
+  const token = jwt.sign(
+    { sub: user.id, role: user.role, ver: user.tokenVersion ?? 0 },
+    process.env.JWT_SECRET,
+    { expiresIn: TOKEN_EXPIRES },
+  )
   return { token, user: toPublicUser(user) }
 }
 

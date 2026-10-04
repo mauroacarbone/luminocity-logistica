@@ -31,6 +31,7 @@ type AuthContextValue = {
   register: (input: RegisterInput) => Promise<{ ok: true } | AuthFailure>
   logout: () => void
   refreshSession: () => Promise<void>
+  replaceToken: (token: string) => boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -111,6 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true as const }
   }, [])
 
+  const replaceToken = useCallback((token: string) => {
+    if (!saveToken(token)) return false
+    setUser((prev) => (prev ? { ...prev } : prev))
+    return true
+  }, [])
+
   const refreshSession = useCallback(async () => {
     const token = loadToken()
     if (!token) return
@@ -141,8 +148,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ ready, user, login, register, logout, refreshSession }),
-    [ready, user, login, register, logout, refreshSession],
+    () => ({ ready, user, login, register, logout, refreshSession, replaceToken }),
+    [ready, user, login, register, logout, refreshSession, replaceToken],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

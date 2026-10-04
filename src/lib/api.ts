@@ -50,7 +50,9 @@ export async function apiRequest(
   const data: unknown = await response.json().catch(() => null)
   if (!response.ok) {
     const message = messageFrom(data, fallbackFor(response.status, fallback))
-    if (response.status === 401 && codeFrom(data) === 'USER_INACTIVE') rememberSessionNotice(message)
+    if (response.status === 401 && (codeFrom(data) === 'USER_INACTIVE' || codeFrom(data) === 'SESSION_REVOKED')) {
+      rememberSessionNotice(message)
+    }
     return {
       ok: false,
       status: response.status,
