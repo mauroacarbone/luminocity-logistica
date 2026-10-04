@@ -224,7 +224,11 @@ export function PlanificadorRutas() {
           <span className="hidden sm:inline">‹ Sem. anterior</span>
         </button>
         <p className="text-center text-sm font-semibold sm:text-base">
-          <span className="sm:hidden">Esta semana</span>
+          <span className="sm:hidden">
+            {weekOffset === 0
+              ? 'Esta semana'
+              : `${days[0].getDate()}/${days[0].getMonth() + 1}–${days[6].getDate()}/${days[6].getMonth() + 1}`}
+          </span>
           <span className="hidden sm:inline">{weekTitle}</span>
         </p>
         <button
