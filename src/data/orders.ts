@@ -43,6 +43,8 @@ export type Order = {
   receiverName?: string
   receiverDni?: string
   driverId?: string
+  lat?: number
+  lng?: number
   edits?: OrderEdit[]
   createdBy?: string
   createdAt?: string
