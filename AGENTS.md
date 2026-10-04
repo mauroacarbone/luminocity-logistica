@@ -35,7 +35,7 @@ Los adjuntos del pedido ya van en el JSON como data URL (tope 2 MB) y viajan den
 - Al terminar cada brief, actualizar `HISTORY.md`.
 - No agregar features fuera del brief. No dejar código muerto.
 - No inventar pantallas, datos ni integraciones. Lo que no está en el código es **Pendiente**.
-- El login acepta `vendedor`, `deposito`, `encargado_deposito`, `chofer` o `admin`. El menú y la API filtran por rol. En desarrollo el registro público crea `vendedor`; en producción está cerrado. Solo admin cambia roles.
+- El login acepta `vendedor`, `deposito`, `encargado_deposito`, `chofer` o `admin`. El menú y la API filtran por rol. En desarrollo el registro público crea `vendedor`; en producción está cerrado. El admin cambia cualquier rol. El encargado cambia roles de cuentas que no son admin, y no puede asignar admin.
 
 ## Roles
 
@@ -62,10 +62,10 @@ Deja listo lo que se entrega hoy. Ve pendientes y preparados.
 
 Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar solo.
 
-- Pantallas: las de depósito, más Despacho (editar), Choferes en ruta (ver), Planificador de Rutas (editar), Post Venta (editar) y Bandeja (editar).
-- Puede: asignar transportista y chofer, armar rutas, autorizar una carga a nombre de otro, aprobar o rechazar ediciones, cargar reclamos, editar y cancelar pedidos que no salieron. Puede pasar el límite de 3 pedidos por chofer y franja si lo confirma.
+- Pantallas: las de depósito, más Despacho (editar), Choferes en ruta (ver), Planificador de Rutas (editar), Post Venta (editar), Bandeja (editar) y Usuarios (editar).
+- Puede: asignar transportista y chofer, armar rutas, autorizar una carga a nombre de otro, aprobar o rechazar ediciones, cargar reclamos, editar y cancelar pedidos que no salieron. Puede pasar el límite de 3 pedidos por chofer y franja si lo confirma. En Usuarios ve a todos y puede crear y modificar cuentas que no sean admin.
 - Si edita un pedido, se avisa al vendedor de ese pedido.
-- No puede: marcar `en-viaje` o `entregado`, datos maestros, usuarios.
+- No puede: marcar `en-viaje` o `entregado`, datos maestros. Tampoco puede modificar, desactivar ni cambiar la contraseña de un admin, ni asignar el rol admin.
 
 ### Chofer
 
@@ -81,7 +81,7 @@ Entrega y deja constancia. Al entrar ve solo Mis entregas. El server le manda lo
 Mauro, desarrollador. Todo, más usuarios, roles y datos maestros.
 
 - Pantallas: todas, Datos maestros y Usuarios incluidos (editar).
-- Puede: cualquier estado del pedido y del reclamo. Carga el celular corporativo, vincula cada vendedor con su cuenta, vincula cada chofer con su transportista y cambia roles.
+- Puede: cualquier estado del pedido y del reclamo. En Usuarios ve, crea y modifica a todos, incluidos otros admins: rol, datos, activo y contraseña. Carga el celular corporativo, vincula cada vendedor con su cuenta y vincula cada chofer con su transportista.
 - Primero: el Panel, Datos maestros y Usuarios.
 
 ### Rol × pantalla
@@ -99,9 +99,24 @@ Mauro, desarrollador. Todo, más usuarios, roles y datos maestros.
 | Post Venta | `/post-venta` | editar | sin acceso | editar | sin acceso | editar |
 | Bandeja | `/bandeja` | sin acceso | sin acceso | editar | sin acceso | editar |
 | Datos maestros | `/datos-maestros` | sin acceso | sin acceso | sin acceso | sin acceso | editar |
-| Usuarios | `/usuarios` | sin acceso | sin acceso | sin acceso | sin acceso | editar |
+| Usuarios | `/usuarios` | sin acceso | sin acceso | editar | sin acceso | editar |
 
 `ver` es consulta. `editar` incluye las acciones de esa pantalla. `sin acceso` no muestra el ítem y la ruta dice que no hay acceso. Una URL ajena no alcanza: la API responde 403.
+
+### Usuarios (`/api/users`)
+
+El admin ve, crea y modifica a todos, incluidos otros admins. El encargado ve a todos y puede crear y modificar, salvo una cuenta cuyo rol actual es admin: eso responde 403 `{ message: "No podés modificar a un administrador" }`. Tampoco puede asignar el rol admin, ni al crear ni al editar: 403 `{ message: "No podés asignar el rol administrador" }`. Vendedor, depósito y chofer no entran. La regla está en `canManageUser`.
+
+| Método | Ruta | Qué hace |
+| --- | --- | --- |
+| GET | `/api/users` | Lista. Admin y encargado. |
+| POST | `/api/users` | Alta: `name`, `email`, `password` (8 a 72), `role` y, según el rol, `sellerName` o `carrierName`. |
+| PATCH | `/api/users/:id` | `name`, `email`, `phone`, `sellerName`, `carrierName`. |
+| PATCH | `/api/users/:id/role` | Cambia el rol. |
+| PATCH | `/api/users/:id/active` | `{ active: boolean }`. |
+| PATCH | `/api/users/:id/password` | `{ password }` de 8 a 72 caracteres, con bcrypt. |
+
+Sin `active`, o con `active: true`, el usuario está activo. El login de uno inactivo responde 403 `{ message: "Tu usuario está desactivado. Hablá con el encargado." }`. Un token ya emitido recibe 401 en la request siguiente y el front cierra la sesión. Nadie se desactiva a sí mismo: 409 `{ message: "No podés desactivar tu propio usuario" }`. Tiene que quedar al menos un admin activo: desactivarlo o quitarle el rol responde 409 `{ message: "Tiene que quedar al menos un administrador activo" }`. El nombre y el email son únicos sin distinguir mayúsculas; el nombre tampoco distingue espacios de más. Si se repiten, 409.
 
 ## Negocio
 
