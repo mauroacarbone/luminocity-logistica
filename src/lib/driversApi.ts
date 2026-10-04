@@ -28,12 +28,8 @@ export function clearDriverLocation() {
 }
 
 /** Cierra la sesión igual si el token venció y el server responde 401. */
-export async function clearDriverLocationQuietly() {
-  try {
-    await clearDriverLocation()
-  } catch {
-    // Sin red o respuesta rota: la sesión local se limpia igual.
-  }
+export function clearDriverLocationQuietly() {
+  return clearDriverLocation()
 }
 
 function isLiveDriver(value: unknown): value is LiveDriver {
