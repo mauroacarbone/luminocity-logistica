@@ -44,7 +44,12 @@ function parseStored(kind, raw) {
 }
 
 function isLocalHost(connectionString) {
-  return /@(localhost|127\.0\.0\.1)(:\d+)?(\/|\?|$)/.test(connectionString)
+  try {
+    const host = new URL(connectionString).hostname.replace(/^\[|\]$/g, '')
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1'
+  } catch {
+    return false
+  }
 }
 
 // El sslmode de la URL pisa la opción ssl del pool. Lo sacamos y lo decidimos acá.
