@@ -23,6 +23,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 15 | Roles, menús y permisos | Hecho |
 | 16 | Vista Chofer y avisos por WhatsApp (`wa.me`) | Hecho |
 | 16.1 | Ajustes del chofer y avisos de WhatsApp | Hecho |
+| 16b | GPS en vivo del chofer y orden por cercanía | Hecho |
 | 17 | Pulido visual y confirmaciones con SweetAlert2 | Hecho |
 | 17.1 | Envío de WhatsApp desde la campanita | Hecho |
 
@@ -40,13 +41,16 @@ El Brief 17 confirma con SweetAlert2 antes de cancelar, borrar, preparar, asigna
 
 El Brief 17.1 abre WhatsApp recién al confirmar, en el mismo click. El aviso pasa a `enviado` si el server responde bien; si responde 400, se cierra la ventana y avisa que otro encargado ya lo envió. Si el navegador bloquea la ventana, el chat se abre en la misma pestaña. Un teléfono con letras, `#`, interno, extensión o un 15 sin característica no arma link. Aprobar o rechazar una autorización, y elegir chofer en Despacho, también piden confirmación.
 
+El Brief 16b guarda la última ubicación del chofer mientras tiene pedidos en viaje. Mis entregas la pide con el GPS, la manda como máximo cada 30 segundos y ordena las tarjetas por cercanía. Si no hay ubicación o el pedido no tiene coordenadas, el orden sigue por zona y dirección. El encargado y el admin ven esos choferes en el mapa. La ubicación se borra al terminar el último en viaje o al cerrar sesión.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
 
 | Brief | Tema | Estado |
 | --- | --- | --- |
-| 16b | GPS en vivo del chofer y orden de la recorrida por cercanía. WhatsApp Business Cloud API, si la empresa lo aprueba. | **Pendiente** |
+| | Link de seguimiento para el cliente | **Pendiente** |
+| | WhatsApp Cloud API | **Pendiente** |
 | 18 | Reclamos (`R-`) a la API. | **Pendiente** |
 | 19 | Sacar los adjuntos del listado de pedidos y que el PATCH mande solo lo que cambia. | **Pendiente** |
 
@@ -64,6 +68,7 @@ En este orden. No adelantar el siguiente.
 - Entrega propia y correo tienen listas de transportistas distintas, editables en Datos maestros.
 - El QR de la carátula busca el pedido o confirma la entrega.
 - Despacho ya filtra por transportista y agrupa `asignado` con `en-viaje`. Mis entregas separa asignados (preparado y asignado) de en viaje.
-- El aviso de WhatsApp se abre con `wa.me` y queda `enviado`. El GPS y la API paga siguen en el Brief 16b.
+- El aviso de WhatsApp se abre con `wa.me` y queda `enviado`. El link de seguimiento para el cliente y la API de WhatsApp Cloud siguen pendientes.
+- La ubicación del chofer es solo la última posición. Se borra al cerrar el último en viaje o la sesión. La ven el encargado y el admin.
 - El backend va con Express + JWT, en línea con RendiYa (otro proyecto del mismo autor).
 - Se trabaja en `main` para no perder avances en ramas sueltas; primero que funcione, después el pulido visual.

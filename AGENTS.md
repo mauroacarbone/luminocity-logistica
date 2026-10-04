@@ -11,8 +11,8 @@ React 19, Vite, TypeScript, React Router. Estilos en `src/index.css` (Tailwind 4
 | --- | --- |
 | `src/pages/` | Una pantalla por ruta |
 | `src/state/` | Contextos: auth, pedidos, picking, reclamos, catálogo |
-| `server/` | Auth, pedidos, autorizaciones y avisos: Express, JWT y JSON |
-| `src/lib/` | Persistencia, token de sesión, zona, geocodificación, rutas, adjuntos, Excel de picking, `access.ts`, `whatsapp.ts` y las API (`api.ts`, `authApi.ts`, `ordersApi.ts`, `authorizationsApi.ts`, `notificationsApi.ts`, `usersApi.ts`) |
+| `server/` | Auth, pedidos, autorizaciones, avisos y ubicación del chofer: Express, JWT y JSON |
+| `src/lib/` | Persistencia, token de sesión, zona, geocodificación, rutas, adjuntos, Excel de picking, `access.ts`, `whatsapp.ts` y las API (`api.ts`, `authApi.ts`, `ordersApi.ts`, `authorizationsApi.ts`, `notificationsApi.ts`, `usersApi.ts`, `driversApi.ts`) |
 | `src/data/` | Tipos y semillas: pedido, reclamo, catálogo |
 | `src/layout/` | Sidebar, shell y tarjeta de login |
 | `src/components/` | Diálogos de QR, carátula, link del adjunto, `NotificationBell`, `EditReasonDialog` y `NoAccess` |
@@ -25,7 +25,6 @@ Rutas: `src/App.tsx`. Menú: `src/layout/Sidebar.tsx`.
 - Al terminar cada brief, actualizar `HISTORY.md`.
 - No agregar features fuera del brief. No dejar código muerto.
 - No inventar pantallas, datos ni integraciones. Lo que no está en el código es **Pendiente**.
-- No adelantar el Brief 16b (GPS en vivo y orden por cercanía).
 - El login acepta `vendedor`, `deposito`, `encargado_deposito`, `chofer` o `admin`. El menú y la API filtran por rol. El registro público siempre crea `vendedor`; solo admin cambia roles.
 
 ## Roles
@@ -53,7 +52,7 @@ Deja listo lo que se entrega hoy. Ve pendientes y preparados.
 
 Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar solo.
 
-- Pantallas: las de depósito, más Despacho (editar), Planificador de Rutas (editar), Post Venta (editar) y Bandeja (editar).
+- Pantallas: las de depósito, más Despacho (editar), Choferes en ruta (editar), Planificador de Rutas (editar), Post Venta (editar) y Bandeja (editar).
 - Puede: asignar transportista y chofer, armar rutas, autorizar una carga a nombre de otro, aprobar o rechazar ediciones, cargar reclamos, editar y cancelar pedidos que no salieron.
 - Si edita un pedido, se avisa al vendedor de ese pedido.
 - No puede: marcar `en-viaje` o `entregado`, datos maestros, usuarios.
@@ -63,9 +62,9 @@ Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar 
 Entrega y deja constancia. Al entrar ve solo Mis entregas. El server le manda los pedidos de su transportista (`carrierName`) en `preparado`, `asignado` o `en-viaje`, con fecha de ayer, hoy o mañana. Sin `carrierName` no ve pedidos.
 
 - Pantalla: Mis entregas (editar).
-- Puede: pasar de `asignado` a `en-viaje` y de `en-viaje` a `entregado`. Desde en viaje avisa al cliente con un link `wa.me`.
+- Puede: pasar de `asignado` a `en-viaje` y de `en-viaje` a `entregado`. Desde en viaje avisa al cliente con un link `wa.me`. Con al menos un pedido en viaje, la pantalla pide el GPS y manda la última posición.
 - No puede: crear ni editar el pedido, preparar, asignar, picking, reclamos, datos maestros, el resto de las pantallas.
-- El orden de la recorrida es por zona y dirección. GPS en vivo y cercanía real son **Pendiente**, Brief 16b.
+- Con la ubicación activa, Mis entregas ordena por cercanía en línea recta y muestra la distancia. Sin GPS o sin coordenadas del pedido, el orden es por zona y después por dirección.
 
 ### Admin
 
@@ -84,6 +83,7 @@ Mauro, desarrollador. Todo, más usuarios, roles y datos maestros.
 | Nuevo Pedido | `/nuevo-pedido` | editar | sin acceso | editar uno existente | sin acceso | editar |
 | Pedidos y Preparación | `/pedidos` | editar los suyos | editar | editar | sin acceso | editar |
 | Despacho | `/despacho` | ver | ver | editar | sin acceso | editar |
+| Choferes en ruta | `/choferes` | sin acceso | sin acceso | editar | sin acceso | editar |
 | Planificador de Rutas | `/rutas` | sin acceso | sin acceso | editar | sin acceso | editar |
 | Pendientes de Entregas | `/pendientes` | sin acceso | editar | editar | sin acceso | editar |
 | Post Venta | `/post-venta` | editar | sin acceso | editar | sin acceso | editar |
@@ -117,9 +117,9 @@ El transportista se elige al cargar. Despacho filtra por esa lista.
 | GBA Sur | Jue |
 | Provincia | Sin días |
 
-Datos maestros puede cambiar zonas, franjas (`10:00-15:00`, `09:00-13:00`, `15:00-19:00`) y tipos de propiedad (casa, departamento, obra, local, edificio, oficina). El planificador arma la recorrida de lo que no está `entregado`. Origen por defecto: Warnes 986, Buenos Aires. Sin GPS del chofer: **Pendiente**, Brief 16b.
+Datos maestros puede cambiar zonas, franjas (`10:00-15:00`, `09:00-13:00`, `15:00-19:00`) y tipos de propiedad (casa, departamento, obra, local, edificio, oficina). El planificador arma la recorrida de lo que no está `entregado`. Origen por defecto: Warnes 986, Buenos Aires. Choferes en ruta muestra la última posición de cada chofer con pedidos en viaje.
 
-Cada pedido guarda `edits`: `{ by, at, reason, changes, status }` con `aplicada`, `pendiente` o `rechazada`. Una edición pendiente no toca los datos hasta que el encargado la aprueba. Los avisos viven en `server/data/notifications.json` (`id`, `to`, `text`, `orderId`, `read`, `createdAt`, `channel`). `channel` es `app` y, cuando hay que avisar por celular, también `whatsapp` con `status` `pendiente`. El encargado lo manda con un link `wa.me` y el aviso pasa a `enviado`. La API de WhatsApp Business queda **Pendiente**, Brief 16b.
+Cada pedido guarda `edits`: `{ by, at, reason, changes, status }` con `aplicada`, `pendiente` o `rechazada`. Una edición pendiente no toca los datos hasta que el encargado la aprueba. Si la dirección no trae coordenadas, el server la geocodifica con Nominatim (una consulta por segundo, User-Agent propio) y guarda `lat` y `lng` en el pedido. Los avisos viven en `server/data/notifications.json` (`id`, `to`, `text`, `orderId`, `read`, `createdAt`, `channel`). `channel` es `app` y, cuando hay que avisar por celular, también `whatsapp` con `status` `pendiente`. El encargado lo manda con un link `wa.me` y el aviso pasa a `enviado`. La última ubicación del chofer vive en `server/data/locations.json` (fuera de git): una sola posición por usuario (`lat`, `lng`, `accuracy`, `timestamp`, `updatedAt`), sin historial. `POST /api/drivers/location` la guarda y solo la llama el chofer, como máximo cada 30 segundos, mientras tiene pedidos en viaje. `DELETE /api/drivers/location` la borra al terminar el último en viaje o al cerrar sesión. `GET /api/drivers/locations` la ven el encargado y el admin: choferes con pedidos en viaje, transportista y cantidad. Si la posición tiene más de 10 minutos, el mapa la marca sin señal. Ningún otro rol ve ubicaciones. El link de seguimiento para el cliente y la API de WhatsApp Business quedan **Pendiente**.
 
 | Término | Qué es |
 | --- | --- |
