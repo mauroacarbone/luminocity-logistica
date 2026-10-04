@@ -36,7 +36,6 @@ function isLiveDriver(value: unknown): value is LiveDriver {
     typeof driver.name === 'string' &&
     driver.name.trim().length > 0 &&
     typeof driver.carrierName === 'string' &&
-    driver.carrierName.trim().length > 0 &&
     typeof driver.lat === 'number' &&
     Number.isFinite(driver.lat) &&
     typeof driver.lng === 'number' &&

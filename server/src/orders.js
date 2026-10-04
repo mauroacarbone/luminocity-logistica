@@ -415,7 +415,7 @@ function deleteOrder(id, user) {
     await pullOrderFromSheets(remaining, id)
     await writeOrders(remaining)
     await closeFinishedSheets(remaining)
-    if (current.status === 'en-viaje') await releaseIdleDrivers(remaining, current.transporter)
+    if (current.status === 'en-viaje') await releaseIdleDrivers(remaining, driverIdOf(current))
     return { ok: true }
   })
 }
@@ -838,7 +838,7 @@ function readDriver(body, current) {
 export function updateDriverLocation(user, point) {
   return locked(async () => {
     const orders = await readOrders()
-    if (!stillTraveling(orders, user.carrierName)) {
+    if (!stillTraveling(orders, user)) {
       await forgetUsers([user.id])
       return { error: 'No hay pedidos en viaje.', status: 409 }
     }
@@ -859,11 +859,7 @@ export function listLiveDrivers() {
       const user = byId.get(userId)
       const carrier = typeof user?.carrierName === 'string' ? user.carrierName.trim() : ''
       const live =
-        user?.role === 'chofer' &&
-        isActive(user) &&
-        Boolean(carrier) &&
-        stillTraveling(orders, carrier) &&
-        isStoredPoint(point)
+        user?.role === 'chofer' && isActive(user) && stillTraveling(orders, user) && isStoredPoint(point)
       if (!live) {
         drop.push(userId)
         continue
@@ -877,7 +873,7 @@ export function listLiveDrivers() {
         accuracy: typeof point.accuracy === 'number' ? point.accuracy : null,
         timestamp: point.timestamp,
         updatedAt: point.updatedAt,
-        traveling: travelingCount(orders, carrier),
+        traveling: travelingCount(orders, user),
       })
     }
     if (drop.length > 0) await forgetUsers(drop)
@@ -899,36 +895,43 @@ function isStoredPoint(point) {
   )
 }
 
-function travelingCount(orders, carrierName) {
-  const carrier = normalizeName(carrierName)
-  if (!carrier) return 0
-  return orders.filter(
-    (order) =>
-      order.status === 'en-viaje' &&
-      normalizeName(order.transporter) === carrier &&
-      nearbyDelivery(order.deliveryDate),
-  ).length
+function driverTraveling(user, order) {
+  if (order.status !== 'en-viaje' || !nearbyDelivery(order.deliveryDate)) return false
+  if (typeof order.driverId === 'string' && order.driverId) return order.driverId === user?.id
+  const carrier = normalizeName(user?.carrierName)
+  if (!carrier) return false
+  return normalizeName(order.transporter) === carrier
 }
 
-function stillTraveling(orders, carrierName) {
-  return travelingCount(orders, carrierName) > 0
+function travelingCount(orders, user) {
+  if (!user?.id) return 0
+  return orders.filter((order) => driverTraveling(user, order)).length
+}
+
+function stillTraveling(orders, user) {
+  return travelingCount(orders, user) > 0
+}
+
+function driverIdOf(order) {
+  return typeof order?.driverId === 'string' && order.driverId ? order.driverId : ''
 }
 
 async function releaseIfIdle(orders, previous, next) {
-  const carriers = new Set()
-  if (previous.status === 'en-viaje' && previous.transporter) carriers.add(previous.transporter)
-  if (next.status === 'en-viaje' && next.transporter) carriers.add(next.transporter)
-  for (const carrier of carriers) await releaseIdleDrivers(orders, carrier)
+  if (previous?.status !== 'en-viaje' && next?.status !== 'en-viaje') return
+  const ids = new Set()
+  const previousId = driverIdOf(previous)
+  const nextId = driverIdOf(next)
+  if (previousId) ids.add(previousId)
+  if (nextId) ids.add(nextId)
+  for (const id of ids) await releaseIdleDrivers(orders, id)
 }
 
-async function releaseIdleDrivers(orders, carrierName) {
-  if (!carrierName || stillTraveling(orders, carrierName)) return
-  const carrier = normalizeName(carrierName)
+async function releaseIdleDrivers(orders, userId) {
+  if (!userId) return
   const users = await readUsersList()
-  const ids = users
-    .filter((user) => user.role === 'chofer' && normalizeName(user.carrierName) === carrier)
-    .map((user) => user.id)
-  await forgetUsers(ids)
+  const user = users.find((item) => item.id === userId)
+  if (!user || user.role !== 'chofer' || stillTraveling(orders, user)) return
+  await forgetUsers([userId])
 }
 
 function hasCoords(order) {
