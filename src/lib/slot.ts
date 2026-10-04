@@ -13,6 +13,14 @@ export function normalizeTimeWindow(value?: string) {
   return `${hour(match[1])}:${match[2]}-${hour(match[3])}:${match[4]}`
 }
 
+/** Avisos de franja para quien no puede autorizar en el momento. */
+export function slotNotice(code: string | undefined, role: string | undefined, message: string) {
+  if (role === 'encargado_deposito' || role === 'admin') return message
+  if (code === 'FRANJA_LLENA') return 'Pedile autorización al encargado'
+  if (code === 'FRANJA_REQUERIDA') return 'Asigná una franja primero'
+  return message
+}
+
 export function driverSlotCount(orders: Order[], driverId: string, deliveryDate: string, timeWindow?: string) {
   const window = normalizeTimeWindow(timeWindow)
   if (!driverId || !window) return 0

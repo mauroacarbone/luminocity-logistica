@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { isDispatchType } from '../data/catalog'
 import { isOrderEdit, isSlotOverride, type Order, type OrderStatus } from '../data/orders'
 import { loadList, saveList } from '../lib/localStore'
+import { slotNotice } from '../lib/slot'
 import {
   createOrder,
   deleteOrder,
@@ -273,7 +274,12 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
   function fail(result: Extract<ApiResult, { ok: false }>): OrderSaveResult {
     if (result.status === 401) logout()
-    return { status: 'not-saved', message: result.message, code: result.code, slot: result.slot }
+    return {
+      status: 'not-saved',
+      message: slotNotice(result.code, user?.role, result.message),
+      code: result.code,
+      slot: result.slot,
+    }
   }
 
   function adopt(saved: Order) {
