@@ -3,7 +3,7 @@ import { apiRequest, type ApiFailure } from './api'
 export type DriverFix = {
   lat: number
   lng: number
-  accuracy: number
+  accuracy: number | null
   timestamp: number
 }
 

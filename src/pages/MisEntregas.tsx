@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { STATUS_PILL, type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
@@ -11,6 +11,7 @@ type Gps = 'off' | 'on' | 'denied'
 type Point = { lat: number; lng: number }
 
 const SEND_EVERY_MS = 30_000
+const RELOAD_AFTER_MS = 4000
 
 function byZoneThenAddress(left: Order, right: Order) {
   const zone = (left.zone ?? '').localeCompare(right.zone ?? '', 'es')
@@ -62,18 +63,37 @@ function sortDeliveries(list: Order[], here: Point | null) {
 
 export function MisEntregas() {
   const { user } = useAuth()
-  const { orders, loading, error: ordersError, patchFields } = useOrders()
+  const { orders, loading, error: ordersError, patchFields, reload } = useOrders()
   const [tab, setTab] = useState<Tab>('asignados')
   const [busy, setBusy] = useState('')
   const [here, setHere] = useState<Point | null>(null)
   const [gps, setGps] = useState<Gps>('off')
   const tracking = !loading && !ordersError && orders.some((order) => order.status === 'en-viaje')
+  const hadTraveling = useRef(false)
+  const askedCoords = useRef(false)
 
   useEffect(() => {
     if (loading || ordersError) return
-    if (orders.some((order) => order.status === 'en-viaje')) return
+    const traveling = orders.some((order) => order.status === 'en-viaje')
+    if (traveling) {
+      hadTraveling.current = true
+      return
+    }
+    if (!hadTraveling.current) return
+    hadTraveling.current = false
     void clearDriverLocation()
   }, [loading, ordersError, orders])
+
+  useEffect(() => {
+    if (loading || ordersError || askedCoords.current) return
+    const missing = orders.some((order) => Boolean(order.address) && !pointOf(order))
+    if (!missing) return
+    const timer = window.setTimeout(() => {
+      askedCoords.current = true
+      reload()
+    }, RELOAD_AFTER_MS)
+    return () => window.clearTimeout(timer)
+  }, [loading, ordersError, orders, reload])
 
   useEffect(() => {
     if (!tracking) return
@@ -101,7 +121,7 @@ export function MisEntregas() {
       await postDriverLocation({
         lat: pos.coords.latitude,
         lng: pos.coords.longitude,
-        accuracy: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : 0,
+        accuracy: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null,
         timestamp: pos.timestamp,
       })
     }

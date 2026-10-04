@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { isDispatchType } from '../data/catalog'
 import { isOrderEdit, type Order, type OrderStatus } from '../data/orders'
 import { loadList, saveList } from '../lib/localStore'
@@ -216,11 +216,11 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }
   }, [userId, logout, attempt])
 
-  function reload() {
+  const reload = useCallback(() => {
     setError('')
     setStatus('loading')
     setAttempt((current) => current + 1)
-  }
+  }, [])
 
   function replaceOrders(list: Order[]) {
     ordersRef.current = list
