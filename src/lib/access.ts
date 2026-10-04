@@ -1,5 +1,6 @@
 import type { Order, OrderStatus } from '../data/orders'
 import type { Role, Session } from './authStore'
+import { statusChoices as choicesFromTable } from './orderFlow'
 
 const MENU: Record<Role, readonly string[]> = {
   vendedor: ['/', '/nuevo-pedido', '/pedidos', '/despacho', '/post-venta'],
@@ -76,10 +77,6 @@ export function canReview(role: Role) {
   return role === 'encargado_deposito' || role === 'admin'
 }
 
-export function statusChoices(role: Role, current: OrderStatus): OrderStatus[] {
-  if (role === 'admin') return ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
-  if (role === 'encargado_deposito') return ['pendiente', 'preparado', 'asignado']
-  if (role === 'chofer' && current === 'asignado') return ['en-viaje']
-  if (role === 'chofer' && current === 'en-viaje') return ['entregado']
-  return []
+export function statusChoices(role: Role, order: Pick<Order, 'status' | 'dispatchType'>): OrderStatus[] {
+  return choicesFromTable(role, order)
 }

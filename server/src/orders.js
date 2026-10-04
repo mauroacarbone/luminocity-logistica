@@ -830,8 +830,9 @@ function isIsoDate(value) {
 }
 
 function readStatus(body, current) {
+  if (!current) return { value: 'pendiente' }
   if (!Object.prototype.hasOwnProperty.call(body, 'status')) {
-    return { value: current ? current.status : 'pendiente' }
+    return { value: current.status }
   }
   if (typeof body.status !== 'string' || !STATUSES.includes(body.status)) {
     return fail('El estado no es válido.')

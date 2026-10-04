@@ -3,7 +3,7 @@ import { businessToday } from './access.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
-import { applyTransition } from './orderFlow.js'
+import { applyTransition, STATUS_RANK } from './orderFlow.js'
 import { checkDriver, checkSlot, normalizeTimeWindow, rememberOverride } from './orders.js'
 
 const OPEN_ORDER = new Set(['preparado', 'asignado'])
@@ -248,8 +248,6 @@ export async function closeFinishedSheets(orders) {
   }
   if (changed) await writeCollection('routeSheets', sheets)
 }
-
-const STATUS_RANK = { pendiente: 0, preparado: 1, asignado: 2, 'en-viaje': 3, entregado: 4 }
 
 function driverKey(order) {
   return typeof order?.driverId === 'string' ? order.driverId : ''

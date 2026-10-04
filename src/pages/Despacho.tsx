@@ -6,7 +6,6 @@ import { QrScanDialog } from '../components/QrScanDialog'
 import { DISPATCH_LABEL, listForDispatch, withCurrent, withExtras } from '../data/catalog'
 import {
   pendingEdit,
-  STATUS_PILL,
   type Order,
   type OrderStatus,
 } from '../data/orders'
@@ -20,8 +19,9 @@ import {
   weekDays,
   weekOffsetForIso,
 } from '../lib/week'
-import { confirm, askReason, error, success } from '../lib/alerts'
+import { askReason, confirm, error, success } from '../lib/alerts'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder, statusChoices } from '../lib/access'
+import { STATUS_RANK, statusPillFor } from '../lib/orderFlow'
 import { placeLine } from '../lib/place'
 import { driverSlotCount, normalizeTimeWindow, SLOT_LIMIT, slotQuestion } from '../lib/slot'
 import { isSession } from '../lib/authStore'
@@ -67,15 +67,10 @@ function statusPrompt(id: string, status: OrderStatus, order?: Order) {
   }
   return {
     title: 'Cambiar estado',
-    text: `El pedido ${id} pasa a ${statusPillFor(order, status).toLowerCase()}.`,
+    text: `El pedido ${id} pasa a ${statusPillFor(order ?? { dispatchType: undefined }, status).toLowerCase()}.`,
     done: 'Estado actualizado',
     peligro: false,
   }
-}
-
-function statusPillFor(order: Order | undefined, status: OrderStatus) {
-  if (status === 'asignado' && order?.dispatchType === 'correo') return 'Despachado'
-  return STATUS_PILL[status]
 }
 
 function SlotUsage({ orders, order }: { orders: Order[]; order: Order }) {
@@ -410,14 +405,6 @@ export function Despacho() {
     return true
   }
 
-  const STATUS_RANK: Record<OrderStatus, number> = {
-    pendiente: 0,
-    preparado: 1,
-    asignado: 2,
-    'en-viaje': 3,
-    entregado: 4,
-  }
-
   async function changeStatus(order: Order, status: OrderStatus) {
     setOpenStatusId(null)
     const prompt = statusPrompt(order.id, status, order)
@@ -432,6 +419,7 @@ export function Despacho() {
     const goingBack = STATUS_RANK[status] < STATUS_RANK[order.status]
     let reason: string | undefined
     let trackingNumber: string | undefined
+    let packages: number | undefined
     if (goingBack) {
       const typed = await askReason(prompt.title, prompt.text)
       if (!typed) return
@@ -439,6 +427,16 @@ export function Despacho() {
     } else {
       const accepted = await confirm(prompt.title, prompt.text, { peligro: prompt.peligro })
       if (!accepted) return
+      if (status === 'preparado') {
+        const raw = window.prompt('Cantidad de bultos')
+        if (raw === null) return
+        const value = Number(raw.trim())
+        if (!Number.isInteger(value) || value < 1) {
+          await error('Ingresá una cantidad entera de bultos (1 o más).')
+          return
+        }
+        packages = value
+      }
       if (status === 'asignado' && order.dispatchType === 'correo') {
         const tracking = window.prompt('Tracking (opcional)')
         if (tracking === null) return
@@ -448,6 +446,7 @@ export function Despacho() {
     setBusyId(order.id)
     const body: Record<string, unknown> = { to: status, via: 'despacho' }
     if (reason) body.reason = reason
+    if (packages != null) body.packages = packages
     if (trackingNumber) body.trackingNumber = trackingNumber
     if (status === 'asignado' && order.driverId) body.driverId = order.driverId
     const result = await transitionOrder(order.id, body)
@@ -825,7 +824,7 @@ export function Despacho() {
                       {order.dispatchType !== 'correo' && <SlotUsage orders={orders} order={order} />}
                     </>
                   )}
-                  {user && statusChoices(user.role, order.status).length > 0 && (
+                  {user && statusChoices(user.role, order).length > 0 && (
                     <div className="relative">
                       <button
                         type="button"
@@ -844,7 +843,7 @@ export function Despacho() {
                           role="menu"
                           className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
                         >
-                          {statusChoices(user.role, order.status)
+                          {statusChoices(user.role, order)
                             .filter((status) => status !== order.status)
                             .map((status) => (
                             <button
