@@ -377,12 +377,15 @@ function patchOrder(id, body, user) {
   })
 }
 
-const TRANSITION_VIAS = new Set(['pedidos', 'despacho', 'hoja', 'mis-entregas', 'qr'])
+const TRANSITION_VIAS = new Set(['pedidos', 'despacho', 'mis-entregas', 'qr'])
 
 function transitionOrder(id, body, user) {
   return locked(async () => {
     if (!isRecord(body)) return fail('La transición no es válida.')
     const via = typeof body.via === 'string' ? body.via.trim() : ''
+    if (via === 'hoja') {
+      return fail('Ese pedido está en una hoja planificada. Usá Iniciar recorrido.', 409)
+    }
     if (!TRANSITION_VIAS.has(via)) return fail('Indicá desde dónde se cambia el estado.')
     const orders = await readOrders()
     const index = orders.findIndex((item) => item.id === id)

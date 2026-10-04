@@ -120,6 +120,7 @@ function saveSheet(body, user) {
           },
           user,
           'hoja',
+          { fromSheet: true },
         )
         if (transition.error) return transition
         byId.set(id, transition.order)
@@ -214,7 +215,9 @@ function startSheet(id, user) {
       if (order.deliveryDate !== sheet.date) continue
       if (normalizeTimeWindow(order.timeWindow) !== sheet.slot) continue
       if (order.status !== 'asignado') continue
-      const transition = await applyTransition(orders, order, { to: 'en-viaje' }, user, 'hoja')
+      const transition = await applyTransition(orders, order, { to: 'en-viaje' }, user, 'hoja', {
+        fromSheet: true,
+      })
       if (transition.error) return transition
       started += 1
     }

@@ -126,8 +126,9 @@ function pushHistory(order, { at, by, from, to, reason, via }) {
  * @param {object} input
  * @param {object} user
  * @param {string} via
+ * @param {{ fromSheet?: boolean }} [options]
  */
-export async function applyTransition(orders, current, input, user, via) {
+export async function applyTransition(orders, current, input, user, via, options = {}) {
   if (!current || typeof current !== 'object') return fail('No existe ese pedido.', 404)
   if (!isRecord(input)) return fail('La transición no es válida.')
   const to = typeof input.to === 'string' ? input.to.trim() : ''
@@ -196,7 +197,7 @@ export async function applyTransition(orders, current, input, user, via) {
 
   stampStatus(next, current)
 
-  if (via !== 'hoja') {
+  if (options.fromSheet !== true) {
     const blocked = await blockPlannedDeparture(user, current, next)
     if (blocked) return blocked
   }
