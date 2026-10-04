@@ -2,15 +2,25 @@ import type { Order } from '../data/orders'
 
 export const SLOT_LIMIT = 3
 
+/** "09:00 - 13:00" y "9:00-13:00" quedan como 09:00-13:00. */
+export function normalizeTimeWindow(value?: string) {
+  if (!value) return ''
+  const compact = value.trim().replace(/\s+/g, '')
+  if (!compact) return ''
+  const match = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/.exec(compact)
+  if (!match) return compact
+  const hour = (part: string) => part.padStart(2, '0')
+  return `${hour(match[1])}:${match[2]}-${hour(match[3])}:${match[4]}`
+}
+
 export function driverSlotCount(orders: Order[], driverId: string, deliveryDate: string, timeWindow?: string) {
-  if (!driverId || !timeWindow) return 0
+  const window = normalizeTimeWindow(timeWindow)
+  if (!driverId || !window) return 0
   return orders.filter((order) => {
-    const status: string = order.status
     return (
       order.driverId === driverId &&
       order.deliveryDate === deliveryDate &&
-      order.timeWindow === timeWindow &&
-      status !== 'cancelado'
+      normalizeTimeWindow(order.timeWindow) === window
     )
   }).length
 }

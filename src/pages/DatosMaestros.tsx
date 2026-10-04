@@ -1,15 +1,18 @@
 import { useState, type FormEvent } from 'react'
+import { normalizeTimeWindow } from '../lib/slot'
 import { useCatalog } from '../state/CatalogContext'
 
 function itemKey(value: string) {
   return value.trim().toLocaleLowerCase('es-AR')
 }
 
-function nameError(value: string, others: readonly string[]) {
-  const trimmed = value.trim()
-  if (!trimmed) return 'No puede quedar vacío.'
-  const key = itemKey(trimmed)
-  if (others.some((item) => itemKey(item) === key)) return 'Ese valor ya existe.'
+function nameError(value: string, others: readonly string[], normalize?: (value: string) => string) {
+  const cleaned = normalize ? normalize(value) : value.trim()
+  if (!cleaned) return 'No puede quedar vacío.'
+  const key = itemKey(cleaned)
+  if (others.some((item) => itemKey(normalize ? normalize(item) : item) === key)) {
+    return 'Ese valor ya existe.'
+  }
   return ''
 }
 
@@ -20,6 +23,7 @@ function StringList({
   empty,
   items,
   onSave,
+  normalize,
 }: {
   title: string
   hint: string
@@ -27,6 +31,7 @@ function StringList({
   empty: string
   items: string[]
   onSave: (next: string[]) => boolean
+  normalize?: (value: string) => string
 }) {
   const [draft, setDraft] = useState('')
   const [addError, setAddError] = useState('')
@@ -47,12 +52,13 @@ function StringList({
 
   function add(event: FormEvent) {
     event.preventDefault()
-    const error = nameError(draft, items)
+    const error = nameError(draft, items, normalize)
     if (error) {
       setAddError(error)
       return
     }
-    if (!persist([...items, draft.trim()])) return
+    const cleaned = normalize ? normalize(draft) : draft.trim()
+    if (!persist([...items, cleaned])) return
     setDraft('')
     setAddError('')
   }
@@ -70,12 +76,14 @@ function StringList({
     const error = nameError(
       editDraft,
       items.filter((_, index) => index !== editing),
+      normalize,
     )
     if (error) {
       setEditError(error)
       return
     }
-    const next = items.map((item, index) => (index === editing ? editDraft.trim() : item))
+    const cleaned = normalize ? normalize(editDraft) : editDraft.trim()
+    const next = items.map((item, index) => (index === editing ? cleaned : item))
     if (!persist(next)) return
     setEditing(null)
     setEditDraft('')
@@ -463,7 +471,8 @@ export function DatosMaestros() {
           placeholder="Ej. 10:00-15:00"
           empty="Todavía no hay franjas horarias."
           items={timeWindows}
-          onSave={(next) => save({ timeWindows: next })}
+          normalize={normalizeTimeWindow}
+          onSave={(next) => save({ timeWindows: next.map((item) => normalizeTimeWindow(item)).filter(Boolean) })}
         />
       </div>
     </section>
