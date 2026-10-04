@@ -30,6 +30,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 17.1 | Envío de WhatsApp desde la campanita | Hecho |
 | 18 | Límite de 3 pedidos por chofer y franja | Hecho |
 | 18.1 | Franja obligatoria para el chofer y cupo | Hecho |
+| 18.2 | Pedidos viejos con chofer y sin franja | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -55,6 +56,8 @@ El Brief 18 limita a 3 los pedidos de un chofer por franja y por día. Las franj
 
 El Brief 18.1 no deja asignar chofer si el pedido no tiene franja: el server responde 400 `FRANJA_REQUERIDA`, también si se intenta borrar la franja de uno que ya tiene chofer. No hay override. En Despacho ese selector queda deshabilitado. La franja se guarda como `09:00-13:00` y los espacios no cambian el cupo. La edición en espera del vendedor no se rechaza por cupo: se controla al aprobarla. El 409 dice cuántos pedidos tiene el chofer, y el pedido de autorización lo arma el front según el rol. El cupo se ve también fuera del selector. Quitar el chofer pide confirmación.
 
+El Brief 18.2 no frena un pedido que ya tiene chofer y no tiene franja: cambiar estado o bultos sigue. La franja se exige al asignar o cambiar el chofer, o al borrarla si el chofer queda. Pasar a Sin chofer se permite con o sin franja. En Despacho ese pedido deja el chofer actual y Sin chofer, con el aviso de asignar franja; otro chofer no. El guion largo también separa la franja. Quien no es encargado ni admin ve "Asigná una franja primero" o "Pedile autorización al encargado".
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
@@ -63,8 +66,8 @@ En este orden. No adelantar el siguiente.
 | --- | --- | --- |
 | 16c | Link de seguimiento para el cliente | **Pendiente** |
 | 16d | WhatsApp Cloud API | **Pendiente** |
-| 20 | Reclamos (`R-`) a la API. | **Pendiente** |
 | 19 | Sacar los adjuntos del listado de pedidos y que el PATCH mande solo lo que cambia. | **Pendiente** |
+| 20 | Reclamos (`R-`) a la API. | **Pendiente** |
 | — | Autorizar un cuarto pedido en la franja con el permiso de un solo uso del Brief 15. Esa autorización es para cargar a nombre de otro vendedor y no encaja acá: hoy solo el encargado o el admin lo confirman en el momento. | **Pendiente** |
 
 ## Decisiones
