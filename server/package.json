@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "migrate:json": "node src/scripts/migrate-json.js"
+    "migrate:json": "node src/scripts/migrate-json.js",
+    "create-admin": "node src/scripts/create-admin.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
