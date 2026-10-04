@@ -1173,10 +1173,18 @@ p {
   }
 }
 
+.route-print {
+  display: none;
+}
+
 @media print {
   .sidebar,
   .no-print {
     display: none !important;
+  }
+
+  .route-print {
+    display: block !important;
   }
 
   .app {

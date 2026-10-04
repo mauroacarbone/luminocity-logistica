@@ -54,6 +54,11 @@ export type Order = {
   receiverName?: string
   receiverDni?: string
   driverId?: string
+  assignedAt?: string
+  departedAt?: string
+  deliveredAt?: string
+  routeId?: string
+  routeSeq?: number
   lat?: number
   lng?: number
   geoMiss?: boolean

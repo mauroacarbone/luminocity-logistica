@@ -47,6 +47,10 @@ const OPTIONAL_STRINGS = [
   'receiverName',
   'receiverDni',
   'driverId',
+  'assignedAt',
+  'departedAt',
+  'deliveredAt',
+  'routeId',
   'createdBy',
   'createdAt',
   'updatedAt',
@@ -116,6 +120,12 @@ function isOrder(value: unknown): value is Order {
   if (
     order.packages !== undefined &&
     (typeof order.packages !== 'number' || !Number.isInteger(order.packages) || order.packages < 1)
+  ) {
+    return false
+  }
+  if (
+    order.routeSeq !== undefined &&
+    (typeof order.routeSeq !== 'number' || !Number.isInteger(order.routeSeq) || order.routeSeq < 1)
   ) {
     return false
   }
