@@ -520,6 +520,7 @@ export function Usuarios() {
     if (Object.keys(patch).length > 0) {
       const result = await updateUser(account.id, patch)
       if (!result.ok) {
+        if (draft.role !== account.role) applyAccount(next)
         setBusy('')
         if (result.status === 401) logout()
         else await showError(result.message)
