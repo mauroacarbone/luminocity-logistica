@@ -4,6 +4,9 @@ import { forgetUsers } from './locations.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
 
+const MIN_POST_MS = 20_000
+const lastPostAt = new Map()
+
 export const driversRouter = Router()
 driversRouter.use(requireAuth)
 
@@ -13,6 +16,13 @@ driversRouter.post('/location', requireRole('chofer'), async (req, res) => {
     res.status(point.status).json({ message: point.error })
     return
   }
+  const now = Date.now()
+  const previous = lastPostAt.get(req.user.id) ?? 0
+  if (now - previous < MIN_POST_MS) {
+    res.status(204).end()
+    return
+  }
+  lastPostAt.set(req.user.id, now)
   try {
     const result = await updateDriverLocation(req.user, point.value)
     if (result.error) {

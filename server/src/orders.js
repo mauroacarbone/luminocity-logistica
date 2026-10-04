@@ -53,12 +53,12 @@ export const ordersRouter = Router()
 ordersRouter.use(requireAuth)
 ordersRouter.get('/', async (req, res) => {
   await send(res, async () => {
-    let orders = await locked(readOrders)
+    const orders = await locked(readOrders)
+    const visible = orders.filter((order) => canSeeOrder(req.user, order))
     if (req.user.role === 'chofer') {
-      await fillCoordinates(orders.filter((order) => canSeeOrder(req.user, order)).map((order) => order.id))
-      orders = await locked(readOrders)
+      queueGeoIds(visible.filter((order) => needsGeo(order)).map((order) => order.id))
     }
-    res.json(byNewest(orders.filter((order) => canSeeOrder(req.user, order))))
+    res.json(byNewest(visible))
   })
 })
 ordersRouter.get('/:id', async (req, res) => {
@@ -72,12 +72,7 @@ ordersRouter.get('/:id', async (req, res) => {
       res.status(403).json({ message: 'No tenés permiso para ver este pedido.' })
       return
     }
-    if (req.user.role === 'chofer' && needsGeo(order)) {
-      await fillCoordinates([order.id])
-      const refreshed = await getOrder(req.params.id)
-      res.json(refreshed ?? order)
-      return
-    }
+    if (req.user.role === 'chofer' && needsGeo(order)) queueGeoIds([order.id])
     res.json(order)
   })
 })
@@ -516,6 +511,7 @@ function readOrderFields(body, current) {
     if (typeof current.lat === 'number' && Number.isFinite(current.lat)) order.lat = current.lat
     if (typeof current.lng === 'number' && Number.isFinite(current.lng)) order.lng = current.lng
     if (current.geoMiss === true) order.geoMiss = true
+    if (typeof current.geoRetryAt === 'string') order.geoRetryAt = current.geoRetryAt
   }
   return { order }
 }
@@ -619,13 +615,21 @@ export function listLiveDrivers() {
     const locations = await readLocations()
     const users = await readUsersList()
     const orders = await readOrders()
+    const byId = new Map(users.map((user) => [user.id, user]))
+    const drop = []
     const rows = []
-    for (const user of users) {
-      if (user.role !== 'chofer') continue
-      const point = locations[user.id]
-      if (!isStoredPoint(point)) continue
-      const carrier = typeof user.carrierName === 'string' ? user.carrierName.trim() : ''
-      if (!carrier || !stillTraveling(orders, carrier)) continue
+    for (const [userId, point] of Object.entries(locations)) {
+      const user = byId.get(userId)
+      const carrier = typeof user?.carrierName === 'string' ? user.carrierName.trim() : ''
+      const live =
+        user?.role === 'chofer' &&
+        Boolean(carrier) &&
+        stillTraveling(orders, carrier) &&
+        isStoredPoint(point)
+      if (!live) {
+        drop.push(userId)
+        continue
+      }
       rows.push({
         id: user.id,
         name: user.name,
@@ -638,6 +642,7 @@ export function listLiveDrivers() {
         traveling: travelingCount(orders, carrier),
       })
     }
+    if (drop.length > 0) await forgetUsers(drop)
     rows.sort((left, right) => left.name.localeCompare(right.name, 'es'))
     return rows
   })
@@ -692,12 +697,30 @@ function hasCoords(order) {
   return Number.isFinite(order?.lat) && Number.isFinite(order?.lng)
 }
 
+const GEO_RETRY_MS = 60 * 60 * 1000
+
 function needsGeo(order) {
-  return Boolean(order?.address) && !hasCoords(order) && order?.geoMiss !== true
+  if (!order?.address || hasCoords(order) || order.geoMiss === true) return false
+  if (typeof order.geoRetryAt === 'string') {
+    const at = Date.parse(order.geoRetryAt)
+    if (Number.isFinite(at) && at > Date.now()) return false
+  }
+  return true
 }
 
 function queueGeo(order) {
-  if (needsGeo(order)) void fillCoordinates([order.id])
+  if (needsGeo(order)) queueGeoIds([order.id])
+}
+
+function queueGeoIds(ids) {
+  if (ids.length === 0) return
+  void fillCoordinates(ids).catch((error) => {
+    console.error('No se pudo geocodificar', error)
+  })
+}
+
+function isRetryable(error) {
+  return Boolean(error?.retry) || error?.name === 'TimeoutError' || error?.name === 'AbortError'
 }
 
 async function fillCoordinates(ids) {
@@ -712,7 +735,15 @@ async function fillCoordinates(ids) {
     let point
     try {
       point = await geocodeAddress(item.address)
-    } catch {
+    } catch (error) {
+      if (!isRetryable(error)) throw error
+      await locked(async () => {
+        const orders = await readOrders()
+        const order = orders.find((entry) => entry.id === item.id)
+        if (!order || order.address !== item.address || !needsGeo(order)) return
+        order.geoRetryAt = new Date(Date.now() + GEO_RETRY_MS).toISOString()
+        await writeOrders(orders)
+      })
       continue
     }
     await locked(async () => {
@@ -723,8 +754,10 @@ async function fillCoordinates(ids) {
         order.lat = point.lat
         order.lng = point.lng
         delete order.geoMiss
+        delete order.geoRetryAt
       } else {
         order.geoMiss = true
+        delete order.geoRetryAt
       }
       await writeOrders(orders)
     })

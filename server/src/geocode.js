@@ -1,15 +1,21 @@
 const GAP_MS = 1100
-const USER_AGENT = 'LuminocityLogistica/1.0 (operacion interna de reparto)'
+const USER_AGENT = 'LuminocityLogistica/1.0 (mauro@luminocity.local)'
 
 let tail = Promise.resolve()
 let nextAt = 0
+const inflight = new Map()
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** Una consulta de Nominatim por segundo, con User-Agent propio. */
-export function geocodeAddress(address) {
+function retryable(message) {
+  const error = new Error(message)
+  error.retry = true
+  return error
+}
+
+function lookup(address) {
   const run = async () => {
     const delay = Math.max(0, nextAt - Date.now())
     nextAt = Date.now() + delay + GAP_MS
@@ -28,9 +34,10 @@ export function geocodeAddress(address) {
         Accept: 'application/json',
         'Accept-Language': 'es',
       },
+      signal: AbortSignal.timeout(5000),
     })
     if (response.status === 429 || response.status >= 500) {
-      throw new Error('nominatim')
+      throw retryable('nominatim')
     }
     if (!response.ok) return null
     const hits = await response.json()
@@ -47,5 +54,17 @@ export function geocodeAddress(address) {
     () => undefined,
     () => undefined,
   )
+  return task
+}
+
+/** Una consulta de Nominatim por segundo. La misma dirección en curso se reutiliza. */
+export function geocodeAddress(address) {
+  const key = address.trim().toLocaleLowerCase('es')
+  const current = inflight.get(key)
+  if (current) return current
+  const task = lookup(address).finally(() => {
+    if (inflight.get(key) === task) inflight.delete(key)
+  })
+  inflight.set(key, task)
   return task
 }

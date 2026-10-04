@@ -19,15 +19,26 @@ if (!process.env.JWT_SECRET) {
 }
 
 const app = express()
+const jsonLarge = express.json({ limit: '10mb' })
+const jsonLocation = express.json({ limit: '2kb' })
 // El front llama a /api por el proxy de Vite, así que no hace falta CORS.
 // Adjuntos del pedido van en el JSON (data URL, tope 2 MB de archivo).
 // 10mb alcanza para el base64 y el resto de los campos.
-app.use(express.json({ limit: '10mb' }))
-app.use((error, _req, res, next) => {
+// La ubicación del chofer es chica: 2kb.
+app.use((req, res, next) => {
+  if (req.method === 'POST' && req.path === '/api/drivers/location') {
+    jsonLocation(req, res, next)
+    return
+  }
+  jsonLarge(req, res, next)
+})
+app.use((error, req, res, next) => {
   if (error && (error.type === 'entity.too.large' || error.status === 413)) {
-    res.status(413).json({
-      message: 'El pedido es demasiado grande. Probá un adjunto más chico.',
-    })
+    const message =
+      req.path === '/api/drivers/location'
+        ? 'La ubicación es demasiado grande.'
+        : 'El pedido es demasiado grande. Probá un adjunto más chico.'
+    res.status(413).json({ message })
     return
   }
   if (error instanceof SyntaxError && 'body' in error) {
