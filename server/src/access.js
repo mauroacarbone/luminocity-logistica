@@ -96,10 +96,12 @@ export function commercialKeys(changes) {
 const DRIVER_STATUSES = ['preparado', 'asignado', 'en-viaje']
 
 function driverSees(user, order) {
+  if (!DRIVER_STATUSES.includes(order.status)) return false
+  if (!nearbyDelivery(order.deliveryDate)) return false
+  if (typeof order.driverId === 'string' && order.driverId) return order.driverId === user.id
   const carrier = normalizeName(user.carrierName)
   if (!carrier) return false
-  if (!DRIVER_STATUSES.includes(order.status)) return false
-  return normalizeName(order.transporter) === carrier && nearbyDelivery(order.deliveryDate)
+  return normalizeName(order.transporter) === carrier
 }
 
 function deny(error) {
