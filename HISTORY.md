@@ -36,6 +36,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 19 | Postgres (Neon) y deploy en Render | Hecho |
 | 19.1 | Build de Render y escrituras en Postgres | Hecho |
 | 19.2 | Arreglos de producción: login, errores y usuarios | Hecho |
+| 19.3 | Sesión estable al cambiar de pestaña y alta de usuarios | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -73,6 +74,8 @@ El Brief 19.1 corrige el build de Render: `npm ci` en producción se salteaba Vi
 
 El Brief 19.2 afina lo que se nota en producción. El límite del login cuenta solo los intentos fallidos, así el depósito puede entrar entero desde la misma IP. El 404 de `/api` responde `{ message }`, igual que el resto. La base local se decide por el hostname (`localhost`, `127.0.0.1` o `::1`), no por el texto de la URL. Los usuarios nuevos guardan `createdAt`; los viejos, sin esa fecha, muestran "—". Al volver a la pestaña el front pide `/api/auth/me` y, si el admin se edita a sí mismo, la sesión se actualiza en el momento. Cerrar sesión con el token vencido limpia el navegador y no muestra error si la ubicación del chofer no se pudo borrar.
 
+El Brief 19.3 deja quieta la sesión al volver a la pestaña: si `/api/auth/me` no cambió, el objeto de usuario sigue siendo el mismo y no se vuelven a bajar pedidos ni usuarios. En Usuarios, una recarga no pisa un cambio sin guardar. El admin da de alta cuentas desde esa pantalla (`POST /api/users`): email único, contraseña de 8 caracteres y rol. `create-admin` queda solo para el primer admin. El 404 de una ruta de la API dice "No existe esa ruta de la API".
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
@@ -90,7 +93,7 @@ En este orden. No adelantar el siguiente.
 ## Decisiones
 
 - Los pedidos se guardan en el server. Sin `DATABASE_URL` van a JSON en `server/data`. Con `DATABASE_URL` van a Postgres, una tabla por colección. Los datos maestros siguen en el navegador. La auth ya está en el server.
-- En producción hacen falta `DATABASE_URL` y `JWT_SECRET`. No se crea el usuario demo. El front y la API salen del mismo proceso.
+- En producción hacen falta `DATABASE_URL` y `JWT_SECRET`. No se crea el usuario demo. El front y la API salen del mismo proceso. `create-admin` crea solo el primer admin. El resto de las cuentas las da de alta el admin desde Usuarios.
 - La contraseña se hashea con bcrypt en el server. El navegador solo guarda el JWT.
 - El rol filtra el menú y la API. En desarrollo el registro público crea `vendedor` y rechaza un nombre o email que ya use otra cuenta. En producción el registro responde 403. No carga `sellerName`.
 - El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. Solo admin lo elige en Usuarios, desde los vendedores de datos maestros. Al editar no puede cambiar el vendedor del pedido.
