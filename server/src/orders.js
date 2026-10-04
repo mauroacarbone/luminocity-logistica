@@ -761,6 +761,9 @@ function readOrderFields(body, current) {
     const read = readOptionalText(body, current, key, label)
     if (read.error) return read
     if (read.value !== undefined) {
+      if (key === 'trackingNumber' && read.value.length > 80) {
+        return fail('El tracking puede tener hasta 80 caracteres.')
+      }
       order[key] =
         key === 'timeWindow' && Object.prototype.hasOwnProperty.call(body, key)
           ? normalizeTimeWindow(read.value)

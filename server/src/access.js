@@ -20,6 +20,7 @@ const DATA_FIELDS = [
   'collectOnDelivery',
   'requiresPickup',
   'dispatchType',
+  'trackingNumber',
 ]
 
 const TRACKED = [...DATA_FIELDS, 'transporter', 'driverId', 'status', 'packages']
@@ -132,6 +133,9 @@ export function assertPatch(user, current, changes) {
     if (!ownsOrder(user, current)) return deny('No tenés permiso para modificar este pedido.')
     if (Object.prototype.hasOwnProperty.call(changes, 'seller') && changes.seller !== current.seller) {
       return deny('No podés cambiar el vendedor del pedido.')
+    }
+    if (Object.prototype.hasOwnProperty.call(changes, 'trackingNumber')) {
+      return deny('No podés cambiar el tracking.')
     }
     if (current.status !== 'pendiente' && current.status !== 'preparado') {
       return deny('No podés editar un pedido que ya salió de preparación.')
