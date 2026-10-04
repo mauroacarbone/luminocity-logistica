@@ -16,7 +16,7 @@ import { locked } from './lock.js'
 import { forgetUsers, putLocation, readLocations } from './locations.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyDelivered, notifyEncargados, notifySeller, notifyUser } from './notifications.js'
-import { readUsersList } from './users.js'
+import { isActive, readUsersList } from './users.js'
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
 const DISPATCH = ['propia', 'correo']
@@ -472,6 +472,7 @@ async function checkDriver(driverId, previous) {
   const users = await readUsersList()
   const driver = users.find((item) => item.id === driverId)
   if (!driver || driver.role !== 'chofer') return fail('Elegí un chofer.')
+  if (!isActive(driver)) return fail('Ese chofer está desactivado')
   return { ok: true }
 }
 

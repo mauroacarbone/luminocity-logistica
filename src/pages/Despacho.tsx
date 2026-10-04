@@ -99,11 +99,14 @@ function DriverChoice({
 }
 
 function choferOptions(
-  drivers: { id: string; name: string }[],
+  drivers: { id: string; name: string; active: boolean }[],
   order: Order,
 ) {
-  if (normalizeTimeWindow(order.timeWindow)) return drivers
-  return drivers.filter((driver) => driver.id === order.driverId)
+  const current = drivers.find((driver) => driver.id === order.driverId)
+  const active = drivers.filter((driver) => driver.active)
+  if (!normalizeTimeWindow(order.timeWindow)) return current ? [current] : []
+  if (current && !current.active) return [...active, current]
+  return active
 }
 
 function tabFor(status: OrderStatus): DispatchTab {
@@ -137,7 +140,7 @@ export function Despacho() {
   const { user, logout } = useAuth()
   const { orders, patchFields } = useOrders()
   const { transporters: catalogTransporters, ownTransporters, courierTransporters } = useCatalog()
-  const [drivers, setDrivers] = useState<{ id: string; name: string }[]>([])
+  const [drivers, setDrivers] = useState<{ id: string; name: string; active: boolean }[]>([])
   const [tab, setTab] = useState<DispatchTab>('viaje')
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
@@ -167,7 +170,7 @@ export function Despacho() {
       if (!Array.isArray(result.data)) return
       setDrivers(
         result.data.filter(isSession).flatMap((item) =>
-          item.role === 'chofer' ? [{ id: item.id, name: item.name }] : [],
+          item.role === 'chofer' ? [{ id: item.id, name: item.name, active: item.active }] : [],
         ),
       )
     })
@@ -608,7 +611,7 @@ export function Despacho() {
                                   orders={orders}
                                   order={order}
                                   driverId={driver.id}
-                                  name={driver.name}
+                                  name={driver.active ? driver.name : `${driver.name} (inactivo)`}
                                 />
                               ))}
                               {order.driverId && !drivers.some((driver) => driver.id === order.driverId) && (
