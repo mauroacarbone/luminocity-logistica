@@ -10,6 +10,7 @@ import {
   orderBody,
   patchOrder,
   reviewOrderEdit,
+  transitionOrder as transitionOrderRequest,
   withoutNewAttachment,
   type ApiResult,
   type OrderDraft,
@@ -76,6 +77,7 @@ type OrdersContextValue = {
   addOrder: (order: OrderDraft) => Promise<OrderSaveResult>
   updateOrder: (order: Order, reason?: string, override?: boolean) => Promise<OrderSaveResult>
   patchFields: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
+  transitionOrder: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
   reviewEdit: (
     orderId: string,
     editId: string,
@@ -356,6 +358,15 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return { status: 'saved', order: saved }
   }
 
+  async function transitionOrder(id: string, fields: Record<string, unknown>): Promise<OrderSaveResult> {
+    const result = await transitionOrderRequest(id, fields)
+    if (!result.ok) return fail(result)
+    const saved = asOrder(result.data)
+    if (!saved) return { status: 'not-saved', message: 'El servidor no devolvió un pedido válido.' }
+    adopt(saved)
+    return { status: 'saved', order: saved }
+  }
+
   async function reviewEdit(
     orderId: string,
     editId: string,
@@ -426,6 +437,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         addOrder,
         updateOrder,
         patchFields,
+        transitionOrder,
         reviewEdit,
         removeOrder,
       }}

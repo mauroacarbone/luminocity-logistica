@@ -76,7 +76,7 @@ function sortDeliveries(list: Order[], here: Point | null) {
 
 export function MisEntregas() {
   const { user } = useAuth()
-  const { orders, loading, error: ordersError, patchFields, refresh } = useOrders()
+  const { orders, loading, error: ordersError, patchFields, transitionOrder, refresh } = useOrders()
   const [tab, setTab] = useState<Tab>('asignados')
   const [busy, setBusy] = useState('')
   const [here, setHere] = useState<Point | null>(null)
@@ -221,7 +221,7 @@ export function MisEntregas() {
     )
     if (!accepted) return
     setBusy(order.id)
-    const result = await patchFields(order.id, { status })
+    const result = await transitionOrder(order.id, { to: status, via: 'mis-entregas' })
     setBusy('')
     if (result.status === 'not-saved') {
       await error(result.message)

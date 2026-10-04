@@ -114,7 +114,7 @@ function addressLine(order: Order) {
 export function PedidosPreparacion() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { orders, removeOrder, updateOrder } = useOrders()
+  const { orders, removeOrder, transitionOrder } = useOrders()
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
   const [preparing, setPreparing] = useState<Order | null>(null)
@@ -142,7 +142,11 @@ export function PedidosPreparacion() {
     )
     if (!accepted) return
     setSaving(true)
-    const result = await updateOrder({ ...preparing, status: 'preparado', packages })
+    const result = await transitionOrder(preparing.id, {
+      to: 'preparado',
+      packages,
+      via: 'pedidos',
+    })
     setSaving(false)
     if (result.status === 'not-saved') {
       setPrepareError(result.message)

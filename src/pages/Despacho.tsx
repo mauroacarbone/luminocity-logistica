@@ -20,7 +20,7 @@ import {
   weekDays,
   weekOffsetForIso,
 } from '../lib/week'
-import { confirm, error, success } from '../lib/alerts'
+import { confirm, askReason, error, success } from '../lib/alerts'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder, statusChoices } from '../lib/access'
 import { placeLine } from '../lib/place'
 import { driverSlotCount, normalizeTimeWindow, SLOT_LIMIT, slotQuestion } from '../lib/slot'
@@ -146,7 +146,7 @@ function findOrder(orders: Order[], raw: string) {
 export function Despacho() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
-  const { orders, patchFields } = useOrders()
+  const { orders, patchFields, transitionOrder } = useOrders()
   const { transporters: catalogTransporters, ownTransporters, courierTransporters } = useCatalog()
   const [drivers, setDrivers] = useState<{ id: string; name: string; active: boolean }[]>([])
   const [sheets, setSheets] = useState<RouteSheet[]>([])
@@ -302,10 +302,9 @@ export function Despacho() {
   }
 
   async function assignDriver(order: Order, driverId: string) {
-    const assigns =
-      Boolean(driverId) && (order.status === 'pendiente' || order.status === 'preparado')
+    const assigns = Boolean(driverId) && order.status === 'preparado'
     const reassigns = Boolean(driverId) && Boolean(order.driverId) && order.driverId !== driverId
-    const clears = !driverId && Boolean(order.driverId)
+    const clears = !driverId && Boolean(order.driverId) && order.status === 'asignado'
     if (reassigns) {
       const accepted = await confirm(
         'Reasignar chofer',
@@ -319,16 +318,63 @@ export function Despacho() {
       )
       if (!accepted) return false
     } else if (clears) {
+      const reason = await askReason('Quitar chofer', `El pedido ${order.id} vuelve a preparado.`)
+      if (!reason) return false
+      return saveClearDriver(order, reason)
+    } else if (!driverId && Boolean(order.driverId)) {
       const accepted = await confirm('Quitar chofer', `El pedido ${order.id} queda sin chofer.`)
       if (!accepted) return false
     }
     return saveDriver(order, driverId, assigns)
   }
 
+  async function saveClearDriver(order: Order, reason: string) {
+    setBusyId(order.id)
+    const result = await transitionOrder(order.id, {
+      to: 'preparado',
+      reason,
+      via: 'despacho',
+    })
+    setBusyId('')
+    if (result.status === 'not-saved') {
+      await error(result.message)
+      return false
+    }
+    await success('Chofer quitado')
+    return true
+  }
+
   async function saveDriver(order: Order, driverId: string, assigns: boolean, override = false) {
     setBusyId(order.id)
+    if (assigns) {
+      const fields: Record<string, unknown> = {
+        to: 'asignado',
+        driverId,
+        via: 'despacho',
+      }
+      if (override) fields.override = true
+      const result = await transitionOrder(order.id, fields)
+      setBusyId('')
+      if (result.status === 'not-saved' && result.code === 'FRANJA_LLENA' && result.slot && !override) {
+        if (user && (user.role === 'encargado_deposito' || user.role === 'admin')) {
+          const accepted = await confirm(
+            'Franja llena',
+            slotQuestion(result.slot.timeWindow, result.slot.deliveryDate, result.slot.count),
+          )
+          if (!accepted) return false
+          return saveDriver(order, driverId, assigns, true)
+        }
+        await error(result.message)
+        return false
+      }
+      if (result.status === 'not-saved') {
+        await error(result.message)
+        return false
+      }
+      await success('Chofer asignado')
+      return true
+    }
     const fields: Record<string, unknown> = { driverId: driverId || null }
-    if (assigns) fields.status = 'asignado'
     if (override) fields.override = true
     const result = await patchFields(order.id, fields)
     setBusyId('')
@@ -348,17 +394,34 @@ export function Despacho() {
       await error(result.message)
       return false
     }
-    if (assigns) await success('Chofer asignado')
     return true
+  }
+
+  const STATUS_RANK: Record<OrderStatus, number> = {
+    pendiente: 0,
+    preparado: 1,
+    asignado: 2,
+    'en-viaje': 3,
+    entregado: 4,
   }
 
   async function changeStatus(order: Order, status: OrderStatus) {
     setOpenStatusId(null)
     const prompt = statusPrompt(order.id, status)
-    const accepted = await confirm(prompt.title, prompt.text, { peligro: prompt.peligro })
-    if (!accepted) return
+    const goingBack = STATUS_RANK[status] < STATUS_RANK[order.status]
+    let reason: string | undefined
+    if (goingBack) {
+      const typed = await askReason(prompt.title, prompt.text)
+      if (!typed) return
+      reason = typed
+    } else {
+      const accepted = await confirm(prompt.title, prompt.text, { peligro: prompt.peligro })
+      if (!accepted) return
+    }
     setBusyId(order.id)
-    const result = await patchFields(order.id, { status })
+    const body: Record<string, unknown> = { to: status, via: 'despacho' }
+    if (reason) body.reason = reason
+    const result = await transitionOrder(order.id, body)
     setBusyId('')
     if (result.status === 'not-saved') {
       await error(result.message)
@@ -381,7 +444,7 @@ export function Despacho() {
       const accepted = await confirm('Entregado', `El pedido ${order.id} queda entregado.`)
       if (!accepted) return
       setScanBusy(true)
-      const result = await patchFields(order.id, { status: 'entregado' })
+      const result = await transitionOrder(order.id, { to: 'entregado', via: 'qr' })
       setScanBusy(false)
       if (result.status === 'not-saved') {
         await error(result.message)

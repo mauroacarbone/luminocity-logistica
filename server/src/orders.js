@@ -268,6 +268,9 @@ function createOrder(body, user) {
 function patchOrder(id, body, user) {
   return locked(async () => {
     if (!isRecord(body)) return fail('El pedido no es válido.')
+    if (Object.prototype.hasOwnProperty.call(body, 'status')) {
+      return fail('Usá /transition para cambiar el estado', 400)
+    }
     const orders = await readOrders()
     const index = orders.findIndex((item) => item.id === id)
     if (index < 0) return fail('No existe ese pedido.', 404)

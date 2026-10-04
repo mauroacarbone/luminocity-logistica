@@ -109,6 +109,15 @@ export function patchOrder(id: string, body: Record<string, unknown>) {
   return request(`/api/orders/${encodeURIComponent(id)}`, 'PATCH', body, 'No se pudo guardar el pedido.')
 }
 
+export function transitionOrder(id: string, body: Record<string, unknown>) {
+  return request(
+    `/api/orders/${encodeURIComponent(id)}/transition`,
+    'POST',
+    body,
+    'No se pudo cambiar el estado del pedido.',
+  )
+}
+
 export function reviewOrderEdit(
   id: string,
   editId: string,
@@ -143,8 +152,8 @@ export function orderBody(order: OrderDraft, mode: 'create' | 'patch') {
     propertyType: text(order.propertyType) ?? '',
     loadedAt: order.loadedAt,
     deliveryDate: order.deliveryDate,
-    status: order.status,
   }
+  if (mode === 'create') body.status = order.status
 
   for (const key of TEXT_FIELDS) {
     const value = text(order[key])
