@@ -3,9 +3,19 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Router } from 'express'
-import { assertPatch, canCreate, canSeeOrder, commercialKeys, diffOrder, normalizeName } from './access.js'
+import {
+  assertPatch,
+  canCreate,
+  canSeeOrder,
+  commercialKeys,
+  diffOrder,
+  nearbyDelivery,
+  normalizeName,
+} from './access.js'
 import { saveAuthorizations, stageAuthorization } from './authorizations.js'
+import { geocodeAddress } from './geocode.js'
 import { locked } from './lock.js'
+import { forgetUsers, putLocation, readLocations } from './locations.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyDelivered, notifyEncargados, notifySeller, notifyUser } from './notifications.js'
 import { readUsersList } from './users.js'
@@ -43,7 +53,11 @@ export const ordersRouter = Router()
 ordersRouter.use(requireAuth)
 ordersRouter.get('/', async (req, res) => {
   await send(res, async () => {
-    const orders = await readOrders()
+    let orders = await locked(readOrders)
+    if (req.user.role === 'chofer') {
+      await fillCoordinates(orders.filter((order) => canSeeOrder(req.user, order)).map((order) => order.id))
+      orders = await locked(readOrders)
+    }
     res.json(byNewest(orders.filter((order) => canSeeOrder(req.user, order))))
   })
 })
@@ -58,6 +72,12 @@ ordersRouter.get('/:id', async (req, res) => {
       res.status(403).json({ message: 'No tenés permiso para ver este pedido.' })
       return
     }
+    if (req.user.role === 'chofer' && needsGeo(order)) {
+      await fillCoordinates([order.id])
+      const refreshed = await getOrder(req.params.id)
+      res.json(refreshed ?? order)
+      return
+    }
     res.json(order)
   })
 })
@@ -69,6 +89,7 @@ ordersRouter.post('/', async (req, res) => {
       return
     }
     res.status(201).json(result.order)
+    queueGeo(result.order)
   })
 })
 ordersRouter.patch('/:id/edits/:editId', async (req, res) => {
@@ -79,6 +100,7 @@ ordersRouter.patch('/:id/edits/:editId', async (req, res) => {
       return
     }
     res.json(result.order)
+    queueGeo(result.order)
   })
 })
 ordersRouter.patch('/:id', async (req, res) => {
@@ -89,6 +111,7 @@ ordersRouter.patch('/:id', async (req, res) => {
       return
     }
     res.json(result.order)
+    queueGeo(result.order)
   })
 })
 ordersRouter.delete('/:id', requireRole('admin', 'encargado_deposito'), async (req, res) => {
@@ -263,6 +286,7 @@ function patchOrder(id, body, user) {
     if (changes.status === 'entregado' && current.status !== 'entregado') {
       await notifyDelivered(order)
     }
+    await releaseIfIdle(orders, current, order)
     return { order }
   })
 }
@@ -322,7 +346,9 @@ function deleteOrder(id, user) {
     if (user.role === 'encargado_deposito' && (current.status === 'en-viaje' || current.status === 'entregado')) {
       return fail('No podés cancelar un pedido que ya salió.', 403)
     }
-    await writeOrders(orders.filter((item) => item.id !== id))
+    const remaining = orders.filter((item) => item.id !== id)
+    await writeOrders(remaining)
+    if (current.status === 'en-viaje') await releaseIdleDrivers(remaining, current.transporter)
     return { ok: true }
   })
 }
@@ -486,6 +512,11 @@ function readOrderFields(body, current) {
   if (order.collectOnDelivery && !order.amount) {
     return fail('Ingresá el monto a cobrar.')
   }
+  if (current && order.address === current.address) {
+    if (typeof current.lat === 'number' && Number.isFinite(current.lat)) order.lat = current.lat
+    if (typeof current.lng === 'number' && Number.isFinite(current.lng)) order.lng = current.lng
+    if (current.geoMiss === true) order.geoMiss = true
+  }
   return { order }
 }
 
@@ -569,6 +600,135 @@ function readDriver(body, current) {
   if (value === null || value === '') return { value: undefined }
   if (typeof value !== 'string' || !value.trim()) return fail('Elegí un chofer.')
   return { value: value.trim() }
+}
+
+export function updateDriverLocation(user, point) {
+  return locked(async () => {
+    const orders = await readOrders()
+    if (!stillTraveling(orders, user.carrierName)) {
+      await forgetUsers([user.id])
+      return { error: 'No hay pedidos en viaje.', status: 409 }
+    }
+    await putLocation(user.id, point)
+    return { ok: true }
+  })
+}
+
+export function listLiveDrivers() {
+  return locked(async () => {
+    const locations = await readLocations()
+    const users = await readUsersList()
+    const orders = await readOrders()
+    const rows = []
+    for (const user of users) {
+      if (user.role !== 'chofer') continue
+      const point = locations[user.id]
+      if (!isStoredPoint(point)) continue
+      const carrier = typeof user.carrierName === 'string' ? user.carrierName.trim() : ''
+      if (!carrier || !stillTraveling(orders, carrier)) continue
+      rows.push({
+        id: user.id,
+        name: user.name,
+        carrierName: carrier,
+        lat: point.lat,
+        lng: point.lng,
+        accuracy: typeof point.accuracy === 'number' ? point.accuracy : null,
+        timestamp: point.timestamp,
+        updatedAt: point.updatedAt,
+        traveling: travelingCount(orders, carrier),
+      })
+    }
+    rows.sort((left, right) => left.name.localeCompare(right.name, 'es'))
+    return rows
+  })
+}
+
+function isStoredPoint(point) {
+  return (
+    Boolean(point) &&
+    typeof point.lat === 'number' &&
+    Number.isFinite(point.lat) &&
+    typeof point.lng === 'number' &&
+    Number.isFinite(point.lng) &&
+    typeof point.timestamp === 'number' &&
+    Number.isFinite(point.timestamp) &&
+    typeof point.updatedAt === 'string'
+  )
+}
+
+function travelingCount(orders, carrierName) {
+  const carrier = normalizeName(carrierName)
+  if (!carrier) return 0
+  return orders.filter(
+    (order) =>
+      order.status === 'en-viaje' &&
+      normalizeName(order.transporter) === carrier &&
+      nearbyDelivery(order.deliveryDate),
+  ).length
+}
+
+function stillTraveling(orders, carrierName) {
+  return travelingCount(orders, carrierName) > 0
+}
+
+async function releaseIfIdle(orders, previous, next) {
+  const carriers = new Set()
+  if (previous.status === 'en-viaje' && previous.transporter) carriers.add(previous.transporter)
+  if (next.status === 'en-viaje' && next.transporter) carriers.add(next.transporter)
+  for (const carrier of carriers) await releaseIdleDrivers(orders, carrier)
+}
+
+async function releaseIdleDrivers(orders, carrierName) {
+  if (!carrierName || stillTraveling(orders, carrierName)) return
+  const carrier = normalizeName(carrierName)
+  const users = await readUsersList()
+  const ids = users
+    .filter((user) => user.role === 'chofer' && normalizeName(user.carrierName) === carrier)
+    .map((user) => user.id)
+  await forgetUsers(ids)
+}
+
+function hasCoords(order) {
+  return Number.isFinite(order?.lat) && Number.isFinite(order?.lng)
+}
+
+function needsGeo(order) {
+  return Boolean(order?.address) && !hasCoords(order) && order?.geoMiss !== true
+}
+
+function queueGeo(order) {
+  if (needsGeo(order)) void fillCoordinates([order.id])
+}
+
+async function fillCoordinates(ids) {
+  const wanted = new Set(ids)
+  const pending = await locked(async () => {
+    const orders = await readOrders()
+    return orders
+      .filter((order) => wanted.has(order.id) && needsGeo(order))
+      .map((order) => ({ id: order.id, address: order.address }))
+  })
+  for (const item of pending) {
+    let point
+    try {
+      point = await geocodeAddress(item.address)
+    } catch {
+      continue
+    }
+    await locked(async () => {
+      const orders = await readOrders()
+      const order = orders.find((entry) => entry.id === item.id)
+      if (!order || order.address !== item.address || !needsGeo(order)) return
+      if (point) {
+        order.lat = point.lat
+        order.lng = point.lng
+        delete order.geoMiss
+      } else {
+        order.geoMiss = true
+      }
+      await writeOrders(orders)
+    })
+  }
 }
 
 function readPackages(body, current) {

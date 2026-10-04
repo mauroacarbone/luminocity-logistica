@@ -18,6 +18,7 @@ server/data/users.json
 server/data/orders.json
 server/data/authorizations.json
 server/data/notifications.json
+server/data/locations.json
 
 # Editor directories and files
 .vscode/*

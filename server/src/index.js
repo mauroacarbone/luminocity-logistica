@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import express from 'express'
 import { authorizationsRouter } from './authorizations.js'
 import { authRouter } from './auth.js'
+import { driversRouter } from './drivers.js'
 import { notificationsRouter } from './notifications.js'
 import { ordersRouter } from './orders.js'
 import { usersRouter } from './usersRoute.js'
@@ -40,6 +41,7 @@ app.use('/api/users', usersRouter)
 app.use('/api/authorizations', authorizationsRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/orders', ordersRouter)
+app.use('/api/drivers', driversRouter)
 
 await ensureDemoUser()
 
