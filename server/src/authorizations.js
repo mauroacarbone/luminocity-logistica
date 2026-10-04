@@ -1,15 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { Router } from 'express'
 import { normalizeName } from './access.js'
+import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyEncargados } from './notifications.js'
-
-const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
-const authorizationsFile = path.join(dataDir, 'authorizations.json')
 
 export const authorizationsRouter = Router()
 authorizationsRouter.use(requireAuth)
@@ -48,19 +43,11 @@ function byNewest(list) {
 }
 
 async function readAuthorizations() {
-  try {
-    const raw = await readFile(authorizationsFile, 'utf8')
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch (error) {
-    if (error && error.code === 'ENOENT') return []
-    throw error
-  }
+  return readCollection('authorizations')
 }
 
 async function writeAuthorizations(list) {
-  await mkdir(dataDir, { recursive: true })
-  await writeFile(authorizationsFile, `${JSON.stringify(list, null, 2)}\n`, 'utf8')
+  await writeCollection('authorizations', list)
 }
 
 function requestAuthorization(user, seller) {

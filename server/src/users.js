@@ -1,13 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
 import { normalizeName } from './access.js'
+import { collectionFileExists, readCollection, usingDatabase, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
-
-const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
-const usersFile = path.join(dataDir, 'users.json')
 
 export const ROLES = ['vendedor', 'deposito', 'encargado_deposito', 'chofer', 'admin']
 
@@ -36,39 +31,27 @@ export function toPublicUser(user) {
 }
 
 async function readUsers() {
-  try {
-    const raw = await readFile(usersFile, 'utf8')
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch (error) {
-    if (error && error.code === 'ENOENT') return []
-    throw error
-  }
+  return readCollection('users')
 }
 
 async function writeUsers(users) {
-  await mkdir(dataDir, { recursive: true })
-  await writeFile(usersFile, `${JSON.stringify(users, null, 2)}\n`, 'utf8')
+  await writeCollection('users', users)
 }
 
 export function ensureDemoUser() {
+  if (usingDatabase()) return Promise.resolve()
   return locked(async () => {
-    await mkdir(dataDir, { recursive: true })
-    try {
-      await readFile(usersFile, 'utf8')
-    } catch (error) {
-      if (!error || error.code !== 'ENOENT') throw error
-      const passwordHash = await bcrypt.hash(DEMO.password, 10)
-      await writeUsers([
-        {
-          id: randomUUID(),
-          name: DEMO.name,
-          email: DEMO.email,
-          passwordHash,
-          role: DEMO.role,
-        },
-      ])
-    }
+    if (await collectionFileExists('users')) return
+    const passwordHash = await bcrypt.hash(DEMO.password, 10)
+    await writeUsers([
+      {
+        id: randomUUID(),
+        name: DEMO.name,
+        email: DEMO.email,
+        passwordHash,
+        role: DEMO.role,
+      },
+    ])
   })
 }
 

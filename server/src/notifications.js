@@ -1,15 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { Router } from 'express'
 import { normalizeName } from './access.js'
+import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth } from './middleware.js'
 import { readUsersList } from './users.js'
-
-const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
-const notificationsFile = path.join(dataDir, 'notifications.json')
 
 export const notificationsRouter = Router()
 notificationsRouter.use(requireAuth)
@@ -48,19 +43,11 @@ function byNewest(list) {
 }
 
 async function readNotifications() {
-  try {
-    const raw = await readFile(notificationsFile, 'utf8')
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch (error) {
-    if (error && error.code === 'ENOENT') return []
-    throw error
-  }
+  return readCollection('notifications')
 }
 
 async function writeNotifications(list) {
-  await mkdir(dataDir, { recursive: true })
-  await writeFile(notificationsFile, `${JSON.stringify(list, null, 2)}\n`, 'utf8')
+  await writeCollection('notifications', list)
 }
 
 function markRead(id, userId) {

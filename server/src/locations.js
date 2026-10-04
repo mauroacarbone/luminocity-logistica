@@ -1,25 +1,11 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
-const locationsFile = path.join(dataDir, 'locations.json')
+import { readCollection, writeCollection } from './db/store.js'
 
 export async function readLocations() {
-  try {
-    const raw = await readFile(locationsFile, 'utf8')
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-    return parsed
-  } catch (error) {
-    if (error && error.code === 'ENOENT') return {}
-    throw error
-  }
+  return readCollection('locations')
 }
 
 async function writeLocations(locations) {
-  await mkdir(dataDir, { recursive: true })
-  await writeFile(locationsFile, `${JSON.stringify(locations, null, 2)}\n`, 'utf8')
+  await writeCollection('locations', locations)
 }
 
 /** Reemplaza la posición de un usuario. No guarda el recorrido. */

@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import express from 'express'
 import { authorizationsRouter } from './authorizations.js'
 import { authRouter } from './auth.js'
+import { ensureSchema } from './db/store.js'
 import { driversRouter } from './drivers.js'
 import { notificationsRouter } from './notifications.js'
 import { ordersRouter } from './orders.js'
@@ -53,6 +54,14 @@ app.use('/api/authorizations', authorizationsRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/orders', ordersRouter)
 app.use('/api/drivers', driversRouter)
+
+try {
+  await ensureSchema()
+} catch (error) {
+  console.error('No se pudo preparar Postgres. Revisá DATABASE_URL.')
+  console.error(error instanceof Error ? error.message : error)
+  process.exit(1)
+}
 
 await ensureDemoUser()
 

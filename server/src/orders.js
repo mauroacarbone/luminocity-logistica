@@ -1,7 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { Router } from 'express'
 import {
   assertPatch,
@@ -13,15 +10,13 @@ import {
   normalizeName,
 } from './access.js'
 import { saveAuthorizations, stageAuthorization } from './authorizations.js'
+import { readCollection, writeCollection } from './db/store.js'
 import { geocodeAddress } from './geocode.js'
 import { locked } from './lock.js'
 import { forgetUsers, putLocation, readLocations } from './locations.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyDelivered, notifyEncargados, notifySeller, notifyUser } from './notifications.js'
 import { readUsersList } from './users.js'
-
-const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
-const ordersFile = path.join(dataDir, 'orders.json')
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
 const DISPATCH = ['propia', 'correo']
@@ -187,19 +182,11 @@ function byNewest(orders) {
 }
 
 async function readOrders() {
-  try {
-    const raw = await readFile(ordersFile, 'utf8')
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch (error) {
-    if (error && error.code === 'ENOENT') return []
-    throw error
-  }
+  return readCollection('orders')
 }
 
 async function writeOrders(orders) {
-  await mkdir(dataDir, { recursive: true })
-  await writeFile(ordersFile, `${JSON.stringify(orders, null, 2)}\n`, 'utf8')
+  await writeCollection('orders', orders)
 }
 
 function getOrder(id) {
