@@ -7,11 +7,10 @@ import {
   findUserById,
   listUsers,
   setUserActive,
-  setUserCarrierName,
-  setUserPhone,
+  setUserPassword,
   setUserRole,
-  setUserSellerName,
   toPublicUser,
+  updateUserDetails,
 } from './users.js'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -62,6 +61,10 @@ usersRouter.post('/', requireRole('admin', 'encargado_deposito'), async (req, re
     res.status(400).json({ message: 'Usá al menos 8 caracteres.' })
     return
   }
+  if (password.length > 72) {
+    res.status(400).json({ message: 'La contraseña puede tener hasta 72 caracteres.' })
+    return
+  }
   if (typeof role !== 'string' || !ROLES.includes(role)) {
     res.status(400).json({ message: 'El rol no es válido.' })
     return
@@ -101,10 +104,13 @@ usersRouter.post('/', requireRole('admin', 'encargado_deposito'), async (req, re
     role,
     sellerName,
     carrierName,
-    allowDuplicateName: true,
   })
   if (result.error === 'email') {
     res.status(409).json({ message: 'Ya existe un usuario con ese email' })
+    return
+  }
+  if (result.error === 'name') {
+    res.status(409).json({ message: 'Ya existe un usuario con ese nombre' })
     return
   }
   res.status(201).json(toPublicUser(result.user))
@@ -156,12 +162,35 @@ usersRouter.patch('/:id/active', requireRole('admin', 'encargado_deposito'), asy
   res.json(toPublicUser(result.user))
 })
 
+usersRouter.patch('/:id/password', requireRole('admin', 'encargado_deposito'), async (req, res) => {
+  const password = req.body?.password
+  if (typeof password !== 'string' || password.length < 8) {
+    res.status(400).json({ message: 'Usá al menos 8 caracteres.' })
+    return
+  }
+  if (password.length > 72) {
+    res.status(400).json({ message: 'La contraseña puede tener hasta 72 caracteres.' })
+    return
+  }
+  const target = await targetOf(req, res)
+  if (!target) return
+  if (forbid(res, req.user, target, {})) return
+  const result = await setUserPassword(req.params.id, password)
+  if (result.error === 'missing') {
+    res.status(404).json({ message: 'No existe ese usuario.' })
+    return
+  }
+  res.json(toPublicUser(result.user))
+})
+
 usersRouter.patch('/:id', requireRole('admin', 'encargado_deposito'), async (req, res) => {
   const body = req.body ?? {}
+  const hasName = Object.prototype.hasOwnProperty.call(body, 'name')
+  const hasEmail = Object.prototype.hasOwnProperty.call(body, 'email')
   const hasPhone = Object.prototype.hasOwnProperty.call(body, 'phone')
   const hasSeller = Object.prototype.hasOwnProperty.call(body, 'sellerName')
   const hasCarrier = Object.prototype.hasOwnProperty.call(body, 'carrierName')
-  if (!hasPhone && !hasSeller && !hasCarrier) {
+  if (!hasName && !hasEmail && !hasPhone && !hasSeller && !hasCarrier) {
     res.status(400).json({ message: 'No hay cambios para guardar.' })
     return
   }
@@ -169,69 +198,82 @@ usersRouter.patch('/:id', requireRole('admin', 'encargado_deposito'), async (req
   if (!target) return
   if (forbid(res, req.user, target, {})) return
 
-  let phone = ''
+  const fields = {}
+  if (hasName) {
+    if (typeof body.name !== 'string') {
+      res.status(400).json({ message: 'El nombre no es válido.' })
+      return
+    }
+    const name = body.name.trim()
+    if (!name) {
+      res.status(400).json({ message: 'Ingresá el nombre.' })
+      return
+    }
+    if (name.length > 80) {
+      res.status(400).json({ message: 'El nombre es demasiado largo.' })
+      return
+    }
+    fields.name = name
+  }
+  if (hasEmail) {
+    if (typeof body.email !== 'string' || !EMAIL.test(body.email.trim())) {
+      res.status(400).json({ message: 'Ingresá un email válido.' })
+      return
+    }
+    fields.email = body.email.trim()
+  }
   if (hasPhone) {
     const raw = body.phone
     if (raw !== null && typeof raw !== 'string') {
       res.status(400).json({ message: 'El celular no es válido.' })
       return
     }
-    phone = typeof raw === 'string' ? raw.trim() : ''
+    const phone = typeof raw === 'string' ? raw.trim() : ''
     if (phone.length > 40) {
       res.status(400).json({ message: 'El celular es demasiado largo.' })
       return
     }
+    fields.phone = phone
   }
-
-  let sellerName = ''
   if (hasSeller) {
     const raw = body.sellerName
     if (raw !== null && typeof raw !== 'string') {
       res.status(400).json({ message: 'El vendedor no es válido.' })
       return
     }
-    sellerName = typeof raw === 'string' ? raw.trim() : ''
+    const sellerName = typeof raw === 'string' ? raw.trim() : ''
     if (sellerName.length > 80) {
       res.status(400).json({ message: 'El vendedor es demasiado largo.' })
       return
     }
+    fields.sellerName = sellerName
   }
-
-  let carrierName = ''
   if (hasCarrier) {
     const raw = body.carrierName
     if (raw !== null && typeof raw !== 'string') {
       res.status(400).json({ message: 'El transportista no es válido.' })
       return
     }
-    carrierName = typeof raw === 'string' ? raw.trim() : ''
+    const carrierName = typeof raw === 'string' ? raw.trim() : ''
     if (carrierName.length > 80) {
       res.status(400).json({ message: 'El transportista es demasiado largo.' })
       return
     }
+    fields.carrierName = carrierName
   }
 
-  let result
-  if (hasPhone) {
-    result = await setUserPhone(req.params.id, phone)
-    if (result.error === 'missing') {
-      res.status(404).json({ message: 'No existe ese usuario.' })
-      return
-    }
+  const result = await updateUserDetails(req.params.id, fields)
+  if (result.error === 'missing') {
+    res.status(404).json({ message: 'No existe ese usuario.' })
+    return
   }
-  if (hasSeller) {
-    result = await setUserSellerName(req.params.id, sellerName)
-    if (result.error === 'missing') {
-      res.status(404).json({ message: 'No existe ese usuario.' })
-      return
-    }
+  if (result.error === 'email') {
+    res.status(409).json({ message: 'Ya existe un usuario con ese email' })
+    return
   }
-  if (hasCarrier) {
-    result = await setUserCarrierName(req.params.id, carrierName)
-    if (result.error === 'missing') {
-      res.status(404).json({ message: 'No existe ese usuario.' })
-      return
-    }
+  if (result.error === 'name') {
+    res.status(409).json({ message: 'Ya existe un usuario con ese nombre' })
+    return
   }
   res.json(toPublicUser(result.user))
 })

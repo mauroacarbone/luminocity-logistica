@@ -121,45 +121,54 @@ export function setUserRole(id, role) {
   })
 }
 
-export function setUserPhone(id, phone) {
+export function updateUserDetails(id, fields) {
   return locked(async () => {
     const users = await readUsers()
     const index = users.findIndex((item) => item.id === id)
     if (index < 0) return { error: 'missing' }
     const next = { ...users[index] }
-    if (phone) next.phone = phone
-    else delete next.phone
+    if (Object.prototype.hasOwnProperty.call(fields, 'name')) {
+      const nameKey = normalizeName(fields.name)
+      const taken = users.some(
+        (item, itemIndex) => itemIndex !== index && nameKey && normalizeName(item.name) === nameKey,
+      )
+      if (taken) return { error: 'name' }
+      next.name = String(fields.name).trim()
+    }
+    if (Object.prototype.hasOwnProperty.call(fields, 'email')) {
+      const normalized = String(fields.email).trim().toLowerCase()
+      const taken = users.some(
+        (item, itemIndex) => itemIndex !== index && String(item.email ?? '').toLowerCase() === normalized,
+      )
+      if (taken) return { error: 'email' }
+      next.email = normalized
+    }
+    if (Object.prototype.hasOwnProperty.call(fields, 'phone')) {
+      if (fields.phone) next.phone = fields.phone
+      else delete next.phone
+    }
+    if (Object.prototype.hasOwnProperty.call(fields, 'sellerName')) {
+      if (fields.sellerName) next.sellerName = fields.sellerName
+      else delete next.sellerName
+    }
+    if (Object.prototype.hasOwnProperty.call(fields, 'carrierName')) {
+      if (fields.carrierName) next.carrierName = fields.carrierName
+      else delete next.carrierName
+    }
     users[index] = next
     await writeUsers(users)
     return { user: next }
   })
 }
 
-export function setUserSellerName(id, sellerName) {
+export function setUserPassword(id, password) {
   return locked(async () => {
     const users = await readUsers()
     const index = users.findIndex((item) => item.id === id)
     if (index < 0) return { error: 'missing' }
-    const next = { ...users[index] }
-    if (sellerName) next.sellerName = sellerName
-    else delete next.sellerName
-    users[index] = next
+    users[index] = { ...users[index], passwordHash: await bcrypt.hash(password, 10) }
     await writeUsers(users)
-    return { user: next }
-  })
-}
-
-export function setUserCarrierName(id, carrierName) {
-  return locked(async () => {
-    const users = await readUsers()
-    const index = users.findIndex((item) => item.id === id)
-    if (index < 0) return { error: 'missing' }
-    const next = { ...users[index] }
-    if (carrierName) next.carrierName = carrierName
-    else delete next.carrierName
-    users[index] = next
-    await writeUsers(users)
-    return { user: next }
+    return { user: users[index] }
   })
 }
 
@@ -186,7 +195,6 @@ export function createUser({
   role,
   sellerName,
   carrierName,
-  allowDuplicateName = false,
 }) {
   return locked(async () => {
     const users = await readUsers()
@@ -195,7 +203,7 @@ export function createUser({
       return { error: 'email' }
     }
     const nameKey = normalizeName(name)
-    if (!allowDuplicateName && nameKey && users.some((item) => normalizeName(item.name) === nameKey)) {
+    if (nameKey && users.some((item) => normalizeName(item.name) === nameKey)) {
       return { error: 'name' }
     }
     const user = {
