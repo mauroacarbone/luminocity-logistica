@@ -10,8 +10,8 @@ export function placeKind(propertyType: string) {
     .toLocaleLowerCase('es')
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
-  if (bare === 'departamento' || bare === 'edificio') return 'building' as const
-  if (bare === 'casa') return 'house' as const
+  if (bare === 'departamento' || bare === 'edificio' || bare === 'oficina') return 'building' as const
+  if (bare === 'casa' || bare === 'local') return 'house' as const
   return 'other' as const
 }
 

@@ -55,6 +55,32 @@ const PLACE_FIELDS = [
   ['doorbell', 'El timbre'],
 ]
 
+function placeKind(propertyType) {
+  const bare = String(propertyType ?? '')
+    .trim()
+    .toLocaleLowerCase('es')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+  if (bare === 'departamento' || bare === 'edificio' || bare === 'oficina') return 'building'
+  if (bare === 'casa' || bare === 'local') return 'house'
+  return 'other'
+}
+
+function touchesPlace(body) {
+  if (!isRecord(body)) return false
+  if (Object.prototype.hasOwnProperty.call(body, 'propertyType')) return true
+  return PLACE_FIELDS.some(([key]) => Object.prototype.hasOwnProperty.call(body, key))
+}
+
+function clearPlace(order) {
+  const kind = placeKind(order.propertyType)
+  if (kind !== 'building') {
+    delete order.floor
+    delete order.unit
+  }
+  if (kind === 'other') delete order.doorbell
+}
+
 export const ordersRouter = Router()
 ordersRouter.use(requireAuth)
 ordersRouter.get('/', async (req, res) => {
@@ -297,7 +323,10 @@ function patchOrder(id, body, user) {
       updatedAt: new Date().toISOString(),
     }
     if (slot.authorized) rememberOverride(order, user)
-    if (reason.value && (user.role === 'vendedor' || commercialKeys(changes).length > 0)) {
+    if (
+      reason.value &&
+      (user.role === 'vendedor' || commercialKeys(changes).length > 0 || hasPlaceChange(changes))
+    ) {
       order.edits = [...order.edits, makeEdit(user, reason.value, changes, 'aplicada')]
     }
     orders[index] = order
@@ -357,7 +386,7 @@ function reviewEdit(orderId, editId, body, user) {
       await notifyEditReview(pending, user, current.id, decision)
       return { order }
     }
-    const parsed = readOrderFields(bodyFrom(current, pending.changes), current)
+    const parsed = readOrderFields(pending.changes, current)
     if (parsed.error) return parsed
     const windowRule = requireDriverWindow(current, parsed.order)
     if (windowRule.error) return windowRule
@@ -449,10 +478,6 @@ function makeEdit(user, reason, changes, status) {
     changes,
     status,
   }
-}
-
-function bodyFrom(order, changes) {
-  return { ...order, ...changes }
 }
 
 async function checkDriver(driverId, previous) {
@@ -642,6 +667,7 @@ function readOrderFields(body, current) {
     if (read.error) return read
     if (read.value !== undefined) order[key] = read.value
   }
+  if (!current || touchesPlace(body)) clearPlace(order)
 
   const invoices = readInvoices(body, current)
   if (invoices.error) return invoices

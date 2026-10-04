@@ -569,54 +569,65 @@ export function Despacho() {
                           ))}
                         </select>
                       </label>
-                      <label className="text-xs text-lumi-muted">
-                        Chofer
-                        {!normalizeTimeWindow(order.timeWindow) && !order.driverId ? (
-                          <select
-                            value=""
-                            disabled
-                            className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
-                          >
-                            <option value="">Asigná una franja primero</option>
-                          </select>
-                        ) : (
-                          <select
-                            value={order.driverId ?? ''}
-                            disabled={busyId === order.id}
-                            className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
-                            onChange={(event) => {
-                              const select = event.target
-                              const driverId = select.value
-                              const previous = order.driverId ?? ''
-                              void assignDriver(order, driverId).then((saved) => {
-                                if (!saved) select.value = previous
-                              })
-                            }}
-                          >
-                            <option value="">Sin chofer</option>
-                            {choferOptions(drivers, order).map((driver) => (
-                              <DriverChoice
-                                key={driver.id}
-                                orders={orders}
-                                order={order}
-                                driverId={driver.id}
-                                name={driver.name}
-                              />
-                            ))}
-                            {order.driverId && !drivers.some((driver) => driver.id === order.driverId) && (
-                              <DriverChoice
-                                orders={orders}
-                                order={order}
-                                driverId={order.driverId}
-                                name={order.driverId}
-                              />
-                            )}
-                          </select>
-                        )}
-                        {!normalizeTimeWindow(order.timeWindow) && order.driverId && (
-                          <span className="mt-1 block">Asigná una franja primero</span>
-                        )}
-                      </label>
+                      <div className="text-xs text-lumi-muted">
+                        <label htmlFor={`chofer-${order.id}`}>Chofer</label>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          {!normalizeTimeWindow(order.timeWindow) && !order.driverId ? (
+                            <select
+                              id={`chofer-${order.id}`}
+                              value=""
+                              disabled
+                              className="block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                            >
+                              <option value="">Asigná una franja primero</option>
+                            </select>
+                          ) : (
+                            <select
+                              id={`chofer-${order.id}`}
+                              value={order.driverId ?? ''}
+                              disabled={busyId === order.id}
+                              aria-describedby={
+                                !normalizeTimeWindow(order.timeWindow) && order.driverId
+                                  ? `franja-${order.id}`
+                                  : undefined
+                              }
+                              className="block min-w-0 flex-1 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                              onChange={(event) => {
+                                const select = event.target
+                                const driverId = select.value
+                                const previous = order.driverId ?? ''
+                                void assignDriver(order, driverId).then((saved) => {
+                                  if (!saved) select.value = previous
+                                })
+                              }}
+                            >
+                              <option value="">Sin chofer</option>
+                              {choferOptions(drivers, order).map((driver) => (
+                                <DriverChoice
+                                  key={driver.id}
+                                  orders={orders}
+                                  order={order}
+                                  driverId={driver.id}
+                                  name={driver.name}
+                                />
+                              ))}
+                              {order.driverId && !drivers.some((driver) => driver.id === order.driverId) && (
+                                <DriverChoice
+                                  orders={orders}
+                                  order={order}
+                                  driverId={order.driverId}
+                                  name={order.driverId}
+                                />
+                              )}
+                            </select>
+                          )}
+                          {!normalizeTimeWindow(order.timeWindow) && order.driverId && (
+                            <p id={`franja-${order.id}`} className="shrink-0">
+                              Asigná una franja primero
+                            </p>
+                          )}
+                        </div>
+                      </div>
                       <SlotUsage orders={orders} order={order} />
                     </>
                   )}
