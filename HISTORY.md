@@ -35,6 +35,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 18.4 | El server limpia piso, depto y timbre según el tipo | Hecho |
 | 19 | Postgres (Neon) y deploy en Render | Hecho |
 | 19.1 | Build de Render y escrituras en Postgres | Hecho |
+| 19.2 | Arreglos de producción: login, errores y usuarios | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -69,6 +70,8 @@ El Brief 18.4 limpia esos campos en el server según el tipo: departamento, edif
 El Brief 19 pasa pedidos, usuarios, autorizaciones, avisos y ubicaciones a Postgres cuando hay `DATABASE_URL`. Sin esa variable siguen los JSON de `server/data`. Cada colección es una tabla (`id`, `data` jsonb, `updated_at`) y el objeto no cambia de forma. La cola de `lock.js` sigue igual; en Postgres cada vuelta es una transacción, así aprobar una edición y crear el aviso se confirman juntos. Las tablas se crean al arrancar. Los adjuntos siguen dentro del pedido (data URL), no en disco. `npm run migrate:json` hace upsert por id. En producción Express sirve `dist/` y `/api`, escucha `PORT`, responde `/api/health` y no arranca si faltan `DATABASE_URL` o `JWT_SECRET`. No crea el usuario `demo1234`: el primero sale de `npm run create-admin`. El plan gratis de Render se duerme tras unos 15 minutos.
 
 El Brief 19.1 corrige el build de Render: `npm ci` en producción se salteaba Vite y TypeScript, así que el build instala las devDependencies del front y en el server deja solo las de producción. En Postgres cada escritura compara contra la foto leída en la transacción y toca solo las filas nuevas, distintas o borradas. Un cambio de estado escribe una fila. La conexión remota verifica el certificado; la local no usa SSL. `JWT_SECRET` en producción pide 32 caracteres o más. El registro público responde 403 y el login se corta al intento 11 en 15 minutos. `create-admin` pide una contraseña de al menos 10 caracteres. La migración y el admin se corren en la PC, con el host `-pooler` de Neon, porque el plan gratis no tiene shell.
+
+El Brief 19.2 afina lo que se nota en producción. El límite del login cuenta solo los intentos fallidos, así el depósito puede entrar entero desde la misma IP. El 404 de `/api` responde `{ message }`, igual que el resto. La base local se decide por el hostname (`localhost`, `127.0.0.1` o `::1`), no por el texto de la URL. Los usuarios nuevos guardan `createdAt`; los viejos, sin esa fecha, muestran "—". Al volver a la pestaña el front pide `/api/auth/me` y, si el admin se edita a sí mismo, la sesión se actualiza en el momento. Cerrar sesión con el token vencido limpia el navegador y no muestra error si la ubicación del chofer no se pudo borrar.
 
 ## Pendientes
 

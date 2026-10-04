@@ -23,11 +23,11 @@ Rutas: `src/App.tsx`. Menú: `src/layout/Sidebar.tsx`.
 
 Sin `DATABASE_URL`, cada colección es un JSON en `server/data/` (`orders`, `users`, `authorizations`, `notifications`, `locations`). Con `DATABASE_URL` (Neon, con ssl) es Postgres: una tabla por colección, `id text` primary key, `data jsonb` y `updated_at timestamptz`. El objeto se guarda igual, sin otro modelo.
 
-La lectura y la escritura pasan por `server/src/db/store.js`. Las rutas no eligen el modo. `lock.js` sigue siendo una sola cola. En Postgres, además, cada vuelta de esa cola es una transacción: si una operación toca varios archivos (aprobar una edición y crear un aviso, usar una autorización al crear el pedido), se confirman juntas o no se guarda nada. Dentro de esa transacción la lectura guarda una foto y la escritura manda solo las filas que cambiaron. Las tablas se crean al arrancar si no existen (`server/src/db/schema.js`). Un host remoto usa SSL con el certificado verificado; localhost no.
+La lectura y la escritura pasan por `server/src/db/store.js`. Las rutas no eligen el modo. `lock.js` sigue siendo una sola cola. En Postgres, además, cada vuelta de esa cola es una transacción: si una operación toca varios archivos (aprobar una edición y crear un aviso, usar una autorización al crear el pedido), se confirman juntas o no se guarda nada. Dentro de esa transacción la lectura guarda una foto y la escritura manda solo las filas que cambiaron. Las tablas se crean al arrancar si no existen (`server/src/db/schema.js`). Un host remoto usa SSL con el certificado verificado. Sin SSL quedan solo `localhost`, `127.0.0.1` y `::1`, mirando el hostname de la URL.
 
 Los adjuntos del pedido ya van en el JSON como data URL (tope 2 MB) y viajan dentro de `data`. No hay archivos sueltos en disco. Datos maestros y reclamos siguen en el navegador.
 
-`npm run migrate:json` carga los JSON en Postgres con upsert por id. `npm run create-admin` crea el primer admin en la base. En producción hacen falta `DATABASE_URL` y `JWT_SECRET` de 32 caracteres o más; si falta alguno, el server no arranca y no se crea el usuario demo. El registro público responde 403 y el login admite 10 intentos cada 15 minutos. Express sirve `dist/` y la API en `/api`.
+`npm run migrate:json` carga los JSON en Postgres con upsert por id. `npm run create-admin` crea el primer admin en la base. En producción hacen falta `DATABASE_URL` y `JWT_SECRET` de 32 caracteres o más; si falta alguno, el server no arranca y no se crea el usuario demo. El registro público responde 403 y el login admite 10 intentos fallidos cada 15 minutos. Los usuarios nuevos guardan `createdAt`. Al volver a la pestaña se vuelve a pedir `/api/auth/me`. Express sirve `dist/` y la API en `/api`.
 
 ## Cómo trabajar
 
