@@ -816,6 +816,7 @@ export function listLiveDrivers() {
       const carrier = typeof user?.carrierName === 'string' ? user.carrierName.trim() : ''
       const live =
         user?.role === 'chofer' &&
+        isActive(user) &&
         Boolean(carrier) &&
         stillTraveling(orders, carrier) &&
         isStoredPoint(point)

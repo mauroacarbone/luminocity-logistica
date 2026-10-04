@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { normalizeName } from './access.js'
 import { collectionFileExists, readCollection, usingDatabase, writeCollection } from './db/store.js'
+import { forgetUsers } from './locations.js'
 import { locked } from './lock.js'
 
 export const ROLES = ['vendedor', 'deposito', 'encargado_deposito', 'chofer', 'admin']
@@ -184,6 +185,7 @@ export function setUserActive(id, active, actorId) {
     if (active === false && id === actorId) return { error: 'self' }
     users[index] = { ...users[index], active: active === true }
     await writeUsers(users)
+    if (active === false) await forgetUsers([id])
     return { user: users[index] }
   })
 }
