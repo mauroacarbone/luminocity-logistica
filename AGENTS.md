@@ -69,7 +69,7 @@ Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar 
 
 ### Chofer
 
-Entrega y deja constancia. Al entrar ve solo Mis entregas. El server le manda los pedidos de su transportista (`carrierName`) en `preparado`, `asignado` o `en-viaje`, con fecha de ayer, hoy o mañana. Sin `carrierName` no ve pedidos.
+Entrega y deja constancia. Al entrar ve solo Mis entregas. El server le manda los pedidos con su `driverId` en `preparado`, `asignado` o `en-viaje`, con fecha de ayer, hoy o mañana. Si el pedido no tiene `driverId`, sigue viéndolo por el `carrierName`. Sin `driverId` en el pedido y sin `carrierName` no ve nada.
 
 - Pantalla: Mis entregas (editar).
 - Puede: pasar de `asignado` a `en-viaje` y de `en-viaje` a `entregado`. Desde en viaje avisa al cliente con un link `wa.me`. Con al menos un pedido en viaje, la pantalla pide el GPS y manda la última posición.
@@ -123,7 +123,7 @@ Sin `active`, o con `active: true`, el usuario está activo. El login de uno ina
 Estados del pedido: `pendiente` → `preparado` → `asignado` → `en-viaje` → `entregado`.
 
 1. Carga en Nuevo Pedido (`P-` y siete dígitos). Queda en `pendiente`. Pide vendedor, cliente, teléfono, dirección, al menos una entrecalle, tipo de propiedad y fecha. La zona sale de la dirección o se elige a mano.
-2. Depósito lo marca `preparado` e indica bultos. El encargado asigna transportista y chofer (`driverId`). El chofer ve los pedidos por el `carrierName` de su usuario, no por `driverId`. Puede editar o cancelar antes de que salga. El vendedor, si edita un preparado, deja el cambio en espera.
+2. Depósito lo marca `preparado` e indica bultos. El encargado asigna transportista y chofer (`driverId`). El chofer ve los pedidos con su `driverId`. Los viejos, sin chofer, siguen por `carrierName`. Puede editar o cancelar antes de que salga. El vendedor, si edita un preparado, deja el cambio en espera.
 3. Despacho lo sigue por día. `asignado` y `en-viaje` van en la solapa de viaje. La carátula lleva QR: buscar el pedido o confirmar `entregado`.
 4. Post venta es un reclamo aparte (`R-`), no un estado del pedido.
 

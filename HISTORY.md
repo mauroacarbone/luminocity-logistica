@@ -39,6 +39,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 19.3 | Sesión estable al cambiar de pestaña y alta de usuarios | Hecho |
 | 19.4 | Permisos en Usuarios, activos e inactivos y edición | Hecho |
 | 19.5 | Chofer inactivo, sesiones y fechas del planificador | Hecho |
+| 20 | Hoja de ruta por chofer y seguimiento de la entrega | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -80,7 +81,9 @@ El Brief 19.3 deja quieta la sesión al volver a la pestaña: si `/api/auth/me` 
 
 El Brief 19.4 abre Usuarios al encargado, con la regla en el server. El admin crea y modifica a todos. El encargado también, menos a un admin y menos asignar ese rol. Cada usuario tiene `active` (si falta, está activo). Un inactivo no entra y el token que ya tenía recibe 401. Nadie se desactiva a sí mismo y tiene que quedar un admin activo. El nombre, el email y la contraseña se editan desde la misma pantalla. El nombre y el email son únicos.
 
-El Brief 19.5 no deja asignar un chofer desactivado, salvo que el pedido ya lo tuviera. En Despacho ese chofer aparece como "(inactivo)" y el resto de la lista son solo activos. Al desactivarlo se borra su ubicación y deja de figurar en el mapa. Si el rol se guarda y el resto del usuario falla, la tarjeta muestra el rol nuevo. El permiso se lee dentro de la misma escritura. La contraseña se mide en bytes (tope 72). Resetearla invalida los tokens anteriores. Un usuario desactivado que todavía tiene sesión ve en el login "Tu usuario está desactivado. Hablá con el encargado.". Activar y desactivar piden confirmación, y Escape no cierra el modal mientras guarda. En el planificador, el celular muestra el día corto y el número en dos líneas, y la semana solo con las flechas y "Esta semana".
+El Brief 19.5 no deja asignar un chofer desactivado, salvo que el pedido ya lo tuviera. En Despacho ese chofer aparece como "(inactivo)" y el resto de la lista son solo activos. Al desactivarlo se borra su ubicación y deja de figurar en el mapa. Si el rol se guarda y el resto del usuario falla, la tarjeta muestra el rol nuevo y no se pierde el nombre ni el email que todavía no se guardó. El permiso se lee dentro de la misma escritura. La contraseña se mide en bytes (tope 72). Cada usuario tiene `tokenVersion`: resetear la contraseña o desactivarlo invalida las sesiones, también en el mismo segundo. Si se cambia la propia, el server devuelve un token nuevo y la pantalla sigue adentro. Un usuario desactivado ve en el login "Tu usuario está desactivado. Hablá con el encargado.". Una sesión vencida ve "Tu sesión venció. Volvé a entrar.". Activar y desactivar piden confirmación, y Escape no cierra el modal mientras guarda. En el planificador, el celular muestra el día corto y el número en dos líneas. La semana, si no es la actual, muestra el rango corto.
+
+El Brief 20 guarda `assignedAt`, `departedAt` y `deliveredAt` en el server, y los borra si el pedido vuelve atrás. El chofer ve los pedidos con su `driverId`; si el pedido no tiene chofer, sigue por el transportista. La hoja de ruta (`routeSheets`) es una por chofer, fecha y franja. El planificador elige fecha, chofer activo y franja, muestra el cupo y confirma el orden. Si la franja se llena, el encargado puede autorizar. El chofer ve la hoja de hoy, inicia el recorrido y abre el camino en Google Maps. Al entregar el último, la hoja se cierra. Despacho separa "Esperando salida" y "En viaje", con el tiempo de salida, el avance de la hoja y "Atrasado" si se pasó el fin de la franja. Choferes en ruta muestra la hoja en curso y la próxima parada.
 
 ## Pendientes
 
@@ -90,7 +93,7 @@ En este orden. No adelantar el siguiente.
 | --- | --- | --- |
 | 16c | Link de seguimiento para el cliente | **Pendiente** |
 | 16d | WhatsApp Cloud API | **Pendiente** |
-| 20 | Reclamos (`R-`) a la API. | **Pendiente** |
+| 21 | Reclamos (`R-`) a la API. | **Pendiente** |
 | — | Sacar los adjuntos del listado de pedidos y que el PATCH mande solo lo que cambia. | **Pendiente** |
 | — | Datos maestros siguen en localStorage. Este brief no los pasa a Postgres. | **Pendiente** |
 | — | Los tiles de OpenStreetMap y el OSRM demo no son para producción. Revisar más adelante. | **Pendiente** |
@@ -103,7 +106,8 @@ En este orden. No adelantar el siguiente.
 - La contraseña se hashea con bcrypt en el server. El navegador solo guarda el JWT.
 - El rol filtra el menú y la API. En desarrollo el registro público crea `vendedor` y rechaza un nombre o email que ya use otra cuenta. En producción el registro responde 403. No carga `sellerName`.
 - El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. El admin o el encargado lo elige en Usuarios, desde los vendedores de datos maestros. Una cuenta admin solo la edita un admin. Al editar no puede cambiar el vendedor del pedido.
-- El chofer ve las entregas de su `carrierName`. Sin vínculo no ve pedidos. El admin o el encargado lo elige en Usuarios, desde los transportistas de datos maestros. Una cuenta admin solo la edita un admin.
+- El chofer ve los pedidos con su `driverId`. Si el pedido no tiene chofer, los ve por su `carrierName`. Sin `driverId` en el pedido y sin vínculo no ve nada. El admin o el encargado elige el transportista en Usuarios. Una cuenta admin solo la edita un admin.
+- La hoja de ruta es una por chofer, fecha y franja. Se guarda en `routeSheets`. Al confirmar, los preparados pasan a asignado. Al iniciar, pasan a en viaje. Cuando todos quedan entregados o cancelados, la hoja se cierra.
 - Una carga a nombre de otro vendedor exige una autorización aprobada y sin usar. Se marca usada en la misma escritura que guarda el pedido. Al pedirla se avisa al encargado.
 - Un chofer tiene como máximo 3 pedidos por `timeWindow` y `deliveryDate`. El cuarto responde 409 `FRANJA_LLENA`, salvo que encargado o admin manden `override: true`. Eso queda en `slotOverrides` del pedido.
 - La edición de un preparado por el vendedor no cambia el pedido hasta que el encargado la aprueba o la rechaza. Si el pedido ya avanzó, aprobar responde 409. El vendedor recibe el aviso de aprobado o rechazado.
