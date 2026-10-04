@@ -1,3 +1,4 @@
+import { normalizeName } from './access.js'
 import {
   checkDriver,
   checkSlot,
@@ -7,7 +8,7 @@ import {
 import { blockPlannedDeparture, syncSheetOnEdit } from './routeSheets.js'
 
 const STATUSES = new Set(['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado'])
-const STATUS_RANK = { pendiente: 0, preparado: 1, asignado: 2, 'en-viaje': 3, entregado: 4 }
+export const STATUS_RANK = { pendiente: 0, preparado: 1, asignado: 2, 'en-viaje': 3, entregado: 4 }
 
 const TRANSITIONS = {
   'pendiente|preparado': {
@@ -20,13 +21,20 @@ const TRANSITIONS = {
   },
   'asignado|en-viaje': {
     direction: 'forward',
-    roles: new Set(['chofer']),
-    mustBeDriver: true,
+    roles: new Set(['chofer', 'admin']),
+    mustBeDriverUnlessAdmin: true,
+    ownDelivery: true,
   },
   'en-viaje|entregado': {
     direction: 'forward',
     roles: new Set(['chofer', 'admin']),
     mustBeDriverOrAdmin: true,
+    ownDelivery: true,
+  },
+  'asignado|entregado': {
+    direction: 'forward',
+    roles: new Set(['encargado_deposito', 'admin']),
+    courierOnly: true,
   },
   'preparado|pendiente': {
     direction: 'back',
@@ -45,6 +53,10 @@ const TRANSITIONS = {
     direction: 'back',
     roles: new Set(['admin']),
   },
+}
+
+function isCourier(order) {
+  return order?.dispatchType === 'correo'
 }
 
 export function stampStatus(order, current) {
@@ -142,11 +154,18 @@ export async function applyTransition(orders, current, input, user, via, options
   const key = `${current.status}|${to}`
   const rule = TRANSITIONS[key]
   if (!rule) return invalidTransition(current.status, to)
+  if (rule.courierOnly && !isCourier(current)) return invalidTransition(current.status, to)
+  if (rule.ownDelivery && isCourier(current)) return invalidTransition(current.status, to)
   if (!rule.roles.has(user.role)) {
     return fail('No tenés permiso para ese cambio de estado.', 403)
   }
   if (rule.mustBeDriver && !isOrderDriver(user, current)) {
     return fail('No tenés permiso para ese cambio de estado.', 403)
+  }
+  if (rule.mustBeDriverUnlessAdmin) {
+    if (user.role !== 'admin' && !isOrderDriver(user, current)) {
+      return fail('No tenés permiso para ese cambio de estado.', 403)
+    }
   }
   if (rule.mustBeDriverOrAdmin) {
     if (user.role !== 'admin' && !isOrderDriver(user, current)) {
@@ -173,26 +192,37 @@ export async function applyTransition(orders, current, input, user, via, options
   }
 
   if (rule.direction === 'forward' && to === 'asignado') {
-    const driverId = readDriverId(input, current)
-    if (driverId.error) return driverId
-    next.driverId = driverId.value
-    if (Object.prototype.hasOwnProperty.call(input, 'timeWindow')) {
-      const window = normalizeTimeWindow(typeof input.timeWindow === 'string' ? input.timeWindow : '')
-      if (!window) return fail('Elegí una franja.', 400, 'FRANJA_REQUERIDA')
-      next.timeWindow = window
+    if (isCourier(current)) {
+      delete next.driverId
+      const tracking = readTrackingNumber(input, current)
+      if (tracking.error) return tracking
+      if (tracking.value !== undefined) {
+        if (tracking.value) next.trackingNumber = tracking.value
+        else delete next.trackingNumber
+      }
+    } else {
+      const driverId = readDriverId(input, current)
+      if (driverId.error) return driverId
+      next.driverId = driverId.value
+      if (Object.prototype.hasOwnProperty.call(input, 'timeWindow')) {
+        const window = normalizeTimeWindow(typeof input.timeWindow === 'string' ? input.timeWindow : '')
+        if (!window) return fail('Elegí una franja.', 400, 'FRANJA_REQUERIDA')
+        next.timeWindow = window
+      }
+      if (!normalizeTimeWindow(next.timeWindow)) {
+        return fail('Asigná una franja antes de elegir chofer.', 400, 'FRANJA_REQUERIDA')
+      }
+      const driver = await checkDriver(next.driverId, current.driverId)
+      if (driver.error) return driver
+      const slot = await checkSlot(orders, current, next, user, input.override === true)
+      if (slot.error) return slot
+      if (slot.authorized) rememberOverride(next, user)
     }
-    if (!normalizeTimeWindow(next.timeWindow)) {
-      return fail('Asigná una franja antes de elegir chofer.', 400, 'FRANJA_REQUERIDA')
-    }
-    const driver = await checkDriver(next.driverId, current.driverId)
-    if (driver.error) return driver
-    const slot = await checkSlot(orders, current, next, user, input.override === true)
-    if (slot.error) return slot
-    if (slot.authorized) rememberOverride(next, user)
   }
 
   if (rule.clearDriver) {
     delete next.driverId
+    delete next.trackingNumber
   }
 
   stampStatus(next, current)
@@ -220,7 +250,24 @@ export async function applyTransition(orders, current, input, user, via, options
 }
 
 function isOrderDriver(user, order) {
-  return typeof order.driverId === 'string' && order.driverId.length > 0 && order.driverId === user.id
+  if (typeof order.driverId === 'string' && order.driverId.length > 0) {
+    return order.driverId === user.id
+  }
+  const carrier = normalizeName(user.carrierName)
+  if (!carrier) return false
+  return normalizeName(order.transporter) === carrier
+}
+
+function readTrackingNumber(input, current) {
+  if (!Object.prototype.hasOwnProperty.call(input, 'trackingNumber')) {
+    return { value: current.trackingNumber }
+  }
+  const value = input.trackingNumber
+  if (value === null || value === '') return { value: '' }
+  if (typeof value !== 'string') return fail('El tracking no es válido.')
+  const trimmed = value.trim()
+  if (trimmed.length > 80) return fail('El tracking es demasiado largo.')
+  return { value: trimmed }
 }
 
 function readPackages(input, current) {

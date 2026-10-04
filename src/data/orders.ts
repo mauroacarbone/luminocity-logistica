@@ -65,6 +65,7 @@ export type Order = {
   receiverName?: string
   receiverDni?: string
   driverId?: string
+  trackingNumber?: string
   assignedAt?: string
   departedAt?: string
   deliveredAt?: string

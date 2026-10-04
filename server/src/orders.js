@@ -44,6 +44,7 @@ const OPTIONAL_TEXT = [
   ['receiverDni', 'El DNI'],
   ['betweenStreet1', 'La entrecalle'],
   ['betweenStreet2', 'La entrecalle'],
+  ['trackingNumber', 'El tracking'],
 ]
 
 const PLACE_FIELDS = [

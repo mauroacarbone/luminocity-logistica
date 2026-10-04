@@ -47,9 +47,17 @@ function matchesTab(order: Order, tab: DispatchTab) {
   return order.status === tab
 }
 
-function statusPrompt(id: string, status: OrderStatus) {
+function statusPrompt(id: string, status: OrderStatus, order?: Order) {
   if (status === 'preparado') {
     return { title: 'Marcar preparado', text: `El pedido ${id} pasa a preparado.`, done: 'Pedido preparado', peligro: false }
+  }
+  if (status === 'asignado' && order?.dispatchType === 'correo') {
+    return {
+      title: 'Despachar',
+      text: `El pedido ${id} queda despachado.`,
+      done: 'Pedido despachado',
+      peligro: false,
+    }
   }
   if (status === 'en-viaje') {
     return { title: 'Salir a reparto', text: `El pedido ${id} sale a reparto.`, done: 'Pedido en viaje', peligro: false }
@@ -59,10 +67,15 @@ function statusPrompt(id: string, status: OrderStatus) {
   }
   return {
     title: 'Cambiar estado',
-    text: `El pedido ${id} pasa a ${STATUS_PILL[status].toLowerCase()}.`,
+    text: `El pedido ${id} pasa a ${statusPillFor(order, status).toLowerCase()}.`,
     done: 'Estado actualizado',
     peligro: false,
   }
+}
+
+function statusPillFor(order: Order | undefined, status: OrderStatus) {
+  if (status === 'asignado' && order?.dispatchType === 'correo') return 'Despachado'
+  return STATUS_PILL[status]
 }
 
 function SlotUsage({ orders, order }: { orders: Order[]; order: Order }) {
@@ -407,9 +420,18 @@ export function Despacho() {
 
   async function changeStatus(order: Order, status: OrderStatus) {
     setOpenStatusId(null)
-    const prompt = statusPrompt(order.id, status)
+    const prompt = statusPrompt(order.id, status, order)
+    if (
+      status === 'asignado' &&
+      order.dispatchType !== 'correo' &&
+      !order.driverId
+    ) {
+      await error('Elegí un chofer para asignar el pedido.')
+      return
+    }
     const goingBack = STATUS_RANK[status] < STATUS_RANK[order.status]
     let reason: string | undefined
+    let trackingNumber: string | undefined
     if (goingBack) {
       const typed = await askReason(prompt.title, prompt.text)
       if (!typed) return
@@ -417,10 +439,17 @@ export function Despacho() {
     } else {
       const accepted = await confirm(prompt.title, prompt.text, { peligro: prompt.peligro })
       if (!accepted) return
+      if (status === 'asignado' && order.dispatchType === 'correo') {
+        const tracking = window.prompt('Tracking (opcional)')
+        if (tracking === null) return
+        trackingNumber = tracking.trim()
+      }
     }
     setBusyId(order.id)
     const body: Record<string, unknown> = { to: status, via: 'despacho' }
     if (reason) body.reason = reason
+    if (trackingNumber) body.trackingNumber = trackingNumber
+    if (status === 'asignado' && order.driverId) body.driverId = order.driverId
     const result = await transitionOrder(order.id, body)
     setBusyId('')
     if (result.status === 'not-saved') {
@@ -634,7 +663,9 @@ export function Despacho() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <strong>{order.id}</strong>
-                    <span className={`status-pill status-${order.status}`}>{STATUS_PILL[order.status]}</span>
+                    <span className={`status-pill status-${order.status}`}>
+                      {statusPillFor(order, order.status)}
+                    </span>
                   </div>
                   <p className="mt-2 font-semibold uppercase">{order.client}</p>
                   {addressLine(order) && (
@@ -649,6 +680,7 @@ export function Despacho() {
                     {order.transporter && <p>Transportista: {order.transporter}</p>}
                     {pendingEdit(order) && <p>Esperando confirmación</p>}
                     <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
+                    {order.trackingNumber && <p>Tracking: {order.trackingNumber}</p>}
                     {order.timeWindow && <p>{order.timeWindow}</p>}
                     {order.status === 'en-viaje' &&
                       (leftAgo(order.departedAt, now) || sheetProgress(order, sheets, orders)) && (
@@ -702,6 +734,7 @@ export function Despacho() {
                           ))}
                         </select>
                       </label>
+                      {order.dispatchType !== 'correo' && (
                       <div className="text-xs text-lumi-muted">
                         <label htmlFor={`chofer-${order.id}`}>Chofer</label>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -788,7 +821,8 @@ export function Despacho() {
                           )}
                         </div>
                       </div>
-                      <SlotUsage orders={orders} order={order} />
+                      )}
+                      {order.dispatchType !== 'correo' && <SlotUsage orders={orders} order={order} />}
                     </>
                   )}
                   {user && statusChoices(user.role, order.status).length > 0 && (
@@ -822,7 +856,7 @@ export function Despacho() {
                               }`}
                               onClick={() => void changeStatus(order, status)}
                             >
-                              {STATUS_PILL[status]}
+                              {statusPillFor(order, status)}
                             </button>
                           ))}
                         </div>

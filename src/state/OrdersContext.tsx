@@ -48,6 +48,7 @@ const OPTIONAL_STRINGS = [
   'receiverName',
   'receiverDni',
   'driverId',
+  'trackingNumber',
   'assignedAt',
   'departedAt',
   'deliveredAt',
