@@ -207,6 +207,8 @@ function createOrder(body, user) {
       createdBy: user.id,
       createdAt: new Date().toISOString(),
     }
+    const windowRule = requireDriverWindow(null, order)
+    if (windowRule.error) return windowRule
     const slot = await checkSlot(orders, null, order, user, body.override === true)
     if (slot.error) return slot
     if (slot.authorized) rememberOverride(order, user)
@@ -250,8 +252,14 @@ function patchOrder(id, body, user) {
     if (allowed.error) return allowed
     const driver = await checkDriver(parsed.order.driverId, current.driverId)
     if (driver.error) return driver
-    const slot = await checkSlot(orders, current, parsed.order, user, body.override === true)
-    if (slot.error) return slot
+    const windowRule = requireDriverWindow(current, parsed.order)
+    if (windowRule.error) return windowRule
+    const proposing = user.role === 'vendedor' && current.status === 'preparado'
+    let slot = { ok: true }
+    if (!proposing) {
+      slot = await checkSlot(orders, current, parsed.order, user, body.override === true)
+      if (slot.error) return slot
+    }
     if (needsReason(user, changes) && !reason.value) return fail('Ingresá el motivo de la edición.')
 
     if (user.role === 'vendedor' && current.status === 'preparado') {
@@ -338,6 +346,8 @@ function reviewEdit(orderId, editId, body, user) {
     }
     const parsed = readOrderFields(bodyFrom(current, pending.changes), current)
     if (parsed.error) return parsed
+    const windowRule = requireDriverWindow(current, parsed.order)
+    if (windowRule.error) return windowRule
     const slot = await checkSlot(orders, current, parsed.order, user, body?.override === true)
     if (slot.error) return slot
     edits[editIndex] = { ...pending, status: 'aplicada' }
@@ -427,34 +437,51 @@ async function checkDriver(driverId, previous) {
 
 const SLOT_LIMIT = 3
 
+/** "09:00 - 13:00" y "9:00-13:00" quedan como 09:00-13:00. */
+export function normalizeTimeWindow(value) {
+  if (typeof value !== 'string') return ''
+  const compact = value.trim().replace(/\s+/g, '')
+  if (!compact) return ''
+  const match = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/.exec(compact)
+  if (!match) return compact
+  const hour = (part) => part.padStart(2, '0')
+  return `${hour(match[1])}:${match[2]}-${hour(match[3])}:${match[4]}`
+}
+
+function requireDriverWindow(current, next) {
+  if (!next?.driverId || normalizeTimeWindow(next.timeWindow)) return { ok: true }
+  const clearing = Boolean(current && normalizeTimeWindow(current.timeWindow))
+  return {
+    error: clearing
+      ? 'Para sacar la franja, primero pasalo a Sin chofer.'
+      : 'Asigná una franja antes de elegir chofer.',
+    status: 400,
+    code: 'FRANJA_REQUERIDA',
+  }
+}
+
 function occupiesSlot(order) {
-  return Boolean(order && order.driverId && order.deliveryDate && order.timeWindow)
+  return Boolean(order && order.driverId && order.deliveryDate && normalizeTimeWindow(order.timeWindow))
 }
 
 function sameSlot(left, right) {
   return (
     left.driverId === right.driverId &&
     left.deliveryDate === right.deliveryDate &&
-    left.timeWindow === right.timeWindow
+    normalizeTimeWindow(left.timeWindow) === normalizeTimeWindow(right.timeWindow)
   )
 }
 
-/** Pedidos del chofer en esa fecha y esa franja. No cuenta cancelados ni el pedido editado. */
+/** Pedidos del chofer en esa fecha y esa franja. No cuenta el pedido editado. */
 export function countDriverSlot(orders, driverId, deliveryDate, timeWindow, exceptId) {
-  if (!driverId || !deliveryDate || !timeWindow) return 0
+  const window = normalizeTimeWindow(timeWindow)
+  if (!driverId || !deliveryDate || !window) return 0
   return orders.filter((order) => {
     if (order.id === exceptId) return false
-    if (order.status === 'cancelado') return false
     if (order.driverId !== driverId) return false
     if (order.deliveryDate !== deliveryDate) return false
-    return order.timeWindow === timeWindow
+    return normalizeTimeWindow(order.timeWindow) === window
   }).length
-}
-
-function shortDate(iso) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
-  if (!match) return iso
-  return `${match[3]}/${match[2]}`
 }
 
 async function checkSlot(orders, current, next, user, override) {
@@ -468,13 +495,13 @@ async function checkSlot(orders, current, next, user, override) {
   const driver = users.find((item) => item.id === next.driverId)
   const name = driver && driver.name && driver.name.trim() ? driver.name.trim() : 'el chofer'
   return {
-    error: `Hace falta la autorización del encargado. ${name} ya tiene ${count} pedidos en la franja ${next.timeWindow} del ${shortDate(next.deliveryDate)}.`,
+    error: `El chofer ya tiene ${count} ${count === 1 ? 'pedido' : 'pedidos'} en esta franja.`,
     status: 409,
     code: 'FRANJA_LLENA',
     driver: name,
     driverId: next.driverId,
     deliveryDate: next.deliveryDate,
-    timeWindow: next.timeWindow,
+    timeWindow: normalizeTimeWindow(next.timeWindow),
     count,
   }
 }
@@ -561,7 +588,12 @@ function readOrderFields(body, current) {
   for (const [key, label] of OPTIONAL_TEXT) {
     const read = readOptionalText(body, current, key, label)
     if (read.error) return read
-    if (read.value !== undefined) order[key] = read.value
+    if (read.value !== undefined) {
+      order[key] =
+        key === 'timeWindow' && Object.prototype.hasOwnProperty.call(body, key)
+          ? normalizeTimeWindow(read.value)
+          : read.value
+    }
   }
 
   const invoices = readInvoices(body, current)

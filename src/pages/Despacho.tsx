@@ -22,7 +22,7 @@ import {
 } from '../lib/week'
 import { confirm, error, success } from '../lib/alerts'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder, statusChoices } from '../lib/access'
-import { driverSlotCount, SLOT_LIMIT, slotQuestion } from '../lib/slot'
+import { driverSlotCount, normalizeTimeWindow, SLOT_LIMIT, slotQuestion } from '../lib/slot'
 import { isSession } from '../lib/authStore'
 import { listUsers } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
@@ -60,6 +60,17 @@ function statusPrompt(id: string, status: OrderStatus) {
     done: 'Estado actualizado',
     peligro: false,
   }
+}
+
+function SlotUsage({ orders, order }: { orders: Order[]; order: Order }) {
+  if (!order.driverId || !normalizeTimeWindow(order.timeWindow)) return null
+  const count = driverSlotCount(orders, order.driverId, order.deliveryDate, order.timeWindow)
+  const full = count >= SLOT_LIMIT
+  return (
+    <p className={`text-xs ${full ? 'text-lumi-danger' : 'text-lumi-muted'}`}>
+      Cupo en la franja: {count}/{SLOT_LIMIT}
+    </p>
+  )
 }
 
 function DriverChoice({
@@ -228,6 +239,7 @@ export function Despacho() {
     const assigns =
       Boolean(driverId) && (order.status === 'pendiente' || order.status === 'preparado')
     const reassigns = Boolean(driverId) && Boolean(order.driverId) && order.driverId !== driverId
+    const clears = !driverId && Boolean(order.driverId)
     if (reassigns) {
       const accepted = await confirm(
         'Reasignar chofer',
@@ -239,6 +251,9 @@ export function Despacho() {
         'Asignar chofer',
         `El pedido ${order.id} pasa a asignado con ${driverName(driverId)}.`,
       )
+      if (!accepted) return false
+    } else if (clears) {
+      const accepted = await confirm('Quitar chofer', `El pedido ${order.id} queda sin chofer.`)
       if (!accepted) return false
     }
     return saveDriver(order, driverId, assigns)
@@ -544,39 +559,50 @@ export function Despacho() {
                       </label>
                       <label className="text-xs text-lumi-muted">
                         Chofer
-                        <select
-                          value={order.driverId ?? ''}
-                          disabled={busyId === order.id}
-                          className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
-                          onChange={(event) => {
-                            const select = event.target
-                            const driverId = select.value
-                            const previous = order.driverId ?? ''
-                            void assignDriver(order, driverId).then((saved) => {
-                              if (!saved) select.value = previous
-                            })
-                          }}
-                        >
-                          <option value="">Sin chofer</option>
-                          {drivers.map((driver) => (
-                            <DriverChoice
-                              key={driver.id}
-                              orders={orders}
-                              order={order}
-                              driverId={driver.id}
-                              name={driver.name}
-                            />
-                          ))}
-                          {order.driverId && !drivers.some((driver) => driver.id === order.driverId) && (
-                            <DriverChoice
-                              orders={orders}
-                              order={order}
-                              driverId={order.driverId}
-                              name={order.driverId}
-                            />
-                          )}
-                        </select>
+                        {!normalizeTimeWindow(order.timeWindow) ? (
+                          <select
+                            value=""
+                            disabled
+                            className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                          >
+                            <option value="">Asigná una franja primero</option>
+                          </select>
+                        ) : (
+                          <select
+                            value={order.driverId ?? ''}
+                            disabled={busyId === order.id}
+                            className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                            onChange={(event) => {
+                              const select = event.target
+                              const driverId = select.value
+                              const previous = order.driverId ?? ''
+                              void assignDriver(order, driverId).then((saved) => {
+                                if (!saved) select.value = previous
+                              })
+                            }}
+                          >
+                            <option value="">Sin chofer</option>
+                            {drivers.map((driver) => (
+                              <DriverChoice
+                                key={driver.id}
+                                orders={orders}
+                                order={order}
+                                driverId={driver.id}
+                                name={driver.name}
+                              />
+                            ))}
+                            {order.driverId && !drivers.some((driver) => driver.id === order.driverId) && (
+                              <DriverChoice
+                                orders={orders}
+                                order={order}
+                                driverId={order.driverId}
+                                name={order.driverId}
+                              />
+                            )}
+                          </select>
+                        )}
                       </label>
+                      <SlotUsage orders={orders} order={order} />
                     </>
                   )}
                   {user && statusChoices(user.role, order.status).length > 0 && (
