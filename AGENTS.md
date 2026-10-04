@@ -1,7 +1,7 @@
 # Luminocity Logística
 
 Luminocity vende artefactos lumínicos. Esta app es la operación de logística: cargar pedidos, prepararlos, despacharlos y seguir reclamos.
-Los pedidos y la auth están en `server/`. Los datos maestros siguen en el navegador. Qué brief está hecho y cuál sigue: `HISTORY.md`.
+Los pedidos y la auth están en `server/`. Sin `DATABASE_URL` se guardan en JSON; con `DATABASE_URL`, en Postgres. Los datos maestros siguen en el navegador. Qué brief está hecho y cuál sigue: `HISTORY.md`.
 
 ## Stack y carpetas
 
@@ -11,13 +11,23 @@ React 19, Vite, TypeScript, React Router. Estilos en `src/index.css` (Tailwind 4
 | --- | --- |
 | `src/pages/` | Una pantalla por ruta |
 | `src/state/` | Contextos: auth, pedidos, picking, reclamos, catálogo |
-| `server/` | Auth, pedidos, autorizaciones, avisos y ubicación del chofer: Express, JWT y JSON |
+| `server/` | Auth, pedidos, autorizaciones, avisos y ubicación del chofer: Express y JWT. JSON o Postgres |
 | `src/lib/` | Persistencia, token de sesión, zona, geocodificación, rutas, adjuntos, Excel de picking, `access.ts`, `whatsapp.ts` y las API (`api.ts`, `authApi.ts`, `ordersApi.ts`, `authorizationsApi.ts`, `notificationsApi.ts`, `usersApi.ts`, `driversApi.ts`) |
 | `src/data/` | Tipos y semillas: pedido, reclamo, catálogo |
 | `src/layout/` | Sidebar, shell y tarjeta de login |
 | `src/components/` | Diálogos de QR, carátula, link del adjunto, `NotificationBell`, `EditReasonDialog` y `NoAccess` |
 
 Rutas: `src/App.tsx`. Menú: `src/layout/Sidebar.tsx`.
+
+## Datos
+
+Sin `DATABASE_URL`, cada colección es un JSON en `server/data/` (`orders`, `users`, `authorizations`, `notifications`, `locations`). Con `DATABASE_URL` (Neon, con ssl) es Postgres: una tabla por colección, `id text` primary key, `data jsonb` y `updated_at timestamptz`. El objeto se guarda igual, sin otro modelo.
+
+La lectura y la escritura pasan por `server/src/db/store.js`. Las rutas no eligen el modo. `lock.js` sigue siendo una sola cola. En Postgres, además, cada vuelta de esa cola es una transacción: si una operación toca varios archivos (aprobar una edición y crear un aviso, usar una autorización al crear el pedido), se confirman juntas o no se guarda nada. Las tablas se crean al arrancar si no existen (`server/src/db/schema.js`).
+
+Los adjuntos del pedido ya van en el JSON como data URL (tope 2 MB) y viajan dentro de `data`. No hay archivos sueltos en disco. Datos maestros y reclamos siguen en el navegador.
+
+`npm run migrate:json` carga los JSON en Postgres con upsert por id. `npm run create-admin` crea el primer admin en la base. En producción hacen falta `DATABASE_URL` y `JWT_SECRET`; si falta alguno, el server no arranca y no se crea el usuario demo. Express sirve `dist/` y la API en `/api`.
 
 ## Cómo trabajar
 

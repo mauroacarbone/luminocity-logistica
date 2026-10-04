@@ -33,6 +33,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 18.2 | Pedidos viejos con chofer y sin franja | Hecho |
 | 18.3 | Piso, depto y timbre según el domicilio | Hecho |
 | 18.4 | El server limpia piso, depto y timbre según el tipo | Hecho |
+| 19 | Postgres (Neon) y deploy en Render | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -64,6 +65,8 @@ El Brief 18.3 suma piso, depto y timbre al domicilio. Son opcionales, de hasta 2
 
 El Brief 18.4 limpia esos campos en el server según el tipo: departamento, edificio y oficina guardan los tres; casa y local, solo el timbre; obra y el resto, ninguno. Corre cuando el PATCH trae el tipo o alguno de los campos. Un cambio de estado no los toca, así un pedido viejo no le devuelve 403 al chofer. Oficina muestra los tres en el formulario y local solo el timbre. Si el encargado edita solo piso, depto o timbre, queda en `edits`. La carátula los muestra bajo la dirección. El aviso de franja en Despacho queda al lado del selector.
 
+El Brief 19 pasa pedidos, usuarios, autorizaciones, avisos y ubicaciones a Postgres cuando hay `DATABASE_URL`. Sin esa variable siguen los JSON de `server/data`. Cada colección es una tabla (`id`, `data` jsonb, `updated_at`) y el objeto no cambia de forma. La cola de `lock.js` sigue igual; en Postgres cada vuelta es una transacción, así aprobar una edición y crear el aviso se confirman juntos. Las tablas se crean al arrancar. Los adjuntos siguen dentro del pedido (data URL), no en disco. `npm run migrate:json` hace upsert por id. En producción Express sirve `dist/` y `/api`, escucha `PORT`, responde `/api/health` y no arranca si faltan `DATABASE_URL` o `JWT_SECRET`. No crea el usuario `demo1234`: el primero sale de `npm run create-admin`. El plan gratis de Render se duerme tras unos 15 minutos.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
@@ -72,13 +75,15 @@ En este orden. No adelantar el siguiente.
 | --- | --- | --- |
 | 16c | Link de seguimiento para el cliente | **Pendiente** |
 | 16d | WhatsApp Cloud API | **Pendiente** |
-| 19 | Sacar los adjuntos del listado de pedidos y que el PATCH mande solo lo que cambia. | **Pendiente** |
 | 20 | Reclamos (`R-`) a la API. | **Pendiente** |
+| — | Sacar los adjuntos del listado de pedidos y que el PATCH mande solo lo que cambia. | **Pendiente** |
+| — | Datos maestros siguen en localStorage. Este brief no los pasa a Postgres. | **Pendiente** |
 | — | Autorizar un cuarto pedido en la franja con el permiso de un solo uso del Brief 15. Esa autorización es para cargar a nombre de otro vendedor y no encaja acá: hoy solo el encargado o el admin lo confirman en el momento. | **Pendiente** |
 
 ## Decisiones
 
-- Los pedidos se guardan en el server (`server/data/orders.json`). Los datos maestros siguen en el navegador. La auth ya está en el server.
+- Los pedidos se guardan en el server. Sin `DATABASE_URL` van a JSON en `server/data`. Con `DATABASE_URL` van a Postgres, una tabla por colección. Los datos maestros siguen en el navegador. La auth ya está en el server.
+- En producción hacen falta `DATABASE_URL` y `JWT_SECRET`. No se crea el usuario demo. El front y la API salen del mismo proceso.
 - La contraseña se hashea con bcrypt en el server. El navegador solo guarda el JWT.
 - El rol filtra el menú y la API. El registro público crea `vendedor` y rechaza un nombre o email que ya use otra cuenta. No carga `sellerName`.
 - El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. Solo admin lo elige en Usuarios, desde los vendedores de datos maestros. Al editar no puede cambiar el vendedor del pedido.
