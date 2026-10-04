@@ -27,6 +27,15 @@ export function clearDriverLocation() {
   return apiRequest('/api/drivers/location', 'DELETE', undefined, 'No se pudo borrar la ubicación.')
 }
 
+/** Cierra la sesión igual si el token venció y el server responde 401. */
+export async function clearDriverLocationQuietly() {
+  try {
+    await clearDriverLocation()
+  } catch {
+    // Sin red o respuesta rota: la sesión local se limpia igual.
+  }
+}
+
 function isLiveDriver(value: unknown): value is LiveDriver {
   if (!value || typeof value !== 'object') return false
   const driver = value as Record<string, unknown>

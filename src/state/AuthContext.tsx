@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { loginRequest, meRequest, registerRequest, type AuthFailure } from '../lib/authApi'
-import { clearDriverLocation } from '../lib/driversApi'
+import { clearDriverLocationQuietly } from '../lib/driversApi'
 import {
   clearToken,
   loadToken,
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!expiresAt) return
     const delay = Math.max(0, expiresAt - Date.now())
     const timeout = window.setTimeout(() => {
-      if (user.role === 'chofer') void clearDriverLocation()
+      if (user.role === 'chofer') void clearDriverLocationQuietly()
       clearToken()
       setUser(null)
     }, delay)
@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshSession])
 
   const logout = useCallback(() => {
-    if (user?.role === 'chofer') void clearDriverLocation()
+    if (user?.role === 'chofer') void clearDriverLocationQuietly()
     clearToken()
     setUser(null)
   }, [user])
