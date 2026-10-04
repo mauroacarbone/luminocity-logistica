@@ -68,12 +68,16 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
   const body = req.body ?? {}
   const email = typeof body.email === 'string' ? body.email : ''
   const password = typeof body.password === 'string' ? body.password : ''
-  const user = await authenticate(email, password)
-  if (!user) {
+  const found = await authenticate(email, password)
+  if (found.error === 'inactive') {
+    res.status(403).json({ message: 'Tu usuario está desactivado. Hablá con el encargado.' })
+    return
+  }
+  if (!found.user) {
     res.status(401).json({ message: 'Email o contraseña incorrectos.' })
     return
   }
-  res.json(sign(user))
+  res.json(sign(found.user))
 })
 
 authRouter.get('/me', requireAuth, (req, res) => {

@@ -6,6 +6,7 @@ import {
   createUser,
   findUserById,
   listUsers,
+  setUserActive,
   setUserCarrierName,
   setUserPhone,
   setUserRole,
@@ -124,7 +125,32 @@ usersRouter.patch('/:id/role', requireRole('admin', 'encargado_deposito'), async
     return
   }
   if (result.error === 'last-admin') {
-    res.status(403).json({ message: 'No podés quitar el rol al último administrador.' })
+    res.status(409).json({ message: 'Tiene que quedar al menos un administrador activo' })
+    return
+  }
+  res.json(toPublicUser(result.user))
+})
+
+usersRouter.patch('/:id/active', requireRole('admin', 'encargado_deposito'), async (req, res) => {
+  const active = req.body?.active
+  if (typeof active !== 'boolean') {
+    res.status(400).json({ message: 'El estado no es válido.' })
+    return
+  }
+  const target = await targetOf(req, res)
+  if (!target) return
+  if (forbid(res, req.user, target, { active })) return
+  const result = await setUserActive(req.params.id, active, req.user.id)
+  if (result.error === 'missing') {
+    res.status(404).json({ message: 'No existe ese usuario.' })
+    return
+  }
+  if (result.error === 'self') {
+    res.status(409).json({ message: 'No podés desactivar tu propio usuario' })
+    return
+  }
+  if (result.error === 'last-admin') {
+    res.status(409).json({ message: 'Tiene que quedar al menos un administrador activo' })
     return
   }
   res.json(toPublicUser(result.user))

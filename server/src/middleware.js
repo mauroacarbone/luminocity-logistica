@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken'
-import { findUserById, toPublicUser } from './users.js'
+import { findUserById, isActive, toPublicUser } from './users.js'
 
 export async function requireAuth(req, res, next) {
   const header = req.get('authorization') ?? ''
@@ -13,8 +13,10 @@ export async function requireAuth(req, res, next) {
     const payload = jwt.verify(match[1], process.env.JWT_SECRET, { algorithms: ['HS256'] })
     const id = typeof payload.sub === 'string' ? payload.sub : ''
     const user = await findUserById(id)
-    if (!user) {
-      res.status(401).json({ message: 'La sesión no es válida.' })
+    if (!user || !isActive(user)) {
+      res.status(401).json({
+        message: user ? 'Tu usuario está desactivado. Hablá con el encargado.' : 'La sesión no es válida.',
+      })
       return
     }
     req.user = toPublicUser(user)

@@ -41,6 +41,7 @@ function sameSession(prev: Session, session: Session) {
     prev.name === session.name &&
     prev.email === session.email &&
     prev.role === session.role &&
+    prev.active === session.active &&
     prev.sellerName === session.sellerName &&
     prev.carrierName === session.carrierName
   )

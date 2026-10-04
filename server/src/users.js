@@ -28,6 +28,10 @@ const DEMO = {
   role: 'admin',
 }
 
+export function isActive(user) {
+  return user.active !== false
+}
+
 export function toPublicUser(user) {
   const publicUser = {
     id: user.id,
@@ -35,6 +39,7 @@ export function toPublicUser(user) {
     email: user.email,
     role: user.role,
     phone: typeof user.phone === 'string' ? user.phone : '',
+    active: isActive(user),
   }
   if (typeof user.sellerName === 'string' && user.sellerName.trim()) {
     publicUser.sellerName = user.sellerName.trim()
@@ -78,9 +83,11 @@ export function authenticate(email, password) {
   return locked(async () => {
     const normalized = String(email ?? '').trim().toLowerCase()
     const user = (await readUsers()).find((item) => item.email === normalized)
-    if (!user) return null
+    if (!user) return { error: 'invalid' }
     const matches = await bcrypt.compare(String(password ?? ''), user.passwordHash)
-    return matches ? user : null
+    if (!matches) return { error: 'invalid' }
+    if (!isActive(user)) return { error: 'inactive' }
+    return { user }
   })
 }
 
@@ -104,8 +111,8 @@ export function setUserRole(id, role) {
     const users = await readUsers()
     const index = users.findIndex((item) => item.id === id)
     if (index < 0) return { error: 'missing' }
-    if (users[index].role === 'admin' && role !== 'admin') {
-      const admins = users.filter((item) => item.role === 'admin').length
+    if (isActive(users[index]) && users[index].role === 'admin' && role !== 'admin') {
+      const admins = users.filter((item) => item.role === 'admin' && isActive(item)).length
       if (admins <= 1) return { error: 'last-admin' }
     }
     users[index] = { ...users[index], role }
@@ -156,6 +163,22 @@ export function setUserCarrierName(id, carrierName) {
   })
 }
 
+export function setUserActive(id, active, actorId) {
+  return locked(async () => {
+    const users = await readUsers()
+    const index = users.findIndex((item) => item.id === id)
+    if (index < 0) return { error: 'missing' }
+    if (active === false && id === actorId) return { error: 'self' }
+    if (active === false && users[index].role === 'admin' && isActive(users[index])) {
+      const admins = users.filter((item) => item.role === 'admin' && isActive(item)).length
+      if (admins <= 1) return { error: 'last-admin' }
+    }
+    users[index] = { ...users[index], active: active === true }
+    await writeUsers(users)
+    return { user: users[index] }
+  })
+}
+
 export function createUser({
   name,
   email,
@@ -181,6 +204,7 @@ export function createUser({
       email: normalized,
       passwordHash: await bcrypt.hash(password, 10),
       role,
+      active: true,
       createdAt: new Date().toISOString(),
     }
     if (role === 'vendedor' && typeof sellerName === 'string' && sellerName.trim()) {

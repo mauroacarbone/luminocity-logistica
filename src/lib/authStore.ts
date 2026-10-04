@@ -14,6 +14,7 @@ export type Session = {
   name: string
   email: string
   role: Role
+  active: boolean
   sellerName?: string
   carrierName?: string
 }
@@ -35,6 +36,7 @@ export function isSession(value: unknown): value is Session {
     typeof user.email === 'string' &&
     user.email.includes('@') &&
     isRole(user.role) &&
+    typeof user.active === 'boolean' &&
     (user.sellerName === undefined || typeof user.sellerName === 'string') &&
     (user.carrierName === undefined || typeof user.carrierName === 'string')
   )
