@@ -45,6 +45,8 @@ export type Order = {
   driverId?: string
   lat?: number
   lng?: number
+  geoMiss?: boolean
+  geoRetryAt?: string
   edits?: OrderEdit[]
   createdBy?: string
   createdAt?: string

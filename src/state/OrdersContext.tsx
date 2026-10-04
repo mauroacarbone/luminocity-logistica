@@ -63,6 +63,7 @@ type OrdersContextValue = {
   importError: string
   importLegacy: () => Promise<void>
   reload: () => void
+  refresh: (options?: { silent?: boolean }) => Promise<void>
   addOrder: (order: OrderDraft) => Promise<OrderSaveResult>
   updateOrder: (order: Order, reason?: string) => Promise<OrderSaveResult>
   patchFields: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
@@ -167,6 +168,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const ordersRef = useRef(orders)
   const legacyRef = useRef(legacyOrders)
   const importingRef = useRef(false)
+  const generation = useRef(0)
   const userId = user?.id ?? null
   const [trackedUserId, setTrackedUserId] = useState(userId)
 
@@ -182,13 +184,14 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const loading = Boolean(user) && status !== 'ready' && status !== 'error'
 
   useEffect(() => {
+    const id = ++generation.current
     ordersRef.current = []
     legacyRef.current = []
     if (!userId) return
 
     let cancelled = false
     void listOrders().then((result) => {
-      if (cancelled) return
+      if (cancelled || id !== generation.current) return
       if (!result.ok) {
         if (result.status === 401) {
           logout()
@@ -221,6 +224,29 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setStatus('loading')
     setAttempt((current) => current + 1)
   }, [])
+
+  const refresh = useCallback(
+    (options?: { silent?: boolean }) => {
+      if (!options?.silent) {
+        reload()
+        return Promise.resolve()
+      }
+      if (!userId) return Promise.resolve()
+      const id = generation.current
+      return listOrders().then((result) => {
+        if (id !== generation.current) return
+        if (!result.ok) {
+          if (result.status === 401) logout()
+          return
+        }
+        const list = asOrderList(result.data)
+        if (!list) return
+        ordersRef.current = list
+        setOrders(list)
+      })
+    },
+    [userId, logout, reload],
+  )
 
   function replaceOrders(list: Order[]) {
     ordersRef.current = list
@@ -359,6 +385,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         importError,
         importLegacy,
         reload,
+        refresh,
         addOrder,
         updateOrder,
         patchFields,

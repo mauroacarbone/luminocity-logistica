@@ -12,6 +12,7 @@ type Point = { lat: number; lng: number }
 
 const SEND_EVERY_MS = 30_000
 const RELOAD_AFTER_MS = 4000
+const coordsAsked = new Set<string>()
 
 function byZoneThenAddress(left: Order, right: Order) {
   const zone = (left.zone ?? '').localeCompare(right.zone ?? '', 'es')
@@ -23,6 +24,15 @@ function pointOf(order: Order): Point | null {
   if (typeof order.lat !== 'number' || typeof order.lng !== 'number') return null
   if (!Number.isFinite(order.lat) || !Number.isFinite(order.lng)) return null
   return { lat: order.lat, lng: order.lng }
+}
+
+function needsCoords(order: Order) {
+  if (!order.address || pointOf(order) || order.geoMiss === true) return false
+  if (typeof order.geoRetryAt === 'string') {
+    const at = Date.parse(order.geoRetryAt)
+    if (Number.isFinite(at) && at > Date.now()) return false
+  }
+  return true
 }
 
 function haversine(from: Point, to: Point) {
@@ -63,14 +73,14 @@ function sortDeliveries(list: Order[], here: Point | null) {
 
 export function MisEntregas() {
   const { user } = useAuth()
-  const { orders, loading, error: ordersError, patchFields, reload } = useOrders()
+  const { orders, loading, error: ordersError, patchFields, refresh } = useOrders()
   const [tab, setTab] = useState<Tab>('asignados')
   const [busy, setBusy] = useState('')
   const [here, setHere] = useState<Point | null>(null)
   const [gps, setGps] = useState<Gps>('off')
   const tracking = !loading && !ordersError && orders.some((order) => order.status === 'en-viaje')
   const hadTraveling = useRef(false)
-  const askedCoords = useRef(false)
+  const userId = user?.id
 
   useEffect(() => {
     if (loading || ordersError) return
@@ -85,15 +95,14 @@ export function MisEntregas() {
   }, [loading, ordersError, orders])
 
   useEffect(() => {
-    if (loading || ordersError || askedCoords.current) return
-    const missing = orders.some((order) => Boolean(order.address) && !pointOf(order))
-    if (!missing) return
+    if (loading || ordersError || !userId || coordsAsked.has(userId)) return
+    if (!orders.some(needsCoords)) return
     const timer = window.setTimeout(() => {
-      askedCoords.current = true
-      reload()
+      coordsAsked.add(userId)
+      void refresh({ silent: true })
     }, RELOAD_AFTER_MS)
     return () => window.clearTimeout(timer)
-  }, [loading, ordersError, orders, reload])
+  }, [loading, ordersError, orders, refresh, userId])
 
   useEffect(() => {
     if (!tracking) return
