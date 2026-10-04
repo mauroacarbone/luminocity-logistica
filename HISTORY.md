@@ -25,6 +25,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 16.1 | Ajustes del chofer y avisos de WhatsApp | Hecho |
 | 16b | GPS en vivo del chofer y orden por cercanía | Hecho |
 | 16b.1 | La lista del chofer no espera a Nominatim | Hecho |
+| 16b.2 | Recarga silenciosa de Mis entregas y reintento de Nominatim | Hecho |
 | 17 | Pulido visual y confirmaciones con SweetAlert2 | Hecho |
 | 17.1 | Envío de WhatsApp desde la campanita | Hecho |
 
@@ -45,6 +46,8 @@ El Brief 17.1 abre WhatsApp recién al confirmar, en el mismo click. El aviso pa
 El Brief 16b guarda la última ubicación del chofer mientras tiene pedidos en viaje. Mis entregas la pide con el GPS, la manda como máximo cada 30 segundos y ordena las tarjetas por cercanía. Si no hay ubicación o el pedido no tiene coordenadas, el orden sigue por zona y dirección. El encargado y el admin ven esos choferes en el mapa. La ubicación se borra al terminar el último en viaje o al cerrar sesión.
 
 El Brief 16b.1 no espera a Nominatim para devolver el listado: la geocodificación sigue en segundo plano y Mis entregas recarga una vez. Si Nominatim limita o no responde, el pedido espera una hora antes de reintentar. El mapa no vuelve a centrarse en cada refresco.
+
+El Brief 16b.2 recarga Mis entregas sin el spinner, una sola vez por usuario en la sesión. No vuelve a pedir coordenadas si el pedido tiene `geoMiss` o un `geoRetryAt` en el futuro. Un corte de red, un JSON roto, un 5xx o un timeout dejan el reintento para dentro de una hora, sin error en cada consulta. Un 429 corta la tanda.
 
 ## Pendientes
 
