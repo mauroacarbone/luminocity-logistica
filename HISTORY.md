@@ -41,6 +41,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 19.5 | Chofer inactivo, sesiones y fechas del planificador | Hecho |
 | 20 | Hoja de ruta por chofer y seguimiento de la entrega | Hecho |
 | 20.1 | Hoja de ruta consistente y ubicación por chofer | Hecho |
+| 20.2 | Tres arreglos chicos de la hoja de ruta | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -87,6 +88,8 @@ El Brief 19.5 no deja asignar un chofer desactivado, salvo que el pedido ya lo t
 El Brief 20 guarda `assignedAt`, `departedAt` y `deliveredAt` en el server, y los borra si el pedido vuelve atrás. El chofer ve los pedidos con su `driverId`; si el pedido no tiene chofer, sigue por el transportista. La hoja de ruta (`routeSheets`) es una por chofer, fecha y franja. El planificador elige fecha, chofer activo y franja, muestra el cupo y confirma el orden. Si la franja se llena, el encargado puede autorizar. El chofer ve la hoja de hoy, inicia el recorrido y abre el camino en Google Maps. Al entregar el último, la hoja se cierra. Despacho separa "Esperando salida" y "En viaje", con el tiempo de salida, el avance de la hoja y "Atrasado" si se pasó el fin de la franja. Choferes en ruta muestra la hoja en curso y la próxima parada.
 
 El Brief 20.1 mantiene la hoja alineada con el despacho: si cambia el chofer, la fecha o la franja, o se baja de asignado, el pedido sale de una hoja planificada y se renumeran las paradas; si la hoja queda vacía, se borra. Con la hoja en curso ese cambio responde 409, salvo entregar. Solo se inicia la hoja del día y solo con pedidos que siguen en ella. El chofer no pasa a en viaje un pedido de una hoja planificada sin Iniciar recorrido. La ubicación y Choferes en ruta cuentan por `driverId` (transportista solo si el pedido no tiene chofer). Al volver de en viaje a asignado se conserva el `assignedAt`. El planificador pone el cupo en rojo al llegar a 3, calcula la ruta al confirmar y refresca una hoja en curso. Mis entregas muestra una hoja de ayer aún en curso, cuenta paradas reales y limita "Cómo llegar" a 3. Despacho marca "Atrasado" solo en asignado y en viaje, y pide las hojas del día buscado.
+
+El Brief 20.2 cierra una hoja en curso si al sacar un pedido queda vacía. Bajar de en viaje a pendiente o preparado también cuenta como salida de la hoja (409 si está en curso). En Mis entregas, "Parada X de N" usa `routeSeq` y el largo de la hoja, no el índice de la lista visible.
 
 ## Pendientes
 

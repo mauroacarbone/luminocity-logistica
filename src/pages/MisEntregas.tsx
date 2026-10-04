@@ -314,13 +314,13 @@ export function MisEntregas() {
               ) : null}
             </div>
             <ul className="mt-3 flex flex-col gap-3">
-              {stops.map((order, index) => (
+              {stops.map((order) => (
                 <li key={order.id}>
                   <DeliveryCard
                     order={order}
                     distance=""
                     busy={busy === order.id}
-                    stopLabel={`Parada ${index + 1} de ${stops.length}`}
+                    stopLabel={`Parada ${order.routeSeq} de ${sheet.orderIds.length}`}
                     allowLeave={sheet.status === 'en_curso'}
                     onLeave={() => void changeStatus(order, 'en-viaje')}
                     onDelivered={() => void changeStatus(order, 'entregado')}
