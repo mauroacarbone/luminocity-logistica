@@ -2,7 +2,9 @@ import { Router } from 'express'
 import { requireAuth, requireRole } from './middleware.js'
 import {
   ROLES,
+  canManageUser,
   createUser,
+  findUserById,
   listUsers,
   setUserCarrierName,
   setUserPhone,
@@ -16,11 +18,27 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export const usersRouter = Router()
 usersRouter.use(requireAuth)
 
+function forbid(res, actor, target, changes) {
+  const permission = canManageUser(actor, target, changes)
+  if (permission.ok) return false
+  res.status(permission.status).json({ message: permission.message })
+  return true
+}
+
+async function targetOf(req, res) {
+  const target = await findUserById(req.params.id)
+  if (!target) {
+    res.status(404).json({ message: 'No existe ese usuario.' })
+    return null
+  }
+  return target
+}
+
 usersRouter.get('/', requireRole('admin', 'encargado_deposito'), async (_req, res) => {
   res.json(await listUsers())
 })
 
-usersRouter.post('/', requireRole('admin'), async (req, res) => {
+usersRouter.post('/', requireRole('admin', 'encargado_deposito'), async (req, res) => {
   const body = req.body ?? {}
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const email = typeof body.email === 'string' ? body.email.trim() : ''
@@ -47,6 +65,7 @@ usersRouter.post('/', requireRole('admin'), async (req, res) => {
     res.status(400).json({ message: 'El rol no es válido.' })
     return
   }
+  if (forbid(res, req.user, null, { role })) return
 
   let sellerName = ''
   if (role === 'vendedor' && body.sellerName != null) {
@@ -90,12 +109,15 @@ usersRouter.post('/', requireRole('admin'), async (req, res) => {
   res.status(201).json(toPublicUser(result.user))
 })
 
-usersRouter.patch('/:id/role', requireRole('admin'), async (req, res) => {
+usersRouter.patch('/:id/role', requireRole('admin', 'encargado_deposito'), async (req, res) => {
   const role = req.body?.role
   if (typeof role !== 'string' || !ROLES.includes(role)) {
     res.status(400).json({ message: 'El rol no es válido.' })
     return
   }
+  const target = await targetOf(req, res)
+  if (!target) return
+  if (forbid(res, req.user, target, { role })) return
   const result = await setUserRole(req.params.id, role)
   if (result.error === 'missing') {
     res.status(404).json({ message: 'No existe ese usuario.' })
@@ -108,7 +130,7 @@ usersRouter.patch('/:id/role', requireRole('admin'), async (req, res) => {
   res.json(toPublicUser(result.user))
 })
 
-usersRouter.patch('/:id', requireRole('admin'), async (req, res) => {
+usersRouter.patch('/:id', requireRole('admin', 'encargado_deposito'), async (req, res) => {
   const body = req.body ?? {}
   const hasPhone = Object.prototype.hasOwnProperty.call(body, 'phone')
   const hasSeller = Object.prototype.hasOwnProperty.call(body, 'sellerName')
@@ -117,6 +139,9 @@ usersRouter.patch('/:id', requireRole('admin'), async (req, res) => {
     res.status(400).json({ message: 'No hay cambios para guardar.' })
     return
   }
+  const target = await targetOf(req, res)
+  if (!target) return
+  if (forbid(res, req.user, target, {})) return
 
   let phone = ''
   if (hasPhone) {

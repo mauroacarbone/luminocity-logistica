@@ -6,6 +6,21 @@ import { locked } from './lock.js'
 
 export const ROLES = ['vendedor', 'deposito', 'encargado_deposito', 'chofer', 'admin']
 
+/** El admin administra a todos. El encargado, a cualquiera que no sea admin, y no puede dar ese rol. */
+export function canManageUser(actor, target, changes = {}) {
+  if (!actor || (actor.role !== 'admin' && actor.role !== 'encargado_deposito')) {
+    return { ok: false, status: 403, message: 'No tenés permiso para esto.' }
+  }
+  if (actor.role === 'admin') return { ok: true }
+  if (target && target.role === 'admin') {
+    return { ok: false, status: 403, message: 'No podés modificar a un administrador' }
+  }
+  if (changes.role === 'admin') {
+    return { ok: false, status: 403, message: 'No podés asignar el rol administrador' }
+  }
+  return { ok: true }
+}
+
 const DEMO = {
   name: 'Mauro Carbone',
   email: 'mauro@luminocity.local',
