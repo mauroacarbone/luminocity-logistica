@@ -302,7 +302,12 @@ export async function pullOrderFromSheets(orders, orderId) {
     const orderIds = ids.filter((id) => id !== orderId)
     if (sheet.status === 'planificada' && orderIds.length === 0) continue
     const updated = { ...sheet, orderIds }
-    renumberSheet(orders, updated)
+    if (sheet.status === 'en_curso' && orderIds.length === 0) {
+      updated.status = 'cerrada'
+      updated.closedAt = new Date().toISOString()
+    } else {
+      renumberSheet(orders, updated)
+    }
     nextSheets.push(updated)
   }
   if (changed) await writeCollection('routeSheets', nextSheets)
