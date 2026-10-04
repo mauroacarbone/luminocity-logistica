@@ -25,23 +25,25 @@ import { canAssignDispatch, canConfirmDelivery, canEditOrder, statusChoices } fr
 import { placeLine } from '../lib/place'
 import { driverSlotCount, normalizeTimeWindow, SLOT_LIMIT, slotQuestion } from '../lib/slot'
 import { isSession } from '../lib/authStore'
+import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
+import { clockTime, leftAgo, slotEnded } from '../lib/schedule'
 import { listUsers } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 import { useOrders } from '../state/OrdersContext'
 
-type DispatchTab = 'pendiente' | 'preparado' | 'viaje' | 'entregado'
+type DispatchTab = 'pendiente' | 'preparado' | 'asignado' | 'en-viaje' | 'entregado'
 type DialogKind = 'caratula' | 'entrega'
 
 const TABS: { id: DispatchTab; label: string }[] = [
   { id: 'pendiente', label: 'Pendientes' },
   { id: 'preparado', label: 'Preparados' },
-  { id: 'viaje', label: 'En viaje / Asignados' },
+  { id: 'asignado', label: 'Esperando salida' },
+  { id: 'en-viaje', label: 'En viaje' },
   { id: 'entregado', label: 'Entregados' },
 ]
 
 function matchesTab(order: Order, tab: DispatchTab) {
-  if (tab === 'viaje') return order.status === 'asignado' || order.status === 'en-viaje'
   return order.status === tab
 }
 
@@ -110,8 +112,14 @@ function choferOptions(
 }
 
 function tabFor(status: OrderStatus): DispatchTab {
-  if (status === 'asignado' || status === 'en-viaje') return 'viaje'
   return status
+}
+
+function sheetProgress(order: Order, sheets: RouteSheet[], orders: Order[]) {
+  const sheet = sheets.find((item) => item.orderIds.includes(order.id))
+  if (!sheet) return ''
+  const delivered = sheet.orderIds.filter((id) => orders.find((item) => item.id === id)?.status === 'entregado').length
+  return `${delivered} de ${sheet.orderIds.length} entregados`
 }
 
 function addressLine(order: Order) {
@@ -141,7 +149,8 @@ export function Despacho() {
   const { orders, patchFields } = useOrders()
   const { transporters: catalogTransporters, ownTransporters, courierTransporters } = useCatalog()
   const [drivers, setDrivers] = useState<{ id: string; name: string; active: boolean }[]>([])
-  const [tab, setTab] = useState<DispatchTab>('viaje')
+  const [sheets, setSheets] = useState<RouteSheet[]>([])
+  const [tab, setTab] = useState<DispatchTab>('en-viaje')
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
   const [query, setQuery] = useState('')
@@ -178,6 +187,17 @@ export function Despacho() {
       cancelled = true
     }
   }, [assign, logout])
+
+  useEffect(() => {
+    let cancelled = false
+    void listRouteSheets(selectedIso).then((result) => {
+      if (cancelled || !result.ok) return
+      setSheets(result.data)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedIso, orders])
 
   const days = weekDays(weekOffset)
   const selectedDate = days.find((day) => toIso(day) === selectedIso) ?? days[0]
@@ -533,6 +553,15 @@ export function Despacho() {
                     {pendingEdit(order) && <p>Esperando confirmación</p>}
                     <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
                     {order.timeWindow && <p>{order.timeWindow}</p>}
+                    {order.status === 'en-viaje' && (leftAgo(order.departedAt) || sheetProgress(order, sheets, orders)) && (
+                      <p>
+                        {[leftAgo(order.departedAt), sheetProgress(order, sheets, orders)].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    {order.status !== 'entregado' && slotEnded(order.deliveryDate, order.timeWindow) && (
+                      <p className="font-semibold text-lumi-danger">Atrasado</p>
+                    )}
+                    {order.status === 'entregado' && order.deliveredAt && <p>Entregado {clockTime(order.deliveredAt)}</p>}
                     {order.invoices && order.invoices.length > 0 && (
                       <p>{order.invoices.join(', ')}</p>
                     )}

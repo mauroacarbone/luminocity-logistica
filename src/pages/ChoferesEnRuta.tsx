@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
+import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
+import { businessToday } from '../lib/schedule'
 import { useAuth } from '../state/AuthContext'
+import { useOrders } from '../state/OrdersContext'
 import 'leaflet/dist/leaflet.css'
 
 const REFRESH_MS = 30_000
@@ -42,7 +45,32 @@ function travelingLabel(count: number) {
   return count === 1 ? '1 pedido en viaje' : `${count} pedidos en viaje`
 }
 
-function DriversMap({ drivers, now }: { drivers: LiveDriver[]; now: number }) {
+function sheetLine(driverId: string, sheets: RouteSheet[], orders: { id: string; client: string; status: string }[]) {
+  const sheet = sheets.find((item) => item.driverId === driverId && item.status === 'en_curso')
+  if (!sheet) return null
+  const stops = sheet.orderIds
+    .map((id) => orders.find((order) => order.id === id))
+    .filter((order): order is { id: string; client: string; status: string } => Boolean(order))
+  const delivered = stops.filter((order) => order.status === 'entregado').length
+  const next = stops.find((order) => order.status !== 'entregado')
+  return {
+    progress: `${delivered} de ${sheet.orderIds.length} entregados`,
+    next: next ? `Próxima parada: ${next.client}` : 'Sin paradas pendientes',
+    slot: sheet.slot,
+  }
+}
+
+function DriversMap({
+  drivers,
+  now,
+  sheets,
+  orders,
+}: {
+  drivers: LiveDriver[]
+  now: number
+  sheets: RouteSheet[]
+  orders: { id: string; client: string; status: string }[]
+}) {
   const positions = drivers.map((driver) => [driver.lat, driver.lng] as [number, number])
   return (
     <MapContainer center={CENTER} zoom={11} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
@@ -69,6 +97,13 @@ function DriversMap({ drivers, now }: { drivers: LiveDriver[]; now: number }) {
               <span className="block">{driver.carrierName}</span>
               <span className="block">{minutesAgo(driver.updatedAt, now)}</span>
               <span className="block">{travelingLabel(driver.traveling)}</span>
+              {sheetLine(driver.id, sheets, orders) && (
+                <>
+                  <span className="block">Hoja en curso · {sheetLine(driver.id, sheets, orders)?.slot}</span>
+                  <span className="block">{sheetLine(driver.id, sheets, orders)?.next}</span>
+                  <span className="block">{sheetLine(driver.id, sheets, orders)?.progress}</span>
+                </>
+              )}
               {stale && <span className="block">sin señal</span>}
             </Popup>
           </CircleMarker>
@@ -81,7 +116,9 @@ function DriversMap({ drivers, now }: { drivers: LiveDriver[]; now: number }) {
 
 export function ChoferesEnRuta() {
   const { logout } = useAuth()
+  const { orders } = useOrders()
   const [drivers, setDrivers] = useState<LiveDriver[]>([])
+  const [sheets, setSheets] = useState<RouteSheet[]>([])
   const [now, setNow] = useState(() => Date.now())
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [message, setMessage] = useState('')
@@ -108,6 +145,9 @@ export function ChoferesEnRuta() {
     }
 
     void load()
+    void listRouteSheets(businessToday()).then((result) => {
+      if (!cancelled && result.ok) setSheets(result.data)
+    })
     const timer = window.setInterval(() => void load(), REFRESH_MS)
     return () => {
       cancelled = true
@@ -129,8 +169,29 @@ export function ChoferesEnRuta() {
       {status === 'ready' && (
         <>
           <div className="mt-4 overflow-hidden rounded-2xl bg-[#e6e2d8]" style={{ height: 480 }}>
-            <DriversMap drivers={drivers} now={now} />
+            <DriversMap drivers={drivers} now={now} sheets={sheets} orders={orders} />
           </div>
+          {drivers.length > 0 && (
+            <ul className="mt-4 flex flex-col gap-2">
+              {drivers.map((driver) => {
+                const line = sheetLine(driver.id, sheets, orders)
+                return (
+                  <li key={driver.id} className="rounded-2xl bg-white px-4 py-3 text-sm shadow-sm">
+                    <p className="font-semibold">{driver.name}</p>
+                    <p>{driver.carrierName}</p>
+                    <p>{travelingLabel(driver.traveling)}</p>
+                    {line && (
+                      <>
+                        <p>Hoja en curso · {line.slot}</p>
+                        <p>{line.next}</p>
+                        <p>{line.progress}</p>
+                      </>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
           {drivers.length === 0 && (
             <p className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
               No hay choferes en ruta.
