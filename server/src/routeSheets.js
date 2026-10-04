@@ -235,7 +235,7 @@ export async function closeFinishedSheets(orders) {
   if (changed) await writeCollection('routeSheets', sheets)
 }
 
-const BELOW_ASSIGNED = new Set(['pendiente', 'preparado'])
+const STATUS_RANK = { pendiente: 0, preparado: 1, asignado: 2, 'en-viaje': 3, entregado: 4 }
 
 function driverKey(order) {
   return typeof order?.driverId === 'string' ? order.driverId : ''
@@ -246,7 +246,7 @@ function leavesSheet(current, next) {
   if (driverKey(current) !== driverKey(next)) return true
   if ((current.deliveryDate ?? '') !== (next.deliveryDate ?? '')) return true
   if (normalizeTimeWindow(current.timeWindow) !== normalizeTimeWindow(next.timeWindow)) return true
-  return current.status === 'asignado' && BELOW_ASSIGNED.has(next.status)
+  return (STATUS_RANK[next.status] ?? 0) < STATUS_RANK.asignado
 }
 
 function renumberSheet(orders, sheet) {
