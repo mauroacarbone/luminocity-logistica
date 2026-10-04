@@ -17,8 +17,9 @@ const repoRoot = path.join(root, '..')
 dotenv.config({ path: path.join(root, '.env') })
 
 const production = process.env.NODE_ENV === 'production'
+const jwtSecret = String(process.env.JWT_SECRET ?? '').trim()
 
-if (!String(process.env.JWT_SECRET ?? '').trim()) {
+if (!jwtSecret) {
   console.error(
     production ? 'Falta JWT_SECRET. En producción es obligatorio.' : 'Falta JWT_SECRET en server/.env',
   )
@@ -76,6 +77,9 @@ app.use('/api/authorizations', authorizationsRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/orders', ordersRouter)
 app.use('/api/drivers', driversRouter)
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'No existe' })
+})
 
 if (production) {
   const distDir = path.join(repoRoot, 'dist')

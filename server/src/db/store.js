@@ -43,12 +43,41 @@ function parseStored(kind, raw) {
   return parsed
 }
 
+function isLocalHost(connectionString) {
+  return /@(localhost|127\.0\.0\.1)(:\d+)?(\/|\?|$)/.test(connectionString)
+}
+
+// El sslmode de la URL pisa la opción ssl del pool. Lo sacamos y lo decidimos acá.
+function stripSslParams(connectionString) {
+  const queryAt = connectionString.indexOf('?')
+  if (queryAt === -1) return connectionString
+  const params = new URLSearchParams(connectionString.slice(queryAt + 1))
+  for (const key of [...params.keys()]) {
+    const name = key.toLowerCase()
+    if (name === 'sslmode' || name === 'ssl') params.delete(key)
+  }
+  const rest = params.toString()
+  return rest ? `${connectionString.slice(0, queryAt)}?${rest}` : connectionString.slice(0, queryAt)
+}
+
 function sslFor(connectionString) {
-  const value = connectionString.toLowerCase()
-  if (value.includes('sslmode=disable')) return false
-  const local = /@(localhost|127\.0\.0\.1)(:\d+)?(\/|\?|$)/.test(connectionString)
-  if (local && !value.includes('sslmode=require') && !value.includes('sslmode=verify')) return false
-  return { rejectUnauthorized: false }
+  if (isLocalHost(connectionString)) return false
+  return { rejectUnauthorized: true }
+}
+
+function stripNullChars(value) {
+  if (typeof value === 'string') return value.replaceAll('\u0000', '')
+  if (Array.isArray(value)) return value.map(stripNullChars)
+  if (!value || typeof value !== 'object') return value
+  const next = {}
+  for (const [key, item] of Object.entries(value)) {
+    next[stripNullChars(key)] = stripNullChars(item)
+  }
+  return next
+}
+
+function jsonData(value) {
+  return JSON.stringify(stripNullChars(value))
 }
 
 function getPool() {
@@ -56,7 +85,7 @@ function getPool() {
   if (!connectionString) throw new Error('Falta DATABASE_URL.')
   if (!pool) {
     pool = new pg.Pool({
-      connectionString,
+      connectionString: stripSslParams(connectionString),
       ssl: sslFor(connectionString),
       max: 10,
       connectionTimeoutMillis: 10000,
@@ -74,6 +103,22 @@ function context() {
 
 function queryable() {
   return context()?.client ?? getPool()
+}
+
+function watchClient(client) {
+  let failure = null
+  const onError = (error) => {
+    failure = error
+    console.error('Error de Postgres', error)
+  }
+  client.on('error', onError)
+  return {
+    failure: () => failure,
+    finish() {
+      client.removeListener('error', onError)
+      client.release(failure || undefined)
+    },
+  }
 }
 
 async function readFileCollection(name) {
@@ -129,14 +174,16 @@ function rememberSnapshot(name, rows) {
   const store = context()
   if (!store) return
   const photo = new Map()
-  for (const row of rows) photo.set(row.id, JSON.stringify(row.data))
+  for (const row of rows) photo.set(row.id, jsonData(row.data))
   store.snapshots.set(name, photo)
 }
 
 async function readPostgres(name) {
   const table = assertCollectionName(name)
   const spec = specOf(name)
-  const result = await queryable().query(`SELECT id, data FROM ${table} ORDER BY id`)
+  const result = await queryable().query(
+    `SELECT id, data FROM ${table} ORDER BY (data->>'createdAt') NULLS LAST, id`,
+  )
   rememberSnapshot(
     name,
     result.rows.map((row) => ({ id: row.id, data: row.data })),
@@ -169,7 +216,7 @@ async function applyDiff(client, name, rows) {
   }
   const changed = []
   for (const row of rows) {
-    const json = JSON.stringify(row.data)
+    const json = jsonData(row.data)
     if (snapshot.get(row.id) !== json) changed.push({ id: row.id, json })
   }
   if (removed.length > 0) {
@@ -178,17 +225,23 @@ async function applyDiff(client, name, rows) {
   for (const row of changed) {
     await client.query(UPSERT(table), [row.id, row.json])
   }
-  rememberSnapshot(name, rows)
+  rememberSnapshot(
+    name,
+    rows.map((row) => ({ id: row.id, data: stripNullChars(row.data) })),
+  )
   logDiff(name, changed.length, removed.length)
 }
 
 async function runTransaction(task) {
   if (context()) return task()
   const client = await getPool().connect()
+  const watch = watchClient(client)
   const store = { client, snapshots: new Map() }
   try {
     await client.query('BEGIN')
     const result = await tx.run(store, task)
+    const failure = watch.failure()
+    if (failure) throw failure
     await client.query('COMMIT')
     return result
   } catch (error) {
@@ -199,7 +252,7 @@ async function runTransaction(task) {
     }
     throw error
   } finally {
-    client.release()
+    watch.finish()
   }
 }
 
@@ -235,7 +288,7 @@ export async function upsertCollection(name, value) {
   const table = assertCollectionName(name)
   await withClient(async (client) => {
     for (const row of rows) {
-      await client.query(UPSERT(table), [row.id, JSON.stringify(row.data)])
+      await client.query(UPSERT(table), [row.id, jsonData(row.data)])
     }
   })
   return rows.length
