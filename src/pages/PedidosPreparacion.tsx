@@ -2,9 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { DISPATCH_LABEL } from '../data/catalog'
-import { pendingEdit, STATUS_PILL, type Order } from '../data/orders'
+import { pendingEdit, type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { canCancelOrder, canEditOrder, canPrepare } from '../lib/access'
+import { statusPillFor } from '../lib/orderFlow'
 import { placeLine } from '../lib/place'
 import {
   DAY_LONG,
@@ -254,7 +255,9 @@ export function PedidosPreparacion() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <strong>{order.id}</strong>
-                    <span className={`status-pill status-${order.status}`}>{STATUS_PILL[order.status]}</span>
+                    <span className={`status-pill status-${order.status}`}>
+                      {statusPillFor(order, order.status)}
+                    </span>
                   </div>
                   <p className="mt-2 font-semibold uppercase">{order.client}</p>
                   {addressLine(order) && (

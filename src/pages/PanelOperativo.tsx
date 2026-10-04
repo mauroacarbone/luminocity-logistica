@@ -6,11 +6,11 @@ import {
   pendingEdit,
   STATUS_LABEL,
   STATUS_ORDER,
-  STATUS_PILL,
   type Order,
   type OrderStatus,
 } from '../data/orders'
 import { canEditOrder } from '../lib/access'
+import { statusPillFor } from '../lib/orderFlow'
 import { placeLine } from '../lib/place'
 import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
@@ -214,7 +214,9 @@ export function PanelOperativo() {
                       {order.zone ? <span className="zone-inline"> · {order.zone}</span> : null}
                     </td>
                     <td>
-                      <span className={`status-pill status-${order.status}`}>{STATUS_PILL[order.status]}</span>
+                      <span className={`status-pill status-${order.status}`}>
+                        {statusPillFor(order, order.status)}
+                      </span>
                     </td>
                     <td>
                       {order.transporter || '—'}

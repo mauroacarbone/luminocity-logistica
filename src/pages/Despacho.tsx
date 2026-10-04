@@ -19,7 +19,7 @@ import {
   weekDays,
   weekOffsetForIso,
 } from '../lib/week'
-import { askReason, confirm, error, success } from '../lib/alerts'
+import { askPackages, askReason, askTracking, confirm, error, success } from '../lib/alerts'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder, statusChoices } from '../lib/access'
 import { STATUS_RANK, statusPillFor } from '../lib/orderFlow'
 import { placeLine } from '../lib/place'
@@ -428,19 +428,14 @@ export function Despacho() {
       const accepted = await confirm(prompt.title, prompt.text, { peligro: prompt.peligro })
       if (!accepted) return
       if (status === 'preparado') {
-        const raw = window.prompt('Cantidad de bultos')
-        if (raw === null) return
-        const value = Number(raw.trim())
-        if (!Number.isInteger(value) || value < 1) {
-          await error('Ingresá una cantidad entera de bultos (1 o más).')
-          return
-        }
+        const value = await askPackages(prompt.title, 'Indicá la cantidad de bultos.')
+        if (value == null) return
         packages = value
       }
       if (status === 'asignado' && order.dispatchType === 'correo') {
-        const tracking = window.prompt('Tracking (opcional)')
+        const tracking = await askTracking(prompt.title, 'Podés cargar el tracking del envío.')
         if (tracking === null) return
-        trackingNumber = tracking.trim()
+        trackingNumber = tracking
       }
     }
     setBusyId(order.id)

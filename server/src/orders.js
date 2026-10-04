@@ -383,7 +383,7 @@ function patchOrder(id, body, user) {
         from: 'asignado',
         to: 'asignado',
         reason: `Cambio de chofer: ${prevName} → ${nextName}`,
-        via: 'despacho',
+        via: 'pedidos',
       })
       order.history = history
     }
@@ -434,7 +434,7 @@ function transitionOrder(id, body, user) {
     if (via === 'hoja') {
       return fail('Ese pedido está en una hoja planificada. Usá Iniciar recorrido.', 409)
     }
-    if (!TRANSITION_VIAS.has(via)) return fail('Indicá desde dónde se cambia el estado.')
+    if (!TRANSITION_VIAS.has(via)) return fail('via no válido')
     const orders = await readOrders()
     const index = orders.findIndex((item) => item.id === id)
     if (index < 0) return fail('No existe ese pedido.', 404)

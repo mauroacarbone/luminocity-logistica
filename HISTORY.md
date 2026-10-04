@@ -44,6 +44,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 20.2 | Tres arreglos chicos de la hoja de ruta | Hecho |
 | 21a | Máquina de estados del pedido e historial | Hecho |
 | 21a.1 | Cerrar agujeros de la máquina de estados | Hecho |
+| 21a.2 | Tipo de despacho y correo sin atajos | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -96,6 +97,8 @@ El Brief 20.2 cierra una hoja en curso si al sacar un pedido queda vacía. Bajar
 El Brief 21a deja la máquina de estados en el server (`orderFlow.js` y `POST /api/orders/:id/transition`). Solo se avanza o se vuelve un paso, con roles y requisitos (bultos, chofer, franja, cupo). `PATCH` ya no acepta `status`. Cada cambio queda en `history` con `via`. Al volver atrás no se borran `assignedAt`, `departedAt` ni `deliveredAt`. La hoja confirma e inicia por `orderFlow`.
 
 El Brief 21a.1 cierra agujeros: `via: "hoja"` solo interno; el chofer se cambia por la máquina (o reasignación en `asignado`); el correo va preparado → despachado → entregado sin en-viaje; pedidos viejos sin `driverId` siguen por transportista; el menú Estado sale de `src/lib/orderFlow.ts`.
+
+El Brief 21a.2 fija el despacho: `dispatchType` solo se cambia en pendiente o preparado; el correo no entra en hojas ni en Mis entregas; el tracking lo editan encargado y admin; Panel y Pedidos muestran "Despachado".
 
 ## Pendientes
 
