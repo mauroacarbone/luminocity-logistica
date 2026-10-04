@@ -84,14 +84,19 @@ function roleChoices(actor: Role | undefined, locked: boolean, current: Role): R
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function useEscape(onClose: () => void) {
+function passwordTooLong(password: string) {
+  return new TextEncoder().encode(password).length > 72
+}
+
+function useEscape(onClose: () => void, enabled = true) {
   useEffect(() => {
+    if (!enabled) return
     function onKey(event: KeyboardEvent) {
       if (event.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, enabled])
 }
 
 type NewUserInput = {
@@ -130,7 +135,7 @@ function NewUserDialog({
   const [pending, setPending] = useState(false)
   const sellerOptions = withCurrent(sellers, form.sellerName)
   const carrierOptions = withCurrent(transporters, form.carrierName)
-  useEscape(onClose)
+  useEscape(onClose, !pending)
 
   function patch(next: Partial<NewUserInput>) {
     setForm((current) => ({ ...current, ...next }))
@@ -143,7 +148,7 @@ function NewUserDialog({
     else if (form.name.trim().length > 80) nextErrors.name = 'El nombre es demasiado largo.'
     if (!EMAIL_PATTERN.test(form.email.trim())) nextErrors.email = 'Ingresá un email válido.'
     if (form.password.length < 8) nextErrors.password = 'Usá al menos 8 caracteres.'
-    else if (form.password.length > 72) nextErrors.password = 'La contraseña puede tener hasta 72 caracteres.'
+    else if (passwordTooLong(form.password)) nextErrors.password = 'La contraseña es demasiado larga'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -309,13 +314,13 @@ function PasswordDialog({
   const [confirmPassword, setConfirmPassword] = useState('')
   const [errors, setErrors] = useState<{ password?: string; confirm?: string; form?: string }>({})
   const [pending, setPending] = useState(false)
-  useEscape(onClose)
+  useEscape(onClose, !pending)
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     const next: { password?: string; confirm?: string } = {}
     if (password.length < 8) next.password = 'Usá al menos 8 caracteres.'
-    else if (password.length > 72) next.password = 'La contraseña puede tener hasta 72 caracteres.'
+    else if (passwordTooLong(password)) next.password = 'La contraseña es demasiado larga'
     if (confirmPassword !== password) next.confirm = 'Las contraseñas no coinciden.'
     setErrors(next)
     if (next.password || next.confirm) return
@@ -544,13 +549,10 @@ export function Usuarios() {
     if (user?.id === account.id) return
     if (user?.role === 'encargado_deposito' && account.role === 'admin') return
     const nextActive = !account.active
-    if (!nextActive) {
-      const accepted = await confirm(
-        'Desactivar usuario',
-        `${account.name} no va a poder iniciar sesión.`,
-      )
-      if (!accepted) return
-    }
+    const accepted = nextActive
+      ? await confirm('Activar usuario', `${account.name} va a poder iniciar sesión.`)
+      : await confirm('Desactivar usuario', `${account.name} no va a poder iniciar sesión.`, { peligro: true })
+    if (!accepted) return
     setBusy(account.id)
     const result = await updateUserActive(account.id, nextActive)
     setBusy('')

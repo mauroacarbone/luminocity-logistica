@@ -4,7 +4,6 @@ import {
   ROLES,
   canManageUser,
   createUser,
-  findUserById,
   listUsers,
   setUserActive,
   setUserPassword,
@@ -23,15 +22,6 @@ function forbid(res, actor, target, changes) {
   if (permission.ok) return false
   res.status(permission.status).json({ message: permission.message })
   return true
-}
-
-async function targetOf(req, res) {
-  const target = await findUserById(req.params.id)
-  if (!target) {
-    res.status(404).json({ message: 'No existe ese usuario.' })
-    return null
-  }
-  return target
 }
 
 usersRouter.get('/', requireRole('admin', 'encargado_deposito'), async (_req, res) => {
@@ -61,8 +51,8 @@ usersRouter.post('/', requireRole('admin', 'encargado_deposito'), async (req, re
     res.status(400).json({ message: 'Usá al menos 8 caracteres.' })
     return
   }
-  if (password.length > 72) {
-    res.status(400).json({ message: 'La contraseña puede tener hasta 72 caracteres.' })
+  if (Buffer.byteLength(password, 'utf8') > 72) {
+    res.status(400).json({ message: 'La contraseña es demasiado larga' })
     return
   }
   if (typeof role !== 'string' || !ROLES.includes(role)) {
@@ -122,12 +112,13 @@ usersRouter.patch('/:id/role', requireRole('admin', 'encargado_deposito'), async
     res.status(400).json({ message: 'El rol no es válido.' })
     return
   }
-  const target = await targetOf(req, res)
-  if (!target) return
-  if (forbid(res, req.user, target, { role })) return
-  const result = await setUserRole(req.params.id, role)
+  const result = await setUserRole(req.params.id, role, req.user)
   if (result.error === 'missing') {
     res.status(404).json({ message: 'No existe ese usuario.' })
+    return
+  }
+  if (result.error === 'forbidden') {
+    res.status(result.status).json({ message: result.message })
     return
   }
   if (result.error === 'last-admin') {
@@ -143,12 +134,13 @@ usersRouter.patch('/:id/active', requireRole('admin', 'encargado_deposito'), asy
     res.status(400).json({ message: 'El estado no es válido.' })
     return
   }
-  const target = await targetOf(req, res)
-  if (!target) return
-  if (forbid(res, req.user, target, { active })) return
-  const result = await setUserActive(req.params.id, active, req.user.id)
+  const result = await setUserActive(req.params.id, active, req.user)
   if (result.error === 'missing') {
     res.status(404).json({ message: 'No existe ese usuario.' })
+    return
+  }
+  if (result.error === 'forbidden') {
+    res.status(result.status).json({ message: result.message })
     return
   }
   if (result.error === 'self') {
@@ -168,16 +160,17 @@ usersRouter.patch('/:id/password', requireRole('admin', 'encargado_deposito'), a
     res.status(400).json({ message: 'Usá al menos 8 caracteres.' })
     return
   }
-  if (password.length > 72) {
-    res.status(400).json({ message: 'La contraseña puede tener hasta 72 caracteres.' })
+  if (Buffer.byteLength(password, 'utf8') > 72) {
+    res.status(400).json({ message: 'La contraseña es demasiado larga' })
     return
   }
-  const target = await targetOf(req, res)
-  if (!target) return
-  if (forbid(res, req.user, target, {})) return
-  const result = await setUserPassword(req.params.id, password)
+  const result = await setUserPassword(req.params.id, password, req.user)
   if (result.error === 'missing') {
     res.status(404).json({ message: 'No existe ese usuario.' })
+    return
+  }
+  if (result.error === 'forbidden') {
+    res.status(result.status).json({ message: result.message })
     return
   }
   res.json(toPublicUser(result.user))
@@ -194,10 +187,6 @@ usersRouter.patch('/:id', requireRole('admin', 'encargado_deposito'), async (req
     res.status(400).json({ message: 'No hay cambios para guardar.' })
     return
   }
-  const target = await targetOf(req, res)
-  if (!target) return
-  if (forbid(res, req.user, target, {})) return
-
   const fields = {}
   if (hasName) {
     if (typeof body.name !== 'string') {
@@ -262,9 +251,13 @@ usersRouter.patch('/:id', requireRole('admin', 'encargado_deposito'), async (req
     fields.carrierName = carrierName
   }
 
-  const result = await updateUserDetails(req.params.id, fields)
+  const result = await updateUserDetails(req.params.id, fields, req.user)
   if (result.error === 'missing') {
     res.status(404).json({ message: 'No existe ese usuario.' })
+    return
+  }
+  if (result.error === 'forbidden') {
+    res.status(result.status).json({ message: result.message })
     return
   }
   if (result.error === 'email') {

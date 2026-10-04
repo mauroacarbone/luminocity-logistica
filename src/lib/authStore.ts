@@ -20,6 +20,25 @@ export type Session = {
 }
 
 const TOKEN_KEY = 'luminocity.token.v1'
+const NOTICE_KEY = 'luminocity.session-notice'
+
+export function rememberSessionNotice(message: string) {
+  try {
+    sessionStorage.setItem(NOTICE_KEY, message)
+  } catch {
+    // Si no se puede guardar, el login sigue sin el aviso.
+  }
+}
+
+export function takeSessionNotice() {
+  try {
+    const message = sessionStorage.getItem(NOTICE_KEY)
+    if (message) sessionStorage.removeItem(NOTICE_KEY)
+    return message
+  } catch {
+    return null
+  }
+}
 
 export function isRole(value: unknown): value is Role {
   return typeof value === 'string' && (ROLES as readonly string[]).includes(value)

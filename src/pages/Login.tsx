@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AuthScreen } from '../layout/AuthScreen'
+import { takeSessionNotice } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
 
 type Errors = {
@@ -13,7 +14,10 @@ export function Login() {
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [errors, setErrors] = useState<Errors>({})
+  const [errors, setErrors] = useState<Errors>(() => {
+    const notice = takeSessionNotice()
+    return notice ? { form: notice } : {}
+  })
   const [pending, setPending] = useState(false)
 
   async function onSubmit(event: FormEvent) {

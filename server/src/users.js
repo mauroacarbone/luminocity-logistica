@@ -107,11 +107,19 @@ export function readUsersList() {
   return readUsers()
 }
 
-export function setUserRole(id, role) {
+function denied(actor, target, changes) {
+  const permission = canManageUser(actor, target, changes)
+  if (permission.ok) return null
+  return { error: 'forbidden', status: permission.status, message: permission.message }
+}
+
+export function setUserRole(id, role, actor) {
   return locked(async () => {
     const users = await readUsers()
     const index = users.findIndex((item) => item.id === id)
     if (index < 0) return { error: 'missing' }
+    const block = denied(actor, users[index], { role })
+    if (block) return block
     if (isActive(users[index]) && users[index].role === 'admin' && role !== 'admin') {
       const admins = users.filter((item) => item.role === 'admin' && isActive(item)).length
       if (admins <= 1) return { error: 'last-admin' }
@@ -122,11 +130,13 @@ export function setUserRole(id, role) {
   })
 }
 
-export function updateUserDetails(id, fields) {
+export function updateUserDetails(id, fields, actor) {
   return locked(async () => {
     const users = await readUsers()
     const index = users.findIndex((item) => item.id === id)
     if (index < 0) return { error: 'missing' }
+    const block = denied(actor, users[index], {})
+    if (block) return block
     const next = { ...users[index] }
     if (Object.prototype.hasOwnProperty.call(fields, 'name')) {
       const nameKey = normalizeName(fields.name)
@@ -162,27 +172,35 @@ export function updateUserDetails(id, fields) {
   })
 }
 
-export function setUserPassword(id, password) {
+export function setUserPassword(id, password, actor) {
   return locked(async () => {
     const users = await readUsers()
     const index = users.findIndex((item) => item.id === id)
     if (index < 0) return { error: 'missing' }
-    users[index] = { ...users[index], passwordHash: await bcrypt.hash(password, 10) }
+    const block = denied(actor, users[index], {})
+    if (block) return block
+    users[index] = {
+      ...users[index],
+      passwordHash: await bcrypt.hash(password, 10),
+      passwordChangedAt: new Date().toISOString(),
+    }
     await writeUsers(users)
     return { user: users[index] }
   })
 }
 
-export function setUserActive(id, active, actorId) {
+export function setUserActive(id, active, actor) {
   return locked(async () => {
     const users = await readUsers()
     const index = users.findIndex((item) => item.id === id)
     if (index < 0) return { error: 'missing' }
+    const block = denied(actor, users[index], { active })
+    if (block) return block
     if (active === false && users[index].role === 'admin' && isActive(users[index])) {
       const admins = users.filter((item) => item.role === 'admin' && isActive(item)).length
       if (admins <= 1) return { error: 'last-admin' }
     }
-    if (active === false && id === actorId) return { error: 'self' }
+    if (active === false && id === actor?.id) return { error: 'self' }
     users[index] = { ...users[index], active: active === true }
     await writeUsers(users)
     if (active === false) await forgetUsers([id])

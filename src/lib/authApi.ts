@@ -1,4 +1,4 @@
-import { isSession, type Session } from './authStore'
+import { isSession, rememberSessionNotice, type Session } from './authStore'
 
 export type AuthFailure = {
   ok: false
@@ -74,7 +74,14 @@ export async function meRequest(token: string): Promise<Session | 'unauthorized'
   } catch {
     return 'error'
   }
-  if (response.status === 401) return 'unauthorized'
+  if (response.status === 401) {
+    const data: unknown = await response.json().catch(() => null)
+    if (data && typeof data === 'object' && 'code' in data && data.code === 'USER_INACTIVE') {
+      const message = 'message' in data && typeof data.message === 'string' ? data.message : ''
+      if (message) rememberSessionNotice(message)
+    }
+    return 'unauthorized'
+  }
   if (!response.ok) return 'error'
   const data: unknown = await response.json().catch(() => null)
   return isSession(data) ? data : 'unauthorized'

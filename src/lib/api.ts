@@ -1,8 +1,14 @@
-import { loadToken } from './authStore'
+import { loadToken, rememberSessionNotice } from './authStore'
 
 export type ApiSuccess = { ok: true; data: unknown }
 export type ApiFailure = { ok: false; status: number; message: string }
 export type ApiResult = ApiSuccess | ApiFailure
+
+function codeFrom(data: unknown) {
+  if (!data || typeof data !== 'object' || !('code' in data)) return undefined
+  const code = data.code
+  return typeof code === 'string' ? code : undefined
+}
 
 function messageFrom(data: unknown, fallback: string) {
   if (!data || typeof data !== 'object' || !('message' in data)) return fallback
@@ -43,10 +49,12 @@ export async function apiRequest(
   if (response.status === 204) return { ok: true, data: null }
   const data: unknown = await response.json().catch(() => null)
   if (!response.ok) {
+    const message = messageFrom(data, fallbackFor(response.status, fallback))
+    if (response.status === 401 && codeFrom(data) === 'USER_INACTIVE') rememberSessionNotice(message)
     return {
       ok: false,
       status: response.status,
-      message: messageFrom(data, fallbackFor(response.status, fallback)),
+      message,
     }
   }
   return { ok: true, data }
