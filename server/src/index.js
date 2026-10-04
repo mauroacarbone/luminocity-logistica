@@ -1,10 +1,11 @@
+import { access } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
 import express from 'express'
 import { authorizationsRouter } from './authorizations.js'
 import { authRouter } from './auth.js'
-import { ensureSchema } from './db/store.js'
+import { checkDatabase, ensureSchema } from './db/store.js'
 import { driversRouter } from './drivers.js'
 import { notificationsRouter } from './notifications.js'
 import { ordersRouter } from './orders.js'
@@ -12,14 +13,26 @@ import { usersRouter } from './usersRoute.js'
 import { ensureDemoUser } from './users.js'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
+const repoRoot = path.join(root, '..')
 dotenv.config({ path: path.join(root, '.env') })
 
-if (!process.env.JWT_SECRET) {
-  console.error('Falta JWT_SECRET en server/.env')
+const production = process.env.NODE_ENV === 'production'
+
+if (!String(process.env.JWT_SECRET ?? '').trim()) {
+  console.error(
+    production ? 'Falta JWT_SECRET. En producción es obligatorio.' : 'Falta JWT_SECRET en server/.env',
+  )
+  process.exit(1)
+}
+
+if (production && !String(process.env.DATABASE_URL ?? '').trim()) {
+  console.error('Falta DATABASE_URL. En producción es obligatorio.')
   process.exit(1)
 }
 
 const app = express()
+// Render termina HTTPS y manda la IP en X-Forwarded-For.
+app.set('trust proxy', 1)
 const jsonLarge = express.json({ limit: '10mb' })
 const jsonLocation = express.json({ limit: '2kb' })
 // El front llama a /api por el proxy de Vite, así que no hace falta CORS.
@@ -48,12 +61,44 @@ app.use((error, req, res, next) => {
   }
   next(error)
 })
+app.get('/api/health', async (_req, res) => {
+  try {
+    await checkDatabase()
+    res.status(200).json({ ok: true })
+  } catch (error) {
+    console.error('No se pudo verificar la base', error)
+    res.status(503).json({ ok: false })
+  }
+})
 app.use('/api/auth', authRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/authorizations', authorizationsRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/orders', ordersRouter)
 app.use('/api/drivers', driversRouter)
+
+if (production) {
+  const distDir = path.join(repoRoot, 'dist')
+  const indexHtml = path.join(distDir, 'index.html')
+  try {
+    await access(indexHtml)
+  } catch {
+    console.error('Falta el build del front (dist/index.html). Corré npm run build en la raíz.')
+    process.exit(1)
+  }
+  app.use(express.static(distDir))
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      next()
+      return
+    }
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      next()
+      return
+    }
+    res.sendFile(indexHtml)
+  })
+}
 
 try {
   await ensureSchema()
