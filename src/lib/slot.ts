@@ -2,10 +2,10 @@ import type { Order } from '../data/orders'
 
 export const SLOT_LIMIT = 3
 
-/** "09:00 - 13:00" y "9:00-13:00" quedan como 09:00-13:00. */
+/** "09:00 - 13:00", "9:00–13:00" y "9:00-13:00" quedan como 09:00-13:00. */
 export function normalizeTimeWindow(value?: string) {
   if (!value) return ''
-  const compact = value.trim().replace(/\s+/g, '')
+  const compact = value.trim().replace(/[–—]/g, '-').replace(/\s+/g, '')
   if (!compact) return ''
   const match = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/.exec(compact)
   if (!match) return compact

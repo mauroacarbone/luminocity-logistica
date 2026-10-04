@@ -437,10 +437,10 @@ async function checkDriver(driverId, previous) {
 
 const SLOT_LIMIT = 3
 
-/** "09:00 - 13:00" y "9:00-13:00" quedan como 09:00-13:00. */
+/** "09:00 - 13:00", "9:00–13:00" y "9:00-13:00" quedan como 09:00-13:00. */
 export function normalizeTimeWindow(value) {
   if (typeof value !== 'string') return ''
-  const compact = value.trim().replace(/\s+/g, '')
+  const compact = value.trim().replace(/[–—]/g, '-').replace(/\s+/g, '')
   if (!compact) return ''
   const match = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/.exec(compact)
   if (!match) return compact
@@ -448,9 +448,21 @@ export function normalizeTimeWindow(value) {
   return `${hour(match[1])}:${match[2]}-${hour(match[3])}:${match[4]}`
 }
 
+function driverKey(order) {
+  return typeof order?.driverId === 'string' ? order.driverId : ''
+}
+
 function requireDriverWindow(current, next) {
-  if (!next?.driverId || normalizeTimeWindow(next.timeWindow)) return { ok: true }
-  const clearing = Boolean(current && normalizeTimeWindow(current.timeWindow))
+  const nextDriver = driverKey(next)
+  if (!nextDriver) return { ok: true }
+  const nextWindow = normalizeTimeWindow(next?.timeWindow)
+  if (current) {
+    const sameDriver = driverKey(current) === nextDriver
+    const sameWindow = normalizeTimeWindow(current.timeWindow) === nextWindow
+    if (sameDriver && sameWindow) return { ok: true }
+  }
+  if (nextWindow) return { ok: true }
+  const clearing = Boolean(current && normalizeTimeWindow(current.timeWindow) && driverKey(current) === nextDriver)
   return {
     error: clearing
       ? 'Para sacar la franja, primero pasalo a Sin chofer.'

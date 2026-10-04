@@ -97,6 +97,14 @@ function DriverChoice({
   )
 }
 
+function choferOptions(
+  drivers: { id: string; name: string }[],
+  order: Order,
+) {
+  if (normalizeTimeWindow(order.timeWindow)) return drivers
+  return drivers.filter((driver) => driver.id === order.driverId)
+}
+
 function tabFor(status: OrderStatus): DispatchTab {
   if (status === 'asignado' || status === 'en-viaje') return 'viaje'
   return status
@@ -559,7 +567,7 @@ export function Despacho() {
                       </label>
                       <label className="text-xs text-lumi-muted">
                         Chofer
-                        {!normalizeTimeWindow(order.timeWindow) ? (
+                        {!normalizeTimeWindow(order.timeWindow) && !order.driverId ? (
                           <select
                             value=""
                             disabled
@@ -582,7 +590,7 @@ export function Despacho() {
                             }}
                           >
                             <option value="">Sin chofer</option>
-                            {drivers.map((driver) => (
+                            {choferOptions(drivers, order).map((driver) => (
                               <DriverChoice
                                 key={driver.id}
                                 orders={orders}
@@ -600,6 +608,9 @@ export function Despacho() {
                               />
                             )}
                           </select>
+                        )}
+                        {!normalizeTimeWindow(order.timeWindow) && order.driverId && (
+                          <span className="mt-1 block">Asigná una franja primero</span>
                         )}
                       </label>
                       <SlotUsage orders={orders} order={order} />
