@@ -37,6 +37,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 19.1 | Build de Render y escrituras en Postgres | Hecho |
 | 19.2 | Arreglos de producción: login, errores y usuarios | Hecho |
 | 19.3 | Sesión estable al cambiar de pestaña y alta de usuarios | Hecho |
+| 19.4 | Permisos en Usuarios, activos e inactivos y edición | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -76,6 +77,8 @@ El Brief 19.2 afina lo que se nota en producción. El límite del login cuenta s
 
 El Brief 19.3 deja quieta la sesión al volver a la pestaña: si `/api/auth/me` no cambió, el objeto de usuario sigue siendo el mismo y no se vuelven a bajar pedidos ni usuarios. En Usuarios, una recarga no pisa un cambio sin guardar. El admin da de alta cuentas desde esa pantalla (`POST /api/users`): email único, contraseña de 8 caracteres y rol. `create-admin` queda solo para el primer admin. El 404 de una ruta de la API dice "No existe esa ruta de la API".
 
+El Brief 19.4 abre Usuarios al encargado, con la regla en el server. El admin crea y modifica a todos. El encargado también, menos a un admin y menos asignar ese rol. Cada usuario tiene `active` (si falta, está activo). Un inactivo no entra y el token que ya tenía recibe 401. Nadie se desactiva a sí mismo y tiene que quedar un admin activo. El nombre, el email y la contraseña se editan desde la misma pantalla. El nombre y el email son únicos.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
@@ -96,12 +99,12 @@ En este orden. No adelantar el siguiente.
 - En producción hacen falta `DATABASE_URL` y `JWT_SECRET`. No se crea el usuario demo. El front y la API salen del mismo proceso. `create-admin` crea solo el primer admin. El resto de las cuentas las da de alta el admin desde Usuarios.
 - La contraseña se hashea con bcrypt en el server. El navegador solo guarda el JWT.
 - El rol filtra el menú y la API. En desarrollo el registro público crea `vendedor` y rechaza un nombre o email que ya use otra cuenta. En producción el registro responde 403. No carga `sellerName`.
-- El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. Solo admin lo elige en Usuarios, desde los vendedores de datos maestros. Al editar no puede cambiar el vendedor del pedido.
-- El chofer ve las entregas de su `carrierName`. Sin vínculo no ve pedidos. Solo admin lo elige en Usuarios, desde los transportistas de datos maestros.
+- El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. El admin o el encargado lo elige en Usuarios, desde los vendedores de datos maestros. Una cuenta admin solo la edita un admin. Al editar no puede cambiar el vendedor del pedido.
+- El chofer ve las entregas de su `carrierName`. Sin vínculo no ve pedidos. El admin o el encargado lo elige en Usuarios, desde los transportistas de datos maestros. Una cuenta admin solo la edita un admin.
 - Una carga a nombre de otro vendedor exige una autorización aprobada y sin usar. Se marca usada en la misma escritura que guarda el pedido. Al pedirla se avisa al encargado.
 - Un chofer tiene como máximo 3 pedidos por `timeWindow` y `deliveryDate`. El cuarto responde 409 `FRANJA_LLENA`, salvo que encargado o admin manden `override: true`. Eso queda en `slotOverrides` del pedido.
 - La edición de un preparado por el vendedor no cambia el pedido hasta que el encargado la aprueba o la rechaza. Si el pedido ya avanzó, aprobar responde 409. El vendedor recibe el aviso de aprobado o rechazado.
-- No se le puede sacar el rol al último administrador.
+- No se puede desactivar ni sacar el rol al último administrador activo. Nadie se desactiva a sí mismo. Un usuario inactivo no entra y el token que ya tenía deja de servir.
 - A `preparado` se pasa solo con una cantidad de bultos.
 - Entrega propia y correo tienen listas de transportistas distintas, editables en Datos maestros.
 - El QR de la carátula busca el pedido o confirma la entrega.
