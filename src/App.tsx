@@ -5,6 +5,7 @@ import { canOpen } from './lib/access'
 import { AppShell } from './layout/AppShell'
 import { AuthBoot } from './layout/AuthScreen'
 import { Bandeja } from './pages/Bandeja'
+import { ChoferesEnRuta } from './pages/ChoferesEnRuta'
 import { DatosMaestros } from './pages/DatosMaestros'
 import { Despacho } from './pages/Despacho'
 import { Login } from './pages/Login'
@@ -95,6 +96,14 @@ export default function App() {
           element={
             <Gate path="/despacho">
               <Despacho />
+            </Gate>
+          }
+        />
+        <Route
+          path="/choferes"
+          element={
+            <Gate path="/choferes">
+              <ChoferesEnRuta />
             </Gate>
           }
         />

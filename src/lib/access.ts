@@ -4,13 +4,14 @@ import type { Role, Session } from './authStore'
 const MENU: Record<Role, readonly string[]> = {
   vendedor: ['/', '/nuevo-pedido', '/pedidos', '/despacho', '/post-venta'],
   deposito: ['/', '/pedidos', '/despacho', '/pendientes'],
-  encargado_deposito: ['/', '/pedidos', '/despacho', '/rutas', '/pendientes', '/post-venta', '/bandeja'],
+  encargado_deposito: ['/', '/pedidos', '/despacho', '/choferes', '/rutas', '/pendientes', '/post-venta', '/bandeja'],
   chofer: ['/mis-entregas'],
   admin: [
     '/',
     '/nuevo-pedido',
     '/pedidos',
     '/despacho',
+    '/choferes',
     '/rutas',
     '/pendientes',
     '/post-venta',

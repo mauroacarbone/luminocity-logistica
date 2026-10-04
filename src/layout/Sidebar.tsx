@@ -9,6 +9,7 @@ const NAV = [
   { to: '/nuevo-pedido', label: 'Nuevo Pedido', icon: 'plus' },
   { to: '/pedidos', label: 'Pedidos y Preparación', icon: 'box' },
   { to: '/despacho', label: 'Despacho', icon: 'truck' },
+  { to: '/choferes', label: 'Choferes en ruta', icon: 'map' },
   { to: '/rutas', label: 'Planificador de Rutas', icon: 'route' },
   { to: '/pendientes', label: 'Pendientes de Entregas', icon: 'pin' },
   { to: '/post-venta', label: 'Post Venta', icon: 'refresh' },
@@ -56,6 +57,12 @@ function Icon({ name }: { name: (typeof NAV)[number]['icon'] }) {
       )}
       {name === 'route' && (
         <path d="M5 19V6M5 6l4 3 5-4 5 3M9 19h10" {...common} />
+      )}
+      {name === 'map' && (
+        <>
+          <path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z" {...common} />
+          <path d="M9 3v15M15 6v15" {...common} />
+        </>
       )}
       {name === 'pin' && (
         <path
