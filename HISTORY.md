@@ -32,6 +32,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 18.1 | Franja obligatoria para el chofer y cupo | Hecho |
 | 18.2 | Pedidos viejos con chofer y sin franja | Hecho |
 | 18.3 | Piso, depto y timbre según el domicilio | Hecho |
+| 18.4 | El server limpia piso, depto y timbre según el tipo | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -60,6 +61,8 @@ El Brief 18.1 no deja asignar chofer si el pedido no tiene franja: el server res
 El Brief 18.2 no frena un pedido que ya tiene chofer y no tiene franja: cambiar estado o bultos sigue. La franja se exige al asignar o cambiar el chofer, o al borrarla si el chofer queda. Pasar a Sin chofer se permite con o sin franja. En Despacho ese pedido deja el chofer actual y Sin chofer, con el aviso de asignar franja; otro chofer no. El guion largo también separa la franja. Quien no es encargado ni admin ve "Asigná una franja primero" o "Pedile autorización al encargado".
 
 El Brief 18.3 suma piso, depto y timbre al domicilio. Son opcionales, de hasta 20 caracteres. Departamento o edificio muestran los tres; casa, solo el timbre. Al cambiar el tipo se limpian los que no corresponden. El chofer los ve bajo la dirección, y también el detalle del pedido, Despacho y Pedidos. Nominatim sigue recibiendo solo la calle. Un pedido viejo sin esos campos abre y se edita igual. Si el vendedor los cambia, pide motivo y, en un preparado, espera la aprobación del encargado.
+
+El Brief 18.4 limpia esos campos en el server según el tipo: departamento, edificio y oficina guardan los tres; casa y local, solo el timbre; obra y el resto, ninguno. Corre cuando el PATCH trae el tipo o alguno de los campos. Un cambio de estado no los toca, así un pedido viejo no le devuelve 403 al chofer. Oficina muestra los tres en el formulario y local solo el timbre. Si el encargado edita solo piso, depto o timbre, queda en `edits`. La carátula los muestra bajo la dirección. El aviso de franja en Despacho queda al lado del selector.
 
 ## Pendientes
 
