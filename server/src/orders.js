@@ -16,6 +16,7 @@ import { locked } from './lock.js'
 import { forgetUsers, putLocation, readLocations } from './locations.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyDelivered, notifyEncargados, notifySeller, notifyUser } from './notifications.js'
+import { closeFinishedSheets } from './routeSheets.js'
 import { isActive, readUsersList } from './users.js'
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
@@ -318,6 +319,7 @@ function patchOrder(id, body, user) {
     }
     orders[index] = order
     await writeOrders(orders)
+    await closeFinishedSheets(orders)
     if (user.role === 'vendedor') {
       await notifyEncargados({
         text: `${user.name} editó el pedido ${order.id}: ${reason.value}`,
@@ -404,6 +406,7 @@ function deleteOrder(id, user) {
     }
     const remaining = orders.filter((item) => item.id !== id)
     await writeOrders(remaining)
+    await closeFinishedSheets(remaining)
     if (current.status === 'en-viaje') await releaseIdleDrivers(remaining, current.transporter)
     return { ok: true }
   })
@@ -467,7 +470,7 @@ function makeEdit(user, reason, changes, status) {
   }
 }
 
-async function checkDriver(driverId, previous) {
+export async function checkDriver(driverId, previous) {
   if (!driverId || driverId === previous) return { ok: true }
   const users = await readUsersList()
   const driver = users.find((item) => item.id === driverId)
@@ -537,7 +540,7 @@ export function countDriverSlot(orders, driverId, deliveryDate, timeWindow, exce
   }).length
 }
 
-async function checkSlot(orders, current, next, user, override) {
+export async function checkSlot(orders, current, next, user, override) {
   if (!occupiesSlot(next)) return { ok: true }
   if (current && occupiesSlot(current) && sameSlot(current, next)) return { ok: true }
   const count = countDriverSlot(orders, next.driverId, next.deliveryDate, next.timeWindow, next.id)
@@ -559,7 +562,7 @@ async function checkSlot(orders, current, next, user, override) {
   }
 }
 
-function rememberOverride(order, user) {
+export function rememberOverride(order, user) {
   const previous = Array.isArray(order.slotOverrides) ? order.slotOverrides : []
   order.slotOverrides = [
     ...previous,
@@ -699,7 +702,40 @@ function readOrderFields(body, current) {
   if (Array.isArray(current?.slotOverrides)) {
     order.slotOverrides = current.slotOverrides.map((item) => ({ ...item }))
   }
+  stampStatus(order, current)
   return { order }
+}
+
+const STATUS_RANK = { pendiente: 0, preparado: 1, asignado: 2, 'en-viaje': 3, entregado: 4 }
+
+function stampStatus(order, current) {
+  if (current) {
+    for (const key of ['assignedAt', 'departedAt', 'deliveredAt', 'routeId']) {
+      if (typeof current[key] === 'string' && current[key]) order[key] = current[key]
+    }
+    if (Number.isInteger(current.routeSeq) && current.routeSeq > 0) order.routeSeq = current.routeSeq
+  }
+  if (current && current.status === order.status) return
+  const now = new Date().toISOString()
+  const rank = STATUS_RANK[order.status] ?? 0
+  if (rank < STATUS_RANK.asignado) {
+    delete order.assignedAt
+    delete order.departedAt
+    delete order.deliveredAt
+    return
+  }
+  if (order.status === 'asignado') {
+    order.assignedAt = now
+    delete order.departedAt
+    delete order.deliveredAt
+    return
+  }
+  if (order.status === 'en-viaje') {
+    order.departedAt = now
+    delete order.deliveredAt
+    return
+  }
+  if (order.status === 'entregado') order.deliveredAt = now
 }
 
 function readRequiredText(value) {

@@ -13,6 +13,7 @@ const SPECS = {
   notifications: { file: 'notifications.json', kind: 'array' },
   authorizations: { file: 'authorizations.json', kind: 'array' },
   locations: { file: 'locations.json', kind: 'object' },
+  routeSheets: { file: 'routeSheets.json', kind: 'array' },
 }
 
 const tx = new AsyncLocalStorage()

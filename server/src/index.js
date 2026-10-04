@@ -9,6 +9,7 @@ import { checkDatabase, ensureSchema } from './db/store.js'
 import { driversRouter } from './drivers.js'
 import { notificationsRouter } from './notifications.js'
 import { ordersRouter } from './orders.js'
+import { routeSheetsRouter } from './routeSheets.js'
 import { usersRouter } from './usersRoute.js'
 import { ensureDemoUser } from './users.js'
 
@@ -81,6 +82,7 @@ app.use('/api/users', usersRouter)
 app.use('/api/authorizations', authorizationsRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/orders', ordersRouter)
+app.use('/api/route-sheets', routeSheetsRouter)
 app.use('/api/drivers', driversRouter)
 app.use('/api', (_req, res) => {
   res.status(404).json({ message: 'No existe esa ruta de la API' })
