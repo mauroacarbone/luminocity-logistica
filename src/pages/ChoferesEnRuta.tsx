@@ -128,7 +128,10 @@ export function ChoferesEnRuta() {
     let cancelled = false
 
     async function load() {
-      const result = await fetchDriverLocations()
+      const [result, sheetsResult] = await Promise.all([
+        fetchDriverLocations(),
+        listRouteSheets(businessToday()),
+      ])
       if (cancelled) return
       if (!result.ok) {
         if (result.status === 401) {
@@ -140,14 +143,12 @@ export function ChoferesEnRuta() {
         return
       }
       setDrivers(result.data)
+      if (sheetsResult.ok) setSheets(sheetsResult.data)
       setNow(Date.now())
       setStatus('ready')
     }
 
     void load()
-    void listRouteSheets(businessToday()).then((result) => {
-      if (!cancelled && result.ok) setSheets(result.data)
-    })
     const timer = window.setInterval(() => void load(), REFRESH_MS)
     return () => {
       cancelled = true

@@ -5,7 +5,7 @@ import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
 import { mapsLink, onTheWayText, whatsappLink } from '../lib/whatsapp'
 import { placeLine } from '../lib/place'
 import { listRouteSheets, startRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
-import { businessToday, mapsDirections, stopPoint } from '../lib/schedule'
+import { businessOffset, businessToday, mapsDirections, stopPoint } from '../lib/schedule'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 
@@ -90,13 +90,21 @@ export function MisEntregas() {
 
   useEffect(() => {
     let cancelled = false
-    void listRouteSheets(today).then((result) => {
+    const yesterday = businessOffset(-1)
+    void Promise.all([listRouteSheets(today), listRouteSheets(yesterday)]).then(([todayResult, yesterdayResult]) => {
       if (cancelled) return
-      if (!result.ok) {
-        if (result.status === 401) return
-        return
+      const open: RouteSheet[] = []
+      if (todayResult.ok) {
+        open.push(...todayResult.data.filter((sheet) => sheet.status !== 'cerrada'))
       }
-      setSheets(result.data.filter((sheet) => sheet.status !== 'cerrada'))
+      if (yesterdayResult.ok) {
+        open.push(
+          ...yesterdayResult.data.filter(
+            (sheet) => sheet.status === 'en_curso' && !open.some((item) => item.id === sheet.id),
+          ),
+        )
+      }
+      setSheets(open)
     })
     return () => {
       cancelled = true
@@ -188,21 +196,10 @@ export function MisEntregas() {
     }
   }, [tracking])
 
-  if (!user?.carrierName?.trim()) {
-    return (
-      <section className="page">
-        <header className="page-header">
-          <h1>Mis entregas</h1>
-        </header>
-        <p className="mt-6 text-base font-semibold">Tu usuario no está vinculado a un transportista</p>
-      </section>
-    )
-  }
-
   const shownGps: Gps = tracking ? gps : 'off'
   const position = shownGps === 'on' ? here : null
-  const todaySheets = sheets.filter((sheet) => sheet.date === today)
-  const onSheet = new Set(todaySheets.flatMap((sheet) => sheet.orderIds))
+  const visibleSheets = sheets
+  const onSheet = new Set(visibleSheets.flatMap((sheet) => sheet.orderIds))
   const loose = orders.filter((order) => !onSheet.has(order.id))
   const assigned = sortDeliveries(
     loose.filter((order) => order.status === 'preparado' || order.status === 'asignado'),
@@ -254,14 +251,18 @@ export function MisEntregas() {
       .filter((order): order is Order => Boolean(order))
       .filter((order) => order.status !== 'entregado')
     const origin = position ? `${position.lat},${position.lng}` : sheet.origin
-    return mapsDirections(origin, pending.map((order) => stopPoint(order)))
+    const limited = pending.slice(0, 3)
+    return {
+      link: mapsDirections(origin, limited.map((order) => stopPoint(order))),
+      more: pending.length > 3,
+    }
   }
 
   return (
     <section className="page">
       <header className="page-header">
         <h1>Mis entregas</h1>
-        <p>{user.carrierName}</p>
+        {user?.carrierName?.trim() ? <p>{user.carrierName}</p> : null}
       </header>
       <p className={`mt-3 text-sm font-semibold ${shownGps === 'on' ? 'text-lumi-ink' : 'text-lumi-muted'}`}>
         {shownGps === 'on' ? 'Ubicación activa' : 'Ubicación apagada'}
@@ -271,17 +272,18 @@ export function MisEntregas() {
           Activá la ubicación para ordenar las entregas
         </p>
       )}
-      {todaySheets.map((sheet) => {
+      {visibleSheets.map((sheet) => {
         const stops = sheet.orderIds
           .map((id) => orders.find((order) => order.id === id))
           .filter((order): order is Order => Boolean(order))
-        const link = sheetDirections(sheet)
+        const directions = sheetDirections(sheet)
         return (
           <section key={sheet.id} className="mt-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base font-semibold">
-                Hoja de ruta · Franja {sheet.slot} · {sheet.orderIds.length} parada
-                {sheet.orderIds.length === 1 ? '' : 's'}
+                Hoja de ruta · Franja {sheet.slot} · {stops.length} parada
+                {stops.length === 1 ? '' : 's'}
+                {sheet.date !== today ? ` · ${sheet.date}` : ''}
               </h2>
             </div>
             <div className="mt-3 flex flex-col gap-2">
@@ -295,25 +297,31 @@ export function MisEntregas() {
                   Iniciar recorrido
                 </button>
               )}
-              {link ? (
-                <a
-                  className="grid min-h-12 place-items-center rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white"
-                  href={link}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Cómo llegar
-                </a>
+              {directions.link ? (
+                <>
+                  <a
+                    className="grid min-h-12 place-items-center rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white"
+                    href={directions.link}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Cómo llegar
+                  </a>
+                  {directions.more ? (
+                    <p className="text-sm text-lumi-muted">Abrí de nuevo después de la parada 3</p>
+                  ) : null}
+                </>
               ) : null}
             </div>
             <ul className="mt-3 flex flex-col gap-3">
-              {stops.map((order) => (
+              {stops.map((order, index) => (
                 <li key={order.id}>
                   <DeliveryCard
                     order={order}
                     distance=""
                     busy={busy === order.id}
-                    stopLabel={`Parada ${order.routeSeq ?? sheet.orderIds.indexOf(order.id) + 1} de ${sheet.orderIds.length}`}
+                    stopLabel={`Parada ${index + 1} de ${stops.length}`}
+                    allowLeave={sheet.status === 'en_curso'}
                     onLeave={() => void changeStatus(order, 'en-viaje')}
                     onDelivered={() => void changeStatus(order, 'entregado')}
                   />
@@ -376,6 +384,7 @@ function DeliveryCard({
   distance,
   busy,
   stopLabel,
+  allowLeave = false,
   onLeave,
   onDelivered,
 }: {
@@ -383,6 +392,7 @@ function DeliveryCard({
   distance: string
   busy: boolean
   stopLabel?: string
+  allowLeave?: boolean
   onLeave: () => void
   onDelivered: () => void
 }) {
@@ -391,6 +401,7 @@ function DeliveryCard({
   const waiting = order.status === 'preparado'
   const canLeave = order.status === 'asignado'
   const canDeliver = order.status === 'en-viaje'
+  const showLeave = canLeave && (!stopLabel || allowLeave)
 
   return (
     <article className="rounded-2xl bg-white p-4 shadow-sm">
@@ -424,7 +435,7 @@ function DeliveryCard({
               Cómo llegar
             </button>
           )}
-          {canLeave && !stopLabel && (
+          {showLeave && (
             <button
               type="button"
               className="min-h-12 rounded-xl bg-lumi-yellow px-4 text-base font-semibold text-lumi-yellow-ink disabled:opacity-50"

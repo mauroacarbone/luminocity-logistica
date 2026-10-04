@@ -163,6 +163,7 @@ export function Despacho() {
   const [busyId, setBusyId] = useState('')
   const [scanBusy, setScanBusy] = useState(false)
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
 
   const assign = Boolean(user && canAssignDispatch(user.role))
   const confirmDelivery = Boolean(user && canConfirmDelivery(user.role))
@@ -189,15 +190,9 @@ export function Despacho() {
   }, [assign, logout])
 
   useEffect(() => {
-    let cancelled = false
-    void listRouteSheets(selectedIso).then((result) => {
-      if (cancelled || !result.ok) return
-      setSheets(result.data)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [selectedIso, orders])
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const days = weekDays(weekOffset)
   const selectedDate = days.find((day) => toIso(day) === selectedIso) ?? days[0]
@@ -213,6 +208,45 @@ export function Despacho() {
     if (transporter !== 'todos' && order.transporter !== transporter) return false
     return true
   }
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadSheets() {
+      if (searching) {
+        const needle = query.trim().toLowerCase()
+        const matches = orders.filter((order) => {
+          if (!matchesTab(order, tab)) return false
+          if (transporter !== 'todos' && order.transporter !== transporter) return false
+          if (order.id.toLowerCase().includes(needle)) return true
+          if (order.client.toLowerCase().includes(needle)) return true
+          return order.invoices?.some((invoice) => invoice.toLowerCase().includes(needle)) ?? false
+        })
+        const dates = [...new Set(matches.map((order) => order.deliveryDate).filter(Boolean))]
+        if (dates.length === 0) {
+          if (!cancelled) setSheets([])
+          return
+        }
+        const results = await Promise.all(dates.map((date) => listRouteSheets(date)))
+        if (cancelled) return
+        const merged: RouteSheet[] = []
+        for (const result of results) {
+          if (!result.ok) continue
+          for (const sheet of result.data) {
+            if (!merged.some((item) => item.id === sheet.id)) merged.push(sheet)
+          }
+        }
+        setSheets(merged)
+        return
+      }
+      const result = await listRouteSheets(selectedIso)
+      if (cancelled || !result.ok) return
+      setSheets(result.data)
+    }
+    void loadSheets()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedIso, orders, searching, query, tab, transporter])
 
   function matchesQuery(order: Order) {
     const needle = query.trim().toLowerCase()
@@ -553,12 +587,16 @@ export function Despacho() {
                     {pendingEdit(order) && <p>Esperando confirmación</p>}
                     <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
                     {order.timeWindow && <p>{order.timeWindow}</p>}
-                    {order.status === 'en-viaje' && (leftAgo(order.departedAt) || sheetProgress(order, sheets, orders)) && (
+                    {order.status === 'en-viaje' &&
+                      (leftAgo(order.departedAt, now) || sheetProgress(order, sheets, orders)) && (
                       <p>
-                        {[leftAgo(order.departedAt), sheetProgress(order, sheets, orders)].filter(Boolean).join(' · ')}
+                        {[leftAgo(order.departedAt, now), sheetProgress(order, sheets, orders)]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </p>
                     )}
-                    {order.status !== 'entregado' && slotEnded(order.deliveryDate, order.timeWindow) && (
+                    {(order.status === 'asignado' || order.status === 'en-viaje') &&
+                      slotEnded(order.deliveryDate, order.timeWindow, now) && (
                       <p className="font-semibold text-lumi-danger">Atrasado</p>
                     )}
                     {order.status === 'entregado' && order.deliveredAt && <p>Entregado {clockTime(order.deliveredAt)}</p>}

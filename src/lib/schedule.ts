@@ -9,6 +9,17 @@ export function businessToday() {
   }).format(new Date())
 }
 
+/** Día hábil corrido en calendario (America/Argentina), p. ej. -1 = ayer. */
+export function businessOffset(days: number) {
+  const today = businessToday()
+  const [year, month, day] = today.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day + days))
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 export function minutesSince(iso: string | undefined, now = Date.now()) {
   if (!iso) return null
   const at = Date.parse(iso)

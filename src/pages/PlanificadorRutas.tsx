@@ -146,6 +146,7 @@ export function PlanificadorRutas() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const ordersRef = useRef(orders)
+  const drawRef = useRef<(from: string, ids: string[], optimize: boolean) => Promise<boolean>>(async () => false)
   useEffect(() => {
     ordersRef.current = orders
   }, [orders])
@@ -195,16 +196,16 @@ export function PlanificadorRutas() {
     const chosen = ordersByIds(ordersRef.current, ids)
     if (!from.trim()) {
       setError('Completá el origen de la ruta.')
-      return
+      return false
     }
     if (chosen.length === 0) {
       setError('Seleccioná al menos un pedido.')
-      return
+      return false
     }
     const missing = chosen.find((order) => !order.address?.trim() && !pointOf(order))
     if (missing) {
       setError(`${missing.id} no tiene dirección.`)
-      return
+      return false
     }
     setLoading(true)
     setError('')
@@ -226,14 +227,20 @@ export function PlanificadorRutas() {
       setStops(ordered)
       setRoute(planned)
       if (optimize) setSelectedIds(ordered.filter((stop) => stop.key !== 'origen').map((stop) => stop.key))
+      return true
     } catch (caught) {
       setStops([])
       setRoute(null)
       setError(caught instanceof Error ? caught.message : 'No se pudo calcular la ruta.')
+      return false
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    drawRef.current = draw
+  })
 
   useEffect(() => {
     if (!driverId || !timeWindow) return
@@ -259,14 +266,33 @@ export function PlanificadorRutas() {
           : null,
       )
       setError('')
-      if (found) void draw(found.origin, found.orderIds, false)
+      if (found) void drawRef.current(found.origin, found.orderIds, false)
     })
     return () => {
       cancelled = true
     }
-    // draw usa el estado de pedidos del momento en que cambia la hoja.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driverId, timeWindow, iso, logout])
+
+  const sheetId = sheet?.id
+  const sheetStatus = sheet?.status
+  useEffect(() => {
+    if (!sheetId || sheetStatus !== 'en_curso' || !driverId || !timeWindow) return
+    let cancelled = false
+    const timer = window.setInterval(() => {
+      void listRouteSheets(iso).then((result) => {
+        if (cancelled || !result.ok) return
+        const found =
+          result.data.find(
+            (item) => item.driverId === driverId && normalizeTimeWindow(item.slot) === timeWindow,
+          ) ?? null
+        setSheet(found)
+      })
+    }, 30_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [sheetId, sheetStatus, driverId, timeWindow, iso])
 
   function showWeek(offset: number) {
     const nextDays = weekDays(offset)
@@ -303,14 +329,68 @@ export function PlanificadorRutas() {
 
   async function confirmSheet(override = false) {
     if (readOnly || !driverId || !timeWindow) return
-    const ids =
+    let ids =
       stops.length > 1 ? stops.filter((stop) => stop.key !== 'origen').map((stop) => stop.key) : selectedIds
     if (ids.length === 0) {
       setError('Seleccioná al menos un pedido.')
       return
     }
-    setLoading(true)
-    setError('')
+    let km = route?.kilometers ?? 0
+    let minutes = route?.minutes ?? 0
+    if (!route || route.line.length === 0) {
+      const chosen = ordersByIds(ordersRef.current, ids)
+      if (!origin.trim()) {
+        setError('Completá el origen de la ruta.')
+        return
+      }
+      if (chosen.length === 0) {
+        setError('Seleccioná al menos un pedido.')
+        return
+      }
+      const missing = chosen.find((order) => !order.address?.trim() && !pointOf(order))
+      if (missing) {
+        setError(`${missing.id} no tiene dirección.`)
+        return
+      }
+      setLoading(true)
+      setError('')
+      try {
+        const located = await locate(origin, chosen)
+        const planned = await drivingRoute(located)
+        const ordered = planned.sequence.map((index) => {
+          if (index === 0) {
+            return { key: 'origen', title: 'Salida', detail: origin.trim(), point: located[0] }
+          }
+          const order = chosen[index - 1]
+          return {
+            key: order.id,
+            title: `${order.id} — ${order.client}`,
+            detail: order.address ?? '',
+            point: located[index],
+          }
+        })
+        setStops(ordered)
+        setRoute(planned)
+        ids = ordered.filter((stop) => stop.key !== 'origen').map((stop) => stop.key)
+        km = planned.kilometers
+        minutes = planned.minutes
+      } catch (caught) {
+        setLoading(false)
+        setError(caught instanceof Error ? caught.message : 'No se pudo calcular la ruta.')
+        const accepted = await confirm(
+          'Sin recorrido',
+          'No se pudo calcular la ruta. ¿Confirmás la hoja igual?',
+        )
+        if (!accepted) return
+        km = 0
+        minutes = 0
+        setLoading(true)
+        setError('')
+      }
+    } else {
+      setLoading(true)
+      setError('')
+    }
     const result = await saveRouteSheet(
       {
         driverId,
@@ -318,8 +398,8 @@ export function PlanificadorRutas() {
         slot: timeWindow,
         origin: origin.trim(),
         orderIds: ids,
-        km: route?.kilometers ?? 0,
-        minutes: route?.minutes ?? 0,
+        km,
+        minutes,
       },
       override,
     )
@@ -496,7 +576,9 @@ export function PlanificadorRutas() {
             ))}
           </select>
         </label>
-        <p className="pb-2 text-sm font-semibold">{driverId && timeWindow ? `${used}/3` : ''}</p>
+        <p className={`pb-2 text-sm font-semibold ${used >= 3 ? 'text-lumi-danger' : ''}`}>
+          {driverId && timeWindow ? `${used}/3` : ''}
+        </p>
         {sheet && (
           <span className="mb-1 rounded-full bg-white px-3 py-1 text-xs font-semibold">{SHEET_LABEL[sheet.status]}</span>
         )}
