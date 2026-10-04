@@ -337,9 +337,9 @@ function readSheetBody(body) {
   }
   const orderIds = body.orderIds.map((id) => id.trim())
   if (new Set(orderIds).size !== orderIds.length) return fail('Hay un pedido repetido en la hoja.')
-  const km = readNumber(body.km, 'Los kilómetros')
+  const km = readMeasure(body.km, 'Los kilómetros', (value) => Math.round(value * 10) / 10)
   if (km.error) return km
-  const minutes = readNumber(body.minutes, 'Los minutos')
+  const minutes = readMeasure(body.minutes, 'Los minutos', (value) => Math.round(value))
   if (minutes.error) return minutes
   return {
     driverId,
@@ -348,7 +348,7 @@ function readSheetBody(body) {
     origin,
     orderIds,
     km: km.value,
-    minutes: Math.round(minutes.value),
+    minutes: minutes.value,
   }
 }
 
@@ -356,14 +356,20 @@ function readDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return fail('La fecha no es válida.')
   }
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return fail('La fecha no es válida.')
+  }
   return { value }
 }
 
-function readNumber(value, label) {
+function readMeasure(value, label, round) {
+  if (value === undefined || value === null) return { value: 0 }
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     return fail(`${label} no son válidos.`)
   }
-  return { value }
+  return { value: round(value) }
 }
 
 function nextSheetId(sheets) {

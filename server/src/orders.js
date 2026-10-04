@@ -733,7 +733,11 @@ function stampStatus(order, current) {
     return
   }
   if (order.status === 'asignado') {
-    order.assignedAt = now
+    const kept =
+      current?.status === 'en-viaje' && typeof current.assignedAt === 'string' && current.assignedAt
+        ? current.assignedAt
+        : ''
+    order.assignedAt = kept || now
     delete order.departedAt
     delete order.deliveredAt
     return
