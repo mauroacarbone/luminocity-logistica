@@ -177,11 +177,11 @@ export function setUserActive(id, active, actorId) {
     const users = await readUsers()
     const index = users.findIndex((item) => item.id === id)
     if (index < 0) return { error: 'missing' }
-    if (active === false && id === actorId) return { error: 'self' }
     if (active === false && users[index].role === 'admin' && isActive(users[index])) {
       const admins = users.filter((item) => item.role === 'admin' && isActive(item)).length
       if (admins <= 1) return { error: 'last-admin' }
     }
+    if (active === false && id === actorId) return { error: 'self' }
     users[index] = { ...users[index], active: active === true }
     await writeUsers(users)
     return { user: users[index] }
