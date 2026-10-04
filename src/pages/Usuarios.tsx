@@ -45,6 +45,24 @@ function carrierOf(value: Account) {
   return value.carrierName ?? ''
 }
 
+function draftFrom(item: Account): Draft {
+  return {
+    role: item.role,
+    phone: phoneOf(item),
+    sellerName: sellerOf(item),
+    carrierName: carrierOf(item),
+  }
+}
+
+function draftDirty(draft: Draft, account: Account) {
+  return (
+    draft.role !== account.role ||
+    draft.phone.trim() !== phoneOf(account) ||
+    (draft.role === 'vendedor' && draft.sellerName.trim() !== sellerOf(account)) ||
+    (draft.role === 'chofer' && draft.carrierName.trim() !== carrierOf(account))
+  )
+}
+
 export function Usuarios() {
   const { user, logout, refreshSession } = useAuth()
   const { sellers, transporters } = useCatalog()
@@ -72,17 +90,12 @@ export function Usuarios() {
       }
       const next = result.data.map((item) => ({ ...item, phone: phoneOf(item) }))
       setAccounts(next)
-      setDrafts(
+      setDrafts((current) =>
         Object.fromEntries(
-          next.map((item) => [
-            item.id,
-            {
-              role: item.role,
-              phone: item.phone,
-              sellerName: sellerOf(item),
-              carrierName: carrierOf(item),
-            },
-          ]),
+          next.map((item) => {
+            const draft = current[item.id]
+            return [item.id, draft && draftDirty(draft, item) ? draft : draftFrom(item)]
+          }),
         ),
       )
     })
@@ -178,12 +191,7 @@ export function Usuarios() {
     setAccounts((current) => current.map((item) => (item.id === next.id ? next : item)))
     setDrafts((current) => ({
       ...current,
-      [next.id]: {
-        role: next.role,
-        phone: next.phone,
-        sellerName: sellerOf(next),
-        carrierName: carrierOf(next),
-      },
+      [next.id]: draftFrom(next),
     }))
     setBusy('')
     setNotice(`Se guardó ${next.name}.`)
@@ -205,19 +213,10 @@ export function Usuarios() {
       {!loading && !error && (
       <div className="mt-6 flex flex-col gap-3">
         {accounts.map((account) => {
-          const draft = drafts[account.id] ?? {
-            role: account.role,
-            phone: account.phone,
-            sellerName: sellerOf(account),
-            carrierName: carrierOf(account),
-          }
+          const draft = drafts[account.id] ?? draftFrom(account)
           const sellerOptions = withCurrent(sellers, draft.sellerName)
           const carrierOptions = withCurrent(transporters, draft.carrierName)
-          const dirty =
-            draft.role !== account.role ||
-            draft.phone.trim() !== account.phone ||
-            (draft.role === 'vendedor' && draft.sellerName.trim() !== sellerOf(account)) ||
-            (draft.role === 'chofer' && draft.carrierName.trim() !== carrierOf(account))
+          const dirty = draftDirty(draft, account)
           return (
             <article key={account.id} className="rounded-2xl bg-white p-4 shadow-sm">
               <p className="font-semibold">{account.name}</p>

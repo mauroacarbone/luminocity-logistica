@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { loginRequest, meRequest, registerRequest, type AuthFailure } from '../lib/authApi'
 import { clearDriverLocationQuietly } from '../lib/driversApi'
 import {
@@ -26,9 +35,25 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+function sameSession(prev: Session, session: Session) {
+  return (
+    prev.id === session.id &&
+    prev.name === session.name &&
+    prev.email === session.email &&
+    prev.role === session.role &&
+    prev.sellerName === session.sellerName &&
+    prev.carrierName === session.carrierName
+  )
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Session | null>(null)
   const [ready, setReady] = useState(() => loadToken() === null)
+  const userRef = useRef(user)
+
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   useEffect(() => {
     const token = loadToken()
@@ -65,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timeout)
   }, [user])
 
-  async function login(email: string, password: string) {
+  const login = useCallback(async (email: string, password: string) => {
     const result = await loginRequest(email, password)
     if (!result.ok) return result
     if (!saveToken(result.token)) {
@@ -73,9 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(result.user)
     return { ok: true as const }
-  }
+  }, [])
 
-  async function register(input: RegisterInput) {
+  const register = useCallback(async (input: RegisterInput) => {
     const result = await registerRequest(input)
     if (!result.ok) return result
     if (!saveToken(result.token)) {
@@ -83,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(result.user)
     return { ok: true as const }
-  }
+  }, [])
 
   const refreshSession = useCallback(async () => {
     const token = loadToken()
@@ -94,7 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null)
       return
     }
-    if (session !== 'error') setUser(session)
+    if (session !== 'error') {
+      setUser((prev) => (prev && sameSession(prev, session) ? prev : session))
+    }
   }, [])
 
   useEffect(() => {
@@ -107,16 +134,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshSession])
 
   const logout = useCallback(() => {
-    if (user?.role === 'chofer') void clearDriverLocationQuietly()
+    if (userRef.current?.role === 'chofer') void clearDriverLocationQuietly()
     clearToken()
     setUser(null)
-  }, [user])
+  }, [])
 
-  return (
-    <AuthContext.Provider value={{ ready, user, login, register, logout, refreshSession }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ ready, user, login, register, logout, refreshSession }),
+    [ready, user, login, register, logout, refreshSession],
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
