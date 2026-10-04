@@ -11,8 +11,8 @@ React 19, Vite, TypeScript, React Router. Estilos en `src/index.css` (Tailwind 4
 | --- | --- |
 | `src/pages/` | Una pantalla por ruta |
 | `src/state/` | Contextos: auth, pedidos, picking, reclamos, catálogo |
-| `server/` | Auth, pedidos, autorizaciones, avisos y ubicación del chofer: Express y JWT. JSON o Postgres |
-| `src/lib/` | Persistencia, token de sesión, zona, geocodificación, rutas, adjuntos, Excel de picking, `access.ts`, `whatsapp.ts` y las API (`api.ts`, `authApi.ts`, `ordersApi.ts`, `authorizationsApi.ts`, `notificationsApi.ts`, `usersApi.ts`, `driversApi.ts`) |
+| `server/` | Auth, pedidos, autorizaciones, avisos, hojas de ruta y ubicación del chofer: Express y JWT. JSON o Postgres |
+| `src/lib/` | Persistencia, token de sesión, zona, geocodificación, rutas, adjuntos, Excel de picking, `access.ts`, `whatsapp.ts` y las API (`api.ts`, `authApi.ts`, `ordersApi.ts`, `authorizationsApi.ts`, `notificationsApi.ts`, `usersApi.ts`, `driversApi.ts`, `routeSheetsApi.ts`) |
 | `src/data/` | Tipos y semillas: pedido, reclamo, catálogo |
 | `src/layout/` | Sidebar, shell y tarjeta de login |
 | `src/components/` | Diálogos de QR, carátula, link del adjunto, `NotificationBell`, `EditReasonDialog` y `NoAccess` |
@@ -21,7 +21,7 @@ Rutas: `src/App.tsx`. Menú: `src/layout/Sidebar.tsx`.
 
 ## Datos
 
-Sin `DATABASE_URL`, cada colección es un JSON en `server/data/` (`orders`, `users`, `authorizations`, `notifications`, `locations`). Con `DATABASE_URL` (Neon, con ssl) es Postgres: una tabla por colección, `id text` primary key, `data jsonb` y `updated_at timestamptz`. El objeto se guarda igual, sin otro modelo.
+Sin `DATABASE_URL`, cada colección es un JSON en `server/data/` (`orders`, `users`, `authorizations`, `notifications`, `locations`, `routeSheets`). Con `DATABASE_URL` (Neon, con ssl) es Postgres: una tabla por colección, `id text` primary key, `data jsonb` y `updated_at timestamptz`. El objeto se guarda igual, sin otro modelo.
 
 La lectura y la escritura pasan por `server/src/db/store.js`. Las rutas no eligen el modo. `lock.js` sigue siendo una sola cola. En Postgres, además, cada vuelta de esa cola es una transacción: si una operación toca varios archivos (aprobar una edición y crear un aviso, usar una autorización al crear el pedido), se confirman juntas o no se guarda nada. Dentro de esa transacción la lectura guarda una foto y la escritura manda solo las filas que cambiaron. Las tablas se crean al arrancar si no existen (`server/src/db/schema.js`). Un host remoto usa SSL con el certificado verificado. Sin SSL quedan solo `localhost`, `127.0.0.1` y `::1`, mirando el hostname de la URL.
 
@@ -72,7 +72,7 @@ Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar 
 Entrega y deja constancia. Al entrar ve solo Mis entregas. El server le manda los pedidos con su `driverId` en `preparado`, `asignado` o `en-viaje`, con fecha de ayer, hoy o mañana. Si el pedido no tiene `driverId`, sigue viéndolo por el `carrierName`. Sin `driverId` en el pedido y sin `carrierName` no ve nada.
 
 - Pantalla: Mis entregas (editar).
-- Puede: pasar de `asignado` a `en-viaje` y de `en-viaje` a `entregado`. Desde en viaje avisa al cliente con un link `wa.me`. Con al menos un pedido en viaje, la pantalla pide el GPS y manda la última posición.
+- Puede: pasar de `asignado` a `en-viaje` y de `en-viaje` a `entregado`. Desde en viaje avisa al cliente con un link `wa.me`. Con al menos un pedido en viaje, la pantalla pide el GPS y manda la última posición. Si el pedido está en una hoja planificada, tiene que usar Iniciar recorrido (no sale a `en-viaje` solo).
 - No puede: crear ni editar el pedido, preparar, asignar, picking, reclamos, datos maestros, el resto de las pantallas.
 - Con la ubicación activa, Mis entregas ordena por cercanía en línea recta y muestra la distancia. Sin GPS o sin coordenadas del pedido, el orden es por zona y después por dirección.
 
@@ -146,7 +146,18 @@ El transportista se elige al cargar. Despacho filtra por esa lista.
 
 Datos maestros puede cambiar zonas, franjas (`10:00-15:00`, `09:00-13:00`, `15:00-19:00`) y tipos de propiedad (casa, departamento, obra, local, edificio, oficina). El domicilio puede guardar `floor` (piso), `unit` (depto / unidad) y `doorbell` (timbre): opcionales, hasta 20 caracteres. Departamento, edificio y oficina usan los tres. Casa y local, solo el timbre. Obra y el resto no guardan ninguno. El server los limpia según el tipo cuando el PATCH trae `propertyType` o alguno de esos campos; un cambio de estado no los toca. No entran en la dirección que va a Nominatim. El planificador arma la recorrida de lo que no está `entregado`. Origen por defecto: Warnes 986, Buenos Aires. Choferes en ruta muestra la última posición de cada chofer con pedidos en viaje.
 
-Cada pedido guarda `edits`: `{ by, at, reason, changes, status }` con `aplicada`, `pendiente` o `rechazada`. Una edición pendiente no toca los datos hasta que el encargado la aprueba. Si la dirección no trae coordenadas, el server la geocodifica con Nominatim (una consulta por segundo, User-Agent propio) y guarda `lat` y `lng` en el pedido. Los avisos viven en `server/data/notifications.json` (`id`, `to`, `text`, `orderId`, `read`, `createdAt`, `channel`). `channel` es `app` y, cuando hay que avisar por celular, también `whatsapp` con `status` `pendiente`. El encargado lo manda con un link `wa.me` y el aviso pasa a `enviado`. La última ubicación del chofer vive en `server/data/locations.json` (fuera de git): una sola posición por usuario (`lat`, `lng`, `accuracy`, `timestamp`, `updatedAt`), sin historial. `POST /api/drivers/location` la guarda y solo la llama el chofer, como máximo cada 30 segundos, mientras tiene pedidos en viaje. `DELETE /api/drivers/location` la borra al terminar el último en viaje o al cerrar sesión. `GET /api/drivers/locations` la ven el encargado y el admin: choferes con pedidos en viaje, transportista y cantidad. Si la posición tiene más de 10 minutos, el mapa la marca sin señal. Ningún otro rol ve ubicaciones. El link de seguimiento para el cliente y la API de WhatsApp Business quedan **Pendiente**.
+### Hojas de ruta (`/api/route-sheets`)
+
+Una hoja es por chofer, fecha y franja (`planificada` → `en_curso` → `cerrada`). Vive en `routeSheets`. Al confirmar, los preparados pasan a `asignado` y guardan `routeId` / `routeSeq`. Al iniciar (solo el chofer, y solo la hoja de hoy), pasan a `en-viaje`. Cuando todos los pedidos de la hoja están `entregado` o ya no existen (cancelar borra el pedido), la hoja se cierra. Si en Despacho se cambia chofer, fecha o franja, o se baja de `asignado` a `pendiente`/`preparado`, y la hoja sigue `planificada`, el pedido sale de la hoja y se renumeran los que quedan; si la hoja queda vacía, se borra. Si la hoja está `en_curso`, ese cambio responde 409, salvo pasar a `entregado`.
+
+| Método | Ruta | Quién | Qué hace |
+| --- | --- | --- | --- |
+| GET | `/api/route-sheets?date=` | Encargado, admin, chofer | Lista del día. El chofer solo ve las suyas. |
+| POST | `/api/route-sheets` | Encargado, admin | Crea o reemplaza una hoja `planificada` (`driverId`, `date`, `slot`, `origin`, `orderIds`, `km`, `minutes`, `override`). |
+| DELETE | `/api/route-sheets/:id` | Encargado, admin | Borra una hoja `planificada` y limpia `routeId` / `routeSeq`. |
+| POST | `/api/route-sheets/:id/start` | Chofer | Pasa la hoja a `en_curso` y sus pedidos a `en-viaje`. Solo la del día. |
+
+Cada pedido guarda `edits`: `{ by, at, reason, changes, status }` con `aplicada`, `pendiente` o `rechazada`. Una edición pendiente no toca los datos hasta que el encargado la aprueba. Si la dirección no trae coordenadas, el server la geocodifica con Nominatim (una consulta por segundo, User-Agent propio) y guarda `lat` y `lng` en el pedido. Los avisos viven en `server/data/notifications.json` (`id`, `to`, `text`, `orderId`, `read`, `createdAt`, `channel`). `channel` es `app` y, cuando hay que avisar por celular, también `whatsapp` con `status` `pendiente`. El encargado lo manda con un link `wa.me` y el aviso pasa a `enviado`. La última ubicación del chofer vive en `server/data/locations.json` (fuera de git): una sola posición por usuario (`lat`, `lng`, `accuracy`, `timestamp`, `updatedAt`), sin historial. `POST /api/drivers/location` la guarda y solo la llama el chofer, como máximo cada 30 segundos, mientras tiene pedidos en viaje contados por `driverId` (y por transportista solo si el pedido no tiene chofer). `DELETE /api/drivers/location` la borra al terminar el último en viaje o al cerrar sesión. `GET /api/drivers/locations` la ven el encargado y el admin: choferes con pedidos en viaje, transportista y cantidad. Si la posición tiene más de 10 minutos, el mapa la marca sin señal. Ningún otro rol ve ubicaciones. El link de seguimiento para el cliente y la API de WhatsApp Business quedan **Pendiente**.
 
 | Término | Qué es |
 | --- | --- |
@@ -155,6 +166,7 @@ Cada pedido guarda `edits`: `{ by, at, reason, changes, status }` con `aplicada`
 | Zona | Área de reparto y los días en que se visita. |
 | Transportista | Quién lo lleva: flota propia o correo. |
 | Despacho | Asignar, mandar y confirmar. También la pantalla `/despacho`. |
+| Hoja de ruta | Recorrido de un chofer para una fecha y franja (`routeSheets`). |
 | Reclamo | Caso de post venta, separado del estado del pedido. |
 
 ## Commits

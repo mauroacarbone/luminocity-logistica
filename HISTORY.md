@@ -40,6 +40,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 19.4 | Permisos en Usuarios, activos e inactivos y edición | Hecho |
 | 19.5 | Chofer inactivo, sesiones y fechas del planificador | Hecho |
 | 20 | Hoja de ruta por chofer y seguimiento de la entrega | Hecho |
+| 20.1 | Hoja de ruta consistente y ubicación por chofer | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -85,6 +86,8 @@ El Brief 19.5 no deja asignar un chofer desactivado, salvo que el pedido ya lo t
 
 El Brief 20 guarda `assignedAt`, `departedAt` y `deliveredAt` en el server, y los borra si el pedido vuelve atrás. El chofer ve los pedidos con su `driverId`; si el pedido no tiene chofer, sigue por el transportista. La hoja de ruta (`routeSheets`) es una por chofer, fecha y franja. El planificador elige fecha, chofer activo y franja, muestra el cupo y confirma el orden. Si la franja se llena, el encargado puede autorizar. El chofer ve la hoja de hoy, inicia el recorrido y abre el camino en Google Maps. Al entregar el último, la hoja se cierra. Despacho separa "Esperando salida" y "En viaje", con el tiempo de salida, el avance de la hoja y "Atrasado" si se pasó el fin de la franja. Choferes en ruta muestra la hoja en curso y la próxima parada.
 
+El Brief 20.1 mantiene la hoja alineada con el despacho: si cambia el chofer, la fecha o la franja, o se baja de asignado, el pedido sale de una hoja planificada y se renumeran las paradas; si la hoja queda vacía, se borra. Con la hoja en curso ese cambio responde 409, salvo entregar. Solo se inicia la hoja del día y solo con pedidos que siguen en ella. El chofer no pasa a en viaje un pedido de una hoja planificada sin Iniciar recorrido. La ubicación y Choferes en ruta cuentan por `driverId` (transportista solo si el pedido no tiene chofer). Al volver de en viaje a asignado se conserva el `assignedAt`. El planificador pone el cupo en rojo al llegar a 3, calcula la ruta al confirmar y refresca una hoja en curso. Mis entregas muestra una hoja de ayer aún en curso, cuenta paradas reales y limita "Cómo llegar" a 3. Despacho marca "Atrasado" solo en asignado y en viaje, y pide las hojas del día buscado.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
@@ -107,7 +110,7 @@ En este orden. No adelantar el siguiente.
 - El rol filtra el menú y la API. En desarrollo el registro público crea `vendedor` y rechaza un nombre o email que ya use otra cuenta. En producción el registro responde 403. No carga `sellerName`.
 - El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. El admin o el encargado lo elige en Usuarios, desde los vendedores de datos maestros. Una cuenta admin solo la edita un admin. Al editar no puede cambiar el vendedor del pedido.
 - El chofer ve los pedidos con su `driverId`. Si el pedido no tiene chofer, los ve por su `carrierName`. Sin `driverId` en el pedido y sin vínculo no ve nada. El admin o el encargado elige el transportista en Usuarios. Una cuenta admin solo la edita un admin.
-- La hoja de ruta es una por chofer, fecha y franja. Se guarda en `routeSheets`. Al confirmar, los preparados pasan a asignado. Al iniciar, pasan a en viaje. Cuando todos quedan entregados o cancelados, la hoja se cierra.
+- La hoja de ruta es una por chofer, fecha y franja. Se guarda en `routeSheets`. Al confirmar, los preparados pasan a asignado. Al iniciar, pasan a en viaje. Cuando todos quedan entregados o ya no existen (cancelar borra el pedido), la hoja se cierra. Si cambia el despacho de un pedido en una hoja planificada, sale de la hoja; en una en curso, el cambio se rechaza salvo entregar.
 - Una carga a nombre de otro vendedor exige una autorización aprobada y sin usar. Se marca usada en la misma escritura que guarda el pedido. Al pedirla se avisa al encargado.
 - Un chofer tiene como máximo 3 pedidos por `timeWindow` y `deliveryDate`. El cuarto responde 409 `FRANJA_LLENA`, salvo que encargado o admin manden `override: true`. Eso queda en `slotOverrides` del pedido.
 - La edición de un preparado por el vendedor no cambia el pedido hasta que el encargado la aprueba o la rechaza. Si el pedido ya avanzó, aprobar responde 409. El vendedor recibe el aviso de aprobado o rechazado.
@@ -117,6 +120,6 @@ En este orden. No adelantar el siguiente.
 - El QR de la carátula busca el pedido o confirma la entrega.
 - Despacho ya filtra por transportista y agrupa `asignado` con `en-viaje`. Mis entregas separa asignados (preparado y asignado) de en viaje.
 - El aviso de WhatsApp se abre con `wa.me` y queda `enviado`. El link de seguimiento para el cliente y la API de WhatsApp Cloud siguen pendientes.
-- La ubicación del chofer es solo la última posición. Se borra al cerrar el último en viaje o la sesión. La ven el encargado y el admin.
+- La ubicación del chofer es solo la última posición, contada por `driverId` (y por transportista solo si el pedido no tiene chofer). Se borra al cerrar el último en viaje o la sesión. La ven el encargado y el admin.
 - El backend va con Express + JWT, en línea con RendiYa (otro proyecto del mismo autor).
 - Se trabaja en `main` para no perder avances en ramas sueltas; primero que funcione, después el pulido visual.
