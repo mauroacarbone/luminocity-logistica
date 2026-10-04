@@ -38,6 +38,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 19.2 | Arreglos de producción: login, errores y usuarios | Hecho |
 | 19.3 | Sesión estable al cambiar de pestaña y alta de usuarios | Hecho |
 | 19.4 | Permisos en Usuarios, activos e inactivos y edición | Hecho |
+| 19.5 | Chofer inactivo, sesiones y fechas del planificador | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -78,6 +79,8 @@ El Brief 19.2 afina lo que se nota en producción. El límite del login cuenta s
 El Brief 19.3 deja quieta la sesión al volver a la pestaña: si `/api/auth/me` no cambió, el objeto de usuario sigue siendo el mismo y no se vuelven a bajar pedidos ni usuarios. En Usuarios, una recarga no pisa un cambio sin guardar. El admin da de alta cuentas desde esa pantalla (`POST /api/users`): email único, contraseña de 8 caracteres y rol. `create-admin` queda solo para el primer admin. El 404 de una ruta de la API dice "No existe esa ruta de la API".
 
 El Brief 19.4 abre Usuarios al encargado, con la regla en el server. El admin crea y modifica a todos. El encargado también, menos a un admin y menos asignar ese rol. Cada usuario tiene `active` (si falta, está activo). Un inactivo no entra y el token que ya tenía recibe 401. Nadie se desactiva a sí mismo y tiene que quedar un admin activo. El nombre, el email y la contraseña se editan desde la misma pantalla. El nombre y el email son únicos.
+
+El Brief 19.5 no deja asignar un chofer desactivado, salvo que el pedido ya lo tuviera. En Despacho ese chofer aparece como "(inactivo)" y el resto de la lista son solo activos. Al desactivarlo se borra su ubicación y deja de figurar en el mapa. Si el rol se guarda y el resto del usuario falla, la tarjeta muestra el rol nuevo. El permiso se lee dentro de la misma escritura. La contraseña se mide en bytes (tope 72). Resetearla invalida los tokens anteriores. Un usuario desactivado que todavía tiene sesión ve en el login "Tu usuario está desactivado. Hablá con el encargado.". Activar y desactivar piden confirmación, y Escape no cierra el modal mientras guarda. En el planificador, el celular muestra el día corto y el número en dos líneas, y la semana solo con las flechas y "Esta semana".
 
 ## Pendientes
 
