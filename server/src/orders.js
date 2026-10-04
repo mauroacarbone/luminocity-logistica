@@ -16,6 +16,7 @@ import { locked } from './lock.js'
 import { forgetUsers, putLocation, readLocations } from './locations.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyDelivered, notifyEncargados, notifySeller, notifyUser } from './notifications.js'
+import { stampStatus } from './orderFlow.js'
 import { blockPlannedDeparture, closeFinishedSheets, pullOrderFromSheets, syncSheetOnEdit } from './routeSheets.js'
 import { isActive, readUsersList } from './users.js'
 
@@ -712,42 +713,6 @@ function readOrderFields(body, current) {
   }
   stampStatus(order, current)
   return { order }
-}
-
-const STATUS_RANK = { pendiente: 0, preparado: 1, asignado: 2, 'en-viaje': 3, entregado: 4 }
-
-function stampStatus(order, current) {
-  if (current) {
-    for (const key of ['assignedAt', 'departedAt', 'deliveredAt', 'routeId']) {
-      if (typeof current[key] === 'string' && current[key]) order[key] = current[key]
-    }
-    if (Number.isInteger(current.routeSeq) && current.routeSeq > 0) order.routeSeq = current.routeSeq
-  }
-  if (current && current.status === order.status) return
-  const now = new Date().toISOString()
-  const rank = STATUS_RANK[order.status] ?? 0
-  if (rank < STATUS_RANK.asignado) {
-    delete order.assignedAt
-    delete order.departedAt
-    delete order.deliveredAt
-    return
-  }
-  if (order.status === 'asignado') {
-    const kept =
-      current?.status === 'en-viaje' && typeof current.assignedAt === 'string' && current.assignedAt
-        ? current.assignedAt
-        : ''
-    order.assignedAt = kept || now
-    delete order.departedAt
-    delete order.deliveredAt
-    return
-  }
-  if (order.status === 'en-viaje') {
-    order.departedAt = now
-    delete order.deliveredAt
-    return
-  }
-  if (order.status === 'entregado') order.deliveredAt = now
 }
 
 function readRequiredText(value) {
