@@ -534,7 +534,13 @@ export function Usuarios() {
     if (Object.keys(patch).length > 0) {
       const result = await updateUser(account.id, patch)
       if (!result.ok) {
-        if (draft.role !== account.role) applyAccount(next)
+        if (draft.role !== account.role) {
+          setAccounts((current) => current.map((item) => (item.id === next.id ? next : item)))
+          setDrafts((current) => ({
+            ...current,
+            [next.id]: { ...current[next.id], role: next.role },
+          }))
+        }
         setBusy('')
         if (result.status === 401) logout()
         else await showError(result.message)
