@@ -7,7 +7,18 @@ import { listUsers, updateUserCarrier, updateUserPhone, updateUserRole, updateUs
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 
-type Account = Session & { phone: string }
+type Account = Session & { phone: string; createdAt?: string }
+
+function formatCreatedAt(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
 
 type Draft = {
   role: Role
@@ -210,6 +221,7 @@ export function Usuarios() {
             <article key={account.id} className="rounded-2xl bg-white p-4 shadow-sm">
               <p className="font-semibold">{account.name}</p>
               <p className="text-sm text-lumi-muted">{account.email}</p>
+              <p className="text-sm text-lumi-muted">{formatCreatedAt(account.createdAt)}</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,16rem)_minmax(0,16rem)_auto] sm:items-end">
                 <label className="text-sm">
                   Rol

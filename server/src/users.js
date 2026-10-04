@@ -27,6 +27,9 @@ export function toPublicUser(user) {
   if (typeof user.carrierName === 'string' && user.carrierName.trim()) {
     publicUser.carrierName = user.carrierName.trim()
   }
+  if (typeof user.createdAt === 'string' && user.createdAt.trim()) {
+    publicUser.createdAt = user.createdAt
+  }
   return publicUser
 }
 
@@ -50,6 +53,7 @@ export function ensureDemoUser() {
         email: DEMO.email,
         passwordHash,
         role: DEMO.role,
+        createdAt: new Date().toISOString(),
       },
     ])
   })
@@ -150,6 +154,7 @@ export function createUser({ name, email, password, role }) {
       email: normalized,
       passwordHash: await bcrypt.hash(password, 10),
       role,
+      createdAt: new Date().toISOString(),
     }
     users.push(user)
     await writeUsers(users)

@@ -47,6 +47,7 @@ try {
       email,
       passwordHash,
       role: 'admin',
+      createdAt: new Date().toISOString(),
     })
     await writeCollection('users', users)
   })
