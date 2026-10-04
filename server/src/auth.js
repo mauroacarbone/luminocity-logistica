@@ -10,6 +10,7 @@ const TOKEN_EXPIRES = '8h'
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   handler(_req, res) {
