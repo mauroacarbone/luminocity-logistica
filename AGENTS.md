@@ -122,6 +122,21 @@ Sin `active`, o con `active: true`, el usuario está activo. El login de uno ina
 
 Estados del pedido: `pendiente` → `preparado` → `asignado` → `en-viaje` → `entregado`.
 
+El server obliga ese orden con `POST /api/orders/:id/transition` (`orderFlow.js`). `PATCH /api/orders/:id` ya no acepta `status` (400). Cada cambio queda en `order.history[]` (`at`, `by: { id, name }`, `from`, `to`, `reason?`, `via`). `via` es `pedidos`, `despacho`, `hoja`, `mis-entregas` o `qr`. Pedidos viejos sin historial se leen con una entrada `Creado`. `assignedAt` / `departedAt` / `deliveredAt` se setean al avanzar y no se borran al volver atrás.
+
+| De | A | Quién | Condiciones |
+| --- | --- | --- | --- |
+| `pendiente` | `preparado` | Depósito, encargado, admin | `packages` ≥ 1 |
+| `preparado` | `asignado` | Encargado, admin | Chofer activo, franja y cupo (`override` si hace falta). Asignar a un pendiente responde 409 |
+| `asignado` | `en-viaje` | Solo el chofer del pedido | Si está en hoja `planificada`, solo con Iniciar recorrido |
+| `en-viaje` | `entregado` | Chofer del pedido, o admin (QR) | |
+| `preparado` | `pendiente` | Encargado, admin | `reason` ≥ 5 caracteres |
+| `asignado` | `preparado` | Encargado, admin | `reason` ≥ 5. Quita el chofer y saca de la hoja (regla 20.1). Quitar chofer = esta transición |
+| `en-viaje` | `asignado` | Solo admin | `reason` ≥ 5 |
+| `entregado` | `en-viaje` | Solo admin | `reason` ≥ 5 |
+
+Cualquier otra transición: 409 `{ message: "No se puede pasar de X a Y", code: "TRANSICION_INVALIDA" }`. La confirmación de la hoja y el Iniciar recorrido usan `orderFlow` por dentro (`via: "hoja"`).
+
 1. Carga en Nuevo Pedido (`P-` y siete dígitos). Queda en `pendiente`. Pide vendedor, cliente, teléfono, dirección, al menos una entrecalle, tipo de propiedad y fecha. La zona sale de la dirección o se elige a mano.
 2. Depósito lo marca `preparado` e indica bultos. El encargado asigna transportista y chofer (`driverId`). El chofer ve los pedidos con su `driverId`. Los viejos, sin chofer, siguen por `carrierName`. Puede editar o cancelar antes de que salga. El vendedor, si edita un preparado, deja el cambio en espera.
 3. Despacho lo sigue por día. `asignado` y `en-viaje` van en la solapa de viaje. La carátula lleva QR: buscar el pedido o confirmar `entregado`.

@@ -42,6 +42,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 20 | Hoja de ruta por chofer y seguimiento de la entrega | Hecho |
 | 20.1 | Hoja de ruta consistente y ubicación por chofer | Hecho |
 | 20.2 | Tres arreglos chicos de la hoja de ruta | Hecho |
+| 21a | Máquina de estados del pedido e historial | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -91,6 +92,8 @@ El Brief 20.1 mantiene la hoja alineada con el despacho: si cambia el chofer, la
 
 El Brief 20.2 cierra una hoja en curso si al sacar un pedido queda vacía. Bajar de en viaje a pendiente o preparado también cuenta como salida de la hoja (409 si está en curso). En Mis entregas, "Parada X de N" usa `routeSeq` y el largo de la hoja, no el índice de la lista visible.
 
+El Brief 21a deja la máquina de estados en el server (`orderFlow.js` y `POST /api/orders/:id/transition`). Solo se avanza o se vuelve un paso, con roles y requisitos (bultos, chofer, franja, cupo). `PATCH` ya no acepta `status`. Cada cambio queda en `history` con `via`. Al volver atrás no se borran `assignedAt`, `departedAt` ni `deliveredAt`. La hoja confirma e inicia por `orderFlow`.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
@@ -114,6 +117,7 @@ En este orden. No adelantar el siguiente.
 - El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. El admin o el encargado lo elige en Usuarios, desde los vendedores de datos maestros. Una cuenta admin solo la edita un admin. Al editar no puede cambiar el vendedor del pedido.
 - El chofer ve los pedidos con su `driverId`. Si el pedido no tiene chofer, los ve por su `carrierName`. Sin `driverId` en el pedido y sin vínculo no ve nada. El admin o el encargado elige el transportista en Usuarios. Una cuenta admin solo la edita un admin.
 - La hoja de ruta es una por chofer, fecha y franja. Se guarda en `routeSheets`. Al confirmar, los preparados pasan a asignado. Al iniciar, pasan a en viaje. Cuando todos quedan entregados o ya no existen (cancelar borra el pedido), la hoja se cierra. Si cambia el despacho de un pedido en una hoja planificada, sale de la hoja; en una en curso, el cambio se rechaza salvo entregar.
+- El estado del pedido solo cambia por `POST /api/orders/:id/transition`. El `PATCH` no acepta `status`. Las transiciones válidas y los roles están en `orderFlow.js`. Cada cambio se anota en `history`.
 - Una carga a nombre de otro vendedor exige una autorización aprobada y sin usar. Se marca usada en la misma escritura que guarda el pedido. Al pedirla se avisa al encargado.
 - Un chofer tiene como máximo 3 pedidos por `timeWindow` y `deliveryDate`. El cuarto responde 409 `FRANJA_LLENA`, salvo que encargado o admin manden `override: true`. Eso queda en `slotOverrides` del pedido.
 - La edición de un preparado por el vendedor no cambia el pedido hasta que el encargado la aprueba o la rechaza. Si el pedido ya avanzó, aprobar responde 409. El vendedor recibe el aviso de aprobado o rechazado.
