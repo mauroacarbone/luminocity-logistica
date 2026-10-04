@@ -25,6 +25,9 @@ const TEXT_FIELDS = [
   'receiverDni',
   'betweenStreet1',
   'betweenStreet2',
+  'floor',
+  'unit',
+  'doorbell',
 ] as const
 
 function messageFrom(data: unknown, fallback: string) {

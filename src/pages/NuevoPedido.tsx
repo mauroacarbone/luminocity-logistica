@@ -28,6 +28,7 @@ import {
 } from '../lib/authorizationsApi'
 import { geocodeSearch, locateAddress, locatePoint, type GeocodeHit, type LocatedAddress } from '../lib/geocode'
 import type { OrderDraft } from '../lib/ordersApi'
+import { placeKind } from '../lib/place'
 import { asDeliveryZone, inferZone, zoneDayWarning, zoneDays, type ZoneQuery } from '../lib/zone'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
@@ -41,6 +42,9 @@ type Errors = Partial<
     | 'address'
     | 'between'
     | 'propertyType'
+    | 'floor'
+    | 'unit'
+    | 'doorbell'
     | 'deliveryDate'
     | 'amount'
     | 'file',
@@ -117,6 +121,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [betweenStreet1, setBetweenStreet1] = useState(existing?.betweenStreet1 ?? '')
   const [betweenStreet2, setBetweenStreet2] = useState(existing?.betweenStreet2 ?? '')
   const [propertyType, setPropertyType] = useState(existing?.propertyType ?? '')
+  const [floor, setFloor] = useState(existing?.floor ?? '')
+  const [unit, setUnit] = useState(existing?.unit ?? '')
+  const [doorbell, setDoorbell] = useState(existing?.doorbell ?? '')
   const [deliveryDate, setDeliveryDate] = useState(existing?.deliveryDate ?? '')
   const [timeWindow, setTimeWindow] = useState(existing?.timeWindow ?? timeWindows[0] ?? '')
   const [requiresPickup, setRequiresPickup] = useState(existing?.requiresPickup ?? false)
@@ -423,6 +430,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       nextErrors.between = 'Completá al menos una entre calle.'
     }
     if (!propertyType) nextErrors.propertyType = 'Seleccioná el tipo de propiedad.'
+    const kind = placeKind(propertyType)
+    const floorValue = kind === 'building' ? floor.trim() : ''
+    const unitValue = kind === 'building' ? unit.trim() : ''
+    const doorbellValue = kind === 'house' || kind === 'building' ? doorbell.trim() : ''
+    if (floorValue.length > 20) nextErrors.floor = 'El piso puede tener hasta 20 caracteres.'
+    if (unitValue.length > 20) nextErrors.unit = 'El depto puede tener hasta 20 caracteres.'
+    if (doorbellValue.length > 20) nextErrors.doorbell = 'El timbre puede tener hasta 20 caracteres.'
     if (!deliveryDate) nextErrors.deliveryDate = 'Elegí la fecha de entrega.'
     if (collectOnDelivery && !amount.trim()) {
       nextErrors.amount = 'Ingresá el monto a cobrar.'
@@ -464,6 +478,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       betweenStreet1: betweenStreet1.trim(),
       betweenStreet2: betweenStreet2.trim(),
       propertyType,
+      floor: floorValue,
+      unit: unitValue,
+      doorbell: doorbellValue,
       timeWindow,
       requiresPickup,
       dispatchType,
@@ -830,7 +847,16 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               <select
                 value={propertyType}
                 aria-invalid={Boolean(errors.propertyType)}
-                onChange={(event) => setPropertyType(event.target.value)}
+                onChange={(event) => {
+                  const next = event.target.value
+                  const nextKind = placeKind(next)
+                  setPropertyType(next)
+                  if (nextKind !== 'building') {
+                    setFloor('')
+                    setUnit('')
+                  }
+                  if (nextKind === 'other') setDoorbell('')
+                }}
               >
                 <option value="">Seleccioná tipo</option>
                 {propertyOptions.map((type) => (
@@ -843,6 +869,42 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 <small className="field-error">{errors.propertyType}</small>
               )}
             </label>
+            {placeKind(propertyType) === 'building' && (
+              <>
+                <label className="field">
+                  <span>Piso</span>
+                  <input
+                    value={floor}
+                    maxLength={20}
+                    aria-invalid={Boolean(errors.floor)}
+                    onChange={(event) => setFloor(event.target.value)}
+                  />
+                  {errors.floor && <small className="field-error">{errors.floor}</small>}
+                </label>
+                <label className="field">
+                  <span>Depto / Unidad</span>
+                  <input
+                    value={unit}
+                    maxLength={20}
+                    aria-invalid={Boolean(errors.unit)}
+                    onChange={(event) => setUnit(event.target.value)}
+                  />
+                  {errors.unit && <small className="field-error">{errors.unit}</small>}
+                </label>
+              </>
+            )}
+            {(placeKind(propertyType) === 'building' || placeKind(propertyType) === 'house') && (
+              <label className="field">
+                <span>Timbre</span>
+                <input
+                  value={doorbell}
+                  maxLength={20}
+                  aria-invalid={Boolean(errors.doorbell)}
+                  onChange={(event) => setDoorbell(event.target.value)}
+                />
+                {errors.doorbell && <small className="field-error">{errors.doorbell}</small>}
+              </label>
+            )}
           </div>
           <label className="field zone-field">
             <span>Zona de reparto</span>

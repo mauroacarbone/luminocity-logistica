@@ -3,6 +3,7 @@ import { STATUS_PILL, type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
 import { mapsLink, onTheWayText, whatsappLink } from '../lib/whatsapp'
+import { placeLine } from '../lib/place'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 
@@ -299,6 +300,7 @@ function DeliveryCard({
       </div>
       <p className="mt-1 text-base font-semibold">{order.client}</p>
       <p className="mt-2 text-sm">{order.address || 'Sin dirección'}</p>
+      {placeLine(order) && <p className="text-sm">{placeLine(order)}</p>}
       <p className="text-sm text-lumi-muted">{order.zone || 'Sin zona'}</p>
       {distance && <p className="mt-1 text-sm font-semibold">{distance}</p>}
       <p className="mt-2 text-sm">Bultos: {order.packages ?? '—'}</p>

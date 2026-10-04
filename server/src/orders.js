@@ -49,6 +49,12 @@ const OPTIONAL_TEXT = [
   ['betweenStreet2', 'La entrecalle'],
 ]
 
+const PLACE_FIELDS = [
+  ['floor', 'El piso'],
+  ['unit', 'El depto'],
+  ['doorbell', 'El timbre'],
+]
+
 export const ordersRouter = Router()
 ordersRouter.use(requireAuth)
 ordersRouter.get('/', async (req, res) => {
@@ -246,10 +252,14 @@ function patchOrder(id, body, user) {
     if (parsed.error) return parsed
     const reason = readReason(body)
     if (reason.error) return reason
-    const changes = diffOrder(current, parsed.order)
+    const tracked = diffOrder(current, parsed.order)
+    const changes = { ...tracked, ...placeChanges(current, parsed.order) }
     if (Object.keys(changes).length === 0) return fail('No hay cambios para guardar.')
-    const allowed = assertPatch(user, current, changes)
+    const allowed = assertPatch(user, current, tracked)
     if (allowed.error) return allowed
+    if (hasPlaceChange(changes) && user.role !== 'vendedor' && user.role !== 'encargado_deposito' && user.role !== 'admin') {
+      return fail('No podés cambiar esos datos del pedido.', 403)
+    }
     const driver = await checkDriver(parsed.order.driverId, current.driverId)
     if (driver.error) return driver
     const windowRule = requireDriverWindow(current, parsed.order)
@@ -298,7 +308,10 @@ function patchOrder(id, body, user) {
         orderId: order.id,
         whatsapp: false,
       })
-    } else if (user.role === 'encargado_deposito' && commercialKeys(changes).length > 0) {
+    } else if (
+      user.role === 'encargado_deposito' &&
+      (commercialKeys(changes).length > 0 || hasPlaceChange(changes))
+    ) {
       await notifySeller(
         current,
         user,
@@ -399,8 +412,23 @@ function hasPending(order) {
 
 function needsReason(user, changes) {
   if (user.role === 'vendedor') return true
-  if (user.role === 'encargado_deposito') return commercialKeys(changes).length > 0
+  if (user.role === 'encargado_deposito') {
+    return commercialKeys(changes).length > 0 || hasPlaceChange(changes)
+  }
   return false
+}
+
+function placeChanges(current, next) {
+  const changes = {}
+  for (const [key] of PLACE_FIELDS) {
+    if (current?.[key] === next?.[key]) continue
+    changes[key] = next?.[key] === undefined ? null : next[key]
+  }
+  return changes
+}
+
+function hasPlaceChange(changes) {
+  return PLACE_FIELDS.some(([key]) => Object.prototype.hasOwnProperty.call(changes, key))
 }
 
 function readReason(body) {
@@ -552,6 +580,7 @@ function hasChange(body) {
     'dispatchType',
     'packages',
     'driverId',
+    ...PLACE_FIELDS.map(([key]) => key),
   ]
   return keys.some((key) => Object.prototype.hasOwnProperty.call(body, key))
 }
@@ -606,6 +635,12 @@ function readOrderFields(body, current) {
           ? normalizeTimeWindow(read.value)
           : read.value
     }
+  }
+
+  for (const [key, label] of PLACE_FIELDS) {
+    const read = readPlaceField(body, current, key, label)
+    if (read.error) return read
+    if (read.value !== undefined) order[key] = read.value
   }
 
   const invoices = readInvoices(body, current)
@@ -677,6 +712,13 @@ function readStatus(body, current) {
     return fail('El estado no es válido.')
   }
   return { value: body.status }
+}
+
+function readPlaceField(body, current, key, label) {
+  const read = readOptionalText(body, current, key, label)
+  if (read.error) return read
+  if (read.value && read.value.length > 20) return fail(`${label} puede tener hasta 20 caracteres.`)
+  return read
 }
 
 function readOptionalText(body, current, key, label) {

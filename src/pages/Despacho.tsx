@@ -22,6 +22,7 @@ import {
 } from '../lib/week'
 import { confirm, error, success } from '../lib/alerts'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder, statusChoices } from '../lib/access'
+import { placeLine } from '../lib/place'
 import { driverSlotCount, normalizeTimeWindow, SLOT_LIMIT, slotQuestion } from '../lib/slot'
 import { isSession } from '../lib/authStore'
 import { listUsers } from '../lib/usersApi'
@@ -518,6 +519,9 @@ export function Despacho() {
                   <p className="mt-2 font-semibold uppercase">{order.client}</p>
                   {addressLine(order) && (
                     <p className="mt-1 text-sm text-lumi-muted">{addressLine(order)}</p>
+                  )}
+                  {placeLine(order) && (
+                    <p className="mt-1 text-sm text-lumi-muted">{placeLine(order)}</p>
                   )}
                   <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
                     {order.zone && <p>Zona: {order.zone}</p>}

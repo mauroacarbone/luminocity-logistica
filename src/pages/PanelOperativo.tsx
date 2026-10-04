@@ -11,6 +11,7 @@ import {
   type OrderStatus,
 } from '../data/orders'
 import { canEditOrder } from '../lib/access'
+import { placeLine } from '../lib/place'
 import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -63,6 +64,7 @@ function OrderCard({ order }: { order: Order }) {
       <p className="order-client">{order.client}</p>
       {waiting && <p className="order-zone">Esperando confirmación</p>}
       {order.address && <p className="order-zone">{order.address}</p>}
+      {placeLine(order) && <p className="order-zone">{placeLine(order)}</p>}
       {order.zone && <p className="order-zone">{order.zone}</p>}
       {order.dispatchType && (
         <p className="order-zone">Despacho: {DISPATCH_LABEL[order.dispatchType]}</p>

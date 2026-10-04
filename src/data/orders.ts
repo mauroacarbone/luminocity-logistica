@@ -41,6 +41,9 @@ export type Order = {
   betweenStreet1?: string
   betweenStreet2?: string
   propertyType?: string
+  floor?: string
+  unit?: string
+  doorbell?: string
   timeWindow?: string
   requiresPickup?: boolean
   dispatchType?: 'propia' | 'correo'
