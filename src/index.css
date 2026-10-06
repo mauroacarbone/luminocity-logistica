@@ -672,6 +672,152 @@ p {
   color: #1d7a3a;
 }
 
+.order-stepper {
+  min-width: 0;
+}
+
+.order-stepper-compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-stepper-track {
+  display: flex;
+  align-items: flex-start;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  min-width: 0;
+}
+
+.order-stepper-compact .order-stepper-track {
+  align-items: center;
+  gap: 4px;
+}
+
+.order-stepper-full .order-stepper-track {
+  width: 100%;
+  justify-content: space-between;
+  gap: 0;
+}
+
+.order-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 0;
+  text-align: center;
+}
+
+.order-stepper-compact .order-step {
+  flex: 0 0 auto;
+}
+
+.order-step-dot {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: #fff;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  z-index: 1;
+}
+
+.order-stepper-full .order-step-dot {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+}
+
+.order-step-done .order-step-dot {
+  border-color: #1d7a3a;
+  background: #1d7a3a;
+}
+
+.order-step-current .order-step-dot {
+  border-color: var(--yellow);
+  background: var(--yellow);
+  box-shadow: 0 0 0 3px rgba(245, 196, 0, 0.25);
+}
+
+.order-step-todo .order-step-dot {
+  border-color: #cfc9bc;
+  background: #efece4;
+}
+
+.order-step-line {
+  position: absolute;
+  top: 10px;
+  right: calc(50% + 14px);
+  left: calc(-50% + 14px);
+  height: 2px;
+  background: #e7e2d8;
+  z-index: 0;
+}
+
+.order-step-done .order-step-line,
+.order-step-current .order-step-line {
+  background: #1d7a3a;
+}
+
+.order-step-label {
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--muted);
+  max-width: 72px;
+}
+
+.order-step-current .order-step-label {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.order-step-done .order-step-label {
+  color: #1d7a3a;
+}
+
+.order-stepper-now {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.order-stepper-now.is-canceled,
+.order-step-canceled {
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+@media (max-width: 400px) {
+  .order-stepper-full .order-step-label {
+    font-size: 11px;
+    max-width: 56px;
+  }
+
+  .order-stepper-full .order-step-dot {
+    width: 18px;
+    height: 18px;
+  }
+
+  .order-step-line {
+    top: 8px;
+    right: calc(50% + 12px);
+    left: calc(-50% + 12px);
+  }
+}
+
 .form-stack {
   display: flex;
   flex-direction: column;

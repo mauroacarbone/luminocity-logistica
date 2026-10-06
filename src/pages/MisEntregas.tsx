@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { STATUS_PILL, type Order } from '../data/orders'
+import { OrderStepper } from '../components/OrderStepper'
+import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
 import { mapsLink, onTheWayText, whatsappLink } from '../lib/whatsapp'
@@ -405,9 +406,9 @@ function DeliveryCard({
 
   return (
     <article className="rounded-2xl bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <p className="text-lg font-bold">{order.id}</p>
-        <span className={`status-pill status-${order.status}`}>{STATUS_PILL[order.status]}</span>
+        <OrderStepper order={order} variant="compact" />
       </div>
       {stopLabel && <p className="mt-1 text-sm font-semibold">{stopLabel}</p>}
       <p className="mt-1 text-base font-semibold">{order.client}</p>

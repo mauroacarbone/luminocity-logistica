@@ -70,3 +70,24 @@ export function statusPillFor(order: Pick<Order, 'dispatchType'>, status: OrderS
   }
   return labels[status]
 }
+
+/** Camino hacia adelante según la tabla de transiciones y el tipo de despacho. */
+export function forwardPath(order: Pick<Order, 'dispatchType'>): OrderStatus[] {
+  const path: OrderStatus[] = ['pendiente']
+  let at: OrderStatus = 'pendiente'
+  const seen = new Set<OrderStatus>()
+  while (at !== 'entregado' && !seen.has(at)) {
+    seen.add(at)
+    const next = TRANSITIONS.find((rule) => {
+      if (rule.from !== at) return false
+      if (STATUS_RANK[rule.to] <= STATUS_RANK[rule.from]) return false
+      if (rule.courierOnly && !isCourier(order)) return false
+      if (rule.ownDelivery && isCourier(order)) return false
+      return true
+    })
+    if (!next) break
+    path.push(next.to)
+    at = next.to
+  }
+  return path
+}

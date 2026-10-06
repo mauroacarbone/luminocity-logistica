@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
+import { OrderStepper } from '../components/OrderStepper'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
 import { DISPATCH_LABEL, listForDispatch, withCurrent, withExtras } from '../data/catalog'
@@ -655,11 +656,9 @@ export function Despacho() {
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <strong>{order.id}</strong>
-                    <span className={`status-pill status-${order.status}`}>
-                      {statusPillFor(order, order.status)}
-                    </span>
+                    <OrderStepper order={order} variant="compact" />
                   </div>
                   <p className="mt-2 font-semibold uppercase">{order.client}</p>
                   {addressLine(order) && (
