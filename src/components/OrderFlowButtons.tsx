@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Order, OrderStatus } from '../data/orders'
-import { askPackages, askReason, askTracking, error, success } from '../lib/alerts'
+import { askAssignDriver, askPackages, askReason, askTracking, error, success } from '../lib/alerts'
 import type { Role } from '../lib/authStore'
+import { isSession } from '../lib/authStore'
 import { backActions, nextAction, statusPillFor } from '../lib/orderFlow'
+import { normalizeTimeWindow } from '../lib/slot'
+import { listUsers } from '../lib/usersApi'
+import { useAuth } from '../state/AuthContext'
+import { useCatalog } from '../state/CatalogContext'
 import type { OrderSaveResult } from '../state/OrdersContext'
 
 type Props = {
@@ -27,6 +32,8 @@ export function OrderFlowButtons({
   onDone,
   driverSelectId,
 }: Props) {
+  const { logout } = useAuth()
+  const { timeWindows } = useCatalog()
   const next = nextAction(role, order)
   const backs = backActions(role, order)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -49,17 +56,60 @@ export function OrderFlowButtons({
     onBusy(false)
     if (result.status === 'not-saved') {
       await error(result.message)
-      return
+      return result
     }
     await success(`Pasó a ${statusPillFor(result.order, result.order.status)}`)
     onDone?.(result.order)
+    return result
+  }
+
+  async function assignFromDialog() {
+    onBusy(true)
+    const usersResult = await listUsers()
+    onBusy(false)
+    if (!usersResult.ok) {
+      if (usersResult.status === 401) {
+        logout()
+        return
+      }
+      await error(usersResult.message)
+      return
+    }
+    if (!Array.isArray(usersResult.data)) {
+      await error('No se pudieron cargar los choferes.')
+      return
+    }
+    const drivers = usersResult.data.flatMap((item) =>
+      isSession(item) && item.role === 'chofer' && item.active
+        ? [{ id: item.id, name: item.name }]
+        : [],
+    )
+    const windows = withCurrentWindow(timeWindows, order.timeWindow)
+    const choice = await askAssignDriver({
+      drivers,
+      timeWindows: windows,
+      currentDriverId: order.driverId,
+      currentTimeWindow: normalizeTimeWindow(order.timeWindow) || undefined,
+      allowOverride: role === 'encargado_deposito' || role === 'admin',
+    })
+    if (!choice) return
+    const extras: Record<string, unknown> = {
+      driverId: choice.driverId,
+      timeWindow: choice.timeWindow,
+    }
+    if (choice.override) extras.override = true
+    await runTransition('asignado', extras)
   }
 
   async function onNext() {
     if (!next) return
     if (next.to === 'asignado' && order.dispatchType !== 'correo') {
+      if (!driverSelectId) {
+        await assignFromDialog()
+        return
+      }
       if (!order.driverId) {
-        const select = driverSelectId ? document.getElementById(driverSelectId) : null
+        const select = document.getElementById(driverSelectId)
         if (select instanceof HTMLSelectElement) {
           select.focus()
           select.classList.add('ring-2', 'ring-lumi-yellow')
@@ -142,4 +192,11 @@ export function OrderFlowButtons({
       )}
     </div>
   )
+}
+
+function withCurrentWindow(windows: string[], current?: string) {
+  const normalized = normalizeTimeWindow(current)
+  if (!normalized) return windows
+  if (windows.some((item) => normalizeTimeWindow(item) === normalized)) return windows
+  return [...windows, normalized]
 }

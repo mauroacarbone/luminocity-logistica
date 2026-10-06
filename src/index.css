@@ -312,6 +312,42 @@ p {
   color: #1c1b19;
 }
 
+.lumi-swal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.lumi-swal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1c1b19;
+}
+
+.lumi-swal-select {
+  width: 100%;
+  border: 1px solid #d8d2c4;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 500;
+  background: #fff;
+  color: #1c1b19;
+}
+
+.lumi-swal-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1c1b19;
+}
+
 .orders-import {
   display: flex;
   flex-wrap: wrap;

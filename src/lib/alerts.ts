@@ -93,6 +93,120 @@ export async function askPackages(titulo: string, texto: string): Promise<number
   return Number.isInteger(n) && n >= 1 ? n : null
 }
 
+export type AssignDriverChoice = {
+  driverId: string
+  timeWindow: string
+  override: boolean
+}
+
+/** Chofer, franja y override de cupo para asignar desde el detalle. */
+export async function askAssignDriver(options: {
+  drivers: { id: string; name: string }[]
+  timeWindows: string[]
+  currentDriverId?: string
+  currentTimeWindow?: string
+  allowOverride: boolean
+}): Promise<AssignDriverChoice | null> {
+  const drivers = options.drivers
+  const windows = options.timeWindows
+  if (drivers.length === 0) {
+    await error('No hay choferes activos para asignar.')
+    return null
+  }
+  if (windows.length === 0) {
+    await error('No hay franjas horarias configuradas.')
+    return null
+  }
+  const driverOptions = drivers
+    .map((driver) => {
+      const selected = driver.id === options.currentDriverId ? ' selected' : ''
+      return `<option value="${escapeHtml(driver.id)}"${selected}>${escapeHtml(driver.name)}</option>`
+    })
+    .join('')
+  const windowOptions = windows
+    .map((window) => {
+      const selected = window === options.currentTimeWindow ? ' selected' : ''
+      return `<option value="${escapeHtml(window)}"${selected}>${escapeHtml(window)}</option>`
+    })
+    .join('')
+  const overrideBlock = options.allowOverride
+    ? `<label class="lumi-swal-check">
+        <input type="checkbox" id="lumi-assign-override" />
+        Autorizar si la franja está llena
+      </label>`
+    : ''
+  const result = await Swal.fire({
+    title: 'Asignar chofer',
+    html: `<div class="lumi-swal-form">
+      <label class="lumi-swal-field">
+        <span>Chofer</span>
+        <select id="lumi-assign-driver" class="lumi-swal-select">
+          <option value="">Elegí un chofer</option>
+          ${driverOptions}
+        </select>
+      </label>
+      <label class="lumi-swal-field">
+        <span>Franja</span>
+        <select id="lumi-assign-window" class="lumi-swal-select">
+          <option value="">Elegí una franja</option>
+          ${windowOptions}
+        </select>
+      </label>
+      ${overrideBlock}
+    </div>`,
+    showCancelButton: true,
+    confirmButtonText: 'Confirmar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    buttonsStyling: false,
+    focusConfirm: false,
+    customClass: {
+      popup: 'lumi-swal',
+      title: 'lumi-swal-title',
+      htmlContainer: 'lumi-swal-text',
+      confirmButton: 'lumi-swal-confirm',
+      cancelButton: 'lumi-swal-cancel',
+      actions: 'lumi-swal-actions',
+    },
+    preConfirm: () => {
+      const driver = document.getElementById('lumi-assign-driver')
+      const window = document.getElementById('lumi-assign-window')
+      const override = document.getElementById('lumi-assign-override')
+      const driverId = driver instanceof HTMLSelectElement ? driver.value.trim() : ''
+      const timeWindow = window instanceof HTMLSelectElement ? window.value.trim() : ''
+      if (!driverId) {
+        Swal.showValidationMessage('Elegí un chofer.')
+        return false
+      }
+      if (!timeWindow) {
+        Swal.showValidationMessage('Elegí una franja.')
+        return false
+      }
+      return {
+        driverId,
+        timeWindow,
+        override: override instanceof HTMLInputElement ? override.checked : false,
+      }
+    },
+  })
+  if (!result.isConfirmed || !result.value || typeof result.value !== 'object') return null
+  const value = result.value as AssignDriverChoice
+  if (typeof value.driverId !== 'string' || typeof value.timeWindow !== 'string') return null
+  return {
+    driverId: value.driverId,
+    timeWindow: value.timeWindow,
+    override: value.override === true,
+  }
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 /** Tracking opcional (hasta 80 caracteres). Cancelar aborta; vacío es válido. */
 export async function askTracking(titulo: string, texto: string): Promise<string | null | undefined> {
   const result = await Swal.fire({
