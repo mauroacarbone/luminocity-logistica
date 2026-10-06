@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { defaultDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order } from '../data/orders'
 import { confirm, error as showError, success } from '../lib/alerts'
 import { placeLine } from '../lib/place'
@@ -132,7 +133,8 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
 export function PlanificadorRutas() {
   const { logout } = useAuth()
   const { orders, refresh } = useOrders()
-  const { timeWindows } = useCatalog()
+  const { timeWindows, ownTransporters, courierTransporters } = useCatalog()
+  const transporterLists = { ownTransporters, courierTransporters }
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
   const [drivers, setDrivers] = useState<DriverOption[]>([])
@@ -159,9 +161,11 @@ export function PlanificadorRutas() {
   const driverName = drivers.find((driver) => driver.id === driverId)?.name ?? ''
   const used = driverId && timeWindow ? driverSlotCount(orders, driverId, iso, timeWindow) : 0
 
-  const pool = orders.filter(
-    (order) => order.deliveryDate === iso && normalizeTimeWindow(order.timeWindow) === timeWindow,
-  )
+  const pool = orders.filter((order) => {
+    if (order.deliveryDate !== iso || normalizeTimeWindow(order.timeWindow) !== timeWindow) return false
+    if (defaultDispatchType(order, transporterLists) === 'correo') return false
+    return true
+  })
   const listed = readOnly
     ? (sheet?.orderIds ?? [])
         .map((id) => orders.find((order) => order.id === id))
