@@ -12,6 +12,8 @@ const RAW_STRING_MAX = 1000
 const RAW_JSON_MAX = 16 * 1024
 const CANTIDAD_MAX = 100_000
 const ORDER_ID_MAX = 64
+const BATCH_MAX = 2000
+const BATCH_MODES = new Set(['replace', 'merge'])
 
 export const pickingRouter = Router()
 pickingRouter.use(requireAuth)
@@ -32,6 +34,17 @@ pickingRouter.post('/', async (req, res) => {
       return
     }
     res.status(201).json(result.row)
+  })
+})
+
+pickingRouter.post('/batch', async (req, res) => {
+  await send(res, async () => {
+    const result = await batchRows(req.body)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(result.summary)
   })
 })
 
@@ -133,6 +146,110 @@ function deleteRow(id) {
     await writePicking(list)
     return { ok: true }
   })
+}
+
+function batchRows(body) {
+  return locked(async () => {
+    if (!isRecord(body)) return fail('El lote de picking no es válido.')
+    const mode = typeof body.mode === 'string' ? body.mode.trim() : ''
+    if (!BATCH_MODES.has(mode)) return fail('Indicá mode replace o merge.')
+    if (!Array.isArray(body.rows)) return fail('Mandá la lista de filas en rows.')
+    if (body.rows.length > BATCH_MAX) {
+      return fail(`El lote puede tener como máximo ${BATCH_MAX} filas.`)
+    }
+    const errors = []
+    const parsed = []
+    body.rows.forEach((row, index) => {
+      const result = readCreateBody(row)
+      if (result.error) {
+        errors.push({ index, message: result.error })
+        return
+      }
+      parsed.push(result)
+    })
+    if (errors.length > 0) {
+      return {
+        error: 'Hay filas inválidas en el lote.',
+        status: 400,
+        errors,
+      }
+    }
+    const current = await readPicking()
+    const now = new Date().toISOString()
+    if (mode === 'replace') {
+      const next = parsed.map((item) => buildNewRow(item, now))
+      await writePicking(next)
+      return {
+        summary: {
+          created: next.length,
+          updated: 0,
+          removed: current.length,
+        },
+      }
+    }
+    const initial = new Map()
+    for (const row of current) {
+      initial.set(mergeKey(row.comprobante, row.articulo), row)
+    }
+    const byKey = new Map(initial)
+    let created = 0
+    let updated = 0
+    const countedUpdate = new Set()
+    for (const item of parsed) {
+      const key = mergeKey(item.comprobante, item.articulo)
+      const existing = byKey.get(key)
+      if (existing) {
+        byKey.set(key, {
+          ...existing,
+          cliente: item.cliente,
+          comprobante: item.comprobante,
+          articulo: item.articulo,
+          cantidad: item.cantidad,
+          vendedor: item.vendedor,
+          raw: item.raw,
+          updatedAt: now,
+        })
+        if (initial.has(key) && !countedUpdate.has(key)) {
+          countedUpdate.add(key)
+          updated += 1
+        }
+      } else {
+        const row = buildNewRow(item, now)
+        byKey.set(key, row)
+        created += 1
+      }
+    }
+    await writePicking([...byKey.values()])
+    return { summary: { created, updated, removed: 0 } }
+  })
+}
+
+function buildNewRow(parsed, now) {
+  const row = {
+    id: randomUUID(),
+    createdAt: now,
+    updatedAt: now,
+    cliente: parsed.cliente,
+    comprobante: parsed.comprobante,
+    articulo: parsed.articulo,
+    cantidad: parsed.cantidad,
+    vendedor: parsed.vendedor,
+    raw: parsed.raw,
+    status: parsed.status ?? 'pendiente',
+  }
+  if (parsed.pickedQty !== undefined) row.pickedQty = parsed.pickedQty
+  if (parsed.orderId !== undefined) row.orderId = parsed.orderId
+  return row
+}
+
+function mergeKey(comprobante, articulo) {
+  return `${normalizeKeyPart(comprobante)}\0${normalizeKeyPart(articulo)}`
+}
+
+function normalizeKeyPart(value) {
+  return String(value ?? '')
+    .trim()
+    .toLocaleLowerCase('es')
 }
 
 function readCreateBody(body) {
@@ -338,7 +455,9 @@ function fail(error, status = 400) {
 }
 
 function sendError(res, result) {
-  res.status(result.status).json({ message: result.error })
+  const body = { message: result.error }
+  if (Array.isArray(result.errors)) body.errors = result.errors
+  res.status(result.status).json(body)
 }
 
 async function send(res, task) {
