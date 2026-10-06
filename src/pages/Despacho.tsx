@@ -749,7 +749,13 @@ export function Despacho() {
                   )}
                   {user && (
                     <OrderFlowButtons
-                      order={order}
+                      order={{
+                        ...order,
+                        sheetPlanned: Boolean(
+                          order.routeId &&
+                            sheets.some((sheet) => sheet.id === order.routeId && sheet.status === 'planificada'),
+                        ),
+                      }}
                       role={user.role}
                       via="despacho"
                       busy={busyId === order.id}

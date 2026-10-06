@@ -72,6 +72,8 @@ export type Order = {
   deliveredAt?: string
   routeId?: string
   routeSeq?: number
+  /** true si el pedido está en una hoja aún planificada (no iniciada). */
+  sheetPlanned?: boolean
   lat?: number
   lng?: number
   geoMiss?: boolean

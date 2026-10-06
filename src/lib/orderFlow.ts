@@ -123,9 +123,12 @@ function forwardLabel(order: Pick<Order, 'dispatchType'>, to: OrderStatus) {
 /** Siguiente paso hacia adelante que este rol puede hacer ahora. */
 export function nextAction(
   role: Role,
-  order: Pick<Order, 'status' | 'dispatchType'>,
+  order: Pick<Order, 'status' | 'dispatchType' | 'sheetPlanned'>,
 ): FlowAction | null {
-  const forwards = allowedTransitions(role, order, 'forward')
+  const forwards = allowedTransitions(role, order, 'forward').filter((rule) => {
+    if (rule.to === 'en-viaje' && order.sheetPlanned) return false
+    return true
+  })
   if (forwards.length === 0) return null
   const path = forwardPath(order)
   const index = path.indexOf(order.status)

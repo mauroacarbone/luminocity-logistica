@@ -88,7 +88,8 @@ ordersRouter.get('/', async (req, res) => {
     if (req.user.role === 'chofer') {
       queueGeoIds(visible.filter((order) => needsGeo(order)).map((order) => order.id))
     }
-    res.json(byNewest(visible).map(withHistory))
+    const planned = await plannedSheetIds()
+    res.json(byNewest(visible).map((order) => withSheetPlannedFlag(withHistory(order), planned)))
   })
 })
 ordersRouter.get('/:id', async (req, res) => {
@@ -103,7 +104,7 @@ ordersRouter.get('/:id', async (req, res) => {
       return
     }
     if (req.user.role === 'chofer' && needsGeo(order)) queueGeoIds([order.id])
-    res.json(await withDriverName(withHistory(order)))
+    res.json(await withClientFlags(withHistory(order)))
   })
 })
 ordersRouter.post('/', async (req, res) => {
@@ -437,6 +438,24 @@ async function withDriverName(order) {
   const name = driver && typeof driver.name === 'string' ? driver.name.trim() : ''
   if (!name) return order
   return { ...order, driverName: name }
+}
+
+function withSheetPlannedFlag(order, plannedIds) {
+  if (!order || typeof order !== 'object') return order
+  const routeId = typeof order.routeId === 'string' ? order.routeId : ''
+  return { ...order, sheetPlanned: Boolean(routeId && plannedIds.has(routeId)) }
+}
+
+async function plannedSheetIds() {
+  const sheets = await readCollection('routeSheets')
+  return new Set(
+    sheets.filter((item) => item && item.status === 'planificada' && typeof item.id === 'string').map((item) => item.id),
+  )
+}
+
+async function withClientFlags(order) {
+  const withName = await withDriverName(order)
+  return withSheetPlannedFlag(withName, await plannedSheetIds())
 }
 
 const TRANSITION_VIAS = new Set(['pedidos', 'despacho', 'mis-entregas', 'qr'])
