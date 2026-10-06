@@ -307,7 +307,7 @@ function patchOrder(id, body, user) {
     const driverChanged = Object.prototype.hasOwnProperty.call(changes, 'driverId')
     if (driverChanged) {
       if (baseline.dispatchType === 'correo') {
-        return fail('Los envíos por correo no van en hoja de ruta', 409)
+        return fail('Los envíos por correo no llevan chofer', 409)
       }
       if (current.status !== 'asignado') {
         return fail('Para cambiar el chofer usá Asignar o Volver a preparado', 409)
@@ -318,6 +318,7 @@ function patchOrder(id, body, user) {
         return fail('Para cambiar el chofer usá Asignar o Volver a preparado', 409)
       }
     }
+    const historyVia = patchVia(body)
 
     const allowed = assertPatch(user, current, tracked)
     if (allowed.error) return allowed
@@ -385,7 +386,7 @@ function patchOrder(id, body, user) {
         from: 'asignado',
         to: 'asignado',
         reason: `Cambio de chofer: ${prevName} → ${nextName}`,
-        via: 'pedidos',
+        via: historyVia,
       })
       order.history = history
     }
@@ -428,6 +429,13 @@ function driverLabel(users, driverId) {
 }
 
 const TRANSITION_VIAS = new Set(['pedidos', 'despacho', 'mis-entregas', 'qr'])
+const PATCH_VIAS = new Set(['despacho', 'pedidos'])
+
+function patchVia(body) {
+  const via = typeof body?.via === 'string' ? body.via.trim() : ''
+  if (PATCH_VIAS.has(via)) return via
+  return 'pedidos'
+}
 
 function withDefaultDispatch(order) {
   if (!order || typeof order !== 'object') return order
@@ -439,9 +447,6 @@ function transitionOrder(id, body, user) {
   return locked(async () => {
     if (!isRecord(body)) return fail('La transición no es válida.')
     const via = typeof body.via === 'string' ? body.via.trim() : ''
-    if (via === 'hoja') {
-      return fail('Ese pedido está en una hoja planificada. Usá Iniciar recorrido.', 409)
-    }
     if (!TRANSITION_VIAS.has(via)) return fail('via no válido')
     const orders = await readOrders()
     const index = orders.findIndex((item) => item.id === id)

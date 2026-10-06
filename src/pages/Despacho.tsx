@@ -382,7 +382,7 @@ export function Despacho() {
       await success('Chofer asignado')
       return true
     }
-    const fields: Record<string, unknown> = { driverId: driverId || null }
+    const fields: Record<string, unknown> = { driverId: driverId || null, via: 'despacho' }
     if (override) fields.override = true
     const result = await patchFields(order.id, fields)
     setBusyId('')
