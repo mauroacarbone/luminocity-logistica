@@ -91,3 +91,56 @@ export function forwardPath(order: Pick<Order, 'dispatchType'>): OrderStatus[] {
   }
   return path
 }
+
+export type FlowAction = {
+  to: OrderStatus
+  label: string
+}
+
+function allowedTransitions(
+  role: Role,
+  order: Pick<Order, 'status' | 'dispatchType'>,
+  direction: 'forward' | 'back',
+) {
+  return TRANSITIONS.filter((rule) => {
+    if (rule.from !== order.status) return false
+    if (!rule.roles.includes(role)) return false
+    if (rule.courierOnly && !isCourier(order)) return false
+    if (rule.ownDelivery && isCourier(order)) return false
+    const forward = STATUS_RANK[rule.to] > STATUS_RANK[rule.from]
+    return direction === 'forward' ? forward : !forward
+  })
+}
+
+function forwardLabel(order: Pick<Order, 'dispatchType'>, to: OrderStatus) {
+  if (to === 'preparado') return 'Marcar preparado'
+  if (to === 'asignado') return isCourier(order) ? 'Despachar' : 'Asignar chofer'
+  if (to === 'en-viaje') return 'Iniciar viaje'
+  if (to === 'entregado') return 'Marcar entregado'
+  return statusPillFor(order, to)
+}
+
+/** Siguiente paso hacia adelante que este rol puede hacer ahora. */
+export function nextAction(
+  role: Role,
+  order: Pick<Order, 'status' | 'dispatchType'>,
+): FlowAction | null {
+  const forwards = allowedTransitions(role, order, 'forward')
+  if (forwards.length === 0) return null
+  const path = forwardPath(order)
+  const index = path.indexOf(order.status)
+  const preferred = index >= 0 ? path[index + 1] : undefined
+  const rule = forwards.find((item) => item.to === preferred) ?? forwards[0]
+  return { to: rule.to, label: forwardLabel(order, rule.to) }
+}
+
+/** Pasos hacia atrás permitidos para este rol. */
+export function backActions(
+  role: Role,
+  order: Pick<Order, 'status' | 'dispatchType'>,
+): FlowAction[] {
+  return allowedTransitions(role, order, 'back').map((rule) => ({
+    to: rule.to,
+    label: `Volver a ${statusPillFor(order, rule.to)}`,
+  }))
+}
