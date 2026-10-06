@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
+import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
@@ -20,9 +21,8 @@ import {
   weekDays,
   weekOffsetForIso,
 } from '../lib/week'
-import { askPackages, askReason, askTracking, confirm, error, success } from '../lib/alerts'
-import { canAssignDispatch, canConfirmDelivery, canEditOrder, statusChoices } from '../lib/access'
-import { STATUS_RANK, statusPillFor } from '../lib/orderFlow'
+import { askReason, confirm, error, success } from '../lib/alerts'
+import { canAssignDispatch, canConfirmDelivery, canEditOrder } from '../lib/access'
 import { placeLine } from '../lib/place'
 import { driverSlotCount, normalizeTimeWindow, SLOT_LIMIT, slotQuestion } from '../lib/slot'
 import { isSession } from '../lib/authStore'
@@ -46,32 +46,6 @@ const TABS: { id: DispatchTab; label: string }[] = [
 
 function matchesTab(order: Order, tab: DispatchTab) {
   return order.status === tab
-}
-
-function statusPrompt(id: string, status: OrderStatus, order?: Order) {
-  if (status === 'preparado') {
-    return { title: 'Marcar preparado', text: `El pedido ${id} pasa a preparado.`, done: 'Pedido preparado', peligro: false }
-  }
-  if (status === 'asignado' && order?.dispatchType === 'correo') {
-    return {
-      title: 'Despachar',
-      text: `El pedido ${id} queda despachado.`,
-      done: 'Pedido despachado',
-      peligro: false,
-    }
-  }
-  if (status === 'en-viaje') {
-    return { title: 'Salir a reparto', text: `El pedido ${id} sale a reparto.`, done: 'Pedido en viaje', peligro: false }
-  }
-  if (status === 'entregado') {
-    return { title: 'Entregado', text: `El pedido ${id} queda entregado.`, done: 'Pedido entregado', peligro: false }
-  }
-  return {
-    title: 'Cambiar estado',
-    text: `El pedido ${id} pasa a ${statusPillFor(order ?? { dispatchType: undefined }, status).toLowerCase()}.`,
-    done: 'Estado actualizado',
-    peligro: false,
-  }
 }
 
 function SlotUsage({ orders, order }: { orders: Order[]; order: Order }) {
@@ -164,7 +138,6 @@ export function Despacho() {
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
   const [query, setQuery] = useState('')
   const [transporter, setTransporter] = useState('todos')
-  const [openStatusId, setOpenStatusId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<DialogKind | null>(null)
   const [dialogError, setDialogError] = useState('')
   const [coverId, setCoverId] = useState<string | null>(null)
@@ -285,7 +258,6 @@ export function Despacho() {
     setSelectedIso(order.deliveryDate)
     setQuery('')
     setHighlightId(order.id)
-    setOpenStatusId(null)
   }
 
   async function assignTransporter(order: Order, next: string) {
@@ -406,54 +378,6 @@ export function Despacho() {
     return true
   }
 
-  async function changeStatus(order: Order, status: OrderStatus) {
-    setOpenStatusId(null)
-    const prompt = statusPrompt(order.id, status, order)
-    if (
-      status === 'asignado' &&
-      order.dispatchType !== 'correo' &&
-      !order.driverId
-    ) {
-      await error('Elegí un chofer para asignar el pedido.')
-      return
-    }
-    const goingBack = STATUS_RANK[status] < STATUS_RANK[order.status]
-    let reason: string | undefined
-    let trackingNumber: string | undefined
-    let packages: number | undefined
-    if (goingBack) {
-      const typed = await askReason(prompt.title, prompt.text)
-      if (!typed) return
-      reason = typed
-    } else {
-      const accepted = await confirm(prompt.title, prompt.text, { peligro: prompt.peligro })
-      if (!accepted) return
-      if (status === 'preparado') {
-        const value = await askPackages(prompt.title, 'Indicá la cantidad de bultos.')
-        if (value == null) return
-        packages = value
-      }
-      if (status === 'asignado' && order.dispatchType === 'correo') {
-        const tracking = await askTracking(prompt.title, 'Podés cargar el tracking del envío.')
-        if (tracking === null) return
-        trackingNumber = tracking
-      }
-    }
-    setBusyId(order.id)
-    const body: Record<string, unknown> = { to: status, via: 'despacho' }
-    if (reason) body.reason = reason
-    if (packages != null) body.packages = packages
-    if (trackingNumber) body.trackingNumber = trackingNumber
-    if (status === 'asignado' && order.driverId) body.driverId = order.driverId
-    const result = await transitionOrder(order.id, body)
-    setBusyId('')
-    if (result.status === 'not-saved') {
-      await error(result.message)
-      return
-    }
-    await success(prompt.done)
-  }
-
   async function submitCode(code: string) {
     const order = findOrder(orders, code)
     if (!order) {
@@ -535,10 +459,7 @@ export function Despacho() {
                   ? 'border-lumi-yellow font-semibold text-lumi-ink'
                   : 'border-transparent text-lumi-muted'
               }`}
-              onClick={() => {
-                setTab(item.id)
-                setOpenStatusId(null)
-              }}
+              onClick={() => setTab(item.id)}
             >
               {item.label}
             </button>
@@ -652,7 +573,7 @@ export function Despacho() {
               id={`order-${order.id}`}
               className={`rounded-2xl bg-white p-4 shadow-sm ${
                 highlightId === order.id ? 'ring-2 ring-lumi-yellow' : ''
-              } ${openStatusId === order.id ? 'relative z-20' : ''}`}
+              }`}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
@@ -826,43 +747,16 @@ export function Despacho() {
                       {order.dispatchType !== 'correo' && <SlotUsage orders={orders} order={order} />}
                     </>
                   )}
-                  {user && statusChoices(user.role, order).length > 0 && (
-                    <div className="relative">
-                      <button
-                        type="button"
-                        className="min-h-11 rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea] disabled:opacity-50"
-                        disabled={busyId === order.id}
-                        aria-expanded={openStatusId === order.id}
-                        aria-haspopup="menu"
-                        onClick={() =>
-                          setOpenStatusId((current) => (current === order.id ? null : order.id))
-                        }
-                      >
-                        Estado
-                      </button>
-                      {openStatusId === order.id && (
-                        <div
-                          role="menu"
-                          className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
-                        >
-                          {statusChoices(user.role, order)
-                            .filter((status) => status !== order.status)
-                            .map((status) => (
-                            <button
-                              key={status}
-                              type="button"
-                              role="menuitem"
-                              className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] ${
-                                order.status === status ? 'font-semibold' : ''
-                              }`}
-                              onClick={() => void changeStatus(order, status)}
-                            >
-                              {statusPillFor(order, status)}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  {user && (
+                    <OrderFlowButtons
+                      order={order}
+                      role={user.role}
+                      via="despacho"
+                      busy={busyId === order.id}
+                      onBusy={(busy) => setBusyId(busy ? order.id : '')}
+                      transition={transitionOrder}
+                      driverSelectId={`chofer-${order.id}`}
+                    />
                   )}
                   {user && canEditOrder(user, order) && (
                     <button
@@ -877,10 +771,7 @@ export function Despacho() {
                     <button
                       type="button"
                       className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea]"
-                      onClick={() => {
-                        setOpenStatusId(null)
-                        setCoverId(order.id)
-                      }}
+                      onClick={() => setCoverId(order.id)}
                     >
                       Carátula
                     </button>
@@ -890,15 +781,6 @@ export function Despacho() {
             </article>
           ))}
         </div>
-      )}
-
-      {openStatusId && (
-        <button
-          type="button"
-          className="fixed inset-0 z-10 cursor-default"
-          aria-label="Cerrar menú de estado"
-          onClick={() => setOpenStatusId(null)}
-        />
       )}
 
       {dialog && (

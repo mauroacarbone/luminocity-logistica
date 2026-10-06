@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { NoAccess } from '../components/NoAccess'
+import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { DISPATCH_LABEL } from '../data/catalog'
@@ -8,9 +9,8 @@ import { type Order, type OrderHistoryEntry, type OrderStatus } from '../data/or
 import { placeLine } from '../lib/place'
 import { statusPillFor } from '../lib/orderFlow'
 import { getOrder } from '../lib/ordersApi'
-import { isSession, type Session } from '../lib/authStore'
-import { listUsers } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
+import { useOrders } from '../state/OrdersContext'
 
 const VIA_LABEL: Record<string, string> = {
   pedidos: 'Pedidos',
@@ -51,11 +51,14 @@ function statusText(order: Order, status: OrderStatus | null) {
 
 function PedidoDetalleView({ id }: { id: string }) {
   const { user, logout } = useAuth()
+  const { transitionOrder } = useOrders()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [forbidden, setForbidden] = useState(false)
+  const [missing, setMissing] = useState(false)
   const [error, setError] = useState('')
-  const [drivers, setDrivers] = useState<Session[]>([])
+  const [busy, setBusy] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -66,8 +69,13 @@ function PedidoDetalleView({ id }: { id: string }) {
           logout()
           return
         }
-        if (result.status === 403 || result.status === 404) {
+        if (result.status === 403) {
           setForbidden(true)
+          setLoading(false)
+          return
+        }
+        if (result.status === 404) {
+          setMissing(true)
           setLoading(false)
           return
         }
@@ -86,17 +94,21 @@ function PedidoDetalleView({ id }: { id: string }) {
     return () => {
       alive = false
     }
-  }, [id, logout])
-
-  useEffect(() => {
-    if (!user || (user.role !== 'admin' && user.role !== 'encargado_deposito')) return
-    void listUsers().then((result) => {
-      if (!result.ok || !Array.isArray(result.data)) return
-      setDrivers(result.data.filter((item): item is Session => isSession(item) && item.role === 'chofer'))
-    })
-  }, [user])
+  }, [id, logout, reloadKey])
 
   if (forbidden) return <NoAccess />
+  if (missing) {
+    return (
+      <section className="page">
+        <header className="page-header">
+          <h1>No existe ese pedido</h1>
+          <p>
+            <Link to="/pedidos">Volver a pedidos</Link>
+          </p>
+        </header>
+      </section>
+    )
+  }
   if (loading) {
     return (
       <section className="page">
@@ -107,16 +119,19 @@ function PedidoDetalleView({ id }: { id: string }) {
   if (error) {
     return (
       <section className="page">
-        <ServerDown message={error} onRetry={() => window.location.reload()} />
+        <ServerDown
+          message={error}
+          onRetry={() => {
+            setError('')
+            setLoading(true)
+            setReloadKey((key) => key + 1)
+          }}
+        />
       </section>
     )
   }
   if (!order || !user) return <NoAccess />
 
-  const driverName =
-    order.driverId === user.id
-      ? user.name
-      : drivers.find((item) => item.id === order.driverId)?.name || (order.driverId ? 'Chofer asignado' : '')
   const history = historyOf(order)
 
   return (
@@ -129,8 +144,21 @@ function PedidoDetalleView({ id }: { id: string }) {
           {' · '}
           {order.id}
         </p>
-        <h1>{order.id}</h1>
-        <p className="font-semibold uppercase">{order.client}</p>
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1>{order.id}</h1>
+            <p className="font-semibold uppercase">{order.client}</p>
+          </div>
+          <OrderFlowButtons
+            order={order}
+            role={user.role}
+            via="pedidos"
+            busy={busy}
+            onBusy={setBusy}
+            transition={transitionOrder}
+            onDone={(saved) => setOrder(saved)}
+          />
+        </div>
       </header>
 
       <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
@@ -162,7 +190,7 @@ function PedidoDetalleView({ id }: { id: string }) {
           </div>
           <div>
             <dt>Chofer</dt>
-            <dd>{driverName || '—'}</dd>
+            <dd>{order.driverName || (order.driverId ? 'Chofer asignado' : '—')}</dd>
           </div>
           <div>
             <dt>Franja</dt>
