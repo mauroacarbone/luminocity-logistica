@@ -13,6 +13,7 @@ import { NuevoPedido } from './pages/NuevoPedido'
 import { PlanificadorRutas } from './pages/PlanificadorRutas'
 import { MisEntregas } from './pages/MisEntregas'
 import { PanelOperativo } from './pages/PanelOperativo'
+import { PedidoDetalle } from './pages/PedidoDetalle'
 import { PedidosPreparacion } from './pages/PedidosPreparacion'
 import { PendientesEntregas } from './pages/PendientesEntregas'
 import { PostVenta } from './pages/PostVenta'
@@ -83,6 +84,7 @@ export default function App() {
             </Gate>
           }
         />
+        <Route path="/pedidos/:id" element={<PedidoDetalle />} />
         <Route
           path="/pedidos"
           element={

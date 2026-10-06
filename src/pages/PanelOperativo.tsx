@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { DISPATCH_LABEL } from '../data/catalog'
 import {
   ordersByStatus,
@@ -40,7 +40,11 @@ function OrderCard({ order }: { order: Order }) {
   return (
     <article className="order-card">
       <div className="order-card-top">
-        <strong>{order.id}</strong>
+        <strong>
+          <Link className="order-link" to={`/pedidos/${order.id}`}>
+            {order.id}
+          </Link>
+        </strong>
         {user && canEditOrder(user, order) && (
         <button
           type="button"
@@ -61,7 +65,11 @@ function OrderCard({ order }: { order: Order }) {
         </button>
         )}
       </div>
-      <p className="order-client">{order.client}</p>
+      <p className="order-client">
+        <Link className="order-link" to={`/pedidos/${order.id}`}>
+          {order.client}
+        </Link>
+      </p>
       {waiting && <p className="order-zone">Esperando confirmación</p>}
       {order.address && <p className="order-zone">{order.address}</p>}
       {placeLine(order) && <p className="order-zone">{placeLine(order)}</p>}
@@ -208,9 +216,15 @@ export function PanelOperativo() {
               ) : (
                 visibleOrders.map((order) => (
                   <tr key={order.id}>
-                    <td>{order.id}</td>
                     <td>
-                      {order.client}
+                      <Link className="order-link" to={`/pedidos/${order.id}`}>
+                        {order.id}
+                      </Link>
+                    </td>
+                    <td>
+                      <Link className="order-link" to={`/pedidos/${order.id}`}>
+                        {order.client}
+                      </Link>
                       {order.zone ? <span className="zone-inline"> · {order.zone}</span> : null}
                     </td>
                     <td>

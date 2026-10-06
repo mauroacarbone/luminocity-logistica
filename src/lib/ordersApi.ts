@@ -101,6 +101,15 @@ export function listOrders() {
   return request('/api/orders', 'GET', undefined, 'No se pudieron cargar los pedidos.')
 }
 
+export function getOrder(id: string) {
+  return request(
+    `/api/orders/${encodeURIComponent(id)}`,
+    'GET',
+    undefined,
+    'No se pudo cargar el pedido.',
+  )
+}
+
 export function createOrder(body: Record<string, unknown>) {
   return request('/api/orders', 'POST', body, 'No se pudo crear el pedido.')
 }
