@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
@@ -418,6 +419,11 @@ function DeliveryCard({
       {distance && <p className="mt-1 text-sm font-semibold">{distance}</p>}
       <p className="mt-2 text-sm">Bultos: {order.packages ?? '—'}</p>
       <p className="text-sm">Teléfono: {order.phone || '—'}</p>
+      <p className="mt-2">
+        <Link className="order-link text-sm font-semibold" to={`/pedidos/${order.id}`}>
+          Ver detalle
+        </Link>
+      </p>
       {waiting ? (
         <p className="mt-4 text-sm font-semibold">Esperando asignación del encargado</p>
       ) : (

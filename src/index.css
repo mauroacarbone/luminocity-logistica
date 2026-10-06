@@ -793,13 +793,6 @@ p {
   color: var(--ink);
 }
 
-.order-stepper-now.is-canceled,
-.order-step-canceled {
-  color: var(--danger);
-  font-weight: 700;
-  font-size: 12px;
-}
-
 @media (max-width: 400px) {
   .order-stepper-full .order-step-label {
     font-size: 11px;

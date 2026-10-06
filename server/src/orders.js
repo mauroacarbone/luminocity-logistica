@@ -103,7 +103,7 @@ ordersRouter.get('/:id', async (req, res) => {
       return
     }
     if (req.user.role === 'chofer' && needsGeo(order)) queueGeoIds([order.id])
-    res.json(withHistory(order))
+    res.json(await withDriverName(withHistory(order)))
   })
 })
 ordersRouter.post('/', async (req, res) => {
@@ -426,6 +426,17 @@ function driverLabel(users, driverId) {
   const driver = users.find((item) => item.id === driverId)
   const name = driver && typeof driver.name === 'string' ? driver.name.trim() : ''
   return name || driverId
+}
+
+async function withDriverName(order) {
+  if (!order || typeof order !== 'object') return order
+  const driverId = typeof order.driverId === 'string' ? order.driverId : ''
+  if (!driverId) return order
+  const users = await readUsersList()
+  const driver = users.find((item) => item.id === driverId)
+  const name = driver && typeof driver.name === 'string' ? driver.name.trim() : ''
+  if (!name) return order
+  return { ...order, driverName: name }
 }
 
 const TRANSITION_VIAS = new Set(['pedidos', 'despacho', 'mis-entregas', 'qr'])

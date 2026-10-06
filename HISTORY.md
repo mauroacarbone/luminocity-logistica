@@ -48,6 +48,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 21a.3 | Pedidos viejos sin despacho y detalles | Hecho |
 | 21a.4 | Una sola regla para el despacho de pedidos viejos | Hecho |
 | 21b | Pasos del pedido y página de detalle | Hecho |
+| 21c | Botón de siguiente paso por rol | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -108,6 +109,8 @@ El Brief 21a.3 cierra detalles: un pedido viejo sin `dispatchType` se trata como
 El Brief 21a.4 unifica la regla: sin `dispatchType` es entrega propia. No se deduce por transportista. El formulario de edición y el planificador usan el valor guardado (faltante = propia), igual que el server.
 
 El Brief 21b muestra los pasos del pedido (`OrderStepper`) según el despacho, compacto en Despacho y Mis entregas, y la página de detalle `/pedidos/:id` con datos e historial. Sin `dispatchType` se trata como propia.
+
+El Brief 21c pone un botón de siguiente paso por rol (`nextAction` / `backActions`) en Despacho y en el detalle del pedido, con menú ⋯ para volver atrás. El GET del pedido incluye `driverName`.
 
 ## Pendientes
 

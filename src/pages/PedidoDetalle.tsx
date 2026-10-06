@@ -9,6 +9,7 @@ import { type Order, type OrderHistoryEntry, type OrderStatus } from '../data/or
 import { placeLine } from '../lib/place'
 import { statusPillFor } from '../lib/orderFlow'
 import { getOrder } from '../lib/ordersApi'
+import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 
@@ -156,7 +157,7 @@ function PedidoDetalleView({ id }: { id: string }) {
             busy={busy}
             onBusy={setBusy}
             transition={transitionOrder}
-            onDone={(saved) => setOrder(saved)}
+            onDone={() => setReloadKey((key) => key + 1)}
           />
         </div>
       </header>
@@ -171,6 +172,14 @@ function PedidoDetalleView({ id }: { id: string }) {
           <div>
             <dt>Cliente</dt>
             <dd>{order.client}</dd>
+          </div>
+          <div>
+            <dt>Teléfono</dt>
+            <dd>{order.phone || '—'}</dd>
+          </div>
+          <div>
+            <dt>Vendedor</dt>
+            <dd>{order.seller || '—'}</dd>
           </div>
           <div>
             <dt>Dirección</dt>
@@ -210,7 +219,11 @@ function PedidoDetalleView({ id }: { id: string }) {
           </div>
           <div>
             <dt>Fecha de entrega</dt>
-            <dd>{order.deliveryDate || '—'}</dd>
+            <dd>{order.deliveryDate ? formatIsoDate(order.deliveryDate) : '—'}</dd>
+          </div>
+          <div>
+            <dt>Notas</dt>
+            <dd>{order.notes?.trim() ? order.notes : '—'}</dd>
           </div>
         </dl>
       </div>
