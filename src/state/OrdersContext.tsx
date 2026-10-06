@@ -317,10 +317,10 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     reason?: string,
     override = false,
   ): Promise<OrderSaveResult> {
-    const body = orderBody(order, mode)
+    const previous = id ? ordersRef.current.find((item) => item.id === id) : undefined
+    const body = orderBody(order, mode, previous)
     if (reason) body.reason = reason
     if (override) body.override = true
-    const previous = id ? ordersRef.current.find((item) => item.id === id) : undefined
     let dropped = false
     let result = mode === 'create' ? await createOrder(body) : await patchOrder(id ?? '', body)
     if (!result.ok && result.status === 413 && typeof body.attachmentDataUrl === 'string') {

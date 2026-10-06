@@ -292,7 +292,9 @@ function patchOrder(id, body, user) {
     if (parsed.error) return parsed
     const reason = readReason(body)
     if (reason.error) return reason
-    const tracked = diffOrder(current, parsed.order)
+    const baseline = withDefaultDispatch(current)
+    const compared = withDefaultDispatch(parsed.order)
+    const tracked = diffOrder(baseline, compared)
     const changes = { ...tracked, ...placeChanges(current, parsed.order) }
     if (Object.keys(changes).length === 0) return fail('No hay cambios para guardar.')
 
@@ -304,7 +306,7 @@ function patchOrder(id, body, user) {
 
     const driverChanged = Object.prototype.hasOwnProperty.call(changes, 'driverId')
     if (driverChanged) {
-      if (current.dispatchType === 'correo') {
+      if (baseline.dispatchType === 'correo') {
         return fail('Los envíos por correo no van en hoja de ruta', 409)
       }
       if (current.status !== 'asignado') {
@@ -426,6 +428,12 @@ function driverLabel(users, driverId) {
 }
 
 const TRANSITION_VIAS = new Set(['pedidos', 'despacho', 'mis-entregas', 'qr'])
+
+function withDefaultDispatch(order) {
+  if (!order || typeof order !== 'object') return order
+  if (order.dispatchType === 'propia' || order.dispatchType === 'correo') return order
+  return { ...order, dispatchType: 'propia' }
+}
 
 function transitionOrder(id, body, user) {
   return locked(async () => {

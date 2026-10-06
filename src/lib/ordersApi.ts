@@ -143,7 +143,7 @@ function text(value: string | undefined) {
   return trimmed ? trimmed : undefined
 }
 
-export function orderBody(order: OrderDraft, mode: 'create' | 'patch') {
+export function orderBody(order: OrderDraft, mode: 'create' | 'patch', previous?: Order) {
   const body: Record<string, unknown> = {
     client: order.client.trim(),
     seller: text(order.seller) ?? '',
@@ -170,8 +170,11 @@ export function orderBody(order: OrderDraft, mode: 'create' | 'patch') {
   if (typeof order.requiresPickup === 'boolean') body.requiresPickup = order.requiresPickup
   else if (mode === 'patch') body.requiresPickup = null
 
-  if (order.dispatchType) body.dispatchType = order.dispatchType
-  else if (mode === 'patch') body.dispatchType = null
+  if (mode === 'create') {
+    if (order.dispatchType) body.dispatchType = order.dispatchType
+  } else if (order.dispatchType !== previous?.dispatchType) {
+    body.dispatchType = order.dispatchType ?? null
+  }
 
   if (typeof order.packages === 'number') body.packages = order.packages
   else if (mode === 'patch') body.packages = null
