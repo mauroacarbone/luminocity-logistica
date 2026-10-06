@@ -4,7 +4,7 @@ import { EditReasonDialog } from '../components/EditReasonDialog'
 import { NoAccess } from '../components/NoAccess'
 import {
   DISPATCH_LABEL,
-  defaultDispatchType,
+  isDispatchType,
   listForDispatch,
   withCurrent,
   type DispatchType,
@@ -128,14 +128,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [timeWindow, setTimeWindow] = useState(existing?.timeWindow ?? timeWindows[0] ?? '')
   const [requiresPickup, setRequiresPickup] = useState(existing?.requiresPickup ?? false)
   const [dispatchType, setDispatchType] = useState<DispatchType>(() =>
-    defaultDispatchType(existing, transporterLists),
+    isDispatchType(existing?.dispatchType) ? existing.dispatchType : 'propia',
   )
-  const [transporter, setTransporter] = useState(
-    () =>
-      existing?.transporter ??
-      listForDispatch(defaultDispatchType(existing, transporterLists), transporterLists)[0] ??
-      '',
-  )
+  const [transporter, setTransporter] = useState(() => {
+    const type = isDispatchType(existing?.dispatchType) ? existing.dispatchType : 'propia'
+    return existing?.transporter ?? listForDispatch(type, transporterLists)[0] ?? ''
+  })
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [storedId, setStoredId] = useState<string | undefined>(existing?.id)
   const [attachmentName, setAttachmentName] = useState(existing?.attachmentName ?? '')
