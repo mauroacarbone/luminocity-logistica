@@ -45,6 +45,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 21a | Máquina de estados del pedido e historial | Hecho |
 | 21a.1 | Cerrar agujeros de la máquina de estados | Hecho |
 | 21a.2 | Tipo de despacho y correo sin atajos | Hecho |
+| 21a.3 | Pedidos viejos sin despacho y detalles | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
