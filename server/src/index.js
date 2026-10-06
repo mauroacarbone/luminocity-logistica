@@ -42,14 +42,20 @@ const app = express()
 // Render termina HTTPS y manda la IP en X-Forwarded-For.
 app.set('trust proxy', 1)
 const jsonLarge = express.json({ limit: '10mb' })
+const jsonPicking = express.json({ limit: '2mb' })
 const jsonLocation = express.json({ limit: '2kb' })
 // El front llama a /api por el proxy de Vite, así que no hace falta CORS.
 // Adjuntos del pedido van en el JSON (data URL, tope 2 MB de archivo).
 // 10mb alcanza para el base64 y el resto de los campos.
+// El picking importa muchas filas: tope 2 MB.
 // La ubicación del chofer es chica: 2kb.
 app.use((req, res, next) => {
   if (req.method === 'POST' && req.path === '/api/drivers/location') {
     jsonLocation(req, res, next)
+    return
+  }
+  if (req.path === '/api/picking' || req.path.startsWith('/api/picking/')) {
+    jsonPicking(req, res, next)
     return
   }
   jsonLarge(req, res, next)
@@ -59,7 +65,9 @@ app.use((error, req, res, next) => {
     const message =
       req.path === '/api/drivers/location'
         ? 'La ubicación es demasiado grande.'
-        : 'El pedido es demasiado grande. Probá un adjunto más chico.'
+        : req.path === '/api/picking' || req.path.startsWith('/api/picking/')
+          ? 'La importación es demasiado grande. Partí el archivo.'
+          : 'El pedido es demasiado grande. Probá un adjunto más chico.'
     res.status(413).json({ message })
     return
   }

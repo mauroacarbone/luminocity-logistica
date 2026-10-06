@@ -6,6 +6,12 @@ import { requireAuth, requireRole } from './middleware.js'
 
 const ROLES = ['deposito', 'encargado_deposito', 'admin']
 const STATUSES = new Set(['pendiente', 'en_preparacion', 'preparado'])
+const RAW_MAX_KEYS = 100
+const RAW_KEY_MAX = 100
+const RAW_STRING_MAX = 1000
+const RAW_JSON_MAX = 16 * 1024
+const CANTIDAD_MAX = 100_000
+const ORDER_ID_MAX = 64
 
 export const pickingRouter = Router()
 pickingRouter.use(requireAuth)
@@ -40,7 +46,7 @@ pickingRouter.patch('/:id', async (req, res) => {
   })
 })
 
-pickingRouter.delete('/:id', async (req, res) => {
+pickingRouter.delete('/:id', requireRole('encargado_deposito', 'admin'), async (req, res) => {
   await send(res, async () => {
     const result = await deleteRow(req.params.id)
     if (result.error) {
@@ -249,6 +255,7 @@ function readCantidad(value) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     return fail('Ingresá una cantidad mayor a cero.')
   }
+  if (value > CANTIDAD_MAX) return fail(`La cantidad no puede ser mayor a ${CANTIDAD_MAX}.`)
   return { value }
 }
 
@@ -256,13 +263,18 @@ function readPickedQty(value) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     return fail('La cantidad pickeada no es válida.')
   }
+  if (value > CANTIDAD_MAX) return fail(`La cantidad pickeada no puede ser mayor a ${CANTIDAD_MAX}.`)
   return { value }
 }
 
 function readOrderId(value) {
   if (value === null || value === '') return { value: undefined }
   if (typeof value !== 'string' || !value.trim()) return fail('El pedido vinculado no es válido.')
-  return { value: value.trim() }
+  const trimmed = value.trim()
+  if (trimmed.length > ORDER_ID_MAX) {
+    return fail(`El pedido vinculado puede tener hasta ${ORDER_ID_MAX} caracteres.`)
+  }
+  return { value: trimmed }
 }
 
 function readStatus(value) {
@@ -274,20 +286,46 @@ function readStatus(value) {
 
 function readRaw(value) {
   if (!isRecord(value)) return fail('Faltan las columnas originales del archivo.')
+  const entries = Object.entries(value)
+  if (entries.length === 0) return fail('Faltan las columnas originales del archivo.')
+  if (entries.length > RAW_MAX_KEYS) {
+    return fail(`raw puede tener como máximo ${RAW_MAX_KEYS} columnas.`)
+  }
   const raw = {}
-  for (const [key, item] of Object.entries(value)) {
-    if (typeof key !== 'string' || !key.trim()) continue
+  for (const [key, item] of entries) {
+    if (typeof key !== 'string') return fail('Las columnas originales del archivo no son válidas.')
+    const trimmedKey = key.trim()
+    if (!trimmedKey) return fail('Hay una columna de raw sin nombre.')
+    if (trimmedKey.length > RAW_KEY_MAX) {
+      return fail(`Cada clave de raw puede tener hasta ${RAW_KEY_MAX} caracteres.`)
+    }
     if (item === null || item === undefined) {
-      raw[key] = ''
+      raw[trimmedKey] = ''
       continue
     }
-    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
-      raw[key] = item
+    if (typeof item === 'number' || typeof item === 'boolean') {
+      raw[trimmedKey] = item
+      continue
+    }
+    if (typeof item === 'string') {
+      if (item.length > RAW_STRING_MAX) {
+        return fail(`Cada valor de texto en raw puede tener hasta ${RAW_STRING_MAX} caracteres.`)
+      }
+      raw[trimmedKey] = item
       continue
     }
     return fail('Las columnas originales del archivo no son válidas.')
   }
   if (Object.keys(raw).length === 0) return fail('Faltan las columnas originales del archivo.')
+  let encoded = ''
+  try {
+    encoded = JSON.stringify(raw)
+  } catch {
+    return fail('raw no se pudo serializar.')
+  }
+  if (Buffer.byteLength(encoded, 'utf8') > RAW_JSON_MAX) {
+    return fail('raw no puede superar los 16 KB.')
+  }
   return { value: raw }
 }
 
