@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
-import { defaultDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order } from '../data/orders'
 import { confirm, error as showError, success } from '../lib/alerts'
 import { placeLine } from '../lib/place'
@@ -133,8 +132,7 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
 export function PlanificadorRutas() {
   const { logout } = useAuth()
   const { orders, refresh } = useOrders()
-  const { timeWindows, ownTransporters, courierTransporters } = useCatalog()
-  const transporterLists = { ownTransporters, courierTransporters }
+  const { timeWindows } = useCatalog()
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
   const [drivers, setDrivers] = useState<DriverOption[]>([])
@@ -163,7 +161,7 @@ export function PlanificadorRutas() {
 
   const pool = orders.filter((order) => {
     if (order.deliveryDate !== iso || normalizeTimeWindow(order.timeWindow) !== timeWindow) return false
-    if (defaultDispatchType(order, transporterLists) === 'correo') return false
+    if (order.dispatchType === 'correo') return false
     return true
   })
   const listed = readOnly
