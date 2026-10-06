@@ -1,5 +1,13 @@
 /** Una tabla por colección. El objeto queda igual, dentro de data. */
-export const COLLECTION_NAMES = ['users', 'orders', 'notifications', 'authorizations', 'locations', 'routeSheets']
+export const COLLECTION_NAMES = [
+  'users',
+  'orders',
+  'notifications',
+  'authorizations',
+  'locations',
+  'routeSheets',
+  'picking',
+]
 
 const IDENT = /^[a-z_]+$/
 

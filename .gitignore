@@ -20,6 +20,7 @@ server/data/authorizations.json
 server/data/notifications.json
 server/data/locations.json
 server/data/routeSheets.json
+server/data/picking.json
 
 # Editor directories and files
 .vscode/*

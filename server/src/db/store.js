@@ -14,6 +14,7 @@ const SPECS = {
   authorizations: { file: 'authorizations.json', kind: 'array' },
   locations: { file: 'locations.json', kind: 'object' },
   routeSheets: { file: 'routeSheets.json', kind: 'array' },
+  picking: { file: 'picking.json', kind: 'array' },
 }
 
 const tx = new AsyncLocalStorage()
