@@ -67,18 +67,6 @@ export function listForDispatch(
   return type === 'correo' ? lists.courierTransporters : lists.ownTransporters
 }
 
-export function defaultDispatchType(
-  order: { dispatchType?: string; transporter?: string } | undefined,
-  lists: { ownTransporters: readonly string[]; courierTransporters: readonly string[] },
-): DispatchType {
-  if (isDispatchType(order?.dispatchType)) return order.dispatchType
-  const name = order?.transporter
-  if (name && lists.courierTransporters.includes(name) && !lists.ownTransporters.includes(name)) {
-    return 'correo'
-  }
-  return 'propia'
-}
-
 export const DELIVERY_ZONES: DeliveryZone[] = [
   { name: 'CABA', days: 'Lun · Mar · Mié · Jue · Vie · Sáb' },
   { name: 'GBA Norte', days: 'Lun · Jue' },

@@ -127,13 +127,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [deliveryDate, setDeliveryDate] = useState(existing?.deliveryDate ?? '')
   const [timeWindow, setTimeWindow] = useState(existing?.timeWindow ?? timeWindows[0] ?? '')
   const [requiresPickup, setRequiresPickup] = useState(existing?.requiresPickup ?? false)
-  const [dispatchType, setDispatchType] = useState<DispatchType>(() =>
-    isDispatchType(existing?.dispatchType) ? existing.dispatchType : 'propia',
+  const initialDispatch: DispatchType = isDispatchType(existing?.dispatchType)
+    ? existing.dispatchType
+    : 'propia'
+  const [dispatchType, setDispatchType] = useState<DispatchType>(initialDispatch)
+  const [transporter, setTransporter] = useState(
+    () => existing?.transporter ?? listForDispatch(initialDispatch, transporterLists)[0] ?? '',
   )
-  const [transporter, setTransporter] = useState(() => {
-    const type = isDispatchType(existing?.dispatchType) ? existing.dispatchType : 'propia'
-    return existing?.transporter ?? listForDispatch(type, transporterLists)[0] ?? ''
-  })
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [storedId, setStoredId] = useState<string | undefined>(existing?.id)
   const [attachmentName, setAttachmentName] = useState(existing?.attachmentName ?? '')

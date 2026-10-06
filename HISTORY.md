@@ -47,6 +47,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 21a.2 | Tipo de despacho y correo sin atajos | Hecho |
 | 21a.3 | Pedidos viejos sin despacho y detalles | Hecho |
 | 21a.4 | Una sola regla para el despacho de pedidos viejos | Hecho |
+| 21b | Pasos del pedido y página de detalle | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -105,6 +106,8 @@ El Brief 21a.2 fija el despacho: `dispatchType` solo se cambia en pendiente o pr
 El Brief 21a.3 cierra detalles: un pedido viejo sin `dispatchType` se trata como entrega propia al editar, y el PATCH solo manda ese campo si cambió. Reasignar chofer acepta `via` `despacho` o `pedidos` (por defecto `pedidos`); `via: "hoja"` en `/transition` responde 400. El tracking deja de pedir motivo ni avisar al vendedor. El planificador no lista correo ni transporte tercero.
 
 El Brief 21a.4 unifica la regla: sin `dispatchType` es entrega propia. No se deduce por transportista. El formulario de edición y el planificador usan el valor guardado (faltante = propia), igual que el server.
+
+El Brief 21b muestra los pasos del pedido (`OrderStepper`) según el despacho, compacto en Despacho y Mis entregas, y la página de detalle `/pedidos/:id` con datos e historial. Sin `dispatchType` se trata como propia.
 
 ## Pendientes
 
