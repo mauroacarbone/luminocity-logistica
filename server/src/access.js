@@ -20,10 +20,9 @@ const DATA_FIELDS = [
   'collectOnDelivery',
   'requiresPickup',
   'dispatchType',
-  'trackingNumber',
 ]
 
-const TRACKED = [...DATA_FIELDS, 'transporter', 'driverId', 'status', 'packages']
+const TRACKED = [...DATA_FIELDS, 'transporter', 'driverId', 'status', 'packages', 'trackingNumber']
 
 export function normalizeName(value) {
   return String(value ?? '')
