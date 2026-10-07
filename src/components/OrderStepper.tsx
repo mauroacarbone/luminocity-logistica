@@ -13,6 +13,7 @@ export function OrderStepper({
   const steps = forwardPath(order)
   const currentRank = STATUS_RANK[order.status] ?? 0
   const currentLabel = statusPillFor(order, order.status)
+  const finished = order.status === 'entregado'
 
   if (variant === 'compact') {
     return (
@@ -20,7 +21,7 @@ export function OrderStepper({
         <ol className="order-stepper-track">
           {steps.map((status) => {
             const rank = STATUS_RANK[status]
-            const state = stepState(rank, currentRank)
+            const state = stepState(rank, currentRank, finished)
             return (
               <li key={status} className={`order-step order-step-${state}`} aria-current={state === 'current' ? 'step' : undefined}>
                 <span className="order-step-dot">{state === 'done' ? '✓' : ''}</span>
@@ -38,7 +39,7 @@ export function OrderStepper({
       <ol className="order-stepper-track">
         {steps.map((status, index) => {
           const rank = STATUS_RANK[status]
-          const state = stepState(rank, currentRank)
+          const state = stepState(rank, currentRank, finished)
           const label = statusPillFor(order, status)
           return (
             <li
@@ -57,8 +58,8 @@ export function OrderStepper({
   )
 }
 
-function stepState(rank: number, currentRank: number): 'done' | 'current' | 'todo' {
-  if (rank < currentRank) return 'done'
+function stepState(rank: number, currentRank: number, finished: boolean): 'done' | 'current' | 'todo' {
+  if (finished || rank < currentRank) return 'done'
   if (rank === currentRank) return 'current'
   return 'todo'
 }
