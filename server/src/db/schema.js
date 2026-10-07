@@ -9,7 +9,7 @@ export const COLLECTION_NAMES = [
   'picking',
 ]
 
-const IDENT = /^[a-z_]+$/
+const IDENT = /^[A-Za-z_]+$/
 
 export function assertCollectionName(name) {
   if (!COLLECTION_NAMES.includes(name) || !IDENT.test(name)) {
@@ -20,6 +20,7 @@ export function assertCollectionName(name) {
 
 export async function ensureTables(query) {
   for (const name of COLLECTION_NAMES) {
+    assertCollectionName(name)
     await query(
       `CREATE TABLE IF NOT EXISTS ${name} (
         id text PRIMARY KEY,

@@ -58,6 +58,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 22b.1 | Migración de picking sin repetidos | Hecho |
 | 22c | Buscar, filtrar y ver todos los datos de picking | Hecho |
 | 22c.1 | CSV de picking listo para Excel | Hecho |
+| 22c.3 | Aceptar routeSheets como colección en Postgres | Hecho |
 | 22d | Cruzar picking con pedidos y cargar lo pickeado | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
@@ -139,6 +140,8 @@ El Brief 22b.1 agrupa el picking legacy por clave antes del batch, borra la clav
 El Brief 22c agrega en Pendientes de Entregas un buscador (Buscar, Enter y limpiar) sobre cliente, comprobante, artículo, vendedor y valores de `raw`, chips por status del server y el contador de filas. "Ver todos los datos" abre la tabla con las columnas de `raw` más los campos fijos, con selector de columnas y exportación CSV de lo filtrado.
 
 El Brief 22c.1 deja el CSV listo para Excel en español: BOM UTF-8, separador `;`, CRLF y escape de fórmulas. El modal muestra como máximo 500 filas (el CSV exporta todas), el selector de columnas hace scroll y Escape cierra.
+
+El Brief 22c.3 deja pasar mayúsculas en el nombre de colección de Postgres (`IDENT`), así `routeSheets` deja de fallar. `ensureTables` valida cada nombre al arrancar.
 
 El Brief 22d agrupa el picking por comprobante, lo cruza con `order.invoices` (normalizado) y guarda `orderId` por PATCH. Se carga `pickedQty`, el status pasa a `en_preparacion` y el grupo muestra faltantes o "Listo para preparar".
 
