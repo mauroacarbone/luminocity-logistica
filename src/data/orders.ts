@@ -24,7 +24,7 @@ export type SlotOverride = {
   timeWindow?: string
 }
 
-export type OrderHistoryVia = 'pedidos' | 'despacho' | 'hoja' | 'mis-entregas' | 'qr'
+export type OrderHistoryVia = 'pedidos' | 'despacho' | 'hoja' | 'mis-entregas' | 'qr' | 'picking'
 
 export type OrderHistoryEntry = {
   at: string
