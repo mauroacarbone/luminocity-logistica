@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { ServerDown, Spinner } from '../components/LoadState'
-import type { Order } from '../data/orders'
-import { confirm } from '../lib/alerts'
+import { STATUS_PILL, type Order } from '../data/orders'
+import { askPackages, confirm, error as showError, success } from '../lib/alerts'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
 import {
   matchOrdersByInvoice,
@@ -225,13 +225,45 @@ function GroupPickingSummary({ group }: { group: PickingGroup }) {
   )
 }
 
+function linesForOrder(allLines: PickingLine[], order: Order) {
+  const keys = new Set(
+    (order.invoices ?? []).map((invoice) => normalizeInvoiceKey(invoice)).filter(Boolean),
+  )
+  if (keys.size === 0) return []
+  return allLines.filter((line) => keys.has(normalizeInvoiceKey(line.invoice)))
+}
+
+/** Completud de todos los comprobantes del pedido (sobre todas las filas). */
+function orderPickingState(allLines: PickingLine[], order: Order, groupKey: string) {
+  const invoices = order.invoices ?? []
+  if (invoices.length === 0) {
+    return { allComplete: false, missingOther: false }
+  }
+  let allComplete = true
+  let missingOther = false
+  for (const invoice of invoices) {
+    const key = normalizeInvoiceKey(invoice)
+    const invLines = allLines.filter((line) => normalizeInvoiceKey(line.invoice) === key)
+    if (invLines.length === 0) {
+      allComplete = false
+      if (key !== groupKey) missingOther = true
+      continue
+    }
+    if (!invLines.every(isLineComplete)) {
+      allComplete = false
+      if (key !== groupKey) missingOther = true
+    }
+  }
+  return { allComplete, missingOther }
+}
+
 function downloadTemplate() {
   downloadCsvFile(pickingTemplateCsv(), 'plantilla-picking.csv')
 }
 
 export function PendientesEntregas() {
   const { user } = useAuth()
-  const { orders: pedidos } = useOrders()
+  const { orders: pedidos, transitionOrder } = useOrders()
   const {
     lines,
     loading,
@@ -254,6 +286,7 @@ export function PendientesEntregas() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [preparingKey, setPreparingKey] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -449,6 +482,94 @@ export function PendientesEntregas() {
     if (line.status === 'preparado') return
     setQtyDraft(line.id, String(line.quantity))
     await savePickedQty(line, String(line.quantity))
+  }
+
+  async function markOrderPrepared(group: PickingGroup) {
+    if (group.link.kind !== 'one') return
+    const order = group.link.order
+    if (order.status !== 'pendiente' && order.status !== 'preparado') return
+
+    const orderLines = linesForOrder(lines, order)
+    const { allComplete } = orderPickingState(lines, order, group.key)
+    if (!allComplete || orderLines.length === 0) return
+
+    let packages: number | null = null
+    if (order.status === 'pendiente') {
+      packages = await askPackages('Marcar preparado', 'Indicá la cantidad de bultos.')
+      if (packages == null) return
+      setPreparingKey(group.key)
+      setError('')
+      const result = await transitionOrder(order.id, {
+        to: 'preparado',
+        via: 'picking',
+        packages,
+      })
+      if (result.status === 'not-saved') {
+        setPreparingKey(null)
+        await showError(result.message)
+        return
+      }
+    } else {
+      setPreparingKey(group.key)
+      setError('')
+    }
+
+    let failed = 0
+    for (const line of orderLines) {
+      const result = await patchLine(line.id, { status: 'preparado', orderId: order.id })
+      if (!result.ok) failed += 1
+    }
+    setPreparingKey(null)
+    if (failed > 0) {
+      setError(
+        `No se pudieron marcar ${failed} fila${failed === 1 ? '' : 's'}. Podés reintentar.`,
+      )
+      return
+    }
+    const bultos = packages ?? order.packages ?? 0
+    await success(`Pedido ${order.id} preparado con ${bultos} bultos.`)
+  }
+
+  function prepareBlock(group: PickingGroup) {
+    if (group.link.kind !== 'one') return null
+    const order = group.link.order
+    if (
+      order.status === 'asignado' ||
+      order.status === 'en-viaje' ||
+      order.status === 'entregado'
+    ) {
+      return (
+        <p className="mt-2 text-sm text-lumi-muted">
+          Pedido {STATUS_PILL[order.status]}
+        </p>
+      )
+    }
+    if (order.status !== 'pendiente' && order.status !== 'preparado') return null
+
+    const groupComplete = group.lines.length > 0 && group.lines.every(isLineComplete)
+    const { allComplete, missingOther } = orderPickingState(lines, order, group.key)
+
+    if (!allComplete) {
+      if (groupComplete && missingOther) {
+        return (
+          <p className="mt-2 text-sm text-lumi-muted">
+            Faltan filas de otro comprobante del pedido
+          </p>
+        )
+      }
+      return null
+    }
+
+    return (
+      <button
+        type="button"
+        className="mt-2 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+        disabled={preparingKey === group.key || busy}
+        onClick={() => void markOrderPrepared(group)}
+      >
+        Marcar preparado
+      </button>
+    )
   }
 
   async function onUploadLegacy() {
@@ -770,6 +891,7 @@ export function PendientesEntregas() {
                         )}
                         <OrderLinkBlock link={group.link} />
                         <GroupPickingSummary group={group} />
+                        {prepareBlock(group)}
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
                         <div
@@ -855,6 +977,7 @@ export function PendientesEntregas() {
                       </button>
                       <OrderLinkBlock link={group.link} />
                       <GroupPickingSummary group={group} />
+                      {prepareBlock(group)}
                     </div>
                     {open && (
                       <div className="flex flex-col gap-2 px-4 py-3">
