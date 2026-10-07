@@ -508,7 +508,9 @@ function sendError(res, result) {
 async function send(res, task) {
   try {
     await task()
-  } catch {
+  } catch (error) {
+    const req = res.req
+    console.error(req?.method, req?.originalUrl ?? req?.url, error)
     if (!res.headersSent) res.status(500).json({ message: 'No se pudo completar la operación.' })
   }
 }

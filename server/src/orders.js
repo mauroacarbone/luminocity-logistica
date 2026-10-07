@@ -83,6 +83,7 @@ export const ordersRouter = Router()
 ordersRouter.use(requireAuth)
 ordersRouter.get('/', async (req, res) => {
   await send(res, async () => {
+    throw new Error('prueba brief 22c.2')
     const orders = await locked(readOrders)
     const visible = orders.filter((order) => canSeeOrder(req.user, order))
     if (req.user.role === 'chofer') {
@@ -182,7 +183,9 @@ function sendError(res, result) {
 async function send(res, task) {
   try {
     await task()
-  } catch {
+  } catch (error) {
+    const req = res.req
+    console.error(req?.method, req?.originalUrl ?? req?.url, error)
     if (!res.headersSent) {
       res.status(500).json({ message: 'No se pudo completar la operación.' })
     }
