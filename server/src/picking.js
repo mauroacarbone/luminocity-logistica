@@ -172,7 +172,7 @@ function batchRows(body) {
       const key = mergeKey(result.comprobante, result.articulo)
       const previous = seenKeys.get(key)
       if (previous !== undefined) {
-        errors.push({ index, message: `Fila repetida con la fila ${previous}` })
+        errors.push({ index, message: `Fila repetida con la fila ${previous + 1}` })
         return
       }
       seenKeys.set(key, index)
@@ -199,12 +199,25 @@ function batchRows(body) {
       }
     }
     const next = current.map((row) => ({ ...row, raw: { ...row.raw } }))
+    const oldestByKey = new Map()
+    for (let index = 0; index < next.length; index += 1) {
+      const row = next[index]
+      const key = mergeKey(row.comprobante, row.articulo)
+      const previous = oldestByKey.get(key)
+      if (previous === undefined) {
+        oldestByKey.set(key, index)
+        continue
+      }
+      const previousAt = typeof next[previous].createdAt === 'string' ? next[previous].createdAt : ''
+      const createdAt = typeof row.createdAt === 'string' ? row.createdAt : ''
+      if (createdAt < previousAt) oldestByKey.set(key, index)
+    }
     let created = 0
     let updated = 0
     for (const item of parsed) {
       const key = mergeKey(item.comprobante, item.articulo)
-      const index = findOldestIndex(next, key)
-      if (index >= 0) {
+      const index = oldestByKey.get(key)
+      if (index !== undefined) {
         const existing = next[index]
         const patched = {
           ...existing,
@@ -230,19 +243,16 @@ function batchRows(body) {
   })
 }
 
-function findOldestIndex(list, key) {
-  let found = -1
-  let oldest = ''
-  for (let index = 0; index < list.length; index += 1) {
-    const row = list[index]
-    if (mergeKey(row.comprobante, row.articulo) !== key) continue
-    const createdAt = typeof row.createdAt === 'string' ? row.createdAt : ''
-    if (found < 0 || createdAt < oldest) {
-      found = index
-      oldest = createdAt
-    }
+function sameRaw(left, right) {
+  if (!isRecord(left) || !isRecord(right)) return left === right
+  const leftKeys = Object.keys(left)
+  const rightKeys = Object.keys(right)
+  if (leftKeys.length !== rightKeys.length) return false
+  for (const key of leftKeys) {
+    if (!Object.prototype.hasOwnProperty.call(right, key)) return false
+    if (left[key] !== right[key]) return false
   }
-  return found
+  return true
 }
 
 function sameMergeFields(left, right) {
@@ -252,7 +262,7 @@ function sameMergeFields(left, right) {
     left.articulo === right.articulo &&
     left.cantidad === right.cantidad &&
     left.vendedor === right.vendedor &&
-    JSON.stringify(left.raw) === JSON.stringify(right.raw)
+    sameRaw(left.raw, right.raw)
   )
 }
 
