@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { confirm } from '../lib/alerts'
+import type { PickingStatus } from '../lib/pickingApi'
 import {
   batchRowsFromPreview,
   pickingTemplateCsv,
@@ -11,7 +12,7 @@ import {
 import { usePicking } from '../state/PickingContext'
 
 type Mode = 'lista' | 'picking'
-type Estado = 'todos' | 'completo' | 'en-curso' | 'pendiente'
+type StatusFilter = 'todos' | PickingStatus
 type ImportMode = 'replace' | 'merge'
 
 type PickingOrder = {
@@ -21,6 +22,31 @@ type PickingOrder = {
   seller: string
   date?: string
   lines: PickingLine[]
+}
+
+const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'pendiente', label: 'Pendiente' },
+  { value: 'en_preparacion', label: 'En preparación' },
+  { value: 'preparado', label: 'Preparado' },
+]
+
+function lineStatus(line: PickingLine): PickingStatus {
+  return line.status ?? 'pendiente'
+}
+
+function matchesSearch(line: PickingLine, needle: string) {
+  if (!needle) return true
+  if (line.client.toLowerCase().includes(needle)) return true
+  if (line.invoice.toLowerCase().includes(needle)) return true
+  if (line.product.toLowerCase().includes(needle)) return true
+  if (line.seller.toLowerCase().includes(needle)) return true
+  if (line.raw) {
+    for (const value of Object.values(line.raw)) {
+      if (String(value).toLowerCase().includes(needle)) return true
+    }
+  }
+  return false
 }
 
 function groupLines(lines: PickingLine[]) {
@@ -51,13 +77,6 @@ function progressOf(order: PickingOrder) {
   const total = order.lines.length
   const pct = total === 0 ? 0 : Math.round((ready / total) * 100)
   return { ready, total, pct }
-}
-
-function matchesEstado(pct: number, estado: Estado) {
-  if (estado === 'completo') return pct === 100
-  if (estado === 'pendiente') return pct === 0
-  if (estado === 'en-curso') return pct > 0 && pct < 100
-  return true
 }
 
 function subtitle(order: PickingOrder, ready: number, total: number) {
@@ -91,8 +110,9 @@ export function PendientesEntregas() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<Mode>('lista')
   const [seller, setSeller] = useState('todos')
-  const [estado, setEstado] = useState<Estado>('todos')
-  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos')
+  const [searchDraft, setSearchDraft] = useState('')
+  const [searchApplied, setSearchApplied] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -101,22 +121,30 @@ export function PendientesEntregas() {
   const [importMode, setImportMode] = useState<ImportMode>('merge')
   const [excelByIndex, setExcelByIndex] = useState<number[][]>([])
 
-  const orders = useMemo(() => groupLines(lines), [lines])
   const sellers = useMemo(
-    () => [...new Set(orders.map((order) => order.seller).filter(Boolean))].sort(),
-    [orders],
+    () => [...new Set(lines.map((line) => line.seller).filter(Boolean))].sort(),
+    [lines],
   )
 
-  const needle = query.trim().toLowerCase()
-  const visible = orders.filter((order) => {
-    const progress = progressOf(order)
-    if (mode === 'lista' && seller !== 'todos' && order.seller !== seller) return false
-    if (mode === 'lista' && !matchesEstado(progress.pct, estado)) return false
-    if (!needle) return true
-    return (
-      order.client.toLowerCase().includes(needle) || order.invoice.toLowerCase().includes(needle)
-    )
-  })
+  const filteredLines = useMemo(() => {
+    const needle = searchApplied.trim().toLowerCase()
+    return lines.filter((line) => {
+      if (statusFilter !== 'todos' && lineStatus(line) !== statusFilter) return false
+      if (mode === 'lista' && seller !== 'todos' && line.seller !== seller) return false
+      return matchesSearch(line, needle)
+    })
+  }, [lines, mode, searchApplied, seller, statusFilter])
+
+  const orders = useMemo(() => groupLines(filteredLines), [filteredLines])
+
+  function applySearch() {
+    setSearchApplied(searchDraft)
+  }
+
+  function clearSearch() {
+    setSearchDraft('')
+    setSearchApplied('')
+  }
 
   async function onFile(file: File) {
     setError('')
@@ -379,53 +407,78 @@ export function PendientesEntregas() {
         </div>
       )}
 
+      <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="min-w-0 flex-1 text-sm">
+            <span className="sr-only">Buscar</span>
+            <input
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  applySearch()
+                }
+              }}
+              placeholder="Cliente, comprobante, artículo, vendedor o dato del Excel"
+              className="w-full rounded-xl border border-lumi-line px-3 py-2"
+            />
+          </label>
+          <button
+            type="button"
+            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink"
+            onClick={applySearch}
+          >
+            Buscar
+          </button>
+          {(searchDraft || searchApplied) && (
+            <button
+              type="button"
+              className="rounded-xl border border-lumi-line px-3 py-2 text-sm"
+              aria-label="Limpiar búsqueda"
+              onClick={clearSearch}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {STATUS_CHIPS.map((chip) => (
+            <button
+              key={chip.value}
+              type="button"
+              className={statusFilter === chip.value ? 'zone-chip active' : 'zone-chip'}
+              aria-pressed={statusFilter === chip.value}
+              onClick={() => setStatusFilter(chip.value)}
+            >
+              {chip.label}
+            </button>
+          ))}
+          <p className="ml-auto text-sm text-lumi-muted">
+            {filteredLines.length} de {lines.length} filas
+          </p>
+        </div>
+        {mode === 'lista' && (
+          <label className="mt-3 block text-sm">
+            Vendedor
+            <select
+              value={seller}
+              onChange={(event) => setSeller(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            >
+              <option value="todos">Todos los vendedores</option>
+              {sellers.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+
       {mode === 'lista' ? (
         <>
-          <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
-            <div
-              className="grid gap-3"
-              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}
-            >
-              <label className="text-sm">
-                Vendedor
-                <select
-                  value={seller}
-                  onChange={(event) => setSeller(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
-                >
-                  <option value="todos">Todos los vendedores</option>
-                  {sellers.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm">
-                Estado
-                <select
-                  value={estado}
-                  onChange={(event) => setEstado(event.target.value as Estado)}
-                  className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
-                >
-                  <option value="todos">Todos</option>
-                  <option value="pendiente">Pendiente</option>
-                  <option value="en-curso">En curso</option>
-                  <option value="completo">Completo</option>
-                </select>
-              </label>
-            </div>
-            <label className="mt-3 block text-sm">
-              Buscar por cliente o factura
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Nombre del cliente o N° de factura"
-                className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
-              />
-            </label>
-          </div>
-
           <button
             type="button"
             className="mt-3 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-50"
@@ -439,7 +492,7 @@ export function PendientesEntregas() {
             Actualizar lista
           </button>
 
-          {visible.length === 0 ? (
+          {orders.length === 0 ? (
             <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
               {lines.length === 0
                 ? 'Cargá un Excel con las columnas Factura, Cliente, Vendedor, Producto y Cantidad.'
@@ -447,7 +500,7 @@ export function PendientesEntregas() {
             </div>
           ) : (
             <div className="mt-4 flex flex-col gap-3">
-              {visible.map((order) => {
+              {orders.map((order) => {
                 const progress = progressOf(order)
                 return (
                   <article key={order.key} className="rounded-2xl bg-white px-4 py-3 shadow-sm">
@@ -494,19 +547,11 @@ export function PendientesEntregas() {
         </>
       ) : (
         <>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por factura o cliente..."
-              className="min-w-0 flex-1 rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
-            />
-            <p className="text-sm text-lumi-muted">
-              Sin URL de Clanbox configurada — configurala en Configuración para ver stock real.
-            </p>
-          </div>
+          <p className="mt-4 text-sm text-lumi-muted">
+            Sin URL de Clanbox configurada — configurala en Configuración para ver stock real.
+          </p>
 
-          {visible.length === 0 ? (
+          {orders.length === 0 ? (
             <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
               {lines.length === 0
                 ? 'No hay productos para preparar.'
@@ -514,7 +559,7 @@ export function PendientesEntregas() {
             </div>
           ) : (
             <div className="mt-4 flex flex-col gap-3">
-              {visible.map((order) => {
+              {orders.map((order) => {
                 const progress = progressOf(order)
                 const open = expanded === order.key
                 return (
