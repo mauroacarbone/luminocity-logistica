@@ -145,11 +145,17 @@ function groupLines(lines: PickingLine[], pedidos: Order[]): PickingGroup[] {
 }
 
 function pickedOf(line: PickingLine) {
+  if (line.status === 'preparado' && typeof line.pickedQty !== 'number') return line.quantity
   return typeof line.pickedQty === 'number' ? line.pickedQty : 0
 }
 
 function isLineComplete(line: PickingLine) {
+  if (line.status === 'preparado') return true
   return pickedOf(line) >= line.quantity
+}
+
+function currentPickedQty(line: PickingLine) {
+  return typeof line.pickedQty === 'number' ? line.pickedQty : 0
 }
 
 function progressOf(group: PickingGroup) {
@@ -242,6 +248,7 @@ export function PendientesEntregas() {
   const [searchApplied, setSearchApplied] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({})
+  const [savingId, setSavingId] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -403,25 +410,36 @@ export function PendientesEntregas() {
 
   async function savePickedQty(line: PickingLine, raw: string) {
     setError('')
-    const parsed = Number(String(raw).replace(',', '.').trim())
-    if (!Number.isFinite(parsed) || parsed < 0 || parsed > line.quantity) {
+    if (line.status === 'preparado') {
+      clearQtyDraft(line.id)
+      return
+    }
+    const trimmed = String(raw).trim()
+    const parsed = Number(trimmed)
+    if (trimmed.includes(',') || !Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+      clearQtyDraft(line.id)
+      setError('La cantidad pickeada tiene que ser un número entero.')
+      return
+    }
+    if (parsed < 0 || parsed > line.quantity) {
       clearQtyDraft(line.id)
       setError(`La cantidad pickeada tiene que estar entre 0 y ${line.quantity}.`)
       return
     }
-    const nextStatus: PickingStatus = parsed > 0 ? 'en_preparacion' : 'pendiente'
-    if (pickedOf(line) === parsed && lineStatus(line) === nextStatus) {
+    if (currentPickedQty(line) === parsed) {
       clearQtyDraft(line.id)
       return
     }
-    setBusy(true)
+    const nextStatus: PickingStatus = parsed > 0 ? 'en_preparacion' : 'pendiente'
+    setSavingId(line.id)
     const result = await patchLine(line.id, { pickedQty: parsed, status: nextStatus })
-    setBusy(false)
+    setSavingId(null)
     clearQtyDraft(line.id)
     if (!result.ok) setError(result.message)
   }
 
   async function markComplete(line: PickingLine) {
+    if (line.status === 'preparado') return
     setQtyDraft(line.id, String(line.quantity))
     await savePickedQty(line, String(line.quantity))
   }
@@ -835,6 +853,8 @@ export function PendientesEntregas() {
                       <div className="flex flex-col gap-2 px-4 py-3">
                         {group.lines.map((line) => {
                           const complete = isLineComplete(line)
+                          const prepared = line.status === 'preparado'
+                          const saving = savingId === line.id
                           return (
                             <div
                               key={line.id}
@@ -857,8 +877,8 @@ export function PendientesEntregas() {
                                     max={line.quantity}
                                     step={1}
                                     value={qtyDraftFor(line)}
-                                    disabled={busy}
-                                    className="w-20 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm"
+                                    disabled={prepared || saving}
+                                    className="w-20 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm disabled:opacity-60"
                                     onChange={(event) => setQtyDraft(line.id, event.target.value)}
                                     onBlur={() => void savePickedQty(line, qtyDraftFor(line))}
                                     onKeyDown={(event) => {
@@ -872,7 +892,7 @@ export function PendientesEntregas() {
                                 <button
                                   type="button"
                                   className="rounded-xl border border-lumi-line bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-                                  disabled={busy || complete}
+                                  disabled={prepared || complete || saving}
                                   onClick={() => void markComplete(line)}
                                 >
                                   Completo
