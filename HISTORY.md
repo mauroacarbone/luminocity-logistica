@@ -54,6 +54,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 21e | Stepper verde al entregar y aviso al chofer | Hecho |
 | 21f | Mostrar preparados en Pedidos y Preparación | Hecho |
 | 21g | Página de Seguimiento de pedidos | Hecho |
+| 21g.1 | Nombre del chofer en el listado de pedidos | Hecho |
 | 21h | Hojas futuras en Mis entregas | Hecho |
 | 22a | API de picking (Pendientes de Entregas) | Hecho |
 | 22a.1 | Topes y alta en lote para picking | Hecho |
@@ -141,6 +142,8 @@ El Brief 21e deja el stepper todo en verde con ✓ al entregar (sin `aria-curren
 El Brief 21f muestra en Pedidos y Preparación los pedidos pendientes y preparados del día (antes solo pendientes). Primero los pendientes; "Marcar preparado" solo en esos. Los preparados quedan con pastilla, bultos y link al detalle.
 
 El Brief 21g agrega la página Seguimiento (`/seguimiento`) para buscar pedidos por número, cliente o factura y filtrar por estado y fecha de entrega. Usa los pedidos de `useOrders()` (el server ya filtra por rol). Está en el menú de vendedor, depósito, encargado y admin; el chofer no entra.
+
+El Brief 21g.1 manda `driverName` en el GET de pedidos (una sola lectura de usuarios) y en Seguimiento ordena primero hoy en adelante y después los pasados. Si falla la carga, muestra el error.
 
 El Brief 21h carga en Mis entregas las hojas planificadas de otros días (además de hoy y ayer en curso). La tarjeta muestra la fecha; "Iniciar recorrido" solo el día de la hoja. Un pedido en hoja planificada ya no ofrece "Salir a reparto". El server incluye la fecha en el rechazo.
 

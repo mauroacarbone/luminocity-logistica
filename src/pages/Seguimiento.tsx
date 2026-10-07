@@ -80,13 +80,14 @@ function dispatchLabel(order: Order) {
 }
 
 export function Seguimiento() {
-  const { orders, loading } = useOrders()
+  const { orders, loading, error: ordersError } = useOrders()
   const defaults = weekRange()
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos')
   const [from, setFrom] = useState(defaults.from)
   const [to, setTo] = useState(defaults.to)
   const [allDates, setAllDates] = useState(false)
+  const today = toIso(new Date())
 
   const hasCorreo = useMemo(
     () => orders.some((order) => order.dispatchType === 'correo'),
@@ -105,12 +106,16 @@ export function Seguimiento() {
         inDateRange(order, from, to, allDates),
     )
     return [...list].sort((left, right) => {
+      const leftUpcoming = left.deliveryDate >= today
+      const rightUpcoming = right.deliveryDate >= today
+      if (leftUpcoming !== rightUpcoming) return leftUpcoming ? -1 : 1
       if (left.deliveryDate !== right.deliveryDate) {
-        return left.deliveryDate < right.deliveryDate ? -1 : 1
+        if (leftUpcoming) return left.deliveryDate < right.deliveryDate ? -1 : 1
+        return left.deliveryDate > right.deliveryDate ? -1 : 1
       }
       return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
     })
-  }, [orders, query, statusFilter, from, to, allDates])
+  }, [orders, query, statusFilter, from, to, allDates, today])
 
   if (loading) {
     return (
@@ -202,7 +207,11 @@ export function Seguimiento() {
         {filtered.length} de {orders.length} pedido{orders.length === 1 ? '' : 's'}
       </p>
 
-      {filtered.length === 0 ? (
+      {ordersError ? (
+        <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm font-semibold text-lumi-danger shadow-sm">
+          {ordersError}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-lumi-muted shadow-sm">
           {orders.length === 0
             ? 'No hay pedidos para mostrar.'
