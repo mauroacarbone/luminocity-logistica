@@ -12,6 +12,8 @@ export type PickingLine = {
   ready: boolean
   date?: string
   status?: 'pendiente' | 'en_preparacion' | 'preparado'
+  pickedQty?: number
+  orderId?: string
   raw?: Record<string, string | number | boolean>
 }
 

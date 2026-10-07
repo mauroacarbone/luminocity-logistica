@@ -33,13 +33,16 @@ type LegacyLine = {
   date?: string
 }
 
+type PickingPatchResult = { ok: true } | { ok: false; message: string }
+
 type PickingContextValue = {
   lines: PickingLine[]
   loading: boolean
   error: string
   legacyOffer: LegacyLine[] | null
   refresh: () => Promise<void>
-  toggleLine: (id: string) => Promise<{ ok: true } | { ok: false; message: string }>
+  toggleLine: (id: string) => Promise<PickingPatchResult>
+  patchLine: (id: string, fields: Record<string, unknown>) => Promise<PickingPatchResult>
   uploadLegacy: () => Promise<{ ok: true; message: string } | { ok: false; message: string }>
   dismissLegacy: () => void
   applyBatch: (
@@ -83,6 +86,8 @@ function lineFromRow(row: PickingRow): PickingLine {
     quantity: row.cantidad,
     ready,
     status: row.status,
+    pickedQty: typeof row.pickedQty === 'number' ? row.pickedQty : undefined,
+    orderId: typeof row.orderId === 'string' ? row.orderId : undefined,
     raw: row.raw,
   }
 }
@@ -204,24 +209,30 @@ export function PickingProvider({ children }: { children: ReactNode }) {
     }
   }, [attempt, legacyShown, logout, trackKey])
 
+  async function patchLine(id: string, fields: Record<string, unknown>): Promise<PickingPatchResult> {
+    const current = lines.find((line) => line.id === id)
+    if (!current) return { ok: false, message: 'No existe esa fila de picking.' }
+    const result = await patchPicking(id, fields)
+    if (!result.ok) {
+      if (result.status === 401) logout()
+      return { ok: false, message: result.message }
+    }
+    if (!isPickingRow(result.data)) {
+      return { ok: false, message: 'No se pudo actualizar la fila de picking.' }
+    }
+    const row = result.data
+    setLines((list) => list.map((line) => (line.id === id ? lineFromRow(row) : line)))
+    return { ok: true }
+  }
+
   async function toggleLine(id: string) {
     const current = lines.find((line) => line.id === id)
     if (!current) return { ok: false as const, message: 'No existe esa fila de picking.' }
     const nextReady = !current.ready
-    const result = await patchPicking(id, {
+    return patchLine(id, {
       status: nextReady ? 'preparado' : 'pendiente',
       pickedQty: nextReady ? current.quantity : 0,
     })
-    if (!result.ok) {
-      if (result.status === 401) logout()
-      return { ok: false as const, message: result.message }
-    }
-    if (!isPickingRow(result.data)) {
-      return { ok: false as const, message: 'No se pudo actualizar la fila de picking.' }
-    }
-    const row = result.data
-    setLines((list) => list.map((line) => (line.id === id ? lineFromRow(row) : line)))
-    return { ok: true as const }
   }
 
   async function uploadLegacy() {
@@ -280,6 +291,7 @@ export function PickingProvider({ children }: { children: ReactNode }) {
         legacyOffer,
         refresh,
         toggleLine,
+        patchLine,
         uploadLegacy,
         dismissLegacy,
         applyBatch,

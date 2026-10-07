@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { OrderStepper } from '../components/OrderStepper'
 import { ServerDown, Spinner } from '../components/LoadState'
+import type { Order } from '../data/orders'
 import { confirm } from '../lib/alerts'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
+import {
+  matchOrdersByInvoice,
+  normalizeInvoiceKey,
+  type InvoiceMatch,
+} from '../lib/invoiceKey'
 import type { PickingStatus } from '../lib/pickingApi'
 import {
   batchRowsFromPreview,
@@ -10,21 +18,23 @@ import {
   type PickingLine,
   type PickingPreview,
 } from '../lib/pickingSheet'
+import { useOrders } from '../state/OrdersContext'
 import { usePicking } from '../state/PickingContext'
 
 const MODAL_ROW_LIMIT = 500
 
 type Mode = 'lista' | 'picking'
-type StatusFilter = 'todos' | PickingStatus
+type StatusFilter = 'todos' | PickingStatus | 'sin_pedido'
 type ImportMode = 'replace' | 'merge'
 
-type PickingOrder = {
+type PickingGroup = {
   key: string
   invoice: string
   client: string
   seller: string
   date?: string
   lines: PickingLine[]
+  link: InvoiceMatch
 }
 
 const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
@@ -32,6 +42,7 @@ const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'en_preparacion', label: 'En preparación' },
   { value: 'preparado', label: 'Preparado' },
+  { value: 'sin_pedido', label: 'Sin pedido' },
 ]
 
 const FIXED_COLUMNS: { id: string; label: string }[] = [
@@ -108,15 +119,16 @@ function downloadCsv(
   downloadCsvFile(buildCsv(table), 'picking-datos.csv')
 }
 
-function groupLines(lines: PickingLine[]) {
-  const groups = new Map<string, PickingOrder>()
+function groupLines(lines: PickingLine[], pedidos: Order[]): PickingGroup[] {
+  const groups = new Map<string, PickingGroup>()
   for (const line of lines) {
-    const key = `${line.invoice}::${line.client}`
+    const key = normalizeInvoiceKey(line.invoice) || line.invoice
     const current = groups.get(key)
     if (current) {
       current.lines.push(line)
       if (!current.date && line.date) current.date = line.date
       if (!current.seller && line.seller) current.seller = line.seller
+      if (!current.client && line.client) current.client = line.client
     } else {
       groups.set(key, {
         key,
@@ -125,23 +137,42 @@ function groupLines(lines: PickingLine[]) {
         seller: line.seller,
         date: line.date,
         lines: [line],
+        link: matchOrdersByInvoice(pedidos, line.invoice),
       })
     }
   }
   return [...groups.values()]
 }
 
-function progressOf(order: PickingOrder) {
-  const ready = order.lines.filter((line) => line.ready).length
-  const total = order.lines.length
+function progressOf(group: PickingGroup) {
+  const ready = group.lines.filter((line) => line.ready).length
+  const total = group.lines.length
   const pct = total === 0 ? 0 : Math.round((ready / total) * 100)
   return { ready, total, pct }
 }
 
-function subtitle(order: PickingOrder, ready: number, total: number) {
-  return [order.seller, 'Luminocity', order.date, `${ready}/${total} productos listos`]
+function subtitle(group: PickingGroup, ready: number, total: number) {
+  return [group.seller, 'Luminocity', group.date, `${ready}/${total} productos listos`]
     .filter(Boolean)
     .join(' · ')
+}
+
+function OrderLinkBlock({ link }: { link: InvoiceMatch }) {
+  if (link.kind === 'one') {
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+        <Link className="order-link font-semibold" to={`/pedidos/${link.order.id}`}>
+          {link.order.id}
+        </Link>
+        <span>{link.order.client}</span>
+        <OrderStepper order={link.order} variant="compact" />
+      </div>
+    )
+  }
+  if (link.kind === 'many') {
+    return <p className="mt-2 text-sm text-lumi-muted">Comprobante en varios pedidos</p>
+  }
+  return <p className="mt-2 text-sm text-lumi-muted">Sin pedido</p>
 }
 
 function downloadTemplate() {
@@ -149,6 +180,7 @@ function downloadTemplate() {
 }
 
 export function PendientesEntregas() {
+  const { orders: pedidos } = useOrders()
   const {
     lines,
     loading,
@@ -156,11 +188,13 @@ export function PendientesEntregas() {
     legacyOffer,
     refresh,
     toggleLine,
+    patchLine,
     uploadLegacy,
     dismissLegacy,
     applyBatch,
   } = usePicking()
   const fileRef = useRef<HTMLInputElement>(null)
+  const linkingRef = useRef(new Set<string>())
   const [mode, setMode] = useState<Mode>('lista')
   const [seller, setSeller] = useState('todos')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos')
@@ -184,13 +218,17 @@ export function PendientesEntregas() {
   const filteredLines = useMemo(() => {
     const needle = searchApplied.trim().toLowerCase()
     return lines.filter((line) => {
-      if (statusFilter !== 'todos' && lineStatus(line) !== statusFilter) return false
+      if (statusFilter === 'sin_pedido') {
+        if (matchOrdersByInvoice(pedidos, line.invoice).kind !== 'none') return false
+      } else if (statusFilter !== 'todos' && lineStatus(line) !== statusFilter) {
+        return false
+      }
       if (mode === 'lista' && seller !== 'todos' && line.seller !== seller) return false
       return matchesSearch(line, needle)
     })
-  }, [lines, mode, searchApplied, seller, statusFilter])
+  }, [lines, mode, pedidos, searchApplied, seller, statusFilter])
 
-  const orders = useMemo(() => groupLines(filteredLines), [filteredLines])
+  const groups = useMemo(() => groupLines(filteredLines, pedidos), [filteredLines, pedidos])
   const dataColumns = useMemo(() => columnsFromLines(filteredLines), [filteredLines])
   const visibleColumns = dataColumns.filter((column) => visibleColumnIds.includes(column.id))
   const modalLines = filteredLines.slice(0, MODAL_ROW_LIMIT)
@@ -204,6 +242,33 @@ export function PendientesEntregas() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [showAllData])
+
+  useEffect(() => {
+    if (lines.length === 0 || pedidos.length === 0) return
+    let cancelled = false
+    const pending = lines.filter((line) => {
+      if (linkingRef.current.has(line.id)) return false
+      const match = matchOrdersByInvoice(pedidos, line.invoice)
+      return match.kind === 'one' && line.orderId !== match.order.id
+    })
+    if (pending.length === 0) return
+
+    void (async () => {
+      for (const line of pending) {
+        if (cancelled) return
+        const match = matchOrdersByInvoice(pedidos, line.invoice)
+        if (match.kind !== 'one' || line.orderId === match.order.id) continue
+        linkingRef.current.add(line.id)
+        const result = await patchLine(line.id, { orderId: match.order.id })
+        linkingRef.current.delete(line.id)
+        if (!result.ok && !cancelled) setError(result.message)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [lines, patchLine, pedidos])
 
   function applySearch() {
     setSearchApplied(searchDraft)
@@ -580,7 +645,7 @@ export function PendientesEntregas() {
             Actualizar lista
           </button>
 
-          {orders.length === 0 ? (
+          {groups.length === 0 ? (
             <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
               {lines.length === 0
                 ? 'Cargá un Excel con las columnas Factura, Cliente, Vendedor, Producto y Cantidad.'
@@ -588,18 +653,19 @@ export function PendientesEntregas() {
             </div>
           ) : (
             <div className="mt-4 flex flex-col gap-3">
-              {orders.map((order) => {
-                const progress = progressOf(order)
+              {groups.map((group) => {
+                const progress = progressOf(group)
                 return (
-                  <article key={order.key} className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                  <article key={group.key} className="rounded-2xl bg-white px-4 py-3 shadow-sm">
                     <div className="flex items-center justify-between gap-4">
                       <div className="min-w-0">
                         <p className="font-semibold">
-                          {order.invoice} — {order.client}
+                          {group.invoice} — {group.client}
                         </p>
                         <p className="mt-1 text-sm text-lumi-muted">
-                          {subtitle(order, progress.ready, progress.total)}
+                          {subtitle(group, progress.ready, progress.total)}
                         </p>
+                        <OrderLinkBlock link={group.link} />
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
                         <div
@@ -621,7 +687,7 @@ export function PendientesEntregas() {
                         <button
                           type="button"
                           className="text-sm hover:underline"
-                          onClick={() => openDetail(order.key)}
+                          onClick={() => openDetail(group.key)}
                         >
                           Ver detalle
                         </button>
@@ -639,7 +705,7 @@ export function PendientesEntregas() {
             Sin URL de Clanbox configurada — configurala en Configuración para ver stock real.
           </p>
 
-          {orders.length === 0 ? (
+          {groups.length === 0 ? (
             <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
               {lines.length === 0
                 ? 'No hay productos para preparar.'
@@ -647,44 +713,47 @@ export function PendientesEntregas() {
             </div>
           ) : (
             <div className="mt-4 flex flex-col gap-3">
-              {orders.map((order) => {
-                const progress = progressOf(order)
-                const open = expanded === order.key
+              {groups.map((group) => {
+                const progress = progressOf(group)
+                const open = expanded === group.key
                 return (
-                  <article key={order.key} className="overflow-hidden rounded-2xl bg-white shadow-sm">
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
-                      aria-expanded={open}
-                      onClick={() => setExpanded(open ? null : order.key)}
-                    >
-                      <span className="min-w-0">
-                        <span className="block font-semibold">
-                          {order.invoice} — {order.client}
+                  <article key={group.key} className="overflow-hidden rounded-2xl bg-white shadow-sm">
+                    <div className="border-b border-lumi-line px-4 py-3">
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between gap-4 text-left"
+                        aria-expanded={open}
+                        onClick={() => setExpanded(open ? null : group.key)}
+                      >
+                        <span className="min-w-0">
+                          <span className="block font-semibold">
+                            {group.invoice} — {group.client}
+                          </span>
+                          <span className="mt-1 block text-sm text-lumi-muted">
+                            {subtitle(group, progress.ready, progress.total)}
+                          </span>
                         </span>
-                        <span className="mt-1 block text-sm text-lumi-muted">
-                          {subtitle(order, progress.ready, progress.total)}
-                        </span>
-                      </span>
-                      <span className="flex shrink-0 items-center gap-3">
-                        <span
-                          className="h-1.5 overflow-hidden rounded-full bg-[#efeae0]"
-                          style={{ width: 96 }}
-                        >
+                        <span className="flex shrink-0 items-center gap-3">
                           <span
-                            className="block h-full bg-lumi-yellow"
-                            style={{ width: `${progress.pct}%` }}
-                          />
+                            className="h-1.5 overflow-hidden rounded-full bg-[#efeae0]"
+                            style={{ width: 96 }}
+                          >
+                            <span
+                              className="block h-full bg-lumi-yellow"
+                              style={{ width: `${progress.pct}%` }}
+                            />
+                          </span>
+                          <span className="text-xs text-lumi-muted">
+                            {progress.pct === 100 ? 'Completo' : `${progress.pct}%`}
+                          </span>
+                          <span aria-hidden="true">{open ? '▴' : '▾'}</span>
                         </span>
-                        <span className="text-xs text-lumi-muted">
-                          {progress.pct === 100 ? 'Completo' : `${progress.pct}%`}
-                        </span>
-                        <span aria-hidden="true">{open ? '▴' : '▾'}</span>
-                      </span>
-                    </button>
+                      </button>
+                      <OrderLinkBlock link={group.link} />
+                    </div>
                     {open && (
-                      <div className="flex flex-col gap-2 border-t border-lumi-line px-4 py-3">
-                        {order.lines.map((line) => (
+                      <div className="flex flex-col gap-2 px-4 py-3">
+                        {group.lines.map((line) => (
                           <div
                             key={line.id}
                             className={`flex items-center justify-between gap-4 rounded-xl px-3 py-3 ${
