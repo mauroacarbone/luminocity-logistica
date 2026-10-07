@@ -53,6 +53,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 21d | Claridad en Planificador y filtro en Choferes en ruta | Hecho |
 | 21e | Stepper verde al entregar y aviso al chofer | Hecho |
 | 21g | Página de Seguimiento de pedidos | Hecho |
+| 21h | Hojas futuras en Mis entregas | Hecho |
 | 22a | API de picking (Pendientes de Entregas) | Hecho |
 | 22a.1 | Topes y alta en lote para picking | Hecho |
 | 22a.2 | Merge seguro y repetidos en el lote de picking | Hecho |
@@ -136,6 +137,8 @@ El Brief 21d aclara el Planificador: el cupo dice "en la franja", lista los no s
 El Brief 21e deja el stepper todo en verde con ✓ al entregar (sin `aria-current`) y el aviso del chofer dice que se avisó al vendedor.
 
 El Brief 21g agrega la página Seguimiento (`/seguimiento`) para buscar pedidos por número, cliente o factura y filtrar por estado y fecha de entrega. Usa los pedidos de `useOrders()` (el server ya filtra por rol). Está en el menú de vendedor, depósito, encargado y admin; el chofer no entra.
+
+El Brief 21h carga en Mis entregas las hojas planificadas de otros días (además de hoy y ayer en curso). La tarjeta muestra la fecha; "Iniciar recorrido" solo el día de la hoja. Un pedido en hoja planificada ya no ofrece "Salir a reparto". El server incluye la fecha en el rechazo.
 
 El Brief 22a guarda el picking en el server (`/api/picking`, JSON o Postgres). La pantalla Pendientes de Entregas sigue en localStorage.
 

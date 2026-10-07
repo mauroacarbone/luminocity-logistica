@@ -335,7 +335,12 @@ export async function blockPlannedDeparture(user, current, next) {
   const sheets = await readCollection('routeSheets')
   const sheet = sheets.find((item) => item.id === current.routeId)
   if (!sheet || sheet.status !== 'planificada') return null
-  return fail('Ese pedido está en una hoja planificada. Usá Iniciar recorrido.', 409)
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(sheet.date ?? ''))
+  const when = match ? `${match[3]}/${match[2]}` : String(sheet.date ?? '')
+  return fail(
+    `Ese pedido está en una hoja planificada para el ${when}. Usá Iniciar recorrido ese día.`,
+    409,
+  )
 }
 
 function readSheetBody(body) {
