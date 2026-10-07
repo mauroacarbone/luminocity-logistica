@@ -130,6 +130,14 @@ function updateRow(id, body) {
     for (const key of patch.clear) {
       delete row[key]
     }
+    if (
+      Object.prototype.hasOwnProperty.call(body, 'cantidad') &&
+      typeof row.pickedQty === 'number' &&
+      typeof row.cantidad === 'number' &&
+      row.pickedQty > row.cantidad
+    ) {
+      row.pickedQty = Math.floor(row.cantidad)
+    }
     list[index] = row
     await writePicking(list)
     return { row }
@@ -228,7 +236,10 @@ function batchRows(body) {
           vendedor: item.vendedor,
           raw: item.raw,
         }
-        if (!sameMergeFields(existing, patched)) {
+        if (typeof existing.pickedQty === 'number' && existing.pickedQty > item.cantidad) {
+          patched.pickedQty = Math.floor(item.cantidad)
+        }
+        if (!sameMergeFields(existing, patched) || patched.pickedQty !== existing.pickedQty) {
           patched.updatedAt = now
           next[index] = patched
           updated += 1

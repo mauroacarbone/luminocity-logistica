@@ -455,6 +455,10 @@ export function PendientesEntregas() {
       return
     }
     const trimmed = String(raw).trim()
+    if (trimmed === '') {
+      clearQtyDraft(line.id)
+      return
+    }
     const parsed = Number(trimmed)
     if (trimmed.includes(',') || !Number.isFinite(parsed) || !Number.isInteger(parsed)) {
       clearQtyDraft(line.id)
