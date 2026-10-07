@@ -55,6 +55,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 22a.2 | Merge seguro y repetidos en el lote de picking | Hecho |
 | 22a.3 | Comparar raw sin importar el orden | Hecho |
 | 22b | Pendientes de Entregas conectado a la API con importación previa | Hecho |
+| 22b.1 | Migración de picking sin repetidos | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -129,6 +130,8 @@ El Brief 22a.2 hace el merge sin borrar filas, rechaza repetidos en el lote y el
 El Brief 22a.3 compara `raw` por claves (sin importar el orden) y arma una sola vez el índice de la fila más vieja en el merge.
 
 El Brief 22b conecta Pendientes de Entregas a `/api/picking`, migra el localStorage y agrega vista previa de importación con replace/merge por lotes.
+
+El Brief 22b.1 agrupa el picking legacy por clave antes del batch, borra la clave al descartar y vuelve a ofrecer el aviso al cambiar de usuario.
 
 ## Pendientes
 

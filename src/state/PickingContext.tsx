@@ -158,6 +158,7 @@ export function PickingProvider({ children }: { children: ReactNode }) {
     setLines([])
     setError('')
     setLegacyOffer(null)
+    setLegacyShown(false)
     setStatus(trackKey ? 'loading' : 'idle')
   }
 
