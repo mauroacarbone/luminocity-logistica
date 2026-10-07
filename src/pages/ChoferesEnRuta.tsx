@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
@@ -12,15 +12,15 @@ const REFRESH_MS = 30_000
 const STALE_MS = 10 * 60 * 1000
 const CENTER: [number, number] = [-34.6, -58.44]
 
-function FitBounds({ count, positions }: { count: number; positions: [number, number][] }) {
+function FitBounds({ fitKey, positions }: { fitKey: string; positions: [number, number][] }) {
   const map = useMap()
-  const lastCount = useRef<number | null>(null)
+  const lastKey = useRef<string | null>(null)
   useEffect(() => {
     if (positions.length === 0) return
-    if (lastCount.current === count) return
-    lastCount.current = count
+    if (lastKey.current === fitKey) return
+    lastKey.current = fitKey
     map.fitBounds(positions, { padding: [28, 28], maxZoom: 14 })
-  }, [map, count, positions])
+  }, [map, fitKey, positions])
   return null
 }
 
@@ -72,6 +72,10 @@ function DriversMap({
   orders: { id: string; client: string; status: string }[]
 }) {
   const positions = drivers.map((driver) => [driver.lat, driver.lng] as [number, number])
+  const fitKey = drivers
+    .map((driver) => driver.id)
+    .sort()
+    .join('|')
   return (
     <MapContainer center={CENTER} zoom={11} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
       <TileLayer
@@ -109,7 +113,7 @@ function DriversMap({
           </CircleMarker>
         )
       })}
-      <FitBounds count={drivers.length} positions={positions} />
+      <FitBounds fitKey={fitKey} positions={positions} />
     </MapContainer>
   )
 }
@@ -123,6 +127,8 @@ export function ChoferesEnRuta() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [message, setMessage] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const [query, setQuery] = useState('')
+  const [driverFilter, setDriverFilter] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -156,6 +162,21 @@ export function ChoferesEnRuta() {
     }
   }, [logout, attempt])
 
+  const filterMissing =
+    driverFilter !== '' && !drivers.some((driver) => driver.id === driverFilter)
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    return drivers.filter((driver) => {
+      if (driverFilter && driver.id !== driverFilter) return false
+      if (!needle) return true
+      return (
+        driver.name.toLowerCase().includes(needle) ||
+        driver.carrierName.toLowerCase().includes(needle)
+      )
+    })
+  }, [driverFilter, drivers, query])
+
   return (
     <section className="page">
       <header className="page-header">
@@ -163,18 +184,59 @@ export function ChoferesEnRuta() {
         <p>Última posición de los que están en viaje</p>
       </header>
       {status === 'loading' && <Spinner label="Cargando choferes…" />}
-      {status === 'error' && <ServerDown message={message} onRetry={() => {
-        setStatus('loading')
-        setAttempt((current) => current + 1)
-      }} />}
+      {status === 'error' && (
+        <ServerDown
+          message={message}
+          onRetry={() => {
+            setStatus('loading')
+            setAttempt((current) => current + 1)
+          }}
+        />
+      )}
       {status === 'ready' && (
         <>
-          <div className="mt-4 overflow-hidden rounded-2xl bg-[#e6e2d8]" style={{ height: 480 }}>
-            <DriversMap drivers={drivers} now={now} sheets={sheets} orders={orders} />
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar por nombre o transportista"
+              className="min-w-0 flex-1 rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+            />
+            <select
+              value={driverFilter}
+              aria-label="Chofer"
+              className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+              onChange={(event) => setDriverFilter(event.target.value)}
+            >
+              <option value="">Todos los choferes</option>
+              {drivers.map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  {driver.name}
+                </option>
+              ))}
+              {filterMissing && <option value={driverFilter}>Ese chofer no está en ruta</option>}
+            </select>
           </div>
-          {drivers.length > 0 && (
+          {filterMissing && (
+            <p className="mt-2 text-sm text-lumi-muted">Ese chofer no está en ruta</p>
+          )}
+
+          <div className="mt-4 overflow-hidden rounded-2xl bg-[#e6e2d8]" style={{ height: 480 }}>
+            {visible.length > 0 ? (
+              <DriversMap drivers={visible} now={now} sheets={sheets} orders={orders} />
+            ) : (
+              <div className="grid h-full place-items-center px-6 text-center text-sm text-lumi-muted">
+                {drivers.length === 0
+                  ? 'No hay choferes en ruta.'
+                  : filterMissing
+                    ? 'Ese chofer no está en ruta'
+                    : 'Ningún chofer coincide con el filtro.'}
+              </div>
+            )}
+          </div>
+          {visible.length > 0 && (
             <ul className="mt-4 flex flex-col gap-2">
-              {drivers.map((driver) => {
+              {visible.map((driver) => {
                 const line = sheetLine(driver.id, sheets, orders)
                 return (
                   <li key={driver.id} className="rounded-2xl bg-white px-4 py-3 text-sm shadow-sm">

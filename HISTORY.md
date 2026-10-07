@@ -50,6 +50,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 21b | Pasos del pedido y página de detalle | Hecho |
 | 21c | Botón de siguiente paso por rol | Hecho |
 | 21c.1 | Asignar chofer desde el detalle | Hecho |
+| 21d | Claridad en Planificador y filtro en Choferes en ruta | Hecho |
 | 22a | API de picking (Pendientes de Entregas) | Hecho |
 | 22a.1 | Topes y alta en lote para picking | Hecho |
 | 22a.2 | Merge seguro y repetidos en el lote de picking | Hecho |
@@ -126,6 +127,8 @@ El Brief 21b muestra los pasos del pedido (`OrderStepper`) según el despacho, c
 El Brief 21c pone un botón de siguiente paso por rol (`nextAction` / `backActions`) en Despacho y en el detalle del pedido, con menú ⋯ para volver atrás. El GET del pedido incluye `driverName`.
 
 El Brief 21c.1 deja asignar chofer y franja desde el detalle con un diálogo. Si el pedido está en una hoja planificada, no ofrece Iniciar viaje (`sheetPlanned`).
+
+El Brief 21d aclara el Planificador: el cupo dice "en la franja", lista los no seleccionables con motivo y avisa los preparados sin franja. En Choferes en ruta hay buscador y select; el mapa se centra en los visibles.
 
 El Brief 22a guarda el picking en el server (`/api/picking`, JSON o Postgres). La pantalla Pendientes de Entregas sigue en localStorage.
 
