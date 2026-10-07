@@ -520,6 +520,7 @@ export function PendientesEntregas() {
 
     let failed = 0
     for (const line of orderLines) {
+      if (line.status === 'preparado' && line.orderId === order.id) continue
       const result = await patchLine(line.id, { status: 'preparado', orderId: order.id })
       if (!result.ok) failed += 1
     }
@@ -531,7 +532,8 @@ export function PendientesEntregas() {
       return
     }
     const bultos = packages ?? order.packages ?? 0
-    await success(`Pedido ${order.id} preparado con ${bultos} bultos.`)
+    const bultosText = bultos === 1 ? '1 bulto' : `${bultos} bultos`
+    await success(`Pedido ${order.id} preparado con ${bultosText}.`)
   }
 
   function prepareBlock(group: PickingGroup) {
@@ -549,6 +551,15 @@ export function PendientesEntregas() {
       )
     }
     if (order.status !== 'pendiente' && order.status !== 'preparado') return null
+
+    const orderLines = linesForOrder(lines, order)
+    const allRowsPrepared =
+      orderLines.length > 0 && orderLines.every((line) => line.status === 'preparado')
+    if (order.status === 'preparado' && allRowsPrepared) {
+      return (
+        <span className="status-pill status-preparado mt-2 inline-flex">Preparado</span>
+      )
+    }
 
     const groupComplete = group.lines.length > 0 && group.lines.every(isLineComplete)
     const { allComplete, missingOther } = orderPickingState(lines, order, group.key)
@@ -571,7 +582,7 @@ export function PendientesEntregas() {
         disabled={preparingKey === group.key || busy}
         onClick={() => void markOrderPrepared(group)}
       >
-        Marcar preparado
+        {order.status === 'preparado' ? 'Marcar filas preparadas' : 'Marcar preparado'}
       </button>
     )
   }
