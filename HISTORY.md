@@ -57,6 +57,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 22b | Pendientes de Entregas conectado a la API con importación previa | Hecho |
 | 22b.1 | Migración de picking sin repetidos | Hecho |
 | 22c | Buscar, filtrar y ver todos los datos de picking | Hecho |
+| 22c.1 | CSV de picking listo para Excel | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -135,6 +136,8 @@ El Brief 22b conecta Pendientes de Entregas a `/api/picking`, migra el localStor
 El Brief 22b.1 agrupa el picking legacy por clave antes del batch, borra la clave al descartar y vuelve a ofrecer el aviso al cambiar de usuario.
 
 El Brief 22c agrega en Pendientes de Entregas un buscador (Buscar, Enter y limpiar) sobre cliente, comprobante, artículo, vendedor y valores de `raw`, chips por status del server y el contador de filas. "Ver todos los datos" abre la tabla con las columnas de `raw` más los campos fijos, con selector de columnas y exportación CSV de lo filtrado.
+
+El Brief 22c.1 deja el CSV listo para Excel en español: BOM UTF-8, separador `;`, CRLF y escape de fórmulas. El modal muestra como máximo 500 filas (el CSV exporta todas), el selector de columnas hace scroll y Escape cierra.
 
 ## Pendientes
 

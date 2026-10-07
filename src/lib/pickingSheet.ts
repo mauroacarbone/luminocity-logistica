@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import { buildCsv } from './csv'
 import type { PickingBatchRow } from './pickingApi'
 
 export type PickingLine = {
@@ -207,5 +208,8 @@ export function batchRowsFromPreview(valid: PickingPreviewRow[]): PickingBatchRo
 }
 
 export function pickingTemplateCsv() {
-  return 'Factura,Cliente,Vendedor,Producto,Cantidad,Fecha\nF-0001,Cliente ejemplo,Ana,Lámpara mesa,1,07/10/2026\n'
+  return buildCsv([
+    ['Factura', 'Cliente', 'Vendedor', 'Producto', 'Cantidad', 'Fecha'],
+    ['F-0001', 'Cliente ejemplo', 'Ana', 'Lámpara mesa', '1', '07/10/2026'],
+  ])
 }

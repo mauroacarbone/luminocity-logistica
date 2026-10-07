@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { confirm } from '../lib/alerts'
+import { buildCsv, downloadCsvFile } from '../lib/csv'
 import type { PickingStatus } from '../lib/pickingApi'
 import {
   batchRowsFromPreview,
@@ -10,6 +11,8 @@ import {
   type PickingPreview,
 } from '../lib/pickingSheet'
 import { usePicking } from '../state/PickingContext'
+
+const MODAL_ROW_LIMIT = 500
 
 type Mode = 'lista' | 'picking'
 type StatusFilter = 'todos' | PickingStatus
@@ -81,11 +84,6 @@ function cellValue(line: PickingLine, columnId: string) {
   }
 }
 
-function escapeCsv(value: string) {
-  if (/[",\n\r]/.test(value)) return `"${value.replace(/"/g, '""')}"`
-  return value
-}
-
 function columnsFromLines(rows: PickingLine[]) {
   const rawKeys = new Set<string>()
   for (const line of rows) {
@@ -103,19 +101,11 @@ function downloadCsv(
   rows: PickingLine[],
   columns: { id: string; label: string }[],
 ) {
-  const header = columns.map((column) => escapeCsv(column.label)).join(',')
-  const body = rows.map((line) =>
-    columns.map((column) => escapeCsv(cellValue(line, column.id))).join(','),
-  )
-  const blob = new Blob([[header, ...body].join('\n')], {
-    type: 'text/csv;charset=utf-8',
-  })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'picking-datos.csv'
-  link.click()
-  URL.revokeObjectURL(url)
+  const table = [
+    columns.map((column) => column.label),
+    ...rows.map((line) => columns.map((column) => cellValue(line, column.id))),
+  ]
+  downloadCsvFile(buildCsv(table), 'picking-datos.csv')
 }
 
 function groupLines(lines: PickingLine[]) {
@@ -155,13 +145,7 @@ function subtitle(order: PickingOrder, ready: number, total: number) {
 }
 
 function downloadTemplate() {
-  const blob = new Blob([pickingTemplateCsv()], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'plantilla-picking.csv'
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadCsvFile(pickingTemplateCsv(), 'plantilla-picking.csv')
 }
 
 export function PendientesEntregas() {
@@ -209,6 +193,17 @@ export function PendientesEntregas() {
   const orders = useMemo(() => groupLines(filteredLines), [filteredLines])
   const dataColumns = useMemo(() => columnsFromLines(filteredLines), [filteredLines])
   const visibleColumns = dataColumns.filter((column) => visibleColumnIds.includes(column.id))
+  const modalLines = filteredLines.slice(0, MODAL_ROW_LIMIT)
+  const modalTruncated = filteredLines.length > MODAL_ROW_LIMIT
+
+  useEffect(() => {
+    if (!showAllData) return
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setShowAllData(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showAllData])
 
   function applySearch() {
     setSearchApplied(searchDraft)
@@ -741,6 +736,11 @@ export function PendientesEntregas() {
                 <p className="mt-1 text-sm text-lumi-muted">
                   {filteredLines.length} filas filtradas · columnas de raw y campos del picking
                 </p>
+                {modalTruncated && (
+                  <p className="mt-1 text-sm text-lumi-muted">
+                    Mostrando {MODAL_ROW_LIMIT} de {filteredLines.length}; el CSV exporta todas
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -761,7 +761,7 @@ export function PendientesEntregas() {
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex max-h-32 flex-wrap gap-2 overflow-auto">
               {dataColumns.map((column) => {
                 const active = visibleColumnIds.includes(column.id)
                 return (
@@ -799,7 +799,7 @@ export function PendientesEntregas() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLines.map((line) => (
+                    {modalLines.map((line) => (
                       <tr key={line.id} className="border-b border-lumi-line/70">
                         {visibleColumns.map((column) => (
                           <td key={column.id} className="whitespace-nowrap px-2 py-2">
