@@ -115,7 +115,7 @@ function updateRow(id, body) {
     const list = await readPicking()
     const index = list.findIndex((item) => item.id === id)
     if (index < 0) return fail('No existe esa fila de picking.', 404)
-    const patch = readPatchBody(body)
+    const patch = readPatchBody(body, list[index])
     if (patch.error) return patch
     if (patch.fields.length === 0 && patch.clear.length === 0) {
       return fail('No hay cambios para guardar.')
@@ -317,7 +317,7 @@ function readCreateBody(body) {
     raw: raw.value,
   }
   if (Object.prototype.hasOwnProperty.call(body, 'pickedQty')) {
-    const pickedQty = readPickedQty(body.pickedQty)
+    const pickedQty = readPickedQty(body.pickedQty, cantidad.value)
     if (pickedQty.error) return pickedQty
     result.pickedQty = pickedQty.value
   }
@@ -334,7 +334,7 @@ function readCreateBody(body) {
   return result
 }
 
-function readPatchBody(body) {
+function readPatchBody(body, current) {
   const fields = []
   const clear = []
   if (Object.prototype.hasOwnProperty.call(body, 'cliente')) {
@@ -373,7 +373,9 @@ function readPatchBody(body) {
   if (Object.prototype.hasOwnProperty.call(body, 'pickedQty')) {
     if (body.pickedQty === null) clear.push('pickedQty')
     else {
-      const pickedQty = readPickedQty(body.pickedQty)
+      const cantidadField = fields.find(([key]) => key === 'cantidad')
+      const cantidad = cantidadField ? cantidadField[1] : current.cantidad
+      const pickedQty = readPickedQty(body.pickedQty, cantidad)
       if (pickedQty.error) return pickedQty
       fields.push(['pickedQty', pickedQty.value])
     }
@@ -418,11 +420,22 @@ function readCantidad(value) {
   return { value }
 }
 
-function readPickedQty(value) {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+function readPickedQty(value, cantidad) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
     return fail('La cantidad pickeada no es válida.')
   }
-  if (value > CANTIDAD_MAX) return fail(`La cantidad pickeada no puede ser mayor a ${CANTIDAD_MAX}.`)
+  if (!Number.isInteger(value)) {
+    return fail('La cantidad pickeada tiene que ser un número entero.')
+  }
+  if (value < 0) {
+    return fail('La cantidad pickeada no puede ser menor a cero.')
+  }
+  if (typeof cantidad === 'number' && Number.isFinite(cantidad) && value > cantidad) {
+    return fail(`La cantidad pickeada no puede ser mayor a ${cantidad}.`)
+  }
+  if (value > CANTIDAD_MAX) {
+    return fail(`La cantidad pickeada no puede ser mayor a ${CANTIDAD_MAX}.`)
+  }
   return { value }
 }
 

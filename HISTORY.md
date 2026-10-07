@@ -61,6 +61,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 22c.2 | Loguear errores del servidor en orders, hojas y picking | Hecho |
 | 22c.3 | Aceptar routeSheets como colección en Postgres | Hecho |
 | 22d | Cruzar picking con pedidos y cargar lo pickeado | Hecho |
+| 22d.1 | Correcciones de cantidad pickeada y cruce por comprobante | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -147,6 +148,8 @@ El Brief 22c.2 loguea en consola el método, la ruta y el error completo cuando 
 El Brief 22c.3 deja pasar mayúsculas en el nombre de colección de Postgres (`IDENT`), así `routeSheets` deja de fallar. `ensureTables` valida cada nombre al arrancar.
 
 El Brief 22d agrupa el picking por comprobante, lo cruza con `order.invoices` (normalizado) y guarda `orderId` por PATCH. Se carga `pickedQty`, el status pasa a `en_preparacion` y el grupo muestra faltantes o "Listo para preparar".
+
+El Brief 22d.1 no baja filas `preparado` desde el input, exige enteros en `pickedQty`, normaliza comprobantes por grupos letra/número y limita el auto-vínculo a encargado/admin (máx. 50). El server valida entero, ≥ 0 y ≤ cantidad.
 
 ## Pendientes
 
