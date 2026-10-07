@@ -31,6 +31,15 @@ const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
   { value: 'preparado', label: 'Preparado' },
 ]
 
+const FIXED_COLUMNS: { id: string; label: string }[] = [
+  { id: 'cliente', label: 'cliente' },
+  { id: 'comprobante', label: 'comprobante' },
+  { id: 'articulo', label: 'artículo' },
+  { id: 'cantidad', label: 'cantidad' },
+  { id: 'vendedor', label: 'vendedor' },
+  { id: 'status', label: 'status' },
+]
+
 function lineStatus(line: PickingLine): PickingStatus {
   return line.status ?? 'pendiente'
 }
@@ -47,6 +56,66 @@ function matchesSearch(line: PickingLine, needle: string) {
     }
   }
   return false
+}
+
+function cellValue(line: PickingLine, columnId: string) {
+  switch (columnId) {
+    case 'cliente':
+      return line.client
+    case 'comprobante':
+      return line.invoice
+    case 'articulo':
+      return line.product
+    case 'cantidad':
+      return String(line.quantity)
+    case 'vendedor':
+      return line.seller
+    case 'status':
+      return lineStatus(line)
+    default: {
+      if (!columnId.startsWith('raw:')) return ''
+      const key = columnId.slice(4)
+      const value = line.raw?.[key]
+      return value === undefined || value === null ? '' : String(value)
+    }
+  }
+}
+
+function escapeCsv(value: string) {
+  if (/[",\n\r]/.test(value)) return `"${value.replace(/"/g, '""')}"`
+  return value
+}
+
+function columnsFromLines(rows: PickingLine[]) {
+  const rawKeys = new Set<string>()
+  for (const line of rows) {
+    if (!line.raw) continue
+    for (const key of Object.keys(line.raw)) rawKeys.add(key)
+  }
+  const sortedRaw = [...rawKeys].sort((a, b) => a.localeCompare(b, 'es'))
+  return [
+    ...FIXED_COLUMNS,
+    ...sortedRaw.map((key) => ({ id: `raw:${key}`, label: key })),
+  ]
+}
+
+function downloadCsv(
+  rows: PickingLine[],
+  columns: { id: string; label: string }[],
+) {
+  const header = columns.map((column) => escapeCsv(column.label)).join(',')
+  const body = rows.map((line) =>
+    columns.map((column) => escapeCsv(cellValue(line, column.id))).join(','),
+  )
+  const blob = new Blob([[header, ...body].join('\n')], {
+    type: 'text/csv;charset=utf-8',
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'picking-datos.csv'
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 function groupLines(lines: PickingLine[]) {
@@ -120,6 +189,8 @@ export function PendientesEntregas() {
   const [preview, setPreview] = useState<PickingPreview | null>(null)
   const [importMode, setImportMode] = useState<ImportMode>('merge')
   const [excelByIndex, setExcelByIndex] = useState<number[][]>([])
+  const [showAllData, setShowAllData] = useState(false)
+  const [visibleColumnIds, setVisibleColumnIds] = useState<string[]>([])
 
   const sellers = useMemo(
     () => [...new Set(lines.map((line) => line.seller).filter(Boolean))].sort(),
@@ -136,6 +207,8 @@ export function PendientesEntregas() {
   }, [lines, mode, searchApplied, seller, statusFilter])
 
   const orders = useMemo(() => groupLines(filteredLines), [filteredLines])
+  const dataColumns = useMemo(() => columnsFromLines(filteredLines), [filteredLines])
+  const visibleColumns = dataColumns.filter((column) => visibleColumnIds.includes(column.id))
 
   function applySearch() {
     setSearchApplied(searchDraft)
@@ -144,6 +217,19 @@ export function PendientesEntregas() {
   function clearSearch() {
     setSearchDraft('')
     setSearchApplied('')
+  }
+
+  function openAllData() {
+    setVisibleColumnIds(dataColumns.map((column) => column.id))
+    setShowAllData(true)
+  }
+
+  function toggleColumn(columnId: string) {
+    setVisibleColumnIds((current) =>
+      current.includes(columnId)
+        ? current.filter((id) => id !== columnId)
+        : [...current, columnId],
+    )
   }
 
   async function onFile(file: File) {
@@ -457,6 +543,13 @@ export function PendientesEntregas() {
           <p className="ml-auto text-sm text-lumi-muted">
             {filteredLines.length} de {lines.length} filas
           </p>
+          <button
+            type="button"
+            className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm"
+            onClick={openAllData}
+          >
+            Ver todos los datos
+          </button>
         </div>
         {mode === 'lista' && (
           <label className="mt-3 block text-sm">
@@ -630,6 +723,97 @@ export function PendientesEntregas() {
             </div>
           )}
         </>
+      )}
+
+      {showAllData && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="picking-all-data-title"
+          className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4"
+        >
+          <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-2xl bg-white p-4 shadow-lg sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 id="picking-all-data-title" className="text-xl font-semibold">
+                  Todos los datos
+                </h2>
+                <p className="mt-1 text-sm text-lumi-muted">
+                  {filteredLines.length} filas filtradas · columnas de raw y campos del picking
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                  disabled={visibleColumns.length === 0}
+                  onClick={() => downloadCsv(filteredLines, visibleColumns)}
+                >
+                  Exportar CSV
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm"
+                  onClick={() => setShowAllData(false)}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {dataColumns.map((column) => {
+                const active = visibleColumnIds.includes(column.id)
+                return (
+                  <button
+                    key={column.id}
+                    type="button"
+                    className={active ? 'zone-chip active' : 'zone-chip'}
+                    aria-pressed={active}
+                    onClick={() => toggleColumn(column.id)}
+                  >
+                    {column.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="mt-4 min-h-0 flex-1 overflow-auto">
+              {filteredLines.length === 0 ? (
+                <p className="py-8 text-center text-sm text-lumi-muted">
+                  Ninguna fila coincide con el filtro.
+                </p>
+              ) : visibleColumns.length === 0 ? (
+                <p className="py-8 text-center text-sm text-lumi-muted">
+                  Elegí al menos una columna para ver la tabla.
+                </p>
+              ) : (
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-lumi-line text-lumi-muted">
+                      {visibleColumns.map((column) => (
+                        <th key={column.id} className="whitespace-nowrap px-2 py-2 font-medium">
+                          {column.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLines.map((line) => (
+                      <tr key={line.id} className="border-b border-lumi-line/70">
+                        {visibleColumns.map((column) => (
+                          <td key={column.id} className="whitespace-nowrap px-2 py-2">
+                            {cellValue(line, column.id) || '—'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </section>
   )
