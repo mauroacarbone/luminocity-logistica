@@ -58,6 +58,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 22b.1 | Migración de picking sin repetidos | Hecho |
 | 22c | Buscar, filtrar y ver todos los datos de picking | Hecho |
 | 22c.1 | CSV de picking listo para Excel | Hecho |
+| 22c.2 | Loguear errores del servidor en orders, hojas y picking | Hecho |
 | 22c.3 | Aceptar routeSheets como colección en Postgres | Hecho |
 | 22d | Cruzar picking con pedidos y cargar lo pickeado | Hecho |
 
