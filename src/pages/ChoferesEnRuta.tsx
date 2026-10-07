@@ -217,9 +217,6 @@ export function ChoferesEnRuta() {
               {filterMissing && <option value={driverFilter}>Ese chofer no está en ruta</option>}
             </select>
           </div>
-          {filterMissing && (
-            <p className="mt-2 text-sm text-lumi-muted">Ese chofer no está en ruta</p>
-          )}
 
           <div className="mt-4 overflow-hidden rounded-2xl bg-[#e6e2d8]" style={{ height: 480 }}>
             {visible.length > 0 ? (
@@ -254,11 +251,6 @@ export function ChoferesEnRuta() {
                 )
               })}
             </ul>
-          )}
-          {drivers.length === 0 && (
-            <p className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
-              No hay choferes en ruta.
-            </p>
           )}
         </>
       )}

@@ -64,6 +64,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 22c.3 | Aceptar routeSheets como colección en Postgres | Hecho |
 | 22d | Cruzar picking con pedidos y cargar lo pickeado | Hecho |
 | 22d.1 | Correcciones de cantidad pickeada y cruce por comprobante | Hecho |
+| 22e | Marcar preparado desde picking | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -156,6 +157,8 @@ El Brief 22c.3 deja pasar mayúsculas en el nombre de colección de Postgres (`I
 El Brief 22d agrupa el picking por comprobante, lo cruza con `order.invoices` (normalizado) y guarda `orderId` por PATCH. Se carga `pickedQty`, el status pasa a `en_preparacion` y el grupo muestra faltantes o "Listo para preparar".
 
 El Brief 22d.1 no baja filas `preparado` desde el input, exige enteros en `pickedQty`, normaliza comprobantes por grupos letra/número y limita el auto-vínculo a encargado/admin (máx. 50). El server valida entero, ≥ 0 y ≤ cantidad.
+
+El Brief 22e marca preparado desde Pendientes de Entregas cuando el comprobante está vinculado a un pedido pendiente o preparado y están completas todas las filas de todos sus comprobantes. Usa la vía `picking` en el historial, pide bultos si hace falta, y después deja las filas en `preparado`. Si baja la cantidad del artículo, el server recorta `pickedQty`. El Planificador usa singular con un solo pedido sin franja y Choferes en ruta deja de repetir avisos vacíos.
 
 ## Pendientes
 

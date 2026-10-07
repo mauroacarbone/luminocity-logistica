@@ -769,7 +769,9 @@ export function PlanificadorRutas() {
 
               {preparedWithoutSlot.length > 0 && (
                 <p className="mt-3 text-sm text-lumi-muted">
-                  {preparedWithoutSlot.length} pedidos preparados de este día sin franja.{' '}
+                  {preparedWithoutSlot.length === 1
+                    ? '1 pedido preparado de este día sin franja.'
+                    : `${preparedWithoutSlot.length} pedidos preparados de este día sin franja.`}{' '}
                   <Link className="order-link" to="/despacho">
                     Despacho
                   </Link>
