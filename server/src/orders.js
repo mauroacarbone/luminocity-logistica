@@ -83,7 +83,6 @@ export const ordersRouter = Router()
 ordersRouter.use(requireAuth)
 ordersRouter.get('/', async (req, res) => {
   await send(res, async () => {
-    throw new Error('prueba brief 22c.2')
     const orders = await locked(readOrders)
     const visible = orders.filter((order) => canSeeOrder(req.user, order))
     if (req.user.role === 'chofer') {
