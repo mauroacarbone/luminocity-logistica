@@ -1,11 +1,18 @@
 import { useMemo, useRef, useState } from 'react'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { parsePickingWorkbook, type PickingLine } from '../lib/pickingSheet'
-import type { PickingBatchRow } from '../lib/pickingApi'
+import { confirm } from '../lib/alerts'
+import {
+  batchRowsFromPreview,
+  pickingTemplateCsv,
+  previewPickingWorkbook,
+  type PickingLine,
+  type PickingPreview,
+} from '../lib/pickingSheet'
 import { usePicking } from '../state/PickingContext'
 
 type Mode = 'lista' | 'picking'
 type Estado = 'todos' | 'completo' | 'en-curso' | 'pendiente'
+type ImportMode = 'replace' | 'merge'
 
 type PickingOrder = {
   key: string
@@ -59,21 +66,14 @@ function subtitle(order: PickingOrder, ready: number, total: number) {
     .join(' · ')
 }
 
-function batchFromLine(line: PickingLine): PickingBatchRow {
-  return {
-    cliente: line.client,
-    comprobante: line.invoice,
-    articulo: line.product,
-    cantidad: line.quantity,
-    vendedor: line.seller,
-    raw: line.raw ?? {
-      Factura: line.invoice,
-      Cliente: line.client,
-      Vendedor: line.seller,
-      Producto: line.product,
-      Cantidad: line.quantity,
-    },
-  }
+function downloadTemplate() {
+  const blob = new Blob([pickingTemplateCsv()], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'plantilla-picking.csv'
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 export function PendientesEntregas() {
@@ -97,6 +97,9 @@ export function PendientesEntregas() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState<PickingPreview | null>(null)
+  const [importMode, setImportMode] = useState<ImportMode>('merge')
+  const [excelByIndex, setExcelByIndex] = useState<number[][]>([])
 
   const orders = useMemo(() => groupLines(lines), [lines])
   const sellers = useMemo(
@@ -117,23 +120,52 @@ export function PendientesEntregas() {
 
   async function onFile(file: File) {
     setError('')
-    setBusy(true)
+    setMessage('')
     try {
-      const loaded = parsePickingWorkbook(await file.arrayBuffer())
-      const result = await applyBatch('replace', loaded.map(batchFromLine))
-      if (!result.ok) {
-        setError(result.message)
-        return
-      }
-      setExpanded(null)
-      setMessage(
-        `Importación: ${result.created} creadas, ${result.updated} actualizadas, ${result.removed} borradas.`,
-      )
+      const next = previewPickingWorkbook(await file.arrayBuffer())
+      setPreview(next)
+      setExcelByIndex(next.valid.map((row) => row.excelRows))
+      setImportMode('merge')
     } catch (caught) {
+      setPreview(null)
       setError(caught instanceof Error ? caught.message : 'No se pudo leer el archivo.')
-    } finally {
-      setBusy(false)
     }
+  }
+
+  async function confirmImport() {
+    if (!preview || preview.valid.length === 0) {
+      setError('No hay filas válidas para importar.')
+      return
+    }
+    if (importMode === 'replace') {
+      const accepted = await confirm(
+        'Reemplazar todo',
+        'Se borran las filas de picking del server y se cargan solo las del archivo.',
+        { peligro: true },
+      )
+      if (!accepted) return
+    }
+    setBusy(true)
+    setError('')
+    const rows = batchRowsFromPreview(preview.valid)
+    const result = await applyBatch(importMode, rows)
+    setBusy(false)
+    if (!result.ok) {
+      const details =
+        result.errors
+          ?.map((item) => {
+            const excel = excelByIndex[item.index]?.[0]
+            return excel ? `Fila ${excel}: ${item.message}` : item.message
+          })
+          .join(' · ') ?? ''
+      setError(details ? `${result.message} ${details}` : result.message)
+      return
+    }
+    setPreview(null)
+    setExpanded(null)
+    setMessage(
+      `Importación: ${result.created} creadas, ${result.updated} actualizadas, ${result.removed} borradas.`,
+    )
   }
 
   async function onToggle(id: string) {
@@ -182,14 +214,23 @@ export function PendientesEntregas() {
           <h1>Pendientes de Entregas</h1>
           <p>Lista de pedidos y modo picking con stock de Clanbox</p>
         </div>
-        <button
-          type="button"
-          className="shrink-0 rounded-xl bg-white px-4 py-2 text-sm shadow-sm disabled:opacity-50"
-          disabled={busy}
-          onClick={() => fileRef.current?.click()}
-        >
-          Cargar Excel al Sheet
-        </button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-xl border border-lumi-line bg-white px-4 py-2 text-sm shadow-sm"
+            onClick={downloadTemplate}
+          >
+            Descargar plantilla
+          </button>
+          <button
+            type="button"
+            className="rounded-xl bg-white px-4 py-2 text-sm shadow-sm disabled:opacity-50"
+            disabled={busy}
+            onClick={() => fileRef.current?.click()}
+          >
+            Cargar Excel al Sheet
+          </button>
+        </div>
         <input
           ref={fileRef}
           type="file"
@@ -248,6 +289,95 @@ export function PendientesEntregas() {
         <p className="mt-4 rounded-xl bg-[#e5f6ea] px-4 py-2 text-sm text-[#1d7a3a]">{message}</p>
       )}
       {error && <p className="mt-4 text-sm text-lumi-danger">{error}</p>}
+
+      {preview && (
+        <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold">Vista previa de importación</h2>
+              <p className="mt-1 text-sm text-lumi-muted">
+                {preview.valid.length} válidas · {preview.discarded.length} descartadas ·{' '}
+                {preview.valid.filter((row) => row.combinedFrom > 1).length} combinadas
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-sm">
+                Modo
+                <select
+                  value={importMode}
+                  onChange={(event) => setImportMode(event.target.value as ImportMode)}
+                  className="ml-2 rounded-xl border border-lumi-line px-3 py-1.5"
+                >
+                  <option value="merge">Combinar</option>
+                  <option value="replace">Reemplazar todo</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm"
+                disabled={busy}
+                onClick={() => setPreview(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                disabled={busy || preview.valid.length === 0}
+                onClick={() => void confirmImport()}
+              >
+                Confirmar importación
+              </button>
+            </div>
+          </div>
+
+          {preview.valid.length > 0 && (
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-lumi-line text-lumi-muted">
+                    <th className="px-2 py-2 font-medium">Fila</th>
+                    <th className="px-2 py-2 font-medium">Cliente</th>
+                    <th className="px-2 py-2 font-medium">Comprobante</th>
+                    <th className="px-2 py-2 font-medium">Artículo</th>
+                    <th className="px-2 py-2 font-medium">Cantidad</th>
+                    <th className="px-2 py-2 font-medium">Vendedor</th>
+                    <th className="px-2 py-2 font-medium">Notas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.valid.map((row) => (
+                    <tr key={`${row.comprobante}-${row.articulo}-${row.excelRows.join('-')}`} className="border-b border-lumi-line/70">
+                      <td className="px-2 py-2">{row.excelRows.join(', ')}</td>
+                      <td className="px-2 py-2">{row.cliente}</td>
+                      <td className="px-2 py-2">{row.comprobante}</td>
+                      <td className="px-2 py-2">{row.articulo}</td>
+                      <td className="px-2 py-2">{row.cantidad}</td>
+                      <td className="px-2 py-2">{row.vendedor || '—'}</td>
+                      <td className="px-2 py-2 text-lumi-muted">
+                        {row.combinedFrom > 1 ? `${row.combinedFrom} filas combinadas` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {preview.discarded.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold">Filas descartadas</h3>
+              <ul className="mt-2 flex flex-col gap-1 text-sm text-lumi-danger">
+                {preview.discarded.map((row) => (
+                  <li key={`${row.excelRow}-${row.message}`}>
+                    Fila {row.excelRow}: {row.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {mode === 'lista' ? (
         <>
