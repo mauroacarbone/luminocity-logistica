@@ -90,7 +90,7 @@ function parseQuantity(value: unknown): { ok: true; value: number } | { ok: fals
   return { ok: true, value: parsed }
 }
 
-function mergeKey(comprobante: string, articulo: string) {
+export function mergeKey(comprobante: string, articulo: string) {
   return `${comprobante.trim().toLocaleLowerCase('es')}\0${articulo.trim().toLocaleLowerCase('es')}`
 }
 

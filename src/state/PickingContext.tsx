@@ -16,7 +16,7 @@ import {
   type PickingBatchRow,
   type PickingRow,
 } from '../lib/pickingApi'
-import type { PickingLine } from '../lib/pickingSheet'
+import { mergeKey, type PickingLine } from '../lib/pickingSheet'
 import { useAuth } from './AuthContext'
 
 const PICKING_KEY = 'luminocity.picking.v1'
@@ -104,6 +104,28 @@ function batchFromLegacy(line: LegacyLine): PickingBatchRow {
       ...(line.date ? { Fecha: line.date } : {}),
     },
   }
+}
+
+/** Agrupa como la vista previa: misma clave, suma cantidad. */
+function batchRowsFromLegacy(lines: LegacyLine[]): PickingBatchRow[] {
+  const byKey = new Map<string, PickingBatchRow>()
+  for (const line of lines) {
+    const key = mergeKey(line.invoice, line.product)
+    const existing = byKey.get(key)
+    if (existing) {
+      existing.cantidad += line.quantity
+      existing.raw = {
+        ...existing.raw,
+        Cantidad: existing.cantidad,
+      }
+      if (!existing.vendedor && line.seller) existing.vendedor = line.seller
+      if (!existing.cliente && line.client) existing.cliente = line.client
+      if (line.ready) existing.status = 'preparado'
+      continue
+    }
+    byKey.set(key, batchFromLegacy(line))
+  }
+  return [...byKey.values()]
 }
 
 function clearLegacyKey() {
@@ -205,7 +227,7 @@ export function PickingProvider({ children }: { children: ReactNode }) {
     if (!legacyOffer || legacyOffer.length === 0) {
       return { ok: false as const, message: 'No hay datos locales para subir.' }
     }
-    const result = await batchPickingChunks('merge', legacyOffer.map(batchFromLegacy))
+    const result = await batchPickingChunks('merge', batchRowsFromLegacy(legacyOffer))
     if (!result.ok) {
       if (result.status === 401) logout()
       return { ok: false as const, message: result.message }
@@ -221,6 +243,7 @@ export function PickingProvider({ children }: { children: ReactNode }) {
   }
 
   function dismissLegacy() {
+    clearLegacyKey()
     setLegacyOffer(null)
     setLegacyShown(true)
   }
