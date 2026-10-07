@@ -230,7 +230,9 @@ export function MisEntregas() {
       return
     }
     if (leaving) setTab('en-viaje')
-    await success(leaving ? 'Pedido en viaje' : 'Pedido entregado')
+    await success(
+      leaving ? 'Pedido en viaje' : `Pedido ${order.id} entregado. Avisamos al vendedor.`,
+    )
   }
 
   async function startSheet(sheet: RouteSheet) {
