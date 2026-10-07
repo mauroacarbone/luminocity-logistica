@@ -8,6 +8,7 @@ import { mapsLink, onTheWayText, whatsappLink } from '../lib/whatsapp'
 import { placeLine } from '../lib/place'
 import { listRouteSheets, startRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
 import { businessOffset, businessToday, mapsDirections, stopPoint } from '../lib/schedule'
+import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 
@@ -84,6 +85,7 @@ export function MisEntregas() {
   const [here, setHere] = useState<Point | null>(null)
   const [gps, setGps] = useState<Gps>('off')
   const [sheets, setSheets] = useState<RouteSheet[]>([])
+  const [sheetsError, setSheetsError] = useState('')
   const [starting, setStarting] = useState('')
   const today = businessToday()
   const tracking = !loading && !ordersError && orders.some((order) => order.status === 'en-viaje')
@@ -93,18 +95,34 @@ export function MisEntregas() {
   useEffect(() => {
     let cancelled = false
     const yesterday = businessOffset(-1)
-    void Promise.all([listRouteSheets(today), listRouteSheets(yesterday)]).then(([todayResult, yesterdayResult]) => {
-      if (cancelled) return
-      const open: RouteSheet[] = []
-      if (todayResult.ok) {
-        open.push(...todayResult.data.filter((sheet) => sheet.status !== 'cerrada'))
+    const dates = new Set<string>([today, yesterday])
+    for (const order of orders) {
+      if (!order.sheetPlanned && !order.routeId) continue
+      if (typeof order.deliveryDate === 'string' && order.deliveryDate.trim()) {
+        dates.add(order.deliveryDate)
       }
-      if (yesterdayResult.ok) {
-        open.push(
-          ...yesterdayResult.data.filter(
-            (sheet) => sheet.status === 'en_curso' && !open.some((item) => item.id === sheet.id),
-          ),
-        )
+    }
+    void Promise.all(
+      [...dates].map((date) => listRouteSheets(date).then((result) => ({ date, result }))),
+    ).then((results) => {
+      if (cancelled) return
+      const failed = results.find((item) => !item.result.ok)
+      if (failed && !failed.result.ok) {
+        setSheetsError(failed.result.message)
+      } else {
+        setSheetsError('')
+      }
+      const open: RouteSheet[] = []
+      for (const { date, result } of results) {
+        if (!result.ok) continue
+        for (const sheet of result.data) {
+          if (open.some((item) => item.id === sheet.id)) continue
+          if (date === yesterday) {
+            if (sheet.status === 'en_curso') open.push(sheet)
+            continue
+          }
+          if (sheet.status !== 'cerrada') open.push(sheet)
+        }
       }
       setSheets(open)
     })
@@ -276,22 +294,27 @@ export function MisEntregas() {
           Activá la ubicación para ordenar las entregas
         </p>
       )}
+      {sheetsError && (
+        <p className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-lumi-danger shadow-sm">
+          {sheetsError}
+        </p>
+      )}
       {visibleSheets.map((sheet) => {
         const stops = sheet.orderIds
           .map((id) => orders.find((order) => order.id === id))
           .filter((order): order is Order => Boolean(order))
         const directions = sheetDirections(sheet)
+        const sheetDateLabel = formatIsoDate(sheet.date)
         return (
           <section key={sheet.id} className="mt-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base font-semibold">
-                Hoja de ruta · Franja {sheet.slot} · {stops.length} parada
-                {stops.length === 1 ? '' : 's'}
-                {sheet.date !== today ? ` · ${sheet.date}` : ''}
+                Hoja de ruta · {sheetDateLabel} · Franja {sheet.slot} · {stops.length}{' '}
+                parada{stops.length === 1 ? '' : 's'}
               </h2>
             </div>
             <div className="mt-3 flex flex-col gap-2">
-              {sheet.status === 'planificada' && (
+              {sheet.status === 'planificada' && sheet.date === today && (
                 <button
                   type="button"
                   className="min-h-12 rounded-xl bg-lumi-yellow px-4 text-base font-semibold text-lumi-yellow-ink disabled:opacity-50"
@@ -300,6 +323,11 @@ export function MisEntregas() {
                 >
                   Iniciar recorrido
                 </button>
+              )}
+              {sheet.status === 'planificada' && sheet.date !== today && (
+                <p className="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm">
+                  Se inicia el {sheetDateLabel}
+                </p>
               )}
               {directions.link ? (
                 <>
@@ -405,7 +433,8 @@ function DeliveryCard({
   const waiting = order.status === 'preparado'
   const canLeave = order.status === 'asignado'
   const canDeliver = order.status === 'en-viaje'
-  const showLeave = canLeave && (!stopLabel || allowLeave)
+  const showLeave = canLeave && !order.sheetPlanned && (!stopLabel || allowLeave)
+  const plannedNotice = canLeave && Boolean(order.sheetPlanned)
 
   return (
     <article className="rounded-2xl bg-white p-4 shadow-sm">
@@ -443,6 +472,12 @@ function DeliveryCard({
             <button type="button" className="min-h-12 rounded-xl bg-lumi-line px-4 text-base font-semibold" disabled>
               Cómo llegar
             </button>
+          )}
+          {plannedNotice && (
+            <p className="rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm font-semibold">
+              En hoja de ruta planificada para el {formatIsoDate(order.deliveryDate)}. Salís con
+              «Iniciar recorrido».
+            </p>
           )}
           {showLeave && (
             <button
