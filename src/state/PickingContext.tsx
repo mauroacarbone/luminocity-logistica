@@ -41,7 +41,6 @@ type PickingContextValue = {
   error: string
   legacyOffer: LegacyLine[] | null
   refresh: () => Promise<void>
-  toggleLine: (id: string) => Promise<PickingPatchResult>
   patchLine: (id: string, fields: Record<string, unknown>) => Promise<PickingPatchResult>
   uploadLegacy: () => Promise<{ ok: true; message: string } | { ok: false; message: string }>
   dismissLegacy: () => void
@@ -225,16 +224,6 @@ export function PickingProvider({ children }: { children: ReactNode }) {
     return { ok: true }
   }
 
-  async function toggleLine(id: string) {
-    const current = lines.find((line) => line.id === id)
-    if (!current) return { ok: false as const, message: 'No existe esa fila de picking.' }
-    const nextReady = !current.ready
-    return patchLine(id, {
-      status: nextReady ? 'preparado' : 'pendiente',
-      pickedQty: nextReady ? current.quantity : 0,
-    })
-  }
-
   async function uploadLegacy() {
     if (!legacyOffer || legacyOffer.length === 0) {
       return { ok: false as const, message: 'No hay datos locales para subir.' }
@@ -290,7 +279,6 @@ export function PickingProvider({ children }: { children: ReactNode }) {
         error,
         legacyOffer,
         refresh,
-        toggleLine,
         patchLine,
         uploadLegacy,
         dismissLegacy,

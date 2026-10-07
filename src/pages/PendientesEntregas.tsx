@@ -144,17 +144,36 @@ function groupLines(lines: PickingLine[], pedidos: Order[]): PickingGroup[] {
   return [...groups.values()]
 }
 
-function progressOf(group: PickingGroup) {
-  const ready = group.lines.filter((line) => line.ready).length
-  const total = group.lines.length
-  const pct = total === 0 ? 0 : Math.round((ready / total) * 100)
-  return { ready, total, pct }
+function pickedOf(line: PickingLine) {
+  return typeof line.pickedQty === 'number' ? line.pickedQty : 0
 }
 
-function subtitle(group: PickingGroup, ready: number, total: number) {
-  return [group.seller, 'Luminocity', group.date, `${ready}/${total} productos listos`]
-    .filter(Boolean)
-    .join(' · ')
+function isLineComplete(line: PickingLine) {
+  return pickedOf(line) >= line.quantity
+}
+
+function progressOf(group: PickingGroup) {
+  const total = group.lines.length
+  const complete = group.lines.filter(isLineComplete).length
+  const pct = total === 0 ? 0 : Math.round((complete / total) * 100)
+  const missing = group.lines
+    .filter((line) => !isLineComplete(line))
+    .map((line) => ({
+      id: line.id,
+      product: line.product,
+      missing: line.quantity - pickedOf(line),
+    }))
+  return {
+    complete,
+    total,
+    pct,
+    missing,
+    readyToPrepare: total > 0 && complete === total,
+  }
+}
+
+function subtitle(group: PickingGroup) {
+  return [group.seller, 'Luminocity', group.date].filter(Boolean).join(' · ')
 }
 
 function OrderLinkBlock({ link }: { link: InvoiceMatch }) {
@@ -175,6 +194,28 @@ function OrderLinkBlock({ link }: { link: InvoiceMatch }) {
   return <p className="mt-2 text-sm text-lumi-muted">Sin pedido</p>
 }
 
+function GroupPickingSummary({ group }: { group: PickingGroup }) {
+  const progress = progressOf(group)
+  return (
+    <div className="mt-2 text-sm">
+      <p>
+        {progress.complete} de {progress.total} artículos completos
+      </p>
+      {progress.readyToPrepare ? (
+        <p className="mt-1 font-medium text-[#1d7a3a]">Listo para preparar</p>
+      ) : progress.missing.length > 0 ? (
+        <ul className="mt-1 list-disc pl-5 text-lumi-muted">
+          {progress.missing.map((item) => (
+            <li key={item.id}>
+              {item.product}: faltan {item.missing}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  )
+}
+
 function downloadTemplate() {
   downloadCsvFile(pickingTemplateCsv(), 'plantilla-picking.csv')
 }
@@ -187,7 +228,6 @@ export function PendientesEntregas() {
     error: loadError,
     legacyOffer,
     refresh,
-    toggleLine,
     patchLine,
     uploadLegacy,
     dismissLegacy,
@@ -201,6 +241,7 @@ export function PendientesEntregas() {
   const [searchDraft, setSearchDraft] = useState('')
   const [searchApplied, setSearchApplied] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -342,10 +383,47 @@ export function PendientesEntregas() {
     )
   }
 
-  async function onToggle(id: string) {
+  function qtyDraftFor(line: PickingLine) {
+    if (Object.prototype.hasOwnProperty.call(qtyDrafts, line.id)) return qtyDrafts[line.id]!
+    return String(pickedOf(line))
+  }
+
+  function setQtyDraft(id: string, value: string) {
+    setQtyDrafts((current) => ({ ...current, [id]: value }))
+  }
+
+  function clearQtyDraft(id: string) {
+    setQtyDrafts((current) => {
+      if (!Object.prototype.hasOwnProperty.call(current, id)) return current
+      const next = { ...current }
+      delete next[id]
+      return next
+    })
+  }
+
+  async function savePickedQty(line: PickingLine, raw: string) {
     setError('')
-    const result = await toggleLine(id)
+    const parsed = Number(String(raw).replace(',', '.').trim())
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > line.quantity) {
+      clearQtyDraft(line.id)
+      setError(`La cantidad pickeada tiene que estar entre 0 y ${line.quantity}.`)
+      return
+    }
+    const nextStatus: PickingStatus = parsed > 0 ? 'en_preparacion' : 'pendiente'
+    if (pickedOf(line) === parsed && lineStatus(line) === nextStatus) {
+      clearQtyDraft(line.id)
+      return
+    }
+    setBusy(true)
+    const result = await patchLine(line.id, { pickedQty: parsed, status: nextStatus })
+    setBusy(false)
+    clearQtyDraft(line.id)
     if (!result.ok) setError(result.message)
+  }
+
+  async function markComplete(line: PickingLine) {
+    setQtyDraft(line.id, String(line.quantity))
+    await savePickedQty(line, String(line.quantity))
   }
 
   async function onUploadLegacy() {
@@ -662,10 +740,11 @@ export function PendientesEntregas() {
                         <p className="font-semibold">
                           {group.invoice} — {group.client}
                         </p>
-                        <p className="mt-1 text-sm text-lumi-muted">
-                          {subtitle(group, progress.ready, progress.total)}
-                        </p>
+                        {subtitle(group) && (
+                          <p className="mt-1 text-sm text-lumi-muted">{subtitle(group)}</p>
+                        )}
                         <OrderLinkBlock link={group.link} />
+                        <GroupPickingSummary group={group} />
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
                         <div
@@ -677,9 +756,9 @@ export function PendientesEntregas() {
                             style={{ width: `${progress.pct}%` }}
                           />
                         </div>
-                        {progress.pct === 100 ? (
+                        {progress.readyToPrepare ? (
                           <span className="rounded-full bg-[#e5f6ea] px-2 py-0.5 text-xs font-medium text-[#1d7a3a]">
-                            Completo
+                            Listo
                           </span>
                         ) : (
                           <span className="text-xs text-lumi-muted">{progress.pct}%</span>
@@ -729,9 +808,9 @@ export function PendientesEntregas() {
                           <span className="block font-semibold">
                             {group.invoice} — {group.client}
                           </span>
-                          <span className="mt-1 block text-sm text-lumi-muted">
-                            {subtitle(group, progress.ready, progress.total)}
-                          </span>
+                          {subtitle(group) && (
+                            <span className="mt-1 block text-sm text-lumi-muted">{subtitle(group)}</span>
+                          )}
                         </span>
                         <span className="flex shrink-0 items-center gap-3">
                           <span
@@ -744,41 +823,64 @@ export function PendientesEntregas() {
                             />
                           </span>
                           <span className="text-xs text-lumi-muted">
-                            {progress.pct === 100 ? 'Completo' : `${progress.pct}%`}
+                            {progress.readyToPrepare ? 'Listo' : `${progress.pct}%`}
                           </span>
                           <span aria-hidden="true">{open ? '▴' : '▾'}</span>
                         </span>
                       </button>
                       <OrderLinkBlock link={group.link} />
+                      <GroupPickingSummary group={group} />
                     </div>
                     {open && (
                       <div className="flex flex-col gap-2 px-4 py-3">
-                        {group.lines.map((line) => (
-                          <div
-                            key={line.id}
-                            className={`flex items-center justify-between gap-4 rounded-xl px-3 py-3 ${
-                              line.ready ? 'bg-[#e5f6ea]' : 'bg-[#f7f4ea]'
-                            }`}
-                          >
-                            <div>
-                              <p className="font-medium">{line.product}</p>
-                              <p className="text-sm text-lumi-muted">
-                                Cantidad pedida: {line.quantity}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              className={`shrink-0 text-sm font-medium disabled:opacity-50 ${
-                                line.ready ? 'text-[#1d7a3a]' : 'text-lumi-muted'
+                        {group.lines.map((line) => {
+                          const complete = isLineComplete(line)
+                          return (
+                            <div
+                              key={line.id}
+                              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl px-3 py-3 ${
+                                complete ? 'bg-[#e5f6ea]' : 'bg-[#f7f4ea]'
                               }`}
-                              aria-pressed={line.ready}
-                              disabled={busy}
-                              onClick={() => void onToggle(line.id)}
                             >
-                              {line.ready ? '✓ Listo' : 'Pendiente'}
-                            </button>
-                          </div>
-                        ))}
+                              <div className="min-w-0">
+                                <p className="font-medium">{line.product}</p>
+                                <p className="text-sm text-lumi-muted">
+                                  Cantidad pedida: {line.quantity}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                                <label className="text-sm">
+                                  <span className="sr-only">Cantidad pickeada</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={line.quantity}
+                                    step={1}
+                                    value={qtyDraftFor(line)}
+                                    disabled={busy}
+                                    className="w-20 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm"
+                                    onChange={(event) => setQtyDraft(line.id, event.target.value)}
+                                    onBlur={() => void savePickedQty(line, qtyDraftFor(line))}
+                                    onKeyDown={(event) => {
+                                      if (event.key === 'Enter') {
+                                        event.preventDefault()
+                                        ;(event.target as HTMLInputElement).blur()
+                                      }
+                                    }}
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  className="rounded-xl border border-lumi-line bg-white px-3 py-1.5 text-sm disabled:opacity-50"
+                                  disabled={busy || complete}
+                                  onClick={() => void markComplete(line)}
+                                >
+                                  Completo
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </article>

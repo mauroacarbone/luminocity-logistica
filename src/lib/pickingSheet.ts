@@ -212,6 +212,6 @@ export function batchRowsFromPreview(valid: PickingPreviewRow[]): PickingBatchRo
 export function pickingTemplateCsv() {
   return buildCsv([
     ['Factura', 'Cliente', 'Vendedor', 'Producto', 'Cantidad', 'Fecha'],
-    ['F-0001', 'Cliente ejemplo', 'Ana', 'Lámpara mesa', '1', '07/10/2026'],
+    ['F-0001', 'Cliente ejemplo', 'Ana', 'Lámpara mesa', '1', '2026-10-07'],
   ])
 }
