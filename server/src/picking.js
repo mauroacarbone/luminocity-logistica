@@ -187,19 +187,15 @@ function batchRows(body) {
         },
       }
     }
-    const initial = new Map()
-    for (const row of current) {
-      initial.set(mergeKey(row.comprobante, row.articulo), row)
-    }
-    const byKey = new Map(initial)
+    const next = current.map((row) => ({ ...row, raw: { ...row.raw } }))
     let created = 0
     let updated = 0
-    const countedUpdate = new Set()
     for (const item of parsed) {
       const key = mergeKey(item.comprobante, item.articulo)
-      const existing = byKey.get(key)
-      if (existing) {
-        byKey.set(key, {
+      const index = findOldestIndex(next, key)
+      if (index >= 0) {
+        const existing = next[index]
+        const patched = {
           ...existing,
           cliente: item.cliente,
           comprobante: item.comprobante,
@@ -207,21 +203,46 @@ function batchRows(body) {
           cantidad: item.cantidad,
           vendedor: item.vendedor,
           raw: item.raw,
-          updatedAt: now,
-        })
-        if (initial.has(key) && !countedUpdate.has(key)) {
-          countedUpdate.add(key)
+        }
+        if (!sameMergeFields(existing, patched)) {
+          patched.updatedAt = now
+          next[index] = patched
           updated += 1
         }
       } else {
-        const row = buildNewRow(item, now)
-        byKey.set(key, row)
+        next.push(buildNewRow(item, now))
         created += 1
       }
     }
-    await writePicking([...byKey.values()])
+    await writePicking(next)
     return { summary: { created, updated, removed: 0 } }
   })
+}
+
+function findOldestIndex(list, key) {
+  let found = -1
+  let oldest = ''
+  for (let index = 0; index < list.length; index += 1) {
+    const row = list[index]
+    if (mergeKey(row.comprobante, row.articulo) !== key) continue
+    const createdAt = typeof row.createdAt === 'string' ? row.createdAt : ''
+    if (found < 0 || createdAt < oldest) {
+      found = index
+      oldest = createdAt
+    }
+  }
+  return found
+}
+
+function sameMergeFields(left, right) {
+  return (
+    left.cliente === right.cliente &&
+    left.comprobante === right.comprobante &&
+    left.articulo === right.articulo &&
+    left.cantidad === right.cantidad &&
+    left.vendedor === right.vendedor &&
+    JSON.stringify(left.raw) === JSON.stringify(right.raw)
+  )
 }
 
 function buildNewRow(parsed, now) {
