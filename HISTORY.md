@@ -56,6 +56,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 21g | Página de Seguimiento de pedidos | Hecho |
 | 21g.1 | Nombre del chofer en el listado de pedidos | Hecho |
 | 21h | Hojas futuras en Mis entregas | Hecho |
+| 21h.1 | Botones de Mis entregas sin repetir | Hecho |
 | 22a | API de picking (Pendientes de Entregas) | Hecho |
 | 22a.1 | Topes y alta en lote para picking | Hecho |
 | 22a.2 | Merge seguro y repetidos en el lote de picking | Hecho |
@@ -146,6 +147,8 @@ El Brief 21g agrega la página Seguimiento (`/seguimiento`) para buscar pedidos 
 El Brief 21g.1 manda `driverName` en el GET de pedidos (una sola lectura de usuarios) y en Seguimiento ordena primero hoy en adelante y después los pasados. Si falla la carga, muestra el error.
 
 El Brief 21h carga en Mis entregas las hojas planificadas de otros días (además de hoy y ayer en curso). La tarjeta muestra la fecha; "Iniciar recorrido" solo el día de la hoja. Un pedido en hoja planificada ya no ofrece "Salir a reparto". El server incluye la fecha en el rechazo.
+
+El Brief 21h.1 renombra el recorrido de la hoja a "Ver recorrido completo" y lo muestra solo con 2 o más paradas pendientes. Los contadores de Asignados y En viaje incluyen también los pedidos que están dentro de una hoja.
 
 El Brief 22a guarda el picking en el server (`/api/picking`, JSON o Postgres). La pantalla Pendientes de Entregas sigue en localStorage.
 

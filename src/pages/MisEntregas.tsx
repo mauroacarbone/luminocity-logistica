@@ -229,6 +229,10 @@ export function MisEntregas() {
     loose.filter((order) => order.status === 'en-viaje'),
     position,
   )
+  const assignedCount = orders.filter(
+    (order) => order.status === 'preparado' || order.status === 'asignado',
+  ).length
+  const travelingCount = orders.filter((order) => order.status === 'en-viaje').length
   const visible = tab === 'asignados' ? assigned : traveling
 
   async function changeStatus(order: Order, status: 'en-viaje' | 'entregado') {
@@ -373,7 +377,7 @@ export function MisEntregas() {
           onClick={() => setTab('asignados')}
         >
           Asignados
-          <span>{assigned.length}</span>
+          <span>{assignedCount}</span>
         </button>
         <button
           type="button"
@@ -383,7 +387,7 @@ export function MisEntregas() {
           onClick={() => setTab('en-viaje')}
         >
           En viaje
-          <span>{traveling.length}</span>
+          <span>{travelingCount}</span>
         </button>
       </div>
       {visible.length === 0 ? (
