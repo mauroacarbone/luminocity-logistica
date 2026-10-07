@@ -123,9 +123,18 @@ export function PedidosPreparacion() {
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState('')
   const days = weekDays(weekOffset)
-  const pending = orders.filter((order) => order.status === 'pendiente')
+  const weekOrders = orders.filter(
+    (order) => order.status === 'pendiente' || order.status === 'preparado',
+  )
   const selectedDate = days.find((day) => toIso(day) === selectedIso) ?? days[0]
-  const dayOrders = pending.filter((order) => order.deliveryDate === toIso(selectedDate))
+  const dayOrders = weekOrders
+    .filter((order) => order.deliveryDate === toIso(selectedDate))
+    .sort((left, right) => {
+      if (left.status !== right.status) {
+        return left.status === 'pendiente' ? -1 : 1
+      }
+      return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
+    })
 
   function showWeek(offset: number) {
     const nextDays = weekDays(offset)
@@ -183,7 +192,7 @@ export function PedidosPreparacion() {
     <section className="page">
       <header className="page-header">
         <h1>Pedidos y Preparación</h1>
-        <p>Pedidos de la semana, listos para preparar y editar.</p>
+        <p>Pedidos de la semana, por preparar y preparados.</p>
       </header>
 
       <div className="mt-6 grid grid-cols-3 items-center gap-2">
@@ -209,7 +218,7 @@ export function PedidosPreparacion() {
       <div className="mt-4 grid min-w-0 grid-cols-7 gap-1">
         {days.map((day) => {
           const iso = toIso(day)
-          const count = pending.filter((order) => order.deliveryDate === iso).length
+          const count = weekOrders.filter((order) => order.deliveryDate === iso).length
           const selected = iso === toIso(selectedDate)
           return (
             <button
@@ -293,7 +302,7 @@ export function PedidosPreparacion() {
                   )}
                 </div>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:items-end">
-                  {user && canPrepare(user.role) && (
+                  {user && canPrepare(user.role) && order.status === 'pendiente' && (
                     <button
                       type="button"
                       className="min-h-11 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"

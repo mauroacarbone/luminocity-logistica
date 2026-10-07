@@ -52,6 +52,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 21c.1 | Asignar chofer desde el detalle | Hecho |
 | 21d | Claridad en Planificador y filtro en Choferes en ruta | Hecho |
 | 21e | Stepper verde al entregar y aviso al chofer | Hecho |
+| 21f | Mostrar preparados en Pedidos y Preparación | Hecho |
 | 21g | Página de Seguimiento de pedidos | Hecho |
 | 21h | Hojas futuras en Mis entregas | Hecho |
 | 22a | API de picking (Pendientes de Entregas) | Hecho |
@@ -135,6 +136,8 @@ El Brief 21c.1 deja asignar chofer y franja desde el detalle con un diálogo. Si
 El Brief 21d aclara el Planificador: el cupo dice "en la franja", lista los no seleccionables con motivo y avisa los preparados sin franja. En Choferes en ruta hay buscador y select; el mapa se centra en los visibles.
 
 El Brief 21e deja el stepper todo en verde con ✓ al entregar (sin `aria-current`) y el aviso del chofer dice que se avisó al vendedor.
+
+El Brief 21f muestra en Pedidos y Preparación los pedidos pendientes y preparados del día (antes solo pendientes). Primero los pendientes; "Marcar preparado" solo en esos. Los preparados quedan con pastilla, bultos y link al detalle.
 
 El Brief 21g agrega la página Seguimiento (`/seguimiento`) para buscar pedidos por número, cliente o factura y filtrar por estado y fecha de entrega. Usa los pedidos de `useOrders()` (el server ya filtra por rol). Está en el menú de vendedor, depósito, encargado y admin; el chofer no entra.
 
