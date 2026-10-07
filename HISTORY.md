@@ -52,6 +52,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 21c.1 | Asignar chofer desde el detalle | Hecho |
 | 22a | API de picking (Pendientes de Entregas) | Hecho |
 | 22a.1 | Topes y alta en lote para picking | Hecho |
+| 22a.2 | Merge seguro y repetidos en el lote de picking | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -120,6 +121,8 @@ El Brief 21c.1 deja asignar chofer y franja desde el detalle con un diálogo. Si
 El Brief 22a guarda el picking en el server (`/api/picking`, JSON o Postgres). La pantalla Pendientes de Entregas sigue en localStorage.
 
 El Brief 22a.1 pone topes a `raw` y al body, deja el DELETE solo a encargado/admin, y suma `POST /api/picking/batch` (replace o merge).
+
+El Brief 22a.2 hace el merge sin borrar filas, rechaza repetidos en el lote y el replace vacío, y cuenta `updated` solo si algo cambió.
 
 ## Pendientes
 

@@ -54,7 +54,8 @@ app.use((req, res, next) => {
     jsonLocation(req, res, next)
     return
   }
-  if (req.path === '/api/picking' || req.path.startsWith('/api/picking/')) {
+  const path = String(req.path ?? '').toLowerCase()
+  if (path === '/api/picking' || path.startsWith('/api/picking/')) {
     jsonPicking(req, res, next)
     return
   }
@@ -62,10 +63,11 @@ app.use((req, res, next) => {
 })
 app.use((error, req, res, next) => {
   if (error && (error.type === 'entity.too.large' || error.status === 413)) {
+    const path = String(req.path ?? '').toLowerCase()
     const message =
       req.path === '/api/drivers/location'
         ? 'La ubicación es demasiado grande.'
-        : req.path === '/api/picking' || req.path.startsWith('/api/picking/')
+        : path === '/api/picking' || path.startsWith('/api/picking/')
           ? 'La importación es demasiado grande. Partí el archivo.'
           : 'El pedido es demasiado grande. Probá un adjunto más chico.'
     res.status(413).json({ message })

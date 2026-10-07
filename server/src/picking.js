@@ -157,14 +157,25 @@ function batchRows(body) {
     if (body.rows.length > BATCH_MAX) {
       return fail(`El lote puede tener como máximo ${BATCH_MAX} filas.`)
     }
+    if (mode === 'replace' && body.rows.length === 0) {
+      return fail('No hay filas para importar.')
+    }
     const errors = []
     const parsed = []
+    const seenKeys = new Map()
     body.rows.forEach((row, index) => {
       const result = readCreateBody(row)
       if (result.error) {
         errors.push({ index, message: result.error })
         return
       }
+      const key = mergeKey(result.comprobante, result.articulo)
+      const previous = seenKeys.get(key)
+      if (previous !== undefined) {
+        errors.push({ index, message: `Fila repetida con la fila ${previous}` })
+        return
+      }
+      seenKeys.set(key, index)
       parsed.push(result)
     })
     if (errors.length > 0) {
@@ -436,6 +447,9 @@ function readRaw(value) {
     if (!trimmedKey) return fail('Hay una columna de raw sin nombre.')
     if (trimmedKey.length > RAW_KEY_MAX) {
       return fail(`Cada clave de raw puede tener hasta ${RAW_KEY_MAX} caracteres.`)
+    }
+    if (Object.prototype.hasOwnProperty.call(raw, trimmedKey)) {
+      return fail('Hay columnas repetidas en raw después del trim.')
     }
     if (item === null || item === undefined) {
       raw[trimmedKey] = ''
