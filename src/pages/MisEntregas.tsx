@@ -277,6 +277,7 @@ export function MisEntregas() {
     return {
       link: mapsDirections(origin, limited.map((order) => stopPoint(order))),
       more: pending.length > 3,
+      pendingCount: pending.length,
     }
   }
 
@@ -329,7 +330,7 @@ export function MisEntregas() {
                   Se inicia el {sheetDateLabel}
                 </p>
               )}
-              {directions.link ? (
+              {directions.link && directions.pendingCount >= 2 ? (
                 <>
                   <a
                     className="grid min-h-12 place-items-center rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white"
@@ -337,7 +338,7 @@ export function MisEntregas() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Cómo llegar
+                    Ver recorrido completo
                   </a>
                   {directions.more ? (
                     <p className="text-sm text-lumi-muted">Abrí de nuevo después de la parada 3</p>
