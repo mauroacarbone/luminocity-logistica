@@ -225,16 +225,23 @@ function GroupPickingSummary({ group }: { group: PickingGroup }) {
   )
 }
 
-function linesForOrder(allLines: PickingLine[], order: Order) {
+type LinesByInvoice = Map<string, PickingLine[]>
+
+function linesForOrder(byInvoice: LinesByInvoice, order: Order) {
   const keys = new Set(
     (order.invoices ?? []).map((invoice) => normalizeInvoiceKey(invoice)).filter(Boolean),
   )
   if (keys.size === 0) return []
-  return allLines.filter((line) => keys.has(normalizeInvoiceKey(line.invoice)))
+  const result: PickingLine[] = []
+  for (const key of keys) {
+    const rows = byInvoice.get(key)
+    if (rows) result.push(...rows)
+  }
+  return result
 }
 
 /** Completud de todos los comprobantes del pedido (sobre todas las filas). */
-function orderPickingState(allLines: PickingLine[], order: Order, groupKey: string) {
+function orderPickingState(byInvoice: LinesByInvoice, order: Order, groupKey: string) {
   const invoices = order.invoices ?? []
   if (invoices.length === 0) {
     return { allComplete: false, missingOther: false }
@@ -243,7 +250,7 @@ function orderPickingState(allLines: PickingLine[], order: Order, groupKey: stri
   let missingOther = false
   for (const invoice of invoices) {
     const key = normalizeInvoiceKey(invoice)
-    const invLines = allLines.filter((line) => normalizeInvoiceKey(line.invoice) === key)
+    const invLines = byInvoice.get(key) ?? []
     if (invLines.length === 0) {
       allComplete = false
       if (key !== groupKey) missingOther = true
@@ -300,6 +307,18 @@ export function PendientesEntregas() {
     () => [...new Set(lines.map((line) => line.seller).filter(Boolean))].sort(),
     [lines],
   )
+
+  const linesByInvoice = useMemo(() => {
+    const map: LinesByInvoice = new Map()
+    for (const line of lines) {
+      const key = normalizeInvoiceKey(line.invoice)
+      if (!key) continue
+      const bucket = map.get(key)
+      if (bucket) bucket.push(line)
+      else map.set(key, [line])
+    }
+    return map
+  }, [lines])
 
   const filteredLines = useMemo(() => {
     const needle = searchApplied.trim().toLowerCase()
@@ -493,8 +512,8 @@ export function PendientesEntregas() {
     const order = group.link.order
     if (order.status !== 'pendiente' && order.status !== 'preparado') return
 
-    const orderLines = linesForOrder(lines, order)
-    const { allComplete } = orderPickingState(lines, order, group.key)
+    const orderLines = linesForOrder(linesByInvoice, order)
+    const { allComplete } = orderPickingState(linesByInvoice, order, group.key)
     if (!allComplete || orderLines.length === 0) return
 
     let packages: number | null = null
@@ -552,7 +571,7 @@ export function PendientesEntregas() {
     }
     if (order.status !== 'pendiente' && order.status !== 'preparado') return null
 
-    const orderLines = linesForOrder(lines, order)
+    const orderLines = linesForOrder(linesByInvoice, order)
     const allRowsPrepared =
       orderLines.length > 0 && orderLines.every((line) => line.status === 'preparado')
     if (order.status === 'preparado' && allRowsPrepared) {
@@ -562,7 +581,7 @@ export function PendientesEntregas() {
     }
 
     const groupComplete = group.lines.length > 0 && group.lines.every(isLineComplete)
-    const { allComplete, missingOther } = orderPickingState(lines, order, group.key)
+    const { allComplete, missingOther } = orderPickingState(linesByInvoice, order, group.key)
 
     if (!allComplete) {
       if (groupComplete && missingOther) {
