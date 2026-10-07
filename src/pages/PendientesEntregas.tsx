@@ -18,8 +18,11 @@ import {
   type PickingLine,
   type PickingPreview,
 } from '../lib/pickingSheet'
+import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 import { usePicking } from '../state/PickingContext'
+
+const ORDER_LINK_BATCH = 50
 
 const MODAL_ROW_LIMIT = 500
 
@@ -227,6 +230,7 @@ function downloadTemplate() {
 }
 
 export function PendientesEntregas() {
+  const { user } = useAuth()
   const { orders: pedidos } = useOrders()
   const {
     lines,
@@ -239,6 +243,7 @@ export function PendientesEntregas() {
     dismissLegacy,
     applyBatch,
   } = usePicking()
+  const canLinkOrders = user?.role === 'encargado_deposito' || user?.role === 'admin'
   const fileRef = useRef<HTMLInputElement>(null)
   const linkingRef = useRef(new Set<string>())
   const [mode, setMode] = useState<Mode>('lista')
@@ -292,13 +297,15 @@ export function PendientesEntregas() {
   }, [showAllData])
 
   useEffect(() => {
-    if (lines.length === 0 || pedidos.length === 0) return
+    if (!canLinkOrders || lines.length === 0 || pedidos.length === 0) return
     let cancelled = false
-    const pending = lines.filter((line) => {
-      if (linkingRef.current.has(line.id)) return false
-      const match = matchOrdersByInvoice(pedidos, line.invoice)
-      return match.kind === 'one' && line.orderId !== match.order.id
-    })
+    const pending = lines
+      .filter((line) => {
+        if (linkingRef.current.has(line.id)) return false
+        const match = matchOrdersByInvoice(pedidos, line.invoice)
+        return match.kind === 'one' && line.orderId !== match.order.id
+      })
+      .slice(0, ORDER_LINK_BATCH)
     if (pending.length === 0) return
 
     void (async () => {
@@ -316,7 +323,7 @@ export function PendientesEntregas() {
     return () => {
       cancelled = true
     }
-  }, [lines, patchLine, pedidos])
+  }, [canLinkOrders, lines, patchLine, pedidos])
 
   function applySearch() {
     setSearchApplied(searchDraft)

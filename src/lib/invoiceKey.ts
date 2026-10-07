@@ -1,12 +1,18 @@
 import type { Order } from '../data/orders'
 
-/** Compara comprobantes: trim, minúsculas, sin espacios/guiones ni ceros a la izquierda. */
+/**
+ * Compara comprobantes: minúsculas, letras y números por grupo,
+ * sin ceros a la izquierda en cada número, unidos con "-".
+ */
 export function normalizeInvoiceKey(value: string) {
-  return value
-    .trim()
-    .toLocaleLowerCase('es')
-    .replace(/[\s-]+/g, '')
-    .replace(/(^|[^0-9])0+(?=\d)/g, '$1')
+  const parts = value.trim().toLocaleLowerCase('es').match(/\p{L}+|\d+/gu) ?? []
+  return parts
+    .map((part) => {
+      if (!/^\d+$/.test(part)) return part
+      const stripped = part.replace(/^0+/, '')
+      return stripped === '' ? '0' : stripped
+    })
+    .join('-')
 }
 
 export type InvoiceMatch =
