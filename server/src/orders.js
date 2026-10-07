@@ -89,7 +89,23 @@ ordersRouter.get('/', async (req, res) => {
       queueGeoIds(visible.filter((order) => needsGeo(order)).map((order) => order.id))
     }
     const planned = await plannedSheetIds()
-    res.json(byNewest(visible).map((order) => withSheetPlannedFlag(withHistory(order), planned)))
+    const users = await readUsersList()
+    const driverNames = new Map()
+    for (const user of users) {
+      if (!user || typeof user.id !== 'string') continue
+      const name = typeof user.name === 'string' ? user.name.trim() : ''
+      if (name) driverNames.set(user.id, name)
+    }
+    res.json(
+      byNewest(visible).map((order) => {
+        const flagged = withSheetPlannedFlag(withHistory(order), planned)
+        const driverId = typeof flagged.driverId === 'string' ? flagged.driverId : ''
+        if (!driverId) return flagged
+        const driverName = driverNames.get(driverId)
+        if (!driverName) return flagged
+        return { ...flagged, driverName }
+      }),
+    )
   })
 })
 ordersRouter.get('/:id', async (req, res) => {
