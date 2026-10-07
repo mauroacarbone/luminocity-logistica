@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { STATUS_PILL, type Order } from '../data/orders'
 import { confirm, error as showError, success } from '../lib/alerts'
@@ -32,6 +33,27 @@ type Stop = {
   title: string
   detail: string
   point: LatLng
+}
+
+function otherSlotReason(order: Order, driverId: string) {
+  if (order.status === 'pendiente') return 'Pendiente: falta preparar'
+  if (order.status === 'en-viaje') return 'En viaje'
+  if (order.status === 'entregado') return 'Entregado'
+  if (order.driverId && order.driverId !== driverId) return 'Asignado a otro chofer'
+  return 'No seleccionable'
+}
+
+function emptySelectableMessage(othersCount: number, withoutSlot: number, used: number) {
+  if (othersCount > 0) {
+    return 'No hay pedidos seleccionables en esta franja. Los demás aparecen abajo con el motivo.'
+  }
+  if (withoutSlot > 0) {
+    return `No hay pedidos en esta franja. Hay ${withoutSlot} preparado${withoutSlot === 1 ? '' : 's'} sin franja ese día.`
+  }
+  if (used > 0) {
+    return 'No hay pedidos seleccionables en esta franja para este chofer.'
+  }
+  return 'No hay pedidos para esta franja.'
 }
 
 type DriverOption = { id: string; name: string }
@@ -172,6 +194,15 @@ export function PlanificadorRutas() {
         if (order.driverId === driverId) return order.status === 'preparado' || order.status === 'asignado'
         return !order.driverId && order.status === 'preparado'
       })
+  const listedIds = new Set(listed.map((order) => order.id))
+  const others = readOnly
+    ? []
+    : pool.filter((order) => !listedIds.has(order.id))
+  const preparedWithoutSlot = orders.filter((order) => {
+    if (order.deliveryDate !== iso || order.status !== 'preparado') return false
+    if (order.dispatchType === 'correo') return false
+    return !normalizeTimeWindow(order.timeWindow)
+  })
 
   useEffect(() => {
     void listUsers().then((result) => {
@@ -579,7 +610,7 @@ export function PlanificadorRutas() {
           </select>
         </label>
         <p className={`pb-2 text-sm font-semibold ${used >= 3 ? 'text-lumi-danger' : ''}`}>
-          {driverId && timeWindow ? `${used}/3` : ''}
+          {driverId && timeWindow ? `${used}/3 en la franja` : ''}
         </p>
         {sheet && (
           <span className="mb-1 rounded-full bg-white px-3 py-1 text-xs font-semibold">{SHEET_LABEL[sheet.status]}</span>
@@ -697,37 +728,79 @@ export function PlanificadorRutas() {
             <div className="mt-3 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
               Elegí chofer y franja.
             </div>
-          ) : listed.length === 0 ? (
-            <div className="mt-3 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
-              No hay pedidos para esta franja.
-            </div>
           ) : (
-            <div className="mt-3 flex flex-col gap-2">
-              {listed.map((order) => (
-                <label
-                  key={order.id}
-                  className="flex items-start gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm"
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-1"
-                    checked={selectedIds.includes(order.id)}
-                    disabled={readOnly}
-                    onChange={() => toggle(order.id)}
-                    style={{ accentColor: '#f5c400' }}
-                  />
-                  <span className="flex min-w-0 flex-1 items-start justify-between gap-3">
-                    <span className="min-w-0">
-                      <span className="block font-medium">
-                        {order.id} — {order.client.toUpperCase()}
+            <>
+              {listed.length === 0 ? (
+                <div className="mt-3 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+                  {emptySelectableMessage(others.length, preparedWithoutSlot.length, used)}
+                </div>
+              ) : (
+                <div className="mt-3 flex flex-col gap-2">
+                  {listed.map((order) => (
+                    <label
+                      key={order.id}
+                      className="flex items-start gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={selectedIds.includes(order.id)}
+                        disabled={readOnly}
+                        onChange={() => toggle(order.id)}
+                        style={{ accentColor: '#f5c400' }}
+                      />
+                      <span className="flex min-w-0 flex-1 items-start justify-between gap-3">
+                        <span className="min-w-0">
+                          <span className="block font-medium">
+                            {order.id} — {order.client.toUpperCase()}
+                          </span>
+                          {order.address && (
+                            <span className="mt-1 block text-sm text-lumi-muted">{order.address}</span>
+                          )}
+                        </span>
+                        <span className={`status-pill status-${order.status} shrink-0`}>
+                          {STATUS_PILL[order.status]}
+                        </span>
                       </span>
-                      {order.address && <span className="mt-1 block text-sm text-lumi-muted">{order.address}</span>}
-                    </span>
-                    <span className={`status-pill status-${order.status} shrink-0`}>{STATUS_PILL[order.status]}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {preparedWithoutSlot.length > 0 && (
+                <p className="mt-3 text-sm text-lumi-muted">
+                  {preparedWithoutSlot.length} pedidos preparados de este día sin franja.{' '}
+                  <Link className="order-link" to="/despacho">
+                    Despacho
+                  </Link>
+                </p>
+              )}
+
+              {others.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-semibold tracking-wide text-lumi-muted">
+                    Otros pedidos de la franja
+                  </h3>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {others.map((order) => (
+                      <li
+                        key={order.id}
+                        className="rounded-2xl bg-white px-4 py-3 text-sm text-lumi-muted shadow-sm"
+                      >
+                        <p>
+                          <Link className="order-link font-medium" to={`/pedidos/${order.id}`}>
+                            {order.id}
+                          </Link>
+                          {' — '}
+                          {order.client.toUpperCase()}
+                        </p>
+                        <p className="mt-1">{otherSlotReason(order, driverId)}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
           )}
         </section>
 
