@@ -9,6 +9,7 @@ const NAV = [
   { to: '/nuevo-pedido', label: 'Nuevo Pedido', icon: 'plus' },
   { to: '/pedidos', label: 'Pedidos y Preparación', icon: 'box' },
   { to: '/despacho', label: 'Despacho', icon: 'truck' },
+  { to: '/seguimiento', label: 'Seguimiento', icon: 'search' },
   { to: '/choferes', label: 'Choferes en ruta', icon: 'map' },
   { to: '/rutas', label: 'Planificador de Rutas', icon: 'route' },
   { to: '/pendientes', label: 'Pendientes de Entregas', icon: 'pin' },
@@ -54,6 +55,12 @@ function Icon({ name }: { name: (typeof NAV)[number]['icon'] }) {
           d="M3 7h11v8H3zM14 10h4l3 3v2h-7zM7 18a1.5 1.5 0 1 0 0.01 0M17 18a1.5 1.5 0 1 0 0.01 0"
           {...common}
         />
+      )}
+      {name === 'search' && (
+        <>
+          <circle cx="11" cy="11" r="6" {...common} />
+          <path d="M16 16l4 4" {...common} />
+        </>
       )}
       {name === 'route' && (
         <path d="M5 19V6M5 6l4 3 5-4 5 3M9 19h10" {...common} />

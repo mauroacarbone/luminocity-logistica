@@ -3,12 +3,13 @@ import type { Role, Session } from './authStore'
 import { statusChoices as choicesFromTable } from './orderFlow'
 
 const MENU: Record<Role, readonly string[]> = {
-  vendedor: ['/', '/nuevo-pedido', '/pedidos', '/despacho', '/post-venta'],
-  deposito: ['/', '/pedidos', '/despacho', '/pendientes'],
+  vendedor: ['/', '/nuevo-pedido', '/pedidos', '/despacho', '/seguimiento', '/post-venta'],
+  deposito: ['/', '/pedidos', '/despacho', '/seguimiento', '/pendientes'],
   encargado_deposito: [
     '/',
     '/pedidos',
     '/despacho',
+    '/seguimiento',
     '/choferes',
     '/rutas',
     '/pendientes',
@@ -22,6 +23,7 @@ const MENU: Record<Role, readonly string[]> = {
     '/nuevo-pedido',
     '/pedidos',
     '/despacho',
+    '/seguimiento',
     '/choferes',
     '/rutas',
     '/pendientes',
