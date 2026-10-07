@@ -142,6 +142,8 @@ El Brief 22c agrega en Pendientes de Entregas un buscador (Buscar, Enter y limpi
 
 El Brief 22c.1 deja el CSV listo para Excel en español: BOM UTF-8, separador `;`, CRLF y escape de fórmulas. El modal muestra como máximo 500 filas (el CSV exporta todas), el selector de columnas hace scroll y Escape cierra.
 
+El Brief 22c.2 loguea en consola el método, la ruta y el error completo cuando falla `send()` en orders, hojas de ruta y picking, sin cambiar la respuesta al cliente.
+
 El Brief 22c.3 deja pasar mayúsculas en el nombre de colección de Postgres (`IDENT`), así `routeSheets` deja de fallar. `ensureTables` valida cada nombre al arrancar.
 
 El Brief 22d agrupa el picking por comprobante, lo cruza con `order.invoices` (normalizado) y guarda `orderId` por PATCH. Se carga `pickedQty`, el status pasa a `en_preparacion` y el grupo muestra faltantes o "Listo para preparar".
