@@ -9,6 +9,8 @@ export type PickingLine = {
   quantity: number
   ready: boolean
   date?: string
+  status?: 'pendiente' | 'en_preparacion' | 'preparado'
+  raw?: Record<string, string | number | boolean>
 }
 
 const FIELD_BY_HEADER: Record<string, 'invoice' | 'client' | 'seller' | 'product' | 'quantity' | 'date'> = {
@@ -53,6 +55,7 @@ function quantityOf(value: unknown) {
   return 1
 }
 
+/** Parser simple usado hasta la vista previa del 22b. */
 export function parsePickingWorkbook(data: ArrayBuffer) {
   const book = XLSX.read(data, { type: 'array', cellDates: true })
   const sheet = book.Sheets[book.SheetNames[0]]

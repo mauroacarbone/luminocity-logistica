@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
+import { ServerDown, Spinner } from '../components/LoadState'
 import { parsePickingWorkbook, type PickingLine } from '../lib/pickingSheet'
+import type { PickingBatchRow } from '../lib/pickingApi'
 import { usePicking } from '../state/PickingContext'
 
 type Mode = 'lista' | 'picking'
@@ -57,8 +59,35 @@ function subtitle(order: PickingOrder, ready: number, total: number) {
     .join(' · ')
 }
 
+function batchFromLine(line: PickingLine): PickingBatchRow {
+  return {
+    cliente: line.client,
+    comprobante: line.invoice,
+    articulo: line.product,
+    cantidad: line.quantity,
+    vendedor: line.seller,
+    raw: line.raw ?? {
+      Factura: line.invoice,
+      Cliente: line.client,
+      Vendedor: line.seller,
+      Producto: line.product,
+      Cantidad: line.quantity,
+    },
+  }
+}
+
 export function PendientesEntregas() {
-  const { lines, loadLines, toggleLine } = usePicking()
+  const {
+    lines,
+    loading,
+    error: loadError,
+    legacyOffer,
+    refresh,
+    toggleLine,
+    uploadLegacy,
+    dismissLegacy,
+    applyBatch,
+  } = usePicking()
   const fileRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<Mode>('lista')
   const [seller, setSeller] = useState('todos')
@@ -67,6 +96,7 @@ export function PendientesEntregas() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const orders = useMemo(() => groupLines(lines), [lines])
   const sellers = useMemo(
@@ -87,19 +117,62 @@ export function PendientesEntregas() {
 
   async function onFile(file: File) {
     setError('')
+    setBusy(true)
     try {
       const loaded = parsePickingWorkbook(await file.arrayBuffer())
-      loadLines(loaded)
+      const result = await applyBatch('replace', loaded.map(batchFromLine))
+      if (!result.ok) {
+        setError(result.message)
+        return
+      }
       setExpanded(null)
-      setMessage(`${groupLines(loaded).length} pedidos cargados.`)
+      setMessage(
+        `Importación: ${result.created} creadas, ${result.updated} actualizadas, ${result.removed} borradas.`,
+      )
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo leer el archivo.')
+    } finally {
+      setBusy(false)
     }
+  }
+
+  async function onToggle(id: string) {
+    setError('')
+    const result = await toggleLine(id)
+    if (!result.ok) setError(result.message)
+  }
+
+  async function onUploadLegacy() {
+    setBusy(true)
+    setError('')
+    const result = await uploadLegacy()
+    setBusy(false)
+    if (!result.ok) {
+      setError(result.message)
+      return
+    }
+    setMessage(result.message)
   }
 
   function openDetail(key: string) {
     setMode('picking')
     setExpanded(key)
+  }
+
+  if (loading && lines.length === 0) {
+    return (
+      <section className="page">
+        <Spinner label="Cargando picking…" />
+      </section>
+    )
+  }
+
+  if (loadError && lines.length === 0) {
+    return (
+      <section className="page">
+        <ServerDown message={loadError} onRetry={() => void refresh()} />
+      </section>
+    )
   }
 
   return (
@@ -111,7 +184,8 @@ export function PendientesEntregas() {
         </div>
         <button
           type="button"
-          className="shrink-0 rounded-xl bg-white px-4 py-2 text-sm shadow-sm"
+          className="shrink-0 rounded-xl bg-white px-4 py-2 text-sm shadow-sm disabled:opacity-50"
+          disabled={busy}
           onClick={() => fileRef.current?.click()}
         >
           Cargar Excel al Sheet
@@ -145,6 +219,30 @@ export function PendientesEntregas() {
           </button>
         ))}
       </div>
+
+      {legacyOffer && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm">
+          <p className="text-sm">Hay datos guardados en este navegador</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+              disabled={busy}
+              onClick={() => void onUploadLegacy()}
+            >
+              Subirlos
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm"
+              disabled={busy}
+              onClick={dismissLegacy}
+            >
+              Descartar
+            </button>
+          </div>
+        </div>
+      )}
 
       {message && (
         <p className="mt-4 rounded-xl bg-[#e5f6ea] px-4 py-2 text-sm text-[#1d7a3a]">{message}</p>
@@ -200,14 +298,13 @@ export function PendientesEntregas() {
 
           <button
             type="button"
-            className="mt-3 rounded-xl px-3 py-2 text-sm hover:bg-white"
-            onClick={() =>
-              setMessage(
-                lines.length === 0
-                  ? 'Todavía no hay un Excel cargado.'
-                  : 'Lista actualizada.',
-              )
-            }
+            className="mt-3 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-50"
+            disabled={busy || loading}
+            onClick={() => {
+              void refresh().then(() => {
+                setMessage(lines.length === 0 ? 'Todavía no hay filas de picking.' : 'Lista actualizada.')
+              })
+            }}
           >
             Actualizar lista
           </button>
@@ -339,11 +436,12 @@ export function PendientesEntregas() {
                             </div>
                             <button
                               type="button"
-                              className={`shrink-0 text-sm font-medium ${
+                              className={`shrink-0 text-sm font-medium disabled:opacity-50 ${
                                 line.ready ? 'text-[#1d7a3a]' : 'text-lumi-muted'
                               }`}
                               aria-pressed={line.ready}
-                              onClick={() => toggleLine(line.id)}
+                              disabled={busy}
+                              onClick={() => void onToggle(line.id)}
                             >
                               {line.ready ? '✓ Listo' : 'Pendiente'}
                             </button>
