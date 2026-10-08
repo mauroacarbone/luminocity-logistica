@@ -49,6 +49,7 @@ export type ClaimEvent = {
   at: string
   status: ClaimStatus
   note?: string
+  by?: { userId: string; userName: string }
 }
 
 export type Claim = {
@@ -69,6 +70,10 @@ export type Claim = {
   createdAt: string
   resolvedAt?: string
   events: ClaimEvent[]
+  hasPhotos?: boolean
+  hasAttachment?: boolean
+  createdBy?: string
+  importedBy?: string
 }
 
 export function isOpenClaim(status: ClaimStatus) {
