@@ -18,9 +18,14 @@ import {
   openAttachment,
   readAttachmentFile,
 } from '../lib/attachment'
+import { confirm } from '../lib/alerts'
 import { useCatalog } from '../state/CatalogContext'
 import { useClaims } from '../state/ClaimsContext'
 import { useOrders } from '../state/OrdersContext'
+
+const CLAIM_PROGRESS = CLAIM_STATUS_ORDER.filter(
+  (status): status is Exclude<ClaimStatus, 'cancelado'> => status !== 'cancelado',
+)
 
 type Tab = 'nuevo' | 'reclamos' | 'finalizados' | 'cancelados' | 'dashboard'
 type Period = '7' | '30' | 'mes' | 'todos'
@@ -606,6 +611,68 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
   )
 }
 
+function claimStepState(
+  index: number,
+  currentIndex: number,
+  finished: boolean,
+): 'done' | 'current' | 'todo' {
+  if (finished || index < currentIndex) return 'done'
+  if (index === currentIndex) return 'current'
+  return 'todo'
+}
+
+function ClaimStepper({ status }: { status: Exclude<ClaimStatus, 'cancelado'> }) {
+  const currentIndex = CLAIM_PROGRESS.indexOf(status)
+  const finished = status === 'entregado'
+  const currentLabel = CLAIM_STATUS_LABEL[status]
+  const stepNumber = currentIndex + 1
+
+  return (
+    <div className="mt-3">
+      <div className="order-stepper order-stepper-full max-sm:hidden" aria-label={`Estado: ${currentLabel}`}>
+        <ol className="order-stepper-track">
+          {CLAIM_PROGRESS.map((step, index) => {
+            const state = claimStepState(index, currentIndex, finished)
+            return (
+              <li
+                key={step}
+                className={`order-step order-step-${state}`}
+                aria-current={state === 'current' ? 'step' : undefined}
+              >
+                {index > 0 && <span className="order-step-line" aria-hidden="true" />}
+                <span className="order-step-dot">{state === 'done' ? '✓' : ''}</span>
+                <span className="order-step-label">{CLAIM_STATUS_LABEL[step]}</span>
+              </li>
+            )
+          })}
+        </ol>
+      </div>
+      <div
+        className="order-stepper order-stepper-compact sm:hidden"
+        aria-label={`Estado: ${currentLabel}`}
+      >
+        <ol className="order-stepper-track">
+          {CLAIM_PROGRESS.map((step, index) => {
+            const state = claimStepState(index, currentIndex, finished)
+            return (
+              <li
+                key={step}
+                className={`order-step order-step-${state}`}
+                aria-current={state === 'current' ? 'step' : undefined}
+              >
+                <span className="order-step-dot">{state === 'done' ? '✓' : ''}</span>
+              </li>
+            )
+          })}
+        </ol>
+        <span className="order-stepper-now">
+          Paso {stepNumber} de 6 · {currentLabel}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   const { setStatus, addNote } = useClaims()
   const [openStatus, setOpenStatus] = useState(false)
@@ -617,6 +684,22 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   const trail = claim.events.filter((event) => !event.note)
   const previous = trail.length > 1 ? trail[trail.length - 2] : null
   const latest = trail[trail.length - 1]
+  const progressIndex =
+    claim.status === 'cancelado' ? -1 : CLAIM_PROGRESS.indexOf(claim.status)
+  const nextStatus =
+    progressIndex >= 0 && progressIndex < CLAIM_PROGRESS.length - 1
+      ? CLAIM_PROGRESS[progressIndex + 1]
+      : null
+  const prevStatus = progressIndex > 0 ? CLAIM_PROGRESS[progressIndex - 1] : null
+  const terminal = claim.status === 'entregado' || claim.status === 'cancelado'
+
+  async function applyStatus(status: ClaimStatus) {
+    const label = CLAIM_STATUS_LABEL[status]
+    const accepted = await confirm(`¿Pasar el reclamo a ${label}?`, '')
+    if (!accepted) return
+    setStatus(claim.id, status)
+    setOpenStatus(false)
+  }
 
   return (
     <article
@@ -632,7 +715,83 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           onClick={() => setOpenStatus(false)}
         />
       )}
-      <div className="flex items-start justify-between gap-3">
+
+      <div className="w-full">
+        <span
+          className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${STATUS_BADGE[claim.status]}`}
+        >
+          {CLAIM_STATUS_LABEL[claim.status]}
+        </span>
+
+        {claim.status === 'cancelado' ? null : <ClaimStepper status={claim.status} />}
+
+        {latest && (
+          <p className="mt-2 text-sm text-lumi-muted">
+            {previous ? `${CLAIM_STATUS_LABEL[previous.status]} → ` : ''}
+            {CLAIM_STATUS_LABEL[latest.status]} · {formatWhen(latest.at)}
+          </p>
+        )}
+
+        {!terminal && nextStatus && (
+          <button
+            type="button"
+            className="btn-primary mt-3 w-full sm:w-auto"
+            onClick={() => void applyStatus(nextStatus)}
+          >
+            Pasar a {CLAIM_STATUS_LABEL[nextStatus]}
+          </button>
+        )}
+
+        {claim.status !== 'cancelado' && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+            {prevStatus && (
+              <button
+                type="button"
+                className="text-sm text-lumi-muted hover:text-lumi-ink hover:underline"
+                onClick={() => void applyStatus(prevStatus)}
+              >
+                Volver a {CLAIM_STATUS_LABEL[prevStatus]}
+              </button>
+            )}
+            <div className="relative">
+              <button
+                type="button"
+                className="text-sm text-lumi-muted hover:text-lumi-ink hover:underline"
+                aria-expanded={openStatus}
+                aria-haspopup="menu"
+                onClick={() => {
+                  setOpenStatus((current) => !current)
+                  setConfirmCancel(false)
+                }}
+              >
+                Cambiar a otro estado
+              </button>
+              {openStatus && (
+                <div
+                  role="menu"
+                  className="absolute left-0 z-20 mt-1 w-72 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
+                >
+                  {CLAIM_PROGRESS.map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      role="menuitem"
+                      className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] ${
+                        claim.status === status ? 'font-semibold' : ''
+                      }`}
+                      onClick={() => void applyStatus(status)}
+                    >
+                      {CLAIM_STATUS_LABEL[status]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex items-start justify-between gap-3 border-t border-lumi-line pt-4">
         <div className="min-w-0">
           <p className="font-semibold">
             {claim.id} — {claim.client}
@@ -656,12 +815,6 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
               {claim.attachment?.dataUrl && <ClaimFileButton kind="file" file={claim.attachment} />}
             </div>
           )}
-          {latest && (
-            <p className="mt-2 text-xs text-lumi-muted">
-              {previous ? `${CLAIM_STATUS_LABEL[previous.status]} → ` : ''}
-              {CLAIM_STATUS_LABEL[latest.status]} · {formatWhen(latest.at)}
-            </p>
-          )}
           {notes.map((event, index) => (
             <p key={`${event.at}-${index}`} className="mt-1 text-sm text-[#5f5b55]">
               Nota · {formatWhen(event.at)} · {event.note}
@@ -669,46 +822,6 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           ))}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[claim.status]}`}>
-            {CLAIM_STATUS_LABEL[claim.status]}
-          </span>
-          <div className="relative">
-            <button
-              type="button"
-              className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea]"
-              aria-expanded={openStatus}
-              aria-haspopup="menu"
-              onClick={() => {
-                setOpenStatus((current) => !current)
-                setConfirmCancel(false)
-              }}
-            >
-              Estado
-            </button>
-            {openStatus && (
-              <div
-                role="menu"
-                className="absolute right-0 z-20 mt-1 w-72 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
-              >
-                {CLAIM_STATUS_ORDER.map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    role="menuitem"
-                    className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] ${
-                      claim.status === status ? 'font-semibold' : ''
-                    }`}
-                    onClick={() => {
-                      setStatus(claim.id, status)
-                      setOpenStatus(false)
-                    }}
-                  >
-                    {CLAIM_STATUS_LABEL[status]}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           <button
             type="button"
             className="text-sm text-lumi-muted hover:text-lumi-ink"
