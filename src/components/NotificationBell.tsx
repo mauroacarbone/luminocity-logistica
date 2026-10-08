@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ServerDown, Spinner } from './LoadState'
 import { confirm, error as showError, success } from '../lib/alerts'
 import { namesMatch } from '../lib/access'
@@ -38,6 +39,8 @@ function sellerPhone(item: AppNotification, orders: { id: string; seller?: strin
 export function NotificationBell() {
   const { user, logout } = useAuth()
   const { orders } = useOrders()
+  const navigate = useNavigate()
+  const rootRef = useRef<HTMLDivElement>(null)
   const [items, setItems] = useState<AppNotification[]>([])
   const [users, setUsers] = useState<Session[]>([])
   const [open, setOpen] = useState(false)
@@ -87,6 +90,27 @@ export function NotificationBell() {
     }
   }, [canSend])
 
+  useEffect(() => {
+    if (!open) return
+    function onPointerDown(event: MouseEvent | TouchEvent) {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (rootRef.current?.contains(target)) return
+      setOpen(false)
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('touchstart', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('touchstart', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
   const appItems = items.filter((item) => item.channel === 'app')
   const whatsappItems = canSend
     ? items.filter((item) => item.channel === 'whatsapp' && item.status === 'pendiente')
@@ -99,9 +123,19 @@ export function NotificationBell() {
     if (!result.ok) {
       if (result.status === 401) logout()
       else setError(result.message)
-      return
+      return false
     }
     setItems((current) => current.map((item) => (item.id === id ? { ...item, read: true } : item)))
+    return true
+  }
+
+  async function openAppNotification(item: AppNotification) {
+    setOpen(false)
+    if (!item.read) {
+      const ok = await markRead(item.id)
+      if (!ok) return
+    }
+    if (item.orderId) navigate(`/pedidos/${encodeURIComponent(item.orderId)}`)
   }
 
   async function sendWhatsapp(item: AppNotification) {
@@ -140,19 +174,20 @@ export function NotificationBell() {
       } else await showError(result.message)
       return
     }
-    if (!opened || opened.closed) {
-      window.location.href = url
-      return
-    }
-    opened.location.href = url
     setItems((current) =>
       current.map((entry) => (entry.id === item.id ? { ...entry, status: 'enviado' } : entry)),
     )
+    setOpen(false)
+    if (!opened || opened.closed) {
+      window.location.assign(url)
+      return
+    }
+    opened.location.assign(url)
     await success('Aviso enviado')
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button
         type="button"
         className="relative grid h-9 w-9 place-items-center rounded-full hover:bg-white"
@@ -194,33 +229,53 @@ export function NotificationBell() {
                 const canOpen = Boolean(phone && whatsappLink(phone, item.text))
                 return (
                   <li key={item.id} className="rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm">
-                    <p className={item.read ? 'text-lumi-muted' : 'font-medium'}>{item.text}</p>
-                    <div className="mt-1 flex items-center justify-between gap-2 text-xs text-lumi-muted">
-                      <span>{formatWhen(item.createdAt)}</span>
-                      {item.channel === 'app' && !item.read && (
-                        <button type="button" className="underline" onClick={() => void markRead(item.id)}>
-                          Marcar leído
-                        </button>
-                      )}
-                    </div>
-                    {item.channel === 'whatsapp' &&
-                      (canOpen ? (
+                    {item.channel === 'app' ? (
+                      <>
                         <button
                           type="button"
-                          className="mt-2 w-full rounded-lg bg-lumi-yellow px-3 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
-                          disabled={sending === item.id}
-                          onClick={() => void sendWhatsapp(item)}
+                          className="w-full text-left"
+                          onClick={() => void openAppNotification(item)}
                         >
-                          Enviar por WhatsApp
+                          <p className={item.read ? 'text-lumi-muted' : 'font-medium'}>{item.text}</p>
+                          <p className="mt-1 text-xs text-lumi-muted">{formatWhen(item.createdAt)}</p>
                         </button>
-                      ) : (
-                        <p className="mt-2 text-xs text-lumi-muted">
-                          <button type="button" className="w-full rounded-lg bg-lumi-line px-3 py-2 font-semibold" disabled>
+                        {!item.read && (
+                          <div className="mt-1 flex justify-end">
+                            <button
+                              type="button"
+                              className="text-xs text-lumi-muted underline"
+                              onClick={() => void markRead(item.id)}
+                            >
+                              Marcar leído
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-medium">{item.text}</p>
+                        <div className="mt-1 flex items-center justify-between gap-2 text-xs text-lumi-muted">
+                          <span>{formatWhen(item.createdAt)}</span>
+                        </div>
+                        {canOpen ? (
+                          <button
+                            type="button"
+                            className="mt-2 w-full rounded-lg bg-lumi-yellow px-3 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                            disabled={sending === item.id}
+                            onClick={() => void sendWhatsapp(item)}
+                          >
                             Enviar por WhatsApp
                           </button>
-                          Sin celular cargado
-                        </p>
-                      ))}
+                        ) : (
+                          <p className="mt-2 text-xs text-lumi-muted">
+                            <button type="button" className="w-full rounded-lg bg-lumi-line px-3 py-2 font-semibold" disabled>
+                              Enviar por WhatsApp
+                            </button>
+                            Sin celular cargado
+                          </p>
+                        )}
+                      </>
+                    )}
                   </li>
                 )
               })}
