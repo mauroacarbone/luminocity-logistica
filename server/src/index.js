@@ -44,13 +44,13 @@ const app = express()
 app.set('trust proxy', 1)
 const jsonLarge = express.json({ limit: '10mb' })
 const jsonPicking = express.json({ limit: '2mb' })
-const jsonClaims = express.json({ limit: '9mb' })
+const jsonClaims = express.json({ limit: '12mb' })
 const jsonLocation = express.json({ limit: '2kb' })
 // El front llama a /api por el proxy de Vite, así que no hace falta CORS.
 // Adjuntos del pedido van en el JSON (data URL, tope 2 MB de archivo).
 // 10mb alcanza para el base64 y el resto de los campos.
 // El picking importa muchas filas: tope 2 MB.
-// Los reclamos llevan fotos en data URL: tope 9 MB.
+// Los reclamos llevan fotos en data URL: tope 12 MB.
 // La ubicación del chofer es chica: 2kb.
 app.use((req, res, next) => {
   if (req.method === 'POST' && req.path === '/api/drivers/location') {
