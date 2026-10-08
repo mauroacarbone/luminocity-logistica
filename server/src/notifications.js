@@ -83,16 +83,17 @@ function markSent(id, user) {
   })
 }
 
-function buildNote({ to, text, orderId, channel, status, phone }) {
+function buildNote({ to, text, orderId, claimId, channel, status, phone }) {
   const note = {
     id: randomUUID(),
     to,
     text,
-    orderId,
     read: false,
     createdAt: new Date().toISOString(),
     channel,
   }
+  if (typeof orderId === 'string' && orderId) note.orderId = orderId
+  if (typeof claimId === 'string' && claimId) note.claimId = claimId
   if (status) note.status = status
   if (typeof phone === 'string' && phone.trim()) note.phone = phone.trim()
   return note
@@ -129,6 +130,28 @@ export async function notifySeller(order, editor, text) {
   await pushNotifications([
     buildNote({ to: target.id, text, orderId: order.id, channel: 'app' }),
   ])
+}
+
+/** Se llama dentro del lock de reclamos. Avisa al vendedor dueño del reclamo. */
+export async function notifyClaimOwner(claim, actor, text) {
+  if (actor.role !== 'encargado_deposito' && actor.role !== 'admin') return
+  const target = claimOwnerUser(await readUsersList(), claim)
+  if (!target || target.id === actor.id) return
+  await pushNotifications([
+    buildNote({ to: target.id, text, claimId: claim.id, channel: 'app' }),
+  ])
+}
+
+function claimOwnerUser(users, claim) {
+  if (typeof claim.createdBy === 'string' && claim.createdBy) {
+    const byId = users.find((user) => user.id === claim.createdBy && user.role === 'vendedor')
+    if (byId) return byId
+  }
+  const seller = normalizeName(claim.seller)
+  if (!seller) return undefined
+  return users.find(
+    (user) => user.role === 'vendedor' && normalizeName(user.sellerName) === seller,
+  )
 }
 
 function sellerUser(users, order) {

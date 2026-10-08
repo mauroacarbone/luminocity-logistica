@@ -3,6 +3,17 @@ import { normalizeName } from './access.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
+import { notifyClaimOwner } from './notifications.js'
+
+const STATUS_LABEL = {
+  nuevo: 'Nuevo',
+  recepcion: 'Recepción de producto',
+  'pendiente-retiro': 'Pendiente de retiro cliente',
+  'enviado-proveedor': 'Enviado al proveedor para verificación',
+  reparacion: 'Reparación',
+  entregado: 'Entregado al cliente',
+  cancelado: 'Cancelado',
+}
 
 const ROLES = ['vendedor', 'encargado_deposito', 'admin']
 const STATUSES = new Set([
@@ -295,6 +306,8 @@ function patchStatus(user, id, body) {
     else delete claim.resolvedAt
     list[index] = claim
     await writeClaims(list)
+    const label = STATUS_LABEL[status.value] ?? status.value
+    await notifyClaimOwner(claim, user, `Reclamo ${claim.id}: pasó a ${label}`)
     return { claim }
   })
 }
@@ -319,6 +332,7 @@ function addNote(user, id, body) {
     }
     list[index] = claim
     await writeClaims(list)
+    await notifyClaimOwner(claim, user, `Reclamo ${claim.id}: nueva nota de ${user.name}`)
     return { claim }
   })
 }
