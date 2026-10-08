@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
 import * as XLSX from 'xlsx'
+import { Spinner, ServerDown } from '../components/LoadState'
 import { withCurrent, withExtras } from '../data/catalog'
 import {
   CLAIM_MOTIVES,
@@ -18,7 +19,8 @@ import {
   openAttachment,
   readAttachmentFile,
 } from '../lib/attachment'
-import { confirm } from '../lib/alerts'
+import { confirm, error } from '../lib/alerts'
+import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 import { useClaims } from '../state/ClaimsContext'
 import { useOrders } from '../state/OrdersContext'
@@ -158,32 +160,120 @@ function fileLabel(kind: 'photo' | 'file', name: string, dataUrl: string) {
   return type === 'word' || type === 'other' ? 'Descargar' : 'Ver adjunto'
 }
 
-function ClaimFileButton({
-  kind,
-  file,
-}: {
-  kind: 'photo' | 'file'
-  file: ClaimFile
-}) {
-  if (!file.dataUrl) return null
-  const label = fileLabel(kind, file.name, file.dataUrl)
+function ClaimAttachments({ claim }: { claim: Claim }) {
+  const { ensureClaimFiles } = useClaims()
+  const [loadingKey, setLoadingKey] = useState('')
+
+  const photoEntries =
+    claim.photos && claim.photos.length > 0
+      ? claim.photos.map((photo, index) => ({ index, name: photo.name, dataUrl: photo.dataUrl }))
+      : claim.hasPhotos
+        ? (claim.photoNames.length > 0 ? claim.photoNames : ['']).map((name, index) => ({
+            index,
+            name: name || 'Foto',
+            dataUrl: '',
+          }))
+        : []
+  const showAttachment = Boolean(claim.attachment?.dataUrl || claim.hasAttachment)
+  if (photoEntries.length === 0 && !showAttachment) return null
+
+  async function openPhoto(index: number, name: string, dataUrl: string) {
+    if (dataUrl) {
+      openAttachment(name, dataUrl)
+      return
+    }
+    const key = `photo-${index}`
+    setLoadingKey(key)
+    const result = await ensureClaimFiles(claim.id)
+    setLoadingKey('')
+    if (!result.ok) {
+      await error(result.message)
+      return
+    }
+    const photo = result.claim.photos?.[index]
+    if (!photo?.dataUrl) {
+      await error('No se encontró la foto.')
+      return
+    }
+    openAttachment(photo.name, photo.dataUrl)
+  }
+
+  async function openFile() {
+    if (claim.attachment?.dataUrl) {
+      openAttachment(claim.attachment.name, claim.attachment.dataUrl)
+      return
+    }
+    setLoadingKey('file')
+    const result = await ensureClaimFiles(claim.id)
+    setLoadingKey('')
+    if (!result.ok) {
+      await error(result.message)
+      return
+    }
+    const file = result.claim.attachment
+    if (!file?.dataUrl) {
+      await error('No se encontró el adjunto.')
+      return
+    }
+    openAttachment(file.name, file.dataUrl)
+  }
+
   return (
-    <button
-      type="button"
-      className="self-start text-left text-sm font-medium text-lumi-ink hover:underline"
-      title={`${label} ${file.name}`}
-      onClick={() => openAttachment(file.name, file.dataUrl)}
-    >
-      {label}
-      {kind === 'photo' ? ` · ${file.name}` : ''}
-    </button>
+    <div className="mt-2 flex flex-col items-start gap-1">
+      {photoEntries.map((photo) => {
+        const key = `photo-${photo.index}`
+        const busy = loadingKey === key
+        const label = busy
+          ? 'Cargando…'
+          : photo.dataUrl
+            ? fileLabel('photo', photo.name, photo.dataUrl)
+            : 'Ver foto'
+        return (
+          <button
+            key={key}
+            type="button"
+            className="self-start text-left text-sm font-medium text-lumi-ink hover:underline disabled:opacity-50"
+            title={`${label} ${photo.name}`}
+            disabled={busy || Boolean(loadingKey)}
+            onClick={() => void openPhoto(photo.index, photo.name, photo.dataUrl)}
+          >
+            {label}
+            {photo.name && photo.name !== 'Foto' ? ` · ${photo.name}` : ''}
+          </button>
+        )
+      })}
+      {showAttachment && (
+        <button
+          type="button"
+          className="self-start text-left text-sm font-medium text-lumi-ink hover:underline disabled:opacity-50"
+          title={
+            loadingKey === 'file'
+              ? 'Cargando…'
+              : claim.attachment?.dataUrl
+                ? fileLabel('file', claim.attachment.name, claim.attachment.dataUrl)
+                : 'Ver adjunto'
+          }
+          disabled={Boolean(loadingKey)}
+          onClick={() => void openFile()}
+        >
+          {loadingKey === 'file'
+            ? 'Cargando…'
+            : claim.attachment?.dataUrl
+              ? fileLabel('file', claim.attachment.name, claim.attachment.dataUrl)
+              : 'Ver adjunto'}
+        </button>
+      )}
+    </div>
   )
 }
 
 function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
+  const { user } = useAuth()
   const { orders } = useOrders()
   const { addClaim } = useClaims()
   const { sellers } = useCatalog()
+  const sellerLocked = user?.role === 'vendedor'
+  const lockedSeller = sellerLocked ? (user?.sellerName?.trim() ?? '') : ''
   const [lookup, setLookup] = useState('')
   const [client, setClient] = useState('')
   const [invoices, setInvoices] = useState([''])
@@ -197,10 +287,12 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
   const [attachment, setAttachment] = useState<ClaimFile | null>(null)
   const [readingPhotos, setReadingPhotos] = useState(false)
   const [readingFile, setReadingFile] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const photoRequest = useRef(0)
   const fileRequest = useRef(0)
   const fileAbort = useRef<(() => void) | null>(null)
+  const sellerValue = sellerLocked ? lockedSeller : seller
 
   const needle = lookup.trim().toLowerCase()
   const matches = needle.length < 2
@@ -321,7 +413,7 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
       })
   }
 
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault()
     const nextErrors: FormErrors = {}
     if (!client.trim()) nextErrors.client = 'Ingresá el nombre del cliente.'
@@ -341,18 +433,24 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
-    const result = addClaim({
+    setSaving(true)
+    const result = await addClaim({
       client: client.trim(),
       invoices: invoices.map((invoice) => invoice.trim()).filter(Boolean),
       phone: phone.trim(),
       email: email.trim(),
-      seller,
+      seller: sellerValue,
       motive,
       description: description.trim(),
       products: cleaned,
       photos,
       attachment: attachment ?? undefined,
     })
+    setSaving(false)
+    if (!result.ok) {
+      setErrors((current) => ({ ...current, file: result.message }))
+      return
+    }
     reset()
     onCreated(result.id)
   }
@@ -458,9 +556,13 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
           </label>
           <label className="field">
             <span>Vendedor</span>
-            <select value={seller} onChange={(event) => setSeller(event.target.value)}>
+            <select
+              value={sellerValue}
+              disabled={sellerLocked || saving}
+              onChange={(event) => setSeller(event.target.value)}
+            >
               <option value="">Seleccioná vendedor</option>
-              {withCurrent(sellers, seller).map((name) => (
+              {withCurrent(sellers, sellerValue).map((name) => (
                 <option key={name} value={name}>
                   {name}
                 </option>
@@ -599,11 +701,11 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
           </label>
         </div>
         <div className="form-actions mt-4">
-          <button type="button" className="btn-ghost" onClick={reset}>
+          <button type="button" className="btn-ghost" disabled={saving} onClick={reset}>
             Cancelar
           </button>
-          <button type="submit" className="btn-primary">
-            Guardar reclamo
+          <button type="submit" className="btn-primary" disabled={saving}>
+            {saving ? 'Guardando…' : 'Guardar reclamo'}
           </button>
         </div>
       </section>
@@ -679,6 +781,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   const [noting, setNoting] = useState(false)
   const [note, setNote] = useState('')
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [busy, setBusy] = useState(false)
   const invoice = claim.invoices[0]
   const notes = claim.events.filter((event) => event.note)
   const trail = claim.events.filter((event) => !event.note)
@@ -697,8 +800,36 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
     const label = CLAIM_STATUS_LABEL[status]
     const accepted = await confirm(`¿Pasar el reclamo a ${label}?`, '')
     if (!accepted) return
-    setStatus(claim.id, status)
+    setBusy(true)
+    const result = await setStatus(claim.id, status)
+    setBusy(false)
     setOpenStatus(false)
+    if (!result.ok) {
+      await error(result.message)
+      return
+    }
+  }
+
+  async function saveNote() {
+    setBusy(true)
+    const result = await addNote(claim.id, note)
+    setBusy(false)
+    if (!result.ok) {
+      await error(result.message)
+      return
+    }
+    setNote('')
+    setNoting(false)
+  }
+
+  async function cancelClaim() {
+    setBusy(true)
+    const result = await setStatus(claim.id, 'cancelado')
+    setBusy(false)
+    setConfirmCancel(false)
+    if (!result.ok) {
+      await error(result.message)
+    }
   }
 
   return (
@@ -735,7 +866,8 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
         {!terminal && nextStatus && (
           <button
             type="button"
-            className="btn-primary mt-3 w-full sm:w-auto"
+            className="btn-primary mt-3 w-full sm:w-auto disabled:opacity-50"
+            disabled={busy}
             onClick={() => void applyStatus(nextStatus)}
           >
             Pasar a {CLAIM_STATUS_LABEL[nextStatus]}
@@ -747,7 +879,8 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
             {prevStatus && (
               <button
                 type="button"
-                className="text-sm text-lumi-muted hover:text-lumi-ink hover:underline"
+                className="text-sm text-lumi-muted hover:text-lumi-ink hover:underline disabled:opacity-50"
+                disabled={busy}
                 onClick={() => void applyStatus(prevStatus)}
               >
                 Volver a {CLAIM_STATUS_LABEL[prevStatus]}
@@ -756,7 +889,8 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
             <div className="relative">
               <button
                 type="button"
-                className="text-sm text-lumi-muted hover:text-lumi-ink hover:underline"
+                className="text-sm text-lumi-muted hover:text-lumi-ink hover:underline disabled:opacity-50"
+                disabled={busy}
                 aria-expanded={openStatus}
                 aria-haspopup="menu"
                 onClick={() => {
@@ -776,9 +910,10 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
                       key={status}
                       type="button"
                       role="menuitem"
-                      className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] ${
+                      className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] disabled:opacity-50 ${
                         claim.status === status ? 'font-semibold' : ''
                       }`}
+                      disabled={busy}
                       onClick={() => void applyStatus(status)}
                     >
                       {CLAIM_STATUS_LABEL[status]}
@@ -807,14 +942,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           <p className="mt-2 text-sm text-[#5f5b55]">
             {claim.products.map((product) => `${product.name} (x${product.quantity})`).join(' · ')}
           </p>
-          {(claim.photos?.some((photo) => photo.dataUrl) || claim.attachment?.dataUrl) && (
-            <div className="mt-2 flex flex-col items-start gap-1">
-              {claim.photos?.map((photo, index) => (
-                <ClaimFileButton key={`${photo.name}-${index}`} kind="photo" file={photo} />
-              ))}
-              {claim.attachment?.dataUrl && <ClaimFileButton kind="file" file={claim.attachment} />}
-            </div>
-          )}
+          <ClaimAttachments claim={claim} />
           {notes.map((event, index) => (
             <p key={`${event.at}-${index}`} className="mt-1 text-sm text-[#5f5b55]">
               Nota · {formatWhen(event.at)} · {event.note}
@@ -824,7 +952,8 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
         <div className="flex shrink-0 flex-col items-end gap-2">
           <button
             type="button"
-            className="text-sm text-lumi-muted hover:text-lumi-ink"
+            className="text-sm text-lumi-muted hover:text-lumi-ink disabled:opacity-50"
+            disabled={busy}
             onClick={() => {
               setNoting((current) => !current)
               setConfirmCancel(false)
@@ -837,17 +966,28 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
               <div className="flex items-center gap-2 text-sm">
                 <button
                   type="button"
-                  className="text-[#a33b38]"
-                  onClick={() => setStatus(claim.id, 'cancelado')}
+                  className="text-[#a33b38] disabled:opacity-50"
+                  disabled={busy}
+                  onClick={() => void cancelClaim()}
                 >
                   Confirmar
                 </button>
-                <button type="button" className="text-lumi-muted" onClick={() => setConfirmCancel(false)}>
+                <button
+                  type="button"
+                  className="text-lumi-muted disabled:opacity-50"
+                  disabled={busy}
+                  onClick={() => setConfirmCancel(false)}
+                >
                   Volver
                 </button>
               </div>
             ) : (
-              <button type="button" className="text-sm text-[#a33b38]" onClick={() => setConfirmCancel(true)}>
+              <button
+                type="button"
+                className="text-sm text-[#a33b38] disabled:opacity-50"
+                disabled={busy}
+                onClick={() => setConfirmCancel(true)}
+              >
                 Cancelar
               </button>
             ))}
@@ -858,18 +998,11 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           <input
             value={note}
             placeholder="Agregar una nota..."
+            disabled={busy}
             onChange={(event) => setNote(event.target.value)}
             className="min-w-0 flex-1 rounded-xl border border-lumi-line px-3 py-2 text-sm"
           />
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => {
-              addNote(claim.id, note)
-              setNote('')
-              setNoting(false)
-            }}
-          >
+          <button type="button" className="btn-primary disabled:opacity-50" disabled={busy} onClick={() => void saveNote()}>
             Guardar
           </button>
         </div>
@@ -1106,7 +1239,7 @@ function Dashboard({
 }
 
 export function PostVenta() {
-  const { claims, notice, dismissNotice } = useClaims()
+  const { claims, loading, error: loadError, notice, dismissNotice, refresh } = useClaims()
   const [tab, setTab] = useState<Tab>('nuevo')
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState('todos')
@@ -1132,6 +1265,22 @@ export function PostVenta() {
     setSeller('todos')
     setPeriod('30')
     setQuery('')
+  }
+
+  if (loading && claims.length === 0) {
+    return (
+      <section className="page">
+        <Spinner label="Cargando reclamos…" />
+      </section>
+    )
+  }
+
+  if (loadError && claims.length === 0) {
+    return (
+      <section className="page">
+        <ServerDown message={loadError} onRetry={() => void refresh()} />
+      </section>
+    )
   }
 
   return (
