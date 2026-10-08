@@ -1239,12 +1239,23 @@ function Dashboard({
 }
 
 export function PostVenta() {
-  const { claims, loading, error: loadError, notice, dismissNotice, refresh } = useClaims()
+  const {
+    claims,
+    loading,
+    error: loadError,
+    notice,
+    legacyOffer,
+    dismissNotice,
+    refresh,
+    uploadLegacy,
+    dismissLegacy,
+  } = useClaims()
   const [tab, setTab] = useState<Tab>('nuevo')
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState('todos')
   const [period, setPeriod] = useState<Period>('30')
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [legacyBusy, setLegacyBusy] = useState(false)
 
   const needle = query.trim().toLowerCase()
   const listed = useMemo(() => {
@@ -1265,6 +1276,23 @@ export function PostVenta() {
     setSeller('todos')
     setPeriod('30')
     setQuery('')
+  }
+
+  async function onUploadLegacy() {
+    setLegacyBusy(true)
+    const result = await uploadLegacy()
+    setLegacyBusy(false)
+    if (!result.ok) await error(result.message)
+  }
+
+  async function onDismissLegacy() {
+    const accepted = await confirm(
+      'Descartar',
+      'Se borran los reclamos guardados en este navegador.',
+      { peligro: true },
+    )
+    if (!accepted) return
+    dismissLegacy()
   }
 
   if (loading && claims.length === 0) {
@@ -1297,6 +1325,30 @@ export function PostVenta() {
             Cerrar
           </button>
         </p>
+      )}
+
+      {legacyOffer && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm">
+          <p className="text-sm">Hay reclamos guardados en este navegador</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+              disabled={legacyBusy}
+              onClick={() => void onUploadLegacy()}
+            >
+              Subirlos
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm disabled:opacity-50"
+              disabled={legacyBusy}
+              onClick={() => void onDismissLegacy()}
+            >
+              Descartar
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="mt-5">

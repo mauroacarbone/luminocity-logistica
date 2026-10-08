@@ -13,12 +13,18 @@ import {
   asClaimsList,
   createClaim,
   getClaim,
+  importClaims,
+  isClaim,
   listClaims,
   patchClaimStatus,
 } from '../lib/claimsApi'
+import { loadList } from '../lib/localStore'
 import { useAuth } from './AuthContext'
 
+const CLAIMS_KEY = 'luminocity.claims.v1'
 const CLAIMS_ROLES = new Set(['vendedor', 'encargado_deposito', 'admin'])
+const IMPORT_MAX = 200
+const IMPORT_BYTES = 10 * 1024 * 1024
 
 export type NewClaim = {
   client: string
@@ -42,6 +48,7 @@ type ClaimsContextValue = {
   loading: boolean
   error: string
   notice: string
+  legacyOffer: Claim[] | null
   dismissNotice: () => void
   refresh: () => Promise<void>
   addClaim: (input: NewClaim) => Promise<ClaimActionResult>
@@ -50,6 +57,8 @@ type ClaimsContextValue = {
   ensureClaimFiles: (
     id: string,
   ) => Promise<{ ok: true; id: string; claim: Claim } | { ok: false; message: string }>
+  uploadLegacy: () => Promise<{ ok: true; message: string } | { ok: false; message: string }>
+  dismissLegacy: () => void
 }
 
 const ClaimsContext = createContext<ClaimsContextValue | null>(null)
@@ -62,12 +71,51 @@ function upsertClaim(list: Claim[], claim: Claim) {
   return next
 }
 
+function readLegacy() {
+  return loadList(CLAIMS_KEY, isClaim).items
+}
+
+function clearLegacyKey() {
+  try {
+    localStorage.removeItem(CLAIMS_KEY)
+  } catch {
+    // Si no se puede borrar, el aviso no vuelve porque ya se ofreció.
+  }
+}
+
+function packClaimBatches(
+  claims: Claim[],
+): { batches: Claim[][] } | { error: string } {
+  for (const claim of claims) {
+    const alone = new Blob([JSON.stringify({ claims: [claim] })]).size
+    if (alone > IMPORT_BYTES) {
+      return { error: `El reclamo ${claim.id} es demasiado grande para subir.` }
+    }
+  }
+  const batches: Claim[][] = []
+  let current: Claim[] = []
+  for (const claim of claims) {
+    const next = [...current, claim]
+    const size = new Blob([JSON.stringify({ claims: next })]).size
+    if (current.length > 0 && (next.length > IMPORT_MAX || size > IMPORT_BYTES)) {
+      batches.push(current)
+      current = [claim]
+    } else {
+      current = next
+    }
+  }
+  if (current.length > 0) batches.push(current)
+  return { batches }
+}
+
 export function ClaimsProvider({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const [claims, setClaims] = useState<Claim[]>([])
   const [status, setLoadStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [legacyOffer, setLegacyOffer] = useState<Claim[] | null>(null)
+  const [legacyShown, setLegacyShown] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const userId = user?.id ?? null
   const canUse = Boolean(user && CLAIMS_ROLES.has(user.role))
@@ -79,6 +127,8 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     setClaims([])
     setError('')
     setNotice('')
+    setLegacyOffer(null)
+    setLegacyShown(false)
     setLoadStatus(trackKey ? 'loading' : 'idle')
   }
 
@@ -114,11 +164,15 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
       }
       setClaims(rows)
       setLoadStatus('ready')
+      if (!legacyShown && rows.length === 0) {
+        const legacy = readLegacy()
+        if (legacy.length > 0) setLegacyOffer(legacy)
+      }
     })
     return () => {
       cancelled = true
     }
-  }, [attempt, logout, trackKey])
+  }, [attempt, legacyShown, logout, trackKey])
 
   async function addClaim(input: NewClaim): Promise<ClaimActionResult> {
     const result = await createClaim({
@@ -190,6 +244,41 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     return { ok: true, id: claim.id, claim }
   }
 
+  async function uploadLegacy() {
+    if (!legacyOffer || legacyOffer.length === 0) {
+      return { ok: false as const, message: 'No hay reclamos locales para subir.' }
+    }
+    const packed = packClaimBatches(legacyOffer)
+    if ('error' in packed) return { ok: false as const, message: packed.error }
+    let imported = 0
+    let skipped = 0
+    for (const batch of packed.batches) {
+      const result = await importClaims(batch)
+      if (!result.ok) {
+        if (result.status === 401) logout()
+        return { ok: false as const, message: result.message }
+      }
+      imported += result.data.imported
+      skipped += result.data.skipped.length
+    }
+    clearLegacyKey()
+    setLegacyOffer(null)
+    setLegacyShown(true)
+    await refresh()
+    const message =
+      skipped > 0
+        ? `Se subieron ${imported} reclamos (${skipped} salteados).`
+        : `Se subieron ${imported} reclamos.`
+    setNotice(message)
+    return { ok: true as const, message }
+  }
+
+  function dismissLegacy() {
+    clearLegacyKey()
+    setLegacyOffer(null)
+    setLegacyShown(true)
+  }
+
   return (
     <ClaimsContext.Provider
       value={{
@@ -197,12 +286,15 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
         loading,
         error,
         notice,
+        legacyOffer,
         dismissNotice: () => setNotice(''),
         refresh,
         addClaim,
         setStatus,
         addNote,
         ensureClaimFiles,
+        uploadLegacy,
+        dismissLegacy,
       }}
     >
       {children}
