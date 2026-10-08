@@ -118,11 +118,10 @@ function writeClaims(list) {
 function canAccessClaim(user, claim) {
   if (user.role === 'admin' || user.role === 'encargado_deposito') return true
   if (user.role !== 'vendedor') return false
-  if (typeof claim.createdBy === 'string' && claim.createdBy) {
-    return claim.createdBy === user.id
-  }
-  const seller = normalizeName(claim.seller)
-  return seller.length > 0 && seller === normalizeName(user.sellerName)
+  if (claim.createdBy === user.id) return true
+  const sellerName = normalizeName(user.sellerName)
+  if (!sellerName) return false
+  return normalizeName(claim.seller) === sellerName
 }
 
 function actorOf(user) {
