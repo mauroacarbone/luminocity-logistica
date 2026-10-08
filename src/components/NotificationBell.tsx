@@ -44,6 +44,8 @@ export function NotificationBell() {
   const [items, setItems] = useState<AppNotification[]>([])
   const [users, setUsers] = useState<Session[]>([])
   const [open, setOpen] = useState(false)
+  const [panelTop, setPanelTop] = useState<number | null>(null)
+  const [narrow, setNarrow] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [attempt, setAttempt] = useState(0)
@@ -110,6 +112,34 @@ export function NotificationBell() {
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [open])
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 639px)')
+    function syncNarrow() {
+      setNarrow(media.matches)
+    }
+    syncNarrow()
+    media.addEventListener('change', syncNarrow)
+    return () => media.removeEventListener('change', syncNarrow)
+  }, [])
+
+  useEffect(() => {
+    if (!open || !narrow) return
+    function place() {
+      const root = rootRef.current
+      if (!root) return
+      const rect = root.getBoundingClientRect()
+      setPanelTop(Math.round(rect.bottom + 8))
+    }
+    const frame = window.requestAnimationFrame(place)
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open, narrow])
 
   const appItems = items.filter((item) => item.channel === 'app')
   const whatsappItems = canSend
@@ -212,8 +242,11 @@ export function NotificationBell() {
         )}
       </button>
       {open && (
-        <div className="fixed inset-x-4 z-30 mt-2 w-auto rounded-2xl border border-lumi-line bg-white p-3 shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:w-80">
-          <p className="text-sm font-semibold">Avisos</p>
+        <div
+          className="fixed inset-x-4 z-30 flex max-h-[70vh] w-auto flex-col rounded-2xl border border-lumi-line bg-white p-3 shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-none sm:w-80"
+          style={open && narrow && panelTop !== null ? { top: panelTop } : undefined}
+        >
+          <p className="shrink-0 text-sm font-semibold">Avisos</p>
           {loading && items.length === 0 && <Spinner compact label="Cargando avisos…" />}
           {error && <ServerDown message={error} onRetry={() => {
             setError('')
@@ -223,7 +256,7 @@ export function NotificationBell() {
           {!loading && !error && visible.length === 0 ? (
             <p className="mt-3 text-sm text-lumi-muted">No hay avisos.</p>
           ) : visible.length > 0 ? (
-            <ul className="mt-2 flex max-h-80 flex-col gap-2 overflow-auto">
+            <ul className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-auto sm:max-h-80">
               {visible.map((item) => {
                 const phone = item.channel === 'whatsapp' ? sellerPhone(item, orders, users) : ''
                 const canOpen = Boolean(phone && whatsappLink(phone, item.text))
