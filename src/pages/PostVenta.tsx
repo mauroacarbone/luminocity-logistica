@@ -869,6 +869,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           <p className="mt-2 text-sm text-lumi-muted">
             {previous ? `${CLAIM_STATUS_LABEL[previous.status]} → ` : ''}
             {CLAIM_STATUS_LABEL[latest.status]} · {formatWhen(latest.at)}
+            {latest.by?.userName ? ` · por ${latest.by.userName}` : ''}
           </p>
         )}
 
@@ -955,6 +956,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           {notes.map((event, index) => (
             <p key={`${event.at}-${index}`} className="mt-1 text-sm text-[#5f5b55]">
               Nota · {formatWhen(event.at)} · {event.note}
+              {event.by?.userName ? ` · por ${event.by.userName}` : ''}
             </p>
           ))}
         </div>
