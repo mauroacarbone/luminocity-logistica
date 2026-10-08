@@ -21,12 +21,14 @@ const MOTIVES = new Set([
   'Arrepentimiento (producto apto para volver a la venta)',
   'Faltante de mercadería',
 ])
+const CLAIM_ID_RE = /^R-\d{7}$/
 const TEXT_MAX = 200
 const DESCRIPTION_MAX = 2000
 const NOTE_MAX = 500
 const FILE_MAX_BYTES = 2 * 1024 * 1024
 const FILES_TOTAL_MAX_BYTES = 8 * 1024 * 1024
 const PHOTOS_MAX = 5
+const IMPORT_MAX = 200
 const WORD_DOC = 'application/msword'
 const WORD_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const EXCEL_XLS = 'application/vnd.ms-excel'
@@ -54,6 +56,17 @@ claimsRouter.post('/', async (req, res) => {
       return
     }
     res.status(201).json(result.claim)
+  })
+})
+
+claimsRouter.post('/import', async (req, res) => {
+  await send(res, async () => {
+    const result = await importClaims(req.user, req.body)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(result.summary)
   })
 })
 
@@ -173,6 +186,100 @@ function getClaim(user, id) {
     if (!claim || !canAccessClaim(user, claim)) return fail('Reclamo no encontrado', 404)
     return { claim }
   })
+}
+
+function importClaims(user, body) {
+  return locked(async () => {
+    if (!isRecord(body)) return fail('La importación no es válida.')
+    if (!Array.isArray(body.claims)) return fail('Mandá la lista de reclamos en claims.')
+    if (body.claims.length > IMPORT_MAX) {
+      return fail(`Podés importar hasta ${IMPORT_MAX} reclamos por pedido.`)
+    }
+    const list = await readClaims()
+    const used = new Set(list.map((item) => item.id))
+    const incoming = []
+    const skipped = []
+    for (const item of body.claims) {
+      if (!isRecord(item)) return fail('Hay un reclamo que no es válido.')
+      const idRaw = typeof item.id === 'string' ? item.id.trim() : ''
+      if (CLAIM_ID_RE.test(idRaw) && used.has(idRaw)) {
+        skipped.push(idRaw)
+        continue
+      }
+      const parsed = readCreateBody(item, user)
+      if (parsed.error) return parsed
+      const status = readStatus(item.status)
+      if (status.error) return status
+      if (typeof item.createdAt !== 'string' || !item.createdAt.trim()) {
+        return fail('Cada reclamo importado necesita createdAt.')
+      }
+      const events = readImportEvents(item.events)
+      if (events.error) return events
+      let resolvedAt
+      if (Object.prototype.hasOwnProperty.call(item, 'resolvedAt') && item.resolvedAt != null) {
+        if (typeof item.resolvedAt !== 'string' || !item.resolvedAt.trim()) {
+          return fail('El resolvedAt del reclamo no es válido.')
+        }
+        resolvedAt = item.resolvedAt
+      }
+      const id = CLAIM_ID_RE.test(idRaw) ? idRaw : nextId([...list, ...incoming])
+      used.add(id)
+      const claim = {
+        id,
+        importedBy: user.id,
+        createdAt: item.createdAt,
+        client: parsed.client,
+        invoices: parsed.invoices,
+        phone: parsed.phone,
+        email: parsed.email,
+        seller: parsed.seller,
+        motive: parsed.motive,
+        description: parsed.description,
+        products: parsed.products,
+        photoNames: parsed.photos.map((photo) => photo.name),
+        photos: parsed.photos,
+        attachmentName: parsed.attachment?.name ?? '',
+        status: status.value,
+        events: events.value,
+      }
+      if (parsed.attachment) claim.attachment = parsed.attachment
+      if (resolvedAt !== undefined) claim.resolvedAt = resolvedAt
+      incoming.push(claim)
+    }
+    if (incoming.length > 0) {
+      list.push(...incoming)
+      await writeClaims(list)
+    }
+    return { summary: { imported: incoming.length, skipped } }
+  })
+}
+
+function readImportEvents(value) {
+  if (!Array.isArray(value)) return fail('Los eventos del reclamo no son válidos.')
+  const events = []
+  for (const item of value) {
+    if (!isRecord(item)) return fail('Hay un evento que no es válido.')
+    if (typeof item.at !== 'string' || !item.at.trim()) {
+      return fail('Hay un evento sin fecha.')
+    }
+    const status = readStatus(item.status)
+    if (status.error) return status
+    const event = { at: item.at, status: status.value }
+    if (typeof item.note === 'string' && item.note.trim()) {
+      const note = item.note.trim()
+      if (note.length > NOTE_MAX) return fail(`La nota puede tener hasta ${NOTE_MAX} caracteres.`)
+      event.note = note
+    }
+    if (
+      isRecord(item.by) &&
+      typeof item.by.userId === 'string' &&
+      typeof item.by.userName === 'string'
+    ) {
+      event.by = { userId: item.by.userId, userName: item.by.userName }
+    }
+    events.push(event)
+  }
+  return { value: events }
 }
 
 function patchStatus(user, id, body) {

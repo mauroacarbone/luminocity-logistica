@@ -72,6 +72,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 22e | Marcar preparado desde picking | Hecho |
 | 22e.1 | Estado final del botón de picking | Hecho |
 | 24a | Post Venta: estado destacado + texto de Mis entregas | Hecho |
+| 24 | API de reclamos (Post Venta) en el servidor | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -180,6 +181,8 @@ El Brief 22e marca preparado desde Pendientes de Entregas cuando el comprobante 
 El Brief 22e.1 deja el botón de picking según el estado real: chip "Preparado" si el pedido y todas sus filas ya lo están; "Marcar filas preparadas" si faltan filas; saltea las ya marcadas. Indexa las filas por comprobante con `useMemo` para planillas grandes.
 
 El Brief 24a destaca el estado en cada tarjeta de Post Venta: pastilla grande, stepper de avance (o Cancelado), botón "Pasar a…" y "Volver a…" con confirmación, y el menú de salto como "Cambiar a otro estado" (sin Cancelado). En Mis entregas, si la pestaña tiene pedidos pero están todos en la hoja, el vacío dice que están arriba.
+
+El Brief 24 guarda los reclamos en el server (`/api/claims`, JSON o Postgres). Alta, listado sin dataUrl, detalle con archivos, cambio de estado, notas e importación de hasta 200. El vendedor solo ve los suyos; encargado y admin ven todos. El cliente sigue en localStorage hasta el 24b.
 
 ## Pendientes
 
