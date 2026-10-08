@@ -476,7 +476,7 @@ async function withClientFlags(order) {
   return withSheetPlannedFlag(withName, await plannedSheetIds())
 }
 
-const TRANSITION_VIAS = new Set(['pedidos', 'despacho', 'mis-entregas', 'qr', 'picking'])
+const TRANSITION_VIAS = new Set(['pedidos', 'despacho', 'mis-entregas', 'qr', 'picking', 'panel'])
 const PATCH_VIAS = new Set(['despacho', 'pedidos'])
 
 function patchVia(body) {

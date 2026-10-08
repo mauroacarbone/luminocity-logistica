@@ -13,13 +13,15 @@ import type { OrderSaveResult } from '../state/OrdersContext'
 type Props = {
   order: Order
   role: Role
-  via: 'despacho' | 'pedidos'
+  via: 'despacho' | 'pedidos' | 'panel'
   busy: boolean
   onBusy: (busy: boolean) => void
   transition: (id: string, body: Record<string, unknown>) => Promise<OrderSaveResult>
   onDone?: (order: Order) => void
   /** Si hay selector de chofer en la pantalla, se enfoca al pedir Asignar chofer. */
   driverSelectId?: string
+  /** stretch: primario a ancho en tarjeta; compact: botones más chicos en tabla. */
+  layout?: 'default' | 'stretch' | 'compact'
 }
 
 export function OrderFlowButtons({
@@ -31,6 +33,7 @@ export function OrderFlowButtons({
   transition,
   onDone,
   driverSelectId,
+  layout = 'default',
 }: Props) {
   const { logout } = useAuth()
   const { timeWindows } = useCatalog()
@@ -145,12 +148,28 @@ export function OrderFlowButtons({
     await runTransition(to, { reason })
   }
 
+  const stretch = layout === 'stretch'
+  const compact = layout === 'compact'
+  const nextClass = stretch
+    ? 'min-h-11 flex-1 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50'
+    : compact
+      ? 'min-h-9 rounded-xl bg-lumi-yellow px-2.5 py-1 text-xs font-semibold text-lumi-yellow-ink disabled:opacity-50'
+      : 'min-h-11 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50'
+  const moreClass = stretch
+    ? 'grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-lumi-line text-lg leading-none hover:bg-[#f7f4ea] disabled:opacity-50'
+    : compact
+      ? 'grid h-9 w-9 place-items-center rounded-xl border border-lumi-line text-base leading-none hover:bg-[#f7f4ea] disabled:opacity-50'
+      : 'grid h-11 w-11 place-items-center rounded-xl border border-lumi-line text-lg leading-none hover:bg-[#f7f4ea] disabled:opacity-50'
+
   return (
-    <div ref={rootRef} className="flex flex-wrap items-center gap-2">
+    <div
+      ref={rootRef}
+      className={stretch ? 'flex w-full items-center gap-2' : 'flex flex-wrap items-center gap-2'}
+    >
       {next && (
         <button
           type="button"
-          className="min-h-11 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+          className={nextClass}
           disabled={busy}
           onClick={() => void onNext()}
         >
@@ -161,7 +180,7 @@ export function OrderFlowButtons({
         <div className="relative">
           <button
             type="button"
-            className="grid h-11 w-11 place-items-center rounded-xl border border-lumi-line text-lg leading-none hover:bg-[#f7f4ea] disabled:opacity-50"
+            className={moreClass}
             disabled={busy}
             aria-label="Más acciones"
             aria-expanded={menuOpen}

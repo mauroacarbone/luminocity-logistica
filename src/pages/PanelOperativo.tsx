@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { OrderFlowButtons } from '../components/OrderFlowButtons'
+import { OrderStepper } from '../components/OrderStepper'
 import { DISPATCH_LABEL } from '../data/catalog'
 import {
   ordersByStatus,
@@ -35,6 +37,8 @@ function countFor(list: Order[], key: 'total' | OrderStatus) {
 function OrderCard({ order }: { order: Order }) {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { transitionOrder } = useOrders()
+  const [busy, setBusy] = useState(false)
   const waiting = pendingEdit(order)
 
   return (
@@ -46,24 +50,27 @@ function OrderCard({ order }: { order: Order }) {
           </Link>
         </strong>
         {user && canEditOrder(user, order) && (
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={`Editar ${order.id}`}
-          onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={`Editar ${order.id}`}
+            onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         )}
+      </div>
+      <div className="mt-2">
+        <OrderStepper order={order} variant="compact" />
       </div>
       <p className="order-client">
         <Link className="order-link" to={`/pedidos/${order.id}`}>
@@ -93,7 +100,71 @@ function OrderCard({ order }: { order: Order }) {
         </svg>
         {formatIsoDate(order.deliveryDate)}
       </p>
+      {user && (
+        <div className="mt-3">
+          <OrderFlowButtons
+            order={order}
+            role={user.role}
+            via="panel"
+            busy={busy}
+            onBusy={setBusy}
+            transition={transitionOrder}
+            layout="stretch"
+          />
+        </div>
+      )}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        {user && canEditOrder(user, order) && (
+          <button
+            type="button"
+            className="text-lumi-ink hover:underline"
+            onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
+          >
+            Editar
+          </button>
+        )}
+        <Link className="text-lumi-muted hover:text-lumi-ink hover:underline" to={`/pedidos/${order.id}`}>
+          Ver detalle
+        </Link>
+      </div>
     </article>
+  )
+}
+
+function TableActions({ order }: { order: Order }) {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const { transitionOrder } = useOrders()
+  const [busy, setBusy] = useState(false)
+
+  return (
+    <div className="flex flex-col items-start gap-1.5">
+      {user && (
+        <OrderFlowButtons
+          order={order}
+          role={user.role}
+          via="panel"
+          busy={busy}
+          onBusy={setBusy}
+          transition={transitionOrder}
+          layout="compact"
+        />
+      )}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        {user && canEditOrder(user, order) && (
+          <button
+            type="button"
+            className="text-lumi-ink hover:underline"
+            onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
+          >
+            Editar
+          </button>
+        )}
+        <Link className="text-lumi-muted hover:text-lumi-ink hover:underline" to={`/pedidos/${order.id}`}>
+          Ver detalle
+        </Link>
+      </div>
+    </div>
   )
 }
 
@@ -204,12 +275,13 @@ export function PanelOperativo() {
                 <th>Bultos</th>
                 <th>Cargado</th>
                 <th>Entrega</th>
+                <th>Acción</th>
               </tr>
             </thead>
             <tbody>
               {visibleOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="empty">
+                  <td colSpan={8} className="empty">
                     {orders.length === 0 ? 'No hay pedidos.' : 'Ningún pedido coincide con el filtro.'}
                   </td>
                 </tr>
@@ -241,6 +313,9 @@ export function PanelOperativo() {
                     <td>{order.packages != null ? order.packages : '—'}</td>
                     <td>{order.loadedAt}</td>
                     <td>{formatIsoDate(order.deliveryDate)}</td>
+                    <td>
+                      <TableActions order={order} />
+                    </td>
                   </tr>
                 ))
               )}
