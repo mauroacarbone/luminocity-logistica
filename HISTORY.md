@@ -71,6 +71,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 22d.1 | Correcciones de cantidad pickeada y cruce por comprobante | Hecho |
 | 22e | Marcar preparado desde picking | Hecho |
 | 22e.1 | Estado final del botón de picking | Hecho |
+| 24a | Post Venta: estado destacado + texto de Mis entregas | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -177,6 +178,8 @@ El Brief 22d.1 no baja filas `preparado` desde el input, exige enteros en `picke
 El Brief 22e marca preparado desde Pendientes de Entregas cuando el comprobante está vinculado a un pedido pendiente o preparado y están completas todas las filas de todos sus comprobantes. Usa la vía `picking` en el historial, pide bultos si hace falta, y después deja las filas en `preparado`. Si baja la cantidad del artículo, el server recorta `pickedQty`. El Planificador usa singular con un solo pedido sin franja y Choferes en ruta deja de repetir avisos vacíos.
 
 El Brief 22e.1 deja el botón de picking según el estado real: chip "Preparado" si el pedido y todas sus filas ya lo están; "Marcar filas preparadas" si faltan filas; saltea las ya marcadas. Indexa las filas por comprobante con `useMemo` para planillas grandes.
+
+El Brief 24a destaca el estado en cada tarjeta de Post Venta: pastilla grande, stepper de avance (o Cancelado), botón "Pasar a…" y "Volver a…" con confirmación, y el menú de salto como "Cambiar a otro estado" (sin Cancelado). En Mis entregas, si la pestaña tiene pedidos pero están todos en la hoja, el vacío dice que están arriba.
 
 ## Pendientes
 

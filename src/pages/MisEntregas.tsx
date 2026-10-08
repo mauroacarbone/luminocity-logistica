@@ -392,7 +392,9 @@ export function MisEntregas() {
       </div>
       {visible.length === 0 ? (
         <p className="mt-6 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
-          No hay entregas.
+          {(tab === 'asignados' ? assignedCount : travelingCount) > 0
+            ? 'Tus entregas están en la hoja de ruta de arriba.'
+            : 'No hay entregas.'}
         </p>
       ) : (
         <ul className="mt-4 flex flex-col gap-3">
