@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { Spinner, ServerDown } from '../components/LoadState'
 import { withCurrent, withExtras } from '../data/catalog'
@@ -833,8 +834,15 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
     }
   }
 
+  const cardRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!highlight) return
+    cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlight, claim.id])
+
   return (
     <article
+      ref={cardRef}
       className={`rounded-2xl bg-white p-4 shadow-sm ${highlight ? 'ring-2 ring-lumi-yellow' : ''} ${
         openStatus ? 'relative z-20' : ''
       }`}
@@ -1251,12 +1259,42 @@ export function PostVenta() {
     uploadLegacy,
     dismissLegacy,
   } = useClaims()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>('nuevo')
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState('todos')
   const [period, setPeriod] = useState<Period>('30')
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [linkNotice, setLinkNotice] = useState<string | null>(null)
   const [legacyBusy, setLegacyBusy] = useState(false)
+  const [appliedReclamo, setAppliedReclamo] = useState<string | null>(null)
+
+  const reclamoParam = searchParams.get('reclamo')
+  if (!reclamoParam && appliedReclamo !== null) {
+    setAppliedReclamo(null)
+  } else if (!loading && reclamoParam && reclamoParam !== appliedReclamo) {
+    setAppliedReclamo(reclamoParam)
+    const claim = claims.find((item) => item.id === reclamoParam)
+    if (!claim) {
+      setLinkNotice('No encontramos ese reclamo')
+      setHighlightId(null)
+    } else {
+      setLinkNotice(null)
+      setQuery('')
+      setSeller('todos')
+      setPeriod('todos')
+      if (claim.status === 'entregado') setTab('finalizados')
+      else if (claim.status === 'cancelado') setTab('cancelados')
+      else setTab('reclamos')
+      setHighlightId(claim.id)
+    }
+  }
+
+  useEffect(() => {
+    if (!reclamoParam || loading) return
+    if (appliedReclamo !== reclamoParam) return
+    setSearchParams({}, { replace: true })
+  }, [reclamoParam, appliedReclamo, loading, setSearchParams])
 
   const needle = query.trim().toLowerCase()
   const listed = useMemo(() => {
@@ -1318,6 +1356,15 @@ export function PostVenta() {
         <h1>Post Venta</h1>
         <p>Cargá y seguí los reclamos de clientes</p>
       </header>
+
+      {linkNotice && (
+        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-[#fff4cc] px-4 py-2 text-sm text-lumi-ink">
+          <span>{linkNotice}</span>
+          <button type="button" className="shrink-0 font-medium" onClick={() => setLinkNotice(null)}>
+            Cerrar
+          </button>
+        </p>
+      )}
 
       {notice && (
         <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-[#fff4cc] px-4 py-2 text-sm text-lumi-ink">

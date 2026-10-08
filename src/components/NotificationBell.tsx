@@ -181,6 +181,10 @@ export function NotificationBell() {
       const ok = await markRead(item.id)
       if (!ok) return
     }
+    if (item.claimId) {
+      navigate(`/post-venta?reclamo=${encodeURIComponent(item.claimId)}`)
+      return
+    }
     if (item.orderId) navigate(`/pedidos/${encodeURIComponent(item.orderId)}`)
   }
 

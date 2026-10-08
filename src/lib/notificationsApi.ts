@@ -5,6 +5,7 @@ export type AppNotification = {
   to: string
   text: string
   orderId?: string
+  claimId?: string
   read: boolean
   createdAt: string
   channel: 'app' | 'whatsapp'
@@ -22,6 +23,8 @@ export function isNotification(value: unknown): value is AppNotification {
     typeof item.read === 'boolean' &&
     typeof item.createdAt === 'string' &&
     (item.channel === 'app' || item.channel === 'whatsapp') &&
+    (item.orderId === undefined || typeof item.orderId === 'string') &&
+    (item.claimId === undefined || typeof item.claimId === 'string') &&
     (item.phone === undefined || typeof item.phone === 'string') &&
     (item.status === undefined || item.status === 'pendiente' || item.status === 'enviado')
   )
