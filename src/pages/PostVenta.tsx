@@ -731,45 +731,46 @@ function ClaimStepper({ status }: { status: Exclude<ClaimStatus, 'cancelado'> })
 
   return (
     <div className="mt-3">
-      <div className="order-stepper order-stepper-full max-sm:hidden" aria-label={`Estado: ${currentLabel}`}>
-        <ol className="order-stepper-track">
-          {CLAIM_PROGRESS.map((step, index) => {
-            const state = claimStepState(index, currentIndex, finished)
-            return (
-              <li
-                key={step}
-                className={`order-step order-step-${state}`}
-                aria-current={state === 'current' ? 'step' : undefined}
-              >
-                {index > 0 && <span className="order-step-line" aria-hidden="true" />}
-                <span className="order-step-dot">{state === 'done' ? '✓' : ''}</span>
-                <span className="order-step-label">{CLAIM_STATUS_LABEL[step]}</span>
-              </li>
-            )
-          })}
-        </ol>
+      <div className="hidden sm:block">
+        <div className="order-stepper order-stepper-full" aria-label={`Estado: ${currentLabel}`}>
+          <ol className="order-stepper-track">
+            {CLAIM_PROGRESS.map((step, index) => {
+              const state = claimStepState(index, currentIndex, finished)
+              return (
+                <li
+                  key={step}
+                  className={`order-step order-step-${state}`}
+                  aria-current={state === 'current' ? 'step' : undefined}
+                >
+                  {index > 0 && <span className="order-step-line" aria-hidden="true" />}
+                  <span className="order-step-dot">{state === 'done' ? '✓' : ''}</span>
+                  <span className="order-step-label">{CLAIM_STATUS_LABEL[step]}</span>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
       </div>
-      <div
-        className="order-stepper order-stepper-compact sm:hidden"
-        aria-label={`Estado: ${currentLabel}`}
-      >
-        <ol className="order-stepper-track">
-          {CLAIM_PROGRESS.map((step, index) => {
-            const state = claimStepState(index, currentIndex, finished)
-            return (
-              <li
-                key={step}
-                className={`order-step order-step-${state}`}
-                aria-current={state === 'current' ? 'step' : undefined}
-              >
-                <span className="order-step-dot">{state === 'done' ? '✓' : ''}</span>
-              </li>
-            )
-          })}
-        </ol>
-        <span className="order-stepper-now">
-          Paso {stepNumber} de 6 · {currentLabel}
-        </span>
+      <div className="sm:hidden">
+        <div className="order-stepper order-stepper-compact" aria-label={`Estado: ${currentLabel}`}>
+          <ol className="order-stepper-track">
+            {CLAIM_PROGRESS.map((step, index) => {
+              const state = claimStepState(index, currentIndex, finished)
+              return (
+                <li
+                  key={step}
+                  className={`order-step order-step-${state}`}
+                  aria-current={state === 'current' ? 'step' : undefined}
+                >
+                  <span className="order-step-dot">{state === 'done' ? '✓' : ''}</span>
+                </li>
+              )
+            })}
+          </ol>
+          <span className="order-stepper-now">
+            Paso {stepNumber} de 6 · {currentLabel}
+          </span>
+        </div>
       </div>
     </div>
   )

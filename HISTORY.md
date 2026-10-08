@@ -76,6 +76,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 24.1 | Ajustes de la API de reclamos | Hecho |
 | 24b | Post Venta contra la API de reclamos | Hecho |
 | 24b.1 | Que recargar reclamos no pise cambios ni fotos | Hecho |
+| 24b.2 | Post Venta: un solo stepper por tarjeta | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -192,6 +193,8 @@ El Brief 24.1 sube el tope del body de `/api/claims` a 12 MB (para que 8 MB de a
 El Brief 24b saca los reclamos de localStorage: Post Venta usa `/api/claims` (alta, listado, estado, notas y fotos a demanda). Si el server está vacío y quedan reclamos en el navegador, ofrece subirlos en lotes (máx. 200 y bajo 10 MB) o descartarlos.
 
 El Brief 24b.1 fusiona el listado con lo que ya hay en pantalla: conserva fotos y adjuntos ya cargados, y si hubo un alta, cambio de estado o nota mientras llegaba la respuesta, no aplica ese listado y vuelve a pedirlo una vez.
+
+El Brief 24b.2 deja un solo indicador de avance en cada tarjeta de Post Venta: stepper grande en compu y la versión compacta en celular.
 
 ## Pendientes
 
