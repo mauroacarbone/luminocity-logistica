@@ -9,6 +9,7 @@ import { checkDatabase, ensureSchema } from './db/store.js'
 import { driversRouter } from './drivers.js'
 import { notificationsRouter } from './notifications.js'
 import { ordersRouter } from './orders.js'
+import { claimsRouter } from './claims.js'
 import { pickingRouter } from './picking.js'
 import { routeSheetsRouter } from './routeSheets.js'
 import { usersRouter } from './usersRoute.js'
@@ -43,11 +44,13 @@ const app = express()
 app.set('trust proxy', 1)
 const jsonLarge = express.json({ limit: '10mb' })
 const jsonPicking = express.json({ limit: '2mb' })
+const jsonClaims = express.json({ limit: '9mb' })
 const jsonLocation = express.json({ limit: '2kb' })
 // El front llama a /api por el proxy de Vite, así que no hace falta CORS.
 // Adjuntos del pedido van en el JSON (data URL, tope 2 MB de archivo).
 // 10mb alcanza para el base64 y el resto de los campos.
 // El picking importa muchas filas: tope 2 MB.
+// Los reclamos llevan fotos en data URL: tope 9 MB.
 // La ubicación del chofer es chica: 2kb.
 app.use((req, res, next) => {
   if (req.method === 'POST' && req.path === '/api/drivers/location') {
@@ -57,6 +60,10 @@ app.use((req, res, next) => {
   const lowerPath = String(req.path ?? '').toLowerCase()
   if (lowerPath === '/api/picking' || lowerPath.startsWith('/api/picking/')) {
     jsonPicking(req, res, next)
+    return
+  }
+  if (lowerPath === '/api/claims' || lowerPath.startsWith('/api/claims/')) {
+    jsonClaims(req, res, next)
     return
   }
   jsonLarge(req, res, next)
@@ -69,7 +76,9 @@ app.use((error, req, res, next) => {
         ? 'La ubicación es demasiado grande.'
         : lowerPath === '/api/picking' || lowerPath.startsWith('/api/picking/')
           ? 'La importación es demasiado grande. Partí el archivo.'
-          : 'El pedido es demasiado grande. Probá un adjunto más chico.'
+          : lowerPath === '/api/claims' || lowerPath.startsWith('/api/claims/')
+            ? 'El reclamo es demasiado grande. Probá con menos fotos o archivos más livianos.'
+            : 'El pedido es demasiado grande. Probá un adjunto más chico.'
     res.status(413).json({ message })
     return
   }
@@ -94,6 +103,7 @@ app.use('/api/authorizations', authorizationsRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/orders', ordersRouter)
 app.use('/api/picking', pickingRouter)
+app.use('/api/claims', claimsRouter)
 app.use('/api/route-sheets', routeSheetsRouter)
 app.use('/api/drivers', driversRouter)
 app.use('/api', (_req, res) => {
