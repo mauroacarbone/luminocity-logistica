@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -71,6 +72,28 @@ function upsertClaim(list: Claim[], claim: Claim) {
   return next
 }
 
+function hasFileDataUrl(claim: Claim) {
+  return Boolean(claim.photos?.some((photo) => photo.dataUrl) || claim.attachment?.dataUrl)
+}
+
+function mergeListedClaim(previous: Claim | undefined, row: Claim): Claim {
+  if (!previous) return row
+  const next = { ...row }
+  const rowHasPhotos = Boolean(row.photos?.some((photo) => photo.dataUrl))
+  if (!rowHasPhotos && previous.photos?.some((photo) => photo.dataUrl)) {
+    next.photos = previous.photos
+  }
+  if (!row.attachment?.dataUrl && previous.attachment?.dataUrl) {
+    next.attachment = previous.attachment
+  }
+  return next
+}
+
+function mergeClaimsList(previous: Claim[], rows: Claim[]) {
+  const prevById = new Map(previous.map((claim) => [claim.id, claim]))
+  return rows.map((row) => mergeListedClaim(prevById.get(row.id), row))
+}
+
 function readLegacy() {
   return loadList(CLAIMS_KEY, isClaim).items
 }
@@ -117,6 +140,8 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
   const [legacyOffer, setLegacyOffer] = useState<Claim[] | null>(null)
   const [legacyShown, setLegacyShown] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const localChanges = useRef(0)
+  const loadGeneration = useRef(0)
   const userId = user?.id ?? null
   const canUse = Boolean(user && CLAIMS_ROLES.has(user.role))
   const trackKey = canUse ? userId : null
@@ -140,11 +165,34 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     setAttempt((value) => value + 1)
   }, [])
 
+  function bumpLocalChange() {
+    localChanges.current += 1
+  }
+
+  useEffect(() => {
+    localChanges.current = 0
+    loadGeneration.current += 1
+  }, [trackKey])
+
   useEffect(() => {
     if (!trackKey) return
     let cancelled = false
-    void listClaims().then((result) => {
-      if (cancelled) return
+    const loadId = loadGeneration.current + 1
+    loadGeneration.current = loadId
+
+    async function applyRows(rows: Claim[]) {
+      setClaims((previous) => mergeClaimsList(previous, rows))
+      setLoadStatus('ready')
+      if (!legacyShown && rows.length === 0) {
+        const legacy = readLegacy()
+        if (legacy.length > 0) setLegacyOffer(legacy)
+      }
+    }
+
+    async function fetchList(isRetry: boolean) {
+      const changesAtStart = localChanges.current
+      const result = await listClaims()
+      if (cancelled || loadId !== loadGeneration.current) return
       if (!result.ok) {
         if (result.status === 401) {
           logout()
@@ -162,13 +210,18 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
         setLoadStatus('error')
         return
       }
-      setClaims(rows)
-      setLoadStatus('ready')
-      if (!legacyShown && rows.length === 0) {
-        const legacy = readLegacy()
-        if (legacy.length > 0) setLegacyOffer(legacy)
+      if (localChanges.current !== changesAtStart) {
+        if (!isRetry) {
+          await fetchList(true)
+          return
+        }
+        setLoadStatus('ready')
+        return
       }
-    })
+      await applyRows(rows)
+    }
+
+    void fetchList(false)
     return () => {
       cancelled = true
     }
@@ -193,6 +246,7 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     }
     const claim = asClaim(result)
     if (!claim) return { ok: false, message: 'No se pudo guardar el reclamo.' }
+    bumpLocalChange()
     setClaims((list) => upsertClaim(list, claim))
     return { ok: true, id: claim.id }
   }
@@ -205,6 +259,7 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     }
     const claim = asClaim(result)
     if (!claim) return { ok: false, message: 'No se pudo cambiar el estado del reclamo.' }
+    bumpLocalChange()
     setClaims((list) => upsertClaim(list, claim))
     return { ok: true, id: claim.id }
   }
@@ -219,6 +274,7 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     }
     const claim = asClaim(result)
     if (!claim) return { ok: false, message: 'No se pudo guardar la nota.' }
+    bumpLocalChange()
     setClaims((list) => upsertClaim(list, claim))
     return { ok: true, id: claim.id }
   }
@@ -227,10 +283,7 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     id: string,
   ): Promise<{ ok: true; id: string; claim: Claim } | { ok: false; message: string }> {
     const current = claims.find((item) => item.id === id)
-    if (
-      current &&
-      (current.photos?.some((photo) => photo.dataUrl) || current.attachment?.dataUrl)
-    ) {
+    if (current && hasFileDataUrl(current)) {
       return { ok: true, id, claim: current }
     }
     const result = await getClaim(id)

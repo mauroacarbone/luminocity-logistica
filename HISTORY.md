@@ -75,6 +75,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 24 | API de reclamos (Post Venta) en el servidor | Hecho |
 | 24.1 | Ajustes de la API de reclamos | Hecho |
 | 24b | Post Venta contra la API de reclamos | Hecho |
+| 24b.1 | Que recargar reclamos no pise cambios ni fotos | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -189,6 +190,8 @@ El Brief 24 guarda los reclamos en el server (`/api/claims`, JSON o Postgres). A
 El Brief 24.1 sube el tope del body de `/api/claims` a 12 MB (para que 8 MB de archivos en base64 no den 413) y, al importar, descarta el `by` de los eventos: quedan sin autor y el reclamo guarda `importedBy`.
 
 El Brief 24b saca los reclamos de localStorage: Post Venta usa `/api/claims` (alta, listado, estado, notas y fotos a demanda). Si el server está vacío y quedan reclamos en el navegador, ofrece subirlos en lotes (máx. 200 y bajo 10 MB) o descartarlos.
+
+El Brief 24b.1 fusiona el listado con lo que ya hay en pantalla: conserva fotos y adjuntos ya cargados, y si hubo un alta, cambio de estado o nota mientras llegaba la respuesta, no aplica ese listado y vuelve a pedirlo una vez.
 
 ## Pendientes
 
