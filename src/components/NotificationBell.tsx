@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ServerDown, Spinner } from './LoadState'
+import { NotificationToast } from './NotificationToast'
 import { confirm, error as showError, success } from '../lib/alerts'
 import { namesMatch } from '../lib/access'
 import { isSession, type Session } from '../lib/authStore'
+import { loadSeenIds, rememberSeenIds } from '../lib/notifSeen'
 import {
   isNotification,
   listNotifications,
@@ -50,7 +52,9 @@ export function NotificationBell() {
   const [loading, setLoading] = useState(true)
   const [attempt, setAttempt] = useState(0)
   const [sending, setSending] = useState('')
+  const [toastItems, setToastItems] = useState<AppNotification[] | null>(null)
   const canSend = user?.role === 'encargado_deposito' || user?.role === 'admin'
+  const userId = user?.id
 
   useEffect(() => {
     let cancelled = false
@@ -70,6 +74,17 @@ export function NotificationBell() {
       }
       setError('')
       setItems(result.data)
+      if (!userId) return
+      const seen = new Set(loadSeenIds(userId))
+      const fresh = result.data.filter(
+        (item) => item.channel === 'app' && !item.read && !seen.has(item.id),
+      )
+      if (fresh.length === 0) return
+      rememberSeenIds(
+        userId,
+        fresh.map((item) => item.id),
+      )
+      setToastItems(fresh)
     }
 
     void load()
@@ -78,7 +93,7 @@ export function NotificationBell() {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [logout, attempt])
+  }, [logout, attempt, userId])
 
   useEffect(() => {
     if (!canSend) return
@@ -161,11 +176,26 @@ export function NotificationBell() {
 
   async function openAppNotification(item: AppNotification) {
     setOpen(false)
+    setToastItems(null)
     if (!item.read) {
       const ok = await markRead(item.id)
       if (!ok) return
     }
     if (item.orderId) navigate(`/pedidos/${encodeURIComponent(item.orderId)}`)
+  }
+
+  const closeToast = useCallback(() => {
+    setToastItems(null)
+  }, [])
+
+  function onToastAction() {
+    if (!toastItems || toastItems.length === 0) return
+    if (toastItems.length === 1) {
+      void openAppNotification(toastItems[0])
+      return
+    }
+    setToastItems(null)
+    setOpen(true)
   }
 
   async function sendWhatsapp(item: AppNotification) {
@@ -218,6 +248,19 @@ export function NotificationBell() {
 
   return (
     <div className="relative" ref={rootRef}>
+      {toastItems && toastItems.length > 0 && (
+        <NotificationToast
+          key={toastItems.map((item) => item.id).join(',')}
+          text={
+            toastItems.length === 1
+              ? toastItems[0].text
+              : `Tenés ${toastItems.length} notificaciones nuevas`
+          }
+          actionLabel={toastItems.length === 1 ? 'Ver notificación' : 'Ver'}
+          onAction={onToastAction}
+          onClose={closeToast}
+        />
+      )}
       <button
         type="button"
         className="relative grid h-9 w-9 place-items-center rounded-full hover:bg-white"

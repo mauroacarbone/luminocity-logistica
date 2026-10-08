@@ -77,6 +77,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 24b | Post Venta contra la API de reclamos | Hecho |
 | 24b.1 | Que recargar reclamos no pise cambios ni fotos | Hecho |
 | 24b.2 | Post Venta: un solo stepper por tarjeta | Hecho |
+| 25 | Notificaciones que se cierran solas y aviso emergente | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -195,6 +196,8 @@ El Brief 24b saca los reclamos de localStorage: Post Venta usa `/api/claims` (al
 El Brief 24b.1 fusiona el listado con lo que ya hay en pantalla: conserva fotos y adjuntos ya cargados, y si hubo un alta, cambio de estado o nota mientras llegaba la respuesta, no aplica ese listado y vuelve a pedirlo una vez.
 
 El Brief 24b.2 deja un solo indicador de avance en cada tarjeta de Post Venta: stepper grande en compu y la versión compacta en celular.
+
+El Brief 25 cierra el panel de avisos al tocar uno (y navega al pedido si hay `orderId`), al clic afuera o con Escape. En celular el panel queda fijo bajo la campana. Un aviso emergente muestra las notificaciones app nuevas una sola vez (ids en `luminocity.notifSeen.<userId>`).
 
 ## Pendientes
 
