@@ -79,6 +79,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 24b.2 | Post Venta: un solo stepper por tarjeta | Hecho |
 | 25 | Notificaciones que se cierran solas y aviso emergente | Hecho |
 | 24c | Reclamos: autor del cambio y aviso al vendedor | Hecho |
+| 26a | Avanzar pedidos desde el Panel operativo | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -201,6 +202,8 @@ El Brief 24b.2 deja un solo indicador de avance en cada tarjeta de Post Venta: s
 El Brief 25 cierra el panel de avisos al tocar uno (y navega al pedido si hay `orderId`), al clic afuera o con Escape. En celular el panel queda fijo bajo la campana. Un aviso emergente muestra las notificaciones app nuevas una sola vez (ids en `luminocity.notifSeen.<userId>`).
 
 El Brief 24c deja al vendedor ver los reclamos cargados a su `sellerName`, no solo los que creó él. Cuando el encargado o el admin cambia el estado o agrega una nota, el vendedor dueño recibe un aviso in-app con `claimId`; al tocarlo abre Post Venta con el reclamo resaltado. Cada cambio y cada nota muestran quién lo hizo si el evento trae `by.userName`.
+
+El Brief 26a pone en el Panel operativo el stepper y el botón de siguiente paso (`OrderFlowButtons`, `via=panel`) en cada tarjeta y en la tabla. Carga las hojas de ruta de las fechas visibles para `sheetPlanned` y muestra el chip de hoja o el link al Planificador; si fallan las hojas, el Panel sigue igual con un aviso chico.
 
 ## Pendientes
 

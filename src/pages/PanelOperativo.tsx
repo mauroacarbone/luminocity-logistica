@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -11,9 +11,10 @@ import {
   type Order,
   type OrderStatus,
 } from '../data/orders'
-import { canEditOrder } from '../lib/access'
+import { canEditOrder, canOpen } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
 import { placeLine } from '../lib/place'
+import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
 import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -34,12 +35,74 @@ function countFor(list: Order[], key: 'total' | OrderStatus) {
   return ordersByStatus(list, key).length
 }
 
-function OrderCard({ order }: { order: Order }) {
+function sheetForOrder(order: Order, sheets: RouteSheet[]) {
+  if (!order.routeId) return undefined
+  return sheets.find((sheet) => sheet.id === order.routeId)
+}
+
+function withSheetFlag(order: Order, sheets: RouteSheet[]): Order {
+  if (!order.routeId) return { ...order, sheetPlanned: false }
+  const sheet = sheetForOrder(order, sheets)
+  if (!sheet) return order
+  return { ...order, sheetPlanned: sheet.status === 'planificada' }
+}
+
+function SheetLinks({
+  order,
+  sheets,
+  canPlan,
+}: {
+  order: Order
+  sheets: RouteSheet[]
+  canPlan: boolean
+}) {
+  const sheet = sheetForOrder(order, sheets)
+  if (sheet) {
+    const driver = order.driverName?.trim() || 'chofer'
+    const slot = sheet.slot || order.timeWindow || 'sin franja'
+    return (
+      <p className="order-zone mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="inline-flex rounded-full bg-[#f7f4ea] px-2.5 py-0.5 text-xs font-medium text-lumi-ink">
+          En hoja de {driver} · {slot}
+        </span>
+        <Link className="text-xs text-lumi-ink underline" to="/rutas">
+          Ver hoja
+        </Link>
+      </p>
+    )
+  }
+  if (
+    canPlan &&
+    order.status === 'asignado' &&
+    order.dispatchType !== 'correo' &&
+    !order.routeId
+  ) {
+    return (
+      <p className="order-zone mt-2">
+        <Link className="text-xs text-lumi-muted underline hover:text-lumi-ink" to="/rutas">
+          Armar hoja en el Planificador
+        </Link>
+      </p>
+    )
+  }
+  return null
+}
+
+function OrderCard({
+  order,
+  sheets,
+  canPlan,
+}: {
+  order: Order
+  sheets: RouteSheet[]
+  canPlan: boolean
+}) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { transitionOrder } = useOrders()
   const [busy, setBusy] = useState(false)
   const waiting = pendingEdit(order)
+  const flowOrder = withSheetFlag(order, sheets)
 
   return (
     <article className="order-card">
@@ -86,6 +149,7 @@ function OrderCard({ order }: { order: Order }) {
       )}
       {order.transporter && <p className="order-zone">Transportista: {order.transporter}</p>}
       {order.packages != null && <p className="order-zone">Bultos: {order.packages}</p>}
+      <SheetLinks order={order} sheets={sheets} canPlan={canPlan} />
       <p className="order-meta">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.8" />
@@ -103,7 +167,7 @@ function OrderCard({ order }: { order: Order }) {
       {user && (
         <div className="mt-3">
           <OrderFlowButtons
-            order={order}
+            order={flowOrder}
             role={user.role}
             via="panel"
             busy={busy}
@@ -131,17 +195,27 @@ function OrderCard({ order }: { order: Order }) {
   )
 }
 
-function TableActions({ order }: { order: Order }) {
+function TableActions({
+  order,
+  sheets,
+  canPlan,
+}: {
+  order: Order
+  sheets: RouteSheet[]
+  canPlan: boolean
+}) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { transitionOrder } = useOrders()
   const [busy, setBusy] = useState(false)
+  const flowOrder = withSheetFlag(order, sheets)
 
   return (
     <div className="flex flex-col items-start gap-1.5">
+      <SheetLinks order={order} sheets={sheets} canPlan={canPlan} />
       {user && (
         <OrderFlowButtons
-          order={order}
+          order={flowOrder}
           role={user.role}
           via="panel"
           busy={busy}
@@ -169,9 +243,52 @@ function TableActions({ order }: { order: Order }) {
 }
 
 export function PanelOperativo() {
+  const { user } = useAuth()
   const { orders } = useOrders()
   const [view, setView] = useState<View>('kanban')
   const [statusFilter, setStatusFilter] = useState<OrderStatus | null>(null)
+  const [sheets, setSheets] = useState<RouteSheet[]>([])
+  const [sheetsError, setSheetsError] = useState(false)
+
+  const canPlan = Boolean(user && canOpen(user.role, '/rutas'))
+  const visibleOrders = statusFilter ? ordersByStatus(orders, statusFilter) : orders
+  const columns = statusFilter ? [statusFilter] : STATUS_ORDER
+
+  const datesKey = useMemo(() => {
+    const dates = [...new Set(visibleOrders.map((order) => order.deliveryDate).filter(Boolean))]
+    dates.sort()
+    return dates.join('|')
+  }, [visibleOrders])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadSheets() {
+      const dates = datesKey ? datesKey.split('|') : []
+      if (dates.length === 0) {
+        if (!cancelled) {
+          setSheets([])
+          setSheetsError(false)
+        }
+        return
+      }
+      const results = await Promise.all(dates.map((date) => listRouteSheets(date)))
+      if (cancelled) return
+      const failed = results.some((result) => !result.ok)
+      const merged: RouteSheet[] = []
+      for (const result of results) {
+        if (!result.ok) continue
+        for (const sheet of result.data) {
+          if (!merged.some((item) => item.id === sheet.id)) merged.push(sheet)
+        }
+      }
+      setSheets(merged)
+      setSheetsError(failed)
+    }
+    void loadSheets()
+    return () => {
+      cancelled = true
+    }
+  }, [datesKey])
 
   function selectSummary(key: 'total' | OrderStatus) {
     if (key === 'total') {
@@ -180,9 +297,6 @@ export function PanelOperativo() {
     }
     setStatusFilter((current) => (current === key ? null : key))
   }
-
-  const visibleOrders = statusFilter ? ordersByStatus(orders, statusFilter) : orders
-  const columns = statusFilter ? [statusFilter] : STATUS_ORDER
 
   return (
     <section className="page">
@@ -220,6 +334,10 @@ export function PanelOperativo() {
         </div>
       </header>
 
+      {sheetsError && (
+        <p className="mt-3 text-sm text-lumi-muted">No se pudieron cargar las hojas de ruta</p>
+      )}
+
       <div className="stats">
         {SUMMARY.map((item) => {
           const active = item.key === 'total' ? statusFilter === null : statusFilter === item.key
@@ -254,7 +372,7 @@ export function PanelOperativo() {
                   ) : (
                     <div className="column-cards">
                       {column.map((order) => (
-                        <OrderCard key={order.id} order={order} />
+                        <OrderCard key={order.id} order={order} sheets={sheets} canPlan={canPlan} />
                       ))}
                     </div>
                   )}
@@ -314,7 +432,7 @@ export function PanelOperativo() {
                     <td>{order.loadedAt}</td>
                     <td>{formatIsoDate(order.deliveryDate)}</td>
                     <td>
-                      <TableActions order={order} />
+                      <TableActions order={order} sheets={sheets} canPlan={canPlan} />
                     </td>
                   </tr>
                 ))
