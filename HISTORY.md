@@ -73,6 +73,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 22e.1 | Estado final del botón de picking | Hecho |
 | 24a | Post Venta: estado destacado + texto de Mis entregas | Hecho |
 | 24 | API de reclamos (Post Venta) en el servidor | Hecho |
+| 24.1 | Ajustes de la API de reclamos | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -183,6 +184,8 @@ El Brief 22e.1 deja el botón de picking según el estado real: chip "Preparado"
 El Brief 24a destaca el estado en cada tarjeta de Post Venta: pastilla grande, stepper de avance (o Cancelado), botón "Pasar a…" y "Volver a…" con confirmación, y el menú de salto como "Cambiar a otro estado" (sin Cancelado). En Mis entregas, si la pestaña tiene pedidos pero están todos en la hoja, el vacío dice que están arriba.
 
 El Brief 24 guarda los reclamos en el server (`/api/claims`, JSON o Postgres). Alta, listado sin dataUrl, detalle con archivos, cambio de estado, notas e importación de hasta 200. El vendedor solo ve los suyos; encargado y admin ven todos. El cliente sigue en localStorage hasta el 24b.
+
+El Brief 24.1 sube el tope del body de `/api/claims` a 12 MB (para que 8 MB de archivos en base64 no den 413) y, al importar, descarta el `by` de los eventos: quedan sin autor y el reclamo guarda `importedBy`.
 
 ## Pendientes
 

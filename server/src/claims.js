@@ -270,13 +270,6 @@ function readImportEvents(value) {
       if (note.length > NOTE_MAX) return fail(`La nota puede tener hasta ${NOTE_MAX} caracteres.`)
       event.note = note
     }
-    if (
-      isRecord(item.by) &&
-      typeof item.by.userId === 'string' &&
-      typeof item.by.userName === 'string'
-    ) {
-      event.by = { userId: item.by.userId, userName: item.by.userName }
-    }
     events.push(event)
   }
   return { value: events }
