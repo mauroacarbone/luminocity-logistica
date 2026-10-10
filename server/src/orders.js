@@ -306,6 +306,9 @@ function patchOrder(id, body, user) {
     if (index < 0) return fail('No existe ese pedido.', 404)
     const current = orders[index]
     if (!canSeeOrder(user, current)) return fail('No tenés permiso para modificar este pedido.', 403)
+    if (current.status === 'entregado' && !deliveredTrackingOnly(body, user)) {
+      return fail('No se puede editar un pedido entregado.', 409)
+    }
     if (!hasChange(body)) return fail('No hay cambios para guardar.')
     const parsed = readOrderFields(body, current)
     if (parsed.error) return parsed
@@ -532,6 +535,9 @@ function reviewEdit(orderId, editId, body, user) {
     const pending = edits[editIndex]
     if (pending.status !== 'pendiente') {
       return fail('Esa edición ya no está esperando confirmación.')
+    }
+    if (decision === 'aplicada' && current.status === 'entregado') {
+      return fail('No se puede editar un pedido entregado.', 409)
     }
     if (decision === 'aplicada' && current.status !== 'preparado') {
       return fail('El pedido ya avanzó, no se puede aplicar el cambio.', 409)
@@ -775,6 +781,15 @@ function hasChange(body) {
     ...PLACE_FIELDS.map(([key]) => key),
   ]
   return keys.some((key) => Object.prototype.hasOwnProperty.call(body, key))
+}
+
+/** Encargado/admin pueden PATCH solo trackingNumber de un pedido entregado. */
+function deliveredTrackingOnly(body, user) {
+  if (user.role !== 'encargado_deposito' && user.role !== 'admin') return false
+  if (!isRecord(body)) return false
+  const meta = new Set(['via', 'reason', 'override'])
+  const fieldKeys = Object.keys(body).filter((key) => !meta.has(key))
+  return fieldKeys.length === 1 && fieldKeys[0] === 'trackingNumber'
 }
 
 function nextId(orders) {
