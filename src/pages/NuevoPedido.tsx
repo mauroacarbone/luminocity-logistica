@@ -576,8 +576,48 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     return ', Buenos Aires, Argentina'
   }
 
-  function withAttemptTimeout(signal: AbortSignal) {
-    return AbortSignal.any([signal, AbortSignal.timeout(10000)])
+  function withAttemptTimeout(signal: AbortSignal): { signal: AbortSignal; dispose: () => void } {
+    const timeoutMs = 10000
+
+    function timeoutSignal(): { signal: AbortSignal; dispose: () => void } {
+      if (typeof AbortSignal.timeout === 'function') {
+        return { signal: AbortSignal.timeout(timeoutMs), dispose: () => {} }
+      }
+      const controller = new AbortController()
+      const timer = window.setTimeout(() => controller.abort(), timeoutMs)
+      return {
+        signal: controller.signal,
+        dispose: () => window.clearTimeout(timer),
+      }
+    }
+
+    if (typeof AbortSignal.any === 'function') {
+      const timed = timeoutSignal()
+      return {
+        signal: AbortSignal.any([signal, timed.signal]),
+        dispose: timed.dispose,
+      }
+    }
+
+    if (signal.aborted) {
+      return { signal, dispose: () => {} }
+    }
+
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs)
+    const onParentAbort = () => {
+      window.clearTimeout(timer)
+      signal.removeEventListener('abort', onParentAbort)
+      if (!controller.signal.aborted) controller.abort()
+    }
+    signal.addEventListener('abort', onParentAbort)
+    return {
+      signal: controller.signal,
+      dispose: () => {
+        window.clearTimeout(timer)
+        signal.removeEventListener('abort', onParentAbort)
+      },
+    }
   }
 
   async function tryLocateQuery(
@@ -585,11 +625,15 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     signal: AbortSignal,
     options?: { photonOnly?: boolean; restoreNumber?: string },
   ) {
-    const attemptSignal = withAttemptTimeout(signal)
-    const located = options?.photonOnly
-      ? await locateAddressPhoton(query, attemptSignal)
-      : await locateAddress(query, attemptSignal)
-    return options?.restoreNumber ? withHouseNumber(located, options.restoreNumber) : located
+    const attempt = withAttemptTimeout(signal)
+    try {
+      const located = options?.photonOnly
+        ? await locateAddressPhoton(query, attempt.signal)
+        : await locateAddress(query, attempt.signal)
+      return options?.restoreNumber ? withHouseNumber(located, options.restoreNumber) : located
+    } finally {
+      attempt.dispose()
+    }
   }
 
   function enterManualLocation() {
