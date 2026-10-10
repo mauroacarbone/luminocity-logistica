@@ -84,6 +84,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 26a | Avanzar pedidos desde el Panel operativo | Hecho |
 | 26a.1 | Hojas de ruta del Panel solo para quien puede verlas | Hecho |
 | 26b | Panel operativo con filtro por fecha y lista para celular | Hecho |
+| 26b.1 | Panel sin parpadeo en celular y hojas de pedidos atrasados | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -216,6 +217,8 @@ El Brief 26a pone en el Panel operativo el stepper y el botón de siguiente paso
 El Brief 26a.1 pide las hojas de ruta del Panel solo si el rol puede abrir `/rutas` (encargado y admin). Depósito y vendedor no llaman al endpoint, no ven el aviso ni los chips/links de hoja, y `sheetPlanned` queda en false. Un 403 tampoco dispara el aviso; solo errores reales (red, 500).
 
 El Brief 26b filtra el Panel por fecha de entrega (Atrasados, Hoy, Mañana, Esta semana, Todos) en la URL, con atrasados visibles también en Hoy y Esta semana. En celular, Tablero sin filtro de estado pasa a la lista "Para avanzar" y un desplegable de en viaje y entregados.
+
+El Brief 26b.1 pide las hojas de todas las fechas visibles (también las atrasadas en Hoy y Esta semana) y arranca `narrow` con matchMedia para no parpadear las columnas en celular.
 
 ## Pendientes
 

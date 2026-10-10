@@ -337,7 +337,9 @@ export function PanelOperativo() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | null>(null)
   const [sheets, setSheets] = useState<RouteSheet[]>([])
   const [sheetsError, setSheetsError] = useState(false)
-  const [narrow, setNarrow] = useState(false)
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 800px)').matches,
+  )
   const [showDone, setShowDone] = useState(false)
 
   const dateFilter = parseFecha(searchParams.get('fecha'))
