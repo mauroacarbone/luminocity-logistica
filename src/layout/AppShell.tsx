@@ -5,7 +5,7 @@ import { NotificationBell } from '../components/NotificationBell'
 import { BRAND } from '../config/brand'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
-import { Sidebar } from './Sidebar'
+import { MobileNav } from './MobileNav'
 import { TopNav } from './TopNav'
 
 const MENU_MQ = '(max-width: 1024px)'
@@ -51,6 +51,15 @@ export function AppShell() {
     setMenuPath(location.pathname)
     if (menuOpen) setMenuOpen(false)
   }
+
+  useEffect(() => {
+    // 32e: clave obsoleta
+    try {
+      localStorage.removeItem('luminocity.sidebarGroups')
+    } catch {
+      /* ignore */
+    }
+  }, [])
 
   useEffect(() => {
     const media = window.matchMedia(MENU_MQ)
@@ -126,7 +135,7 @@ export function AppShell() {
             className="topbar-menu-btn"
             aria-label="Abrir menú"
             aria-expanded={menuOpen}
-            aria-controls="app-sidebar"
+            aria-controls="app-mobile-nav"
             onClick={() => setMenuOpen((open) => !open)}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -143,6 +152,25 @@ export function AppShell() {
             <img src={BRAND.logoUrl} alt="" width={28} height={28} />
             <span>{BRAND.name}</span>
           </div>
+          <button
+            type="button"
+            className="topbar-search-btn"
+            aria-label="Buscar"
+            onClick={() => {
+              /* 32e punto 3: CommandPalette */
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+              <path
+                d="M16 16l4 4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
           {user ? <NotificationBell /> : <span className="topbar-spacer" />}
         </header>
       ) : (
@@ -152,23 +180,20 @@ export function AppShell() {
       {compact ? (
         <>
           <div
-            className={menuOpen ? 'sidebar-backdrop is-open' : 'sidebar-backdrop'}
+            className={menuOpen ? 'mobile-nav-backdrop is-open' : 'mobile-nav-backdrop'}
             aria-hidden={!menuOpen}
             onClick={closeMenu}
           />
 
           <div
             ref={drawerRef}
-            className={menuOpen ? 'sidebar-shell is-open' : 'sidebar-shell'}
+            className={menuOpen ? 'mobile-nav-shell is-open' : 'mobile-nav-shell'}
             inert={drawerClosed ? true : undefined}
             {...(drawerDialog
               ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Menú' }
               : {})}
           >
-            <Sidebar
-              onClose={closeMenu}
-              onNavigate={closeMenu}
-            />
+            <MobileNav onClose={closeMenu} onNavigate={closeMenu} />
           </div>
         </>
       ) : null}
