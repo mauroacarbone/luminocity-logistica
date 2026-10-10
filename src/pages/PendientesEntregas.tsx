@@ -4,6 +4,7 @@ import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
+import { Badge, Button, EmptyState, statusTone } from '../components/ui'
 import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL, isDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
@@ -1305,30 +1306,32 @@ export function PendientesEntregas() {
           </div>
 
           {filteredOpenOrders.length === 0 && orphanGroups.length === 0 ? (
-            <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
-              {openOrders.length === 0 && orphanLines.length === 0
-                ? 'No hay pedidos pendientes'
-                : 'Ningún pedido coincide con el filtro.'}
-            </div>
+            openOrders.length === 0 && orphanLines.length === 0 ? (
+              <div className="mt-4">
+                <EmptyState title="No hay pedidos pendientes" />
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+                Ningún pedido coincide con el filtro.
+              </div>
+            )
           ) : (
             <div className="mt-4 flex flex-col gap-3">
-              {filteredOpenOrders.length > 0 && lines.length === 0 && canWrite && (
-                <div className="rounded-2xl border border-dashed border-lumi-line bg-white px-4 py-3 text-sm shadow-sm">
-                  <p className="text-lumi-muted">Todavía no se importó el Excel de picking</p>
-                  <button
-                    type="button"
-                    className="mt-2 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
-                    disabled={busy}
-                    onClick={() => fileRef.current?.click()}
-                  >
-                    Cargar Excel al Sheet
-                  </button>
-                </div>
-              )}
-              {filteredOpenOrders.length > 0 && lines.length === 0 && !canWrite && (
-                <p className="rounded-2xl border border-dashed border-lumi-line bg-white px-4 py-3 text-sm text-lumi-muted shadow-sm">
-                  Todavía no se importó el Excel de picking
-                </p>
+              {filteredOpenOrders.length > 0 && lines.length === 0 && (
+                <EmptyState
+                  title="Todavía no se importó el Excel de picking"
+                  action={
+                    canWrite ? (
+                      <Button
+                        variant="primary"
+                        disabled={busy}
+                        onClick={() => fileRef.current?.click()}
+                      >
+                        Cargar Excel al Sheet
+                      </Button>
+                    ) : undefined
+                  }
+                />
               )}
 
               {filteredOpenOrders.map((order) => {
@@ -1351,9 +1354,9 @@ export function PendientesEntregas() {
                             {order.id}
                           </Link>
                           <PriorityChip order={order} />
-                          <span className={`status-pill status-${order.status}`}>
+                          <Badge tone={statusTone(order.status)}>
                             {statusPillFor(order, order.status)}
-                          </span>
+                          </Badge>
                         </div>
                         <p className="mt-1 text-sm">
                           {order.client}

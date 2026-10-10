@@ -107,6 +107,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32a | Tokens de diseño y marca configurable | Hecho |
 | 32b | Nueva paleta clara y sidebar clara | Hecho |
 | 32b.1 | Colores de JS desde los tokens | Hecho |
+| 32c | Componentes base de UI | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -285,6 +286,8 @@ El Brief 32a unifica la paleta en tokens semánticos de `:root` / `@theme inline
 El Brief 32b aplica la paleta clara (neutros slate, amarillo de marca) y pasa la sidebar, el drawer y el topbar a fondo claro, con estados y radios nuevos.
 
 El Brief 32b.1 lee los colores de alerts, Leaflet y accentos desde los tokens CSS con `cssVar`.
+
+El Brief 32c agrega los componentes base en `src/components/ui/` (Button, Card, Badge, Field, Input, Select, Textarea, PageHeader, EmptyState) con tokens y foco accesible. Como prueba, PriorityChip usa Badge y Pendientes de Entregas muestra el estado y los vacíos con Badge y EmptyState.
 
 ## Pendientes
 
