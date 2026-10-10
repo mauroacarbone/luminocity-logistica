@@ -1,3 +1,5 @@
+import { BRAND } from '../config/brand'
+
 /** Arma un link wa.me. El número queda en 549 más 10 dígitos de área y número. */
 export function whatsappLink(phone: string, text: string) {
   const number = normalizeArWhatsapp(phone)
@@ -41,9 +43,9 @@ export function mapsLink(address: string) {
 }
 
 export function onTheWayText(client: string, orderId: string) {
-  return `Hola ${client}, soy el chofer de Luminocity. Tu pedido ${orderId} va en camino.`
+  return `Hola ${client}, soy el chofer de ${BRAND.name}. Tu pedido ${orderId} va en camino.`
 }
 
 export function pickupReadyText(client: string, orderId: string) {
-  return `Hola ${client}, tu pedido ${orderId} de Luminocity ya está listo para retirar por el local.`
+  return `Hola ${client}, tu pedido ${orderId} de ${BRAND.name} ya está listo para retirar por el local.`
 }

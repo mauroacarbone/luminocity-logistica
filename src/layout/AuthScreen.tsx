@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { BRAND } from '../config/brand'
 
 export function AuthBoot() {
   return (
@@ -25,8 +26,8 @@ export function AuthScreen({
         <div className="auth-brand">
           <img
             className="auth-logo"
-            src="/logo-luminocity.png"
-            alt="Luminocity"
+            src={BRAND.logoUrl}
+            alt={BRAND.name}
             width={96}
             height={96}
           />

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { NotificationBell } from '../components/NotificationBell'
+import { BRAND } from '../config/brand'
 import { ROLE_LABEL } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -139,8 +140,8 @@ export function AppShell() {
             </svg>
           </button>
           <div className="topbar-brand">
-            <img src="/logo-luminocity.png" alt="" width={28} height={28} />
-            <span>Luminocity</span>
+            <img src={BRAND.logoUrl} alt="" width={28} height={28} />
+            <span>{BRAND.name}</span>
           </div>
           {user ? <NotificationBell /> : <span className="topbar-spacer" />}
         </header>

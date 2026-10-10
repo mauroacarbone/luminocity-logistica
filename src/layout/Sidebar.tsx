@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { BRAND } from '../config/brand'
 import { menuPaths } from '../lib/access'
 import { ROLE_LABEL } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
@@ -231,12 +232,12 @@ export function Sidebar({ onClose, onNavigate }: SidebarProps) {
       <div className="brand">
         <img
           className="brand-logo"
-          src="/logo-luminocity.png"
-          alt="Luminocity"
+          src={BRAND.logoUrl}
+          alt={BRAND.name}
           width={28}
           height={28}
         />
-        <span className="brand-name">Luminocity</span>
+        <span className="brand-name">{BRAND.name}</span>
         {onClose ? (
           <button
             type="button"

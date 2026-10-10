@@ -4,6 +4,7 @@ import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
+import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL, isDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
 import { normalizeName } from '../lib/access'
@@ -302,7 +303,7 @@ function groupForOrder(order: Order, orderLines: PickingLine[]): PickingGroup {
 }
 
 function subtitle(group: PickingGroup) {
-  return [group.seller, 'Luminocity', group.date].filter(Boolean).join(' · ')
+  return [group.seller, BRAND.name, group.date].filter(Boolean).join(' · ')
 }
 
 function OrderLinkBlock({ link }: { link: InvoiceMatch }) {

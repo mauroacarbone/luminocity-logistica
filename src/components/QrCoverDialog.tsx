@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
+import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL } from '../data/catalog'
 import type { Order } from '../data/orders'
 import { placeLine } from '../lib/place'
@@ -73,7 +74,7 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
           aria-labelledby="cover-title"
           className="pointer-events-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-lg"
         >
-          <p className="text-sm font-semibold tracking-wide text-lumi-muted">Luminocity</p>
+          <p className="text-sm font-semibold tracking-wide text-lumi-muted">{BRAND.name}</p>
           <h2 id="cover-title" className="mt-1 text-2xl font-semibold">
             Carátula
           </h2>
