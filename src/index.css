@@ -59,6 +59,18 @@ p {
   min-height: 100vh;
 }
 
+.topbar {
+  display: none;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+.sidebar-shell {
+  flex: 0 0 auto;
+}
+
 .sidebar {
   width: 248px;
   flex: 0 0 248px;
@@ -78,6 +90,28 @@ p {
   align-items: center;
   gap: 10px;
   padding: 0 8px 12px;
+}
+
+.sidebar-close {
+  display: none;
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #f3f1ea;
+  cursor: pointer;
+}
+
+.sidebar-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sidebar-close:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .brand-logo {
@@ -1431,25 +1465,122 @@ p {
   }
 }
 
+@media (max-width: 1024px) {
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    height: 56px;
+    padding: 0 12px;
+    background: var(--sidebar);
+    color: #fff;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .topbar-menu-btn {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .topbar-menu-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .topbar-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .topbar-brand img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    flex: 0 0 28px;
+  }
+
+  .topbar-brand span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-spacer {
+    width: 40px;
+    flex: 0 0 40px;
+  }
+
+  .topbar .relative {
+    color: #f3f1ea;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .sidebar-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar-shell {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 50;
+    width: min(280px, 85vw);
+    height: 100%;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  .sidebar-shell.is-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-shell .sidebar {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    flex: none;
+  }
+
+  .sidebar-close {
+    display: grid;
+  }
+}
+
 @media (max-width: 800px) {
   .kanban.filtered {
     grid-template-columns: 1fr;
-  }
-
-  .app {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    width: 100%;
-    height: auto;
-    position: static;
-    overflow: visible;
-  }
-
-  .nav {
-    flex: none;
-    overflow: visible;
   }
 
   .main {
@@ -1504,6 +1635,9 @@ p {
 
 @media print {
   .sidebar,
+  .sidebar-shell,
+  .sidebar-backdrop,
+  .topbar,
   .no-print {
     display: none !important;
   }

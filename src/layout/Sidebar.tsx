@@ -169,12 +169,13 @@ function Icon({ name }: { name: NavItem['icon'] }) {
   )
 }
 
-function NavItemLink({ item }: { item: NavItem }) {
+function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   return (
     <NavLink
       to={item.to}
       end={'end' in item ? item.end : false}
       className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+      onClick={() => onNavigate?.()}
     >
       <Icon name={item.icon} />
       <span>{item.label}</span>
@@ -182,7 +183,12 @@ function NavItemLink({ item }: { item: NavItem }) {
   )
 }
 
-export function Sidebar() {
+type SidebarProps = {
+  onClose?: () => void
+  onNavigate?: () => void
+}
+
+export function Sidebar({ onClose, onNavigate }: SidebarProps) {
   const { user, logout } = useAuth()
   const location = useLocation()
   const initial = user?.name.trim().charAt(0).toUpperCase() || 'L'
@@ -221,7 +227,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" id="app-sidebar">
       <div className="brand">
         <img
           className="brand-logo"
@@ -231,11 +237,29 @@ export function Sidebar() {
           height={28}
         />
         <span className="brand-name">Luminocity</span>
+        {onClose ? (
+          <button
+            type="button"
+            className="sidebar-close"
+            aria-label="Cerrar menú"
+            onClick={onClose}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M6 6l12 12M18 6L6 18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        ) : null}
       </div>
 
       <nav className="nav" aria-label="Secciones">
         {standalone.map((item) => (
-          <NavItemLink key={item.to} item={item} />
+          <NavItemLink key={item.to} item={item} onNavigate={onNavigate} />
         ))}
 
         {groups.map((group) => {
@@ -263,7 +287,7 @@ export function Sidebar() {
               {open ? (
                 <div className="nav-group-items">
                   {group.items.map((item) => (
-                    <NavItemLink key={item.to} item={item} />
+                    <NavItemLink key={item.to} item={item} onNavigate={onNavigate} />
                   ))}
                 </div>
               ) : null}
