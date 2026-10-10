@@ -562,11 +562,6 @@ function canSendPickupNotice(user, order) {
   return false
 }
 
-function hasPickupNotice(order) {
-  const history = Array.isArray(order.history) ? order.history : []
-  return history.some((entry) => entry && entry.reason === PICKUP_NOTICE_REASON)
-}
-
 function recordPickupNotice(id, user) {
   return locked(async () => {
     const orders = await readOrders()
@@ -580,9 +575,6 @@ function recordPickupNotice(id, user) {
     if (!isPickup(current)) return fail('Solo se avisa un retiro por el local.', 400)
     if (current.status !== 'preparado') {
       return fail('Solo se avisa un pedido listo para retirar.', 409)
-    }
-    if (hasPickupNotice(current)) {
-      return fail('Este retiro ya fue avisado.', 409)
     }
     const at = new Date().toISOString()
     const history = Array.isArray(current.history)

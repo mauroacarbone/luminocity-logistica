@@ -372,17 +372,17 @@ function PickupCard({
             transition={transition}
             layout="stretch"
           />
-          {order.status === 'preparado' && !noticeAt && noticeUrl ? (
+          {order.status === 'preparado' && noticeUrl ? (
             <button
               type="button"
               className="min-h-11 w-full rounded-xl border border-lumi-line bg-white px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
               disabled={busy}
               onClick={() => void onNotice(noticeUrl)}
             >
-              Avisar al cliente
+              {noticeAt ? 'Volver a avisar' : 'Avisar al cliente'}
             </button>
           ) : null}
-          {order.status === 'preparado' && !noticeAt && !noticeUrl ? (
+          {order.status === 'preparado' && !noticeUrl ? (
             <p className="min-h-11 grid place-items-center rounded-xl bg-lumi-line/40 px-3 py-1.5 text-sm font-semibold text-lumi-muted">
               Sin teléfono
             </p>

@@ -90,6 +90,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 27a.2 | Retiro sin datos de dirección y aviso de campos faltantes | Hecho |
 | 27c | Sacar los retiros de chofer, franja y planificador | Hecho |
 | 27b | Página de Retiros por el local | Hecho |
+| 27b.1 | Abrir WhatsApp al avisar y volver a avisar | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -234,6 +235,8 @@ El Brief 27a.2 oculta la tarjeta de dirección en un retiro y no exige ni manda 
 El Brief 27c saca los retiros del cupo de franja, del selector de chofer, del Planificador y de las hojas de ruta. En Despacho y el Panel muestran el chip "Retiro por el local". Agregar un retiro a una hoja responde 409. Seguimiento usa "Listo para retirar" y "Retirado".
 
 El Brief 27b agrega `/retiros` para pedidos de retiro por el local: chips Pendiente · Listo para retirar · Retirado, búsqueda y fechas como Seguimiento, y aviso opcional al cliente por `wa.me` (`POST /api/orders/:id/pickup-notice`) que queda en el historial.
+
+El Brief 27b.1 abre WhatsApp en el mismo toque al avisar (popup `about:blank` como la campanita), permite volver a avisar y muestra "Sin teléfono" si el pedido no tiene número.
 
 ## Pendientes
 
