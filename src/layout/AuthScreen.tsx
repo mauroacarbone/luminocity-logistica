@@ -23,8 +23,13 @@ export function AuthScreen({
     <div className="auth-screen">
       <section className="auth-card">
         <div className="auth-brand">
-          <span className="brand-mark">L</span>
-          <span className="brand-name">Luminocity</span>
+          <img
+            className="auth-logo"
+            src="/logo-luminocity.png"
+            alt="Luminocity"
+            width={96}
+            height={96}
+          />
         </div>
         <h1>{title}</h1>
         <p className="auth-sub">{subtitle}</p>

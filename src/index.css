@@ -80,16 +80,11 @@ p {
   padding: 0 8px 12px;
 }
 
-.brand-mark {
+.brand-logo {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  background: var(--yellow);
-  color: var(--yellow-ink);
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  font-size: 14px;
+  object-fit: contain;
+  flex: 0 0 28px;
 }
 
 .brand-name {
@@ -483,9 +478,22 @@ p {
 
 .auth-brand {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  justify-content: center;
   margin-bottom: 28px;
+}
+
+.auth-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  display: block;
+}
+
+@media (max-width: 800px) {
+  .auth-logo {
+    width: 72px;
+    height: 72px;
+  }
 }
 
 .auth-card h1 {

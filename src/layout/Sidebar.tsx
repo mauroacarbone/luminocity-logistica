@@ -223,7 +223,13 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <span className="brand-mark">L</span>
+        <img
+          className="brand-logo"
+          src="/logo-luminocity.png"
+          alt="Luminocity"
+          width={28}
+          height={28}
+        />
         <span className="brand-name">Luminocity</span>
       </div>
 
