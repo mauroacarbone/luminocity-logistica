@@ -102,6 +102,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 29c.2 | Confirmaciones que se cierran con Escape como antes | Hecho |
 | 30 | Prioridad de pedidos | Hecho |
 | 30.1 | Orden de prioridad consistente | Hecho |
+| 31 | Pendientes de Entregas con pedidos, filtros y CSV | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -270,6 +271,8 @@ El Brief 29c.2 pasa `allowOutsideClick` y `allowEscapeKey` en `confirm()` solo c
 El Brief 30 agrega la prioridad del pedido (normal, alta, inmediata). El vendedor la elige al cargar y el encargado o el admin la cambian después; el cambio queda en el historial. Las listas ordenan inmediata, después alta, después normal, con chip naranja o rojo. Una inmediata avisa en la app al depósito y al encargado.
 
 El Brief 30.1 trata un pedido entregado como prioridad normal al ordenar, para que no rompa listas mixtas ni las columnas del Panel.
+
+El Brief 31 muestra en Pendientes de Entregas los pedidos abiertos unidos al picking, con filtros por vendedor, estado y fecha (en la URL), acceso de lectura para el vendedor y exportación CSV de lo filtrado.
 
 ## Pendientes
 

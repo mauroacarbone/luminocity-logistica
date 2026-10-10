@@ -27,6 +27,19 @@ export function buildCsv(rows: Array<Array<string | number | boolean>>) {
   return `\uFEFF${lines.join('\r\n')}`
 }
 
+/** CSV con todos los campos entre comillas, `;` y CRLF (Excel ES). */
+export function toCsv(rows: Array<Array<string | number | boolean>>) {
+  const lines = rows.map((row) =>
+    row
+      .map((cell) => {
+        const text = guardCsvFormula(String(cell ?? ''))
+        return `"${text.replace(/"/g, '""')}"`
+      })
+      .join(';'),
+  )
+  return `\uFEFF${lines.join('\r\n')}`
+}
+
 /** Descarga el CSV y libera el Object URL después del click. */
 export function downloadCsvFile(content: string, filename: string) {
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })

@@ -4,10 +4,11 @@ import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
+import { DISPATCH_LABEL, isDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
 import { normalizeName } from '../lib/access'
 import { askPackages, confirm, error as showError, success } from '../lib/alerts'
-import { buildCsv, downloadCsvFile } from '../lib/csv'
+import { buildCsv, downloadCsvFile, toCsv } from '../lib/csv'
 import {
   matchOrdersByInvoice,
   normalizeInvoiceKey,
@@ -22,7 +23,7 @@ import {
   type PickingLine,
   type PickingPreview,
 } from '../lib/pickingSheet'
-import { compareOpenPriority } from '../lib/priority'
+import { compareOpenPriority, PRIORITY_LABEL, priorityOf } from '../lib/priority'
 import { addDays, formatIsoDate, parseIso, startOfWeek, toIso } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
@@ -920,6 +921,77 @@ export function PendientesEntregas() {
     setExpanded(key)
   }
 
+  function exportFilteredCsv() {
+    const header = [
+      'Pedido',
+      'Cliente',
+      'Vendedor',
+      'Estado',
+      'Prioridad',
+      'Fecha entrega',
+      'Días de atraso',
+      'Despacho',
+      'Comprobantes',
+      'Artículos completos',
+      'Faltantes',
+    ]
+    const table: string[][] = [header]
+
+    for (const order of filteredOpenOrders) {
+      const orderLines = linesByOpenOrder.map.get(order.id) ?? []
+      const progress = progressOfLines(orderLines)
+      const days = overdueDays(order.deliveryDate, today)
+      const invoices =
+        (order.invoices ?? []).length > 0
+          ? (order.invoices ?? []).join(', ')
+          : [...new Set(orderLines.map((line) => line.invoice).filter(Boolean))].join(', ')
+      const dispatch = isDispatchType(order.dispatchType)
+        ? DISPATCH_LABEL[order.dispatchType]
+        : (order.dispatchType ?? '')
+      table.push([
+        order.id,
+        order.client,
+        order.seller ?? '',
+        statusPillFor(order, order.status),
+        PRIORITY_LABEL[priorityOf(order)],
+        order.deliveryDate ? formatIsoDate(order.deliveryDate) : '',
+        days > 0 ? String(days) : '0',
+        dispatch,
+        invoices,
+        orderLines.length > 0 ? `${progress.complete}/${progress.total}` : '',
+        progress.missing.map((item) => `${item.product}: ${item.missing}`).join(', '),
+      ])
+    }
+
+    for (const group of orphanGroups) {
+      const progress = progressOf(group)
+      const days =
+        group.date && group.date < today ? overdueDays(group.date, today) : 0
+      table.push([
+        'Sin pedido',
+        group.client,
+        group.seller,
+        '',
+        '',
+        group.date ? formatIsoDate(group.date) : '',
+        days > 0 ? String(days) : '0',
+        '',
+        group.invoice,
+        `${progress.complete}/${progress.total}`,
+        progress.missing.map((item) => `${item.product}: ${item.missing}`).join(', '),
+      ])
+    }
+
+    const content = toCsv(table)
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `pendientes-${today}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (loading && lines.length === 0) {
     return (
       <section className="page">
@@ -1209,22 +1281,32 @@ export function PendientesEntregas() {
 
       {mode === 'lista' ? (
         <>
-          <button
-            type="button"
-            className="mt-3 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-50"
-            disabled={busy || loading}
-            onClick={() => {
-              void refresh().then((count) => {
-                setMessage(
-                  count === 0
-                    ? 'Todavía no hay filas de picking.'
-                    : `Lista actualizada: ${count} filas.`,
-                )
-              })
-            }}
-          >
-            Actualizar lista
-          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-50"
+              disabled={busy || loading}
+              onClick={() => {
+                void refresh().then((count) => {
+                  setMessage(
+                    count === 0
+                      ? 'Todavía no hay filas de picking.'
+                      : `Lista actualizada: ${count} filas.`,
+                  )
+                })
+              }}
+            >
+              Actualizar lista
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm shadow-sm disabled:opacity-50"
+              disabled={filteredOpenOrders.length === 0 && orphanGroups.length === 0}
+              onClick={exportFilteredCsv}
+            >
+              Exportar CSV
+            </button>
+          </div>
 
           {filteredOpenOrders.length === 0 && orphanGroups.length === 0 ? (
             <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
