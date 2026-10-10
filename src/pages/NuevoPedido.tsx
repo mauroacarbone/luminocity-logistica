@@ -35,7 +35,17 @@ import {
   requestAuthorization,
   type SellerAuthorization,
 } from '../lib/authorizationsApi'
-import { geocodeSearch, locateAddress, locatePoint, type GeocodeHit, type LocatedAddress } from '../lib/geocode'
+import {
+  geocodeSearch,
+  locateAddress,
+  locateAddressPhoton,
+  locatePoint,
+  pause,
+  splitStreetNumber,
+  withHouseNumber,
+  type GeocodeHit,
+  type LocatedAddress,
+} from '../lib/geocode'
 import type { OrderDraft } from '../lib/ordersApi'
 import { placeKind } from '../lib/place'
 import { toIso } from '../lib/week'
@@ -215,7 +225,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [receiverName, setReceiverName] = useState(existing?.receiverName ?? '')
   const [receiverDni, setReceiverDni] = useState(existing?.receiverDni ?? '')
   const [locating, setLocating] = useState(false)
+  const [locateAttempt, setLocateAttempt] = useState(0)
   const [locateError, setLocateError] = useState('')
+  const [locationPending, setLocationPending] = useState(false)
   const [betweenNote, setBetweenNote] = useState('')
   const [errors, setErrors] = useState<Errors>({})
   const [saveError, setSaveError] = useState('')
@@ -531,6 +543,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   }, [suggestOpen])
 
   function onAddressChange(value: string) {
+    locateAbort.current?.abort()
     markDirty()
     const nextLookup = value.trim()
     setAddress(value)
@@ -541,9 +554,50 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     }
     setLocateError('')
     setBetweenNote('')
+    setLocationPending(false)
     setZoneManual(false)
     setZoneHint(null)
     setZonePending(true)
+  }
+
+  function locateQuerySuffix() {
+    const zoneName = deliveryZone.trim().toLocaleUpperCase('es')
+    if (zoneName === 'CABA' || zoneName.includes('CABA')) return ', CABA'
+    const place = zoneHint?.place
+    const locality = [place?.city, place?.town, place?.municipality, place?.city_district, place?.suburb]
+      .map((part) => part?.trim() ?? '')
+      .find(Boolean)
+    if (locality) {
+      const upper = locality.toLocaleUpperCase('es')
+      if (upper.includes('CABA') || upper.includes('CIUDAD AUTONOMA') || upper.includes('CIUDAD AUTÓNOMA')) {
+        return ', CABA'
+      }
+    }
+    return ', Buenos Aires, Argentina'
+  }
+
+  function withAttemptTimeout(signal: AbortSignal) {
+    return AbortSignal.any([signal, AbortSignal.timeout(10000)])
+  }
+
+  async function tryLocateQuery(
+    query: string,
+    signal: AbortSignal,
+    options?: { photonOnly?: boolean; restoreNumber?: string },
+  ) {
+    const attemptSignal = withAttemptTimeout(signal)
+    const located = options?.photonOnly
+      ? await locateAddressPhoton(query, attemptSignal)
+      : await locateAddress(query, attemptSignal)
+    return options?.restoreNumber ? withHouseNumber(located, options.restoreNumber) : located
+  }
+
+  function enterManualLocation() {
+    setLocateError('')
+    setLocationPending(true)
+    setZoneManual(true)
+    setZonePending(false)
+    focusField('between')
   }
 
   function applyLocated(located: LocatedAddress) {
@@ -551,6 +605,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     setLookup('')
     setSuggestions([])
     setSuggestOpen(false)
+    setLocationPending(false)
     setZoneManual(false)
     setZoneHint(located.hint)
     setAddress(located.street)
@@ -584,6 +639,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     const controller = new AbortController()
     locateAbort.current = controller
     setLocating(true)
+    setLocateAttempt(0)
     setLocateError('')
     setBetweenNote('')
     try {
@@ -594,7 +650,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       if (controller.signal.aborted || isAbortError(error)) return
       setLocateError('No encontramos esa dirección. Revisá calle y número.')
     } finally {
-      if (locateAbort.current === controller) setLocating(false)
+      if (locateAbort.current === controller) {
+        setLocating(false)
+        setLocateAttempt(0)
+      }
     }
   }
 
@@ -609,9 +668,81 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     void runLocate((signal) => locatePoint(hit, signal))
   }
 
-  function onLocate() {
+  async function onLocate() {
     dismissSuggestions()
-    void runLocate((signal) => locateAddress(address.trim(), signal))
+    const original = address.trim()
+    if (original.length < 3) return
+
+    locateAbort.current?.abort()
+    const controller = new AbortController()
+    locateAbort.current = controller
+    setLocating(true)
+    setLocateError('')
+    setBetweenNote('')
+
+    const { street: streetOnly, number: houseNumber } = splitStreetNumber(original)
+
+    try {
+      while (!controller.signal.aborted) {
+        let found = false
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          if (controller.signal.aborted) return
+          if (attempt > 1) {
+            const waitMs = attempt === 2 ? 1000 : 2000
+            try {
+              await pause(waitMs, controller.signal)
+            } catch (error) {
+              if (controller.signal.aborted || isAbortError(error)) return
+              throw error
+            }
+          }
+          if (controller.signal.aborted) return
+          setLocateAttempt(attempt)
+          try {
+            let located: LocatedAddress
+            if (attempt === 1) {
+              located = await tryLocateQuery(original, controller.signal)
+            } else if (attempt === 2) {
+              const suffix = locateQuerySuffix()
+              const withPlace = original.includes(suffix.trim()) ? original : `${original}${suffix}`
+              located = await tryLocateQuery(withPlace, controller.signal)
+            } else if (houseNumber && streetOnly.length >= 3) {
+              located = await tryLocateQuery(streetOnly, controller.signal, {
+                restoreNumber: houseNumber,
+              })
+            } else {
+              located = await tryLocateQuery(original, controller.signal, { photonOnly: true })
+            }
+            if (controller.signal.aborted) return
+            applyLocated(located)
+            found = true
+            break
+          } catch (error) {
+            if (controller.signal.aborted) return
+            if (isAbortError(error) && controller.signal.aborted) return
+            // Sin resultados, HTTP, red o timeout del intento: seguir al siguiente.
+          }
+        }
+        if (found || controller.signal.aborted) return
+
+        setLocateAttempt(0)
+        const keepLooking = await confirm(
+          'No encontramos esa dirección',
+          'Revisá calle y número, o ingresala a mano.',
+          { confirmText: 'Seguir buscando', cancelText: 'Ingresar a mano' },
+        )
+        if (controller.signal.aborted) return
+        if (!keepLooking) {
+          enterManualLocation()
+          return
+        }
+      }
+    } finally {
+      if (locateAbort.current === controller) {
+        setLocating(false)
+        setLocateAttempt(0)
+      }
+    }
   }
 
   function onAddressKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -1166,17 +1297,26 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   <button
                     type="button"
                     className="detect-btn"
-                    onClick={onLocate}
+                    onClick={() => void onLocate()}
                     disabled={locating || address.trim().length < 3}
                     aria-busy={locating}
                   >
-                    {locating ? 'Ubicando...' : 'Ubicar'}
+                    {locating
+                      ? locateAttempt > 0
+                        ? `Buscando… (intento ${locateAttempt} de 3)`
+                        : 'Ubicando...'
+                      : 'Ubicar'}
                   </button>
                 </div>
                 <small className="hint">
                   Ingresá la dirección del cliente y tocá Ubicar para completar zona y, si se puede,
                   entre calles.
                 </small>
+                {locationPending && (
+                  <span className="zone-chip mt-2 inline-flex" role="status">
+                    Ubicación pendiente
+                  </span>
+                )}
                 {locateError && <small className="field-error">{locateError}</small>}
                 {errors.address && <small className="field-error">{errors.address}</small>}
               </div>

@@ -41,7 +41,7 @@ function abortError() {
   return new DOMException('The operation was aborted.', 'AbortError')
 }
 
-function pause(ms: number, signal?: AbortSignal) {
+export function pause(ms: number, signal?: AbortSignal) {
   if (ms <= 0) return Promise.resolve()
   return new Promise<void>((resolve, reject) => {
     if (signal?.aborted) {
@@ -59,6 +59,14 @@ function pause(ms: number, signal?: AbortSignal) {
     }
     signal?.addEventListener('abort', onAbort)
   })
+}
+
+function isNetworkError(error: unknown) {
+  if (isAbortError(error)) return false
+  if (error instanceof TypeError) return true
+  if (typeof error !== 'object' || error === null) return false
+  const message = 'message' in error ? String(error.message) : ''
+  return /network|failed to fetch|load failed|fetch/i.test(message)
 }
 
 function text(value: unknown) {
@@ -297,6 +305,15 @@ export async function geocodeSearch(query: string, signal?: AbortSignal) {
     if (hits.length > 0) return hits
   } catch (error) {
     if (isAbortError(error)) throw error
+    // Autocompletado: un solo reintento silencioso ante error de red.
+    if (isNetworkError(error)) {
+      try {
+        const retry = dedupe(await searchNominatim(trimmed, signal))
+        if (retry.length > 0) return retry
+      } catch (retryError) {
+        if (isAbortError(retryError)) throw retryError
+      }
+    }
   }
   if (signal?.aborted) throw abortError()
   return searchPhoton(trimmed, signal)
@@ -470,4 +487,53 @@ export async function locateAddress(query: string, signal?: AbortSignal) {
   const hit = hits[0]
   if (!hit) throw new Error('No encontramos esa dirección.')
   return describePoint(hit, signal)
+}
+
+/** Ubicar solo con Photon (tercer intento de Ubicar). */
+export async function locateAddressPhoton(query: string, signal?: AbortSignal) {
+  const trimmed = query.trim()
+  if (trimmed.length < 3) throw new Error('No encontramos esa dirección.')
+  if (signal?.aborted) throw abortError()
+  const hits = await searchPhoton(trimmed, signal)
+  const hit = hits[0]
+  if (!hit) throw new Error('No encontramos esa dirección.')
+  return describePoint(hit, signal)
+}
+
+/** Separa calle y altura al final (ej. "Av. Corrientes 1234"). */
+export function splitStreetNumber(address: string): { street: string; number: string } {
+  const trimmed = address.trim()
+  const match = trimmed.match(/^(.*?)[\s,]+(\d+[A-Za-z]?)\s*$/)
+  if (!match) return { street: trimmed, number: '' }
+  const street = match[1].trim()
+  const number = match[2].trim()
+  if (!street) return { street: trimmed, number: '' }
+  return { street, number }
+}
+
+/** Repone la altura en el resultado si la búsqueda fue sin número. */
+export function withHouseNumber(located: LocatedAddress, number: string): LocatedAddress {
+  const height = number.trim()
+  if (!height) return located
+  const street = located.street.trim()
+  if (!street) return located
+  if (new RegExp(`\\b${height.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(street)) {
+    return located
+  }
+  const road = located.hint.place?.road?.trim() || street
+  const nextStreet = /\d/.test(street) ? `${street} ${height}` : `${road} ${height}`
+  const place = {
+    ...located.hint.place,
+    road: located.hint.place?.road || road.replace(new RegExp(`\\s+${height}$`), ''),
+    house_number: height,
+  }
+  return {
+    ...located,
+    street: nextStreet,
+    hint: {
+      ...located.hint,
+      address: nextStreet,
+      place,
+    },
+  }
 }

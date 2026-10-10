@@ -2,6 +2,8 @@ import Swal, { type SweetAlertOptions } from 'sweetalert2'
 
 type ConfirmOptions = {
   peligro?: boolean
+  confirmText?: string
+  cancelText?: string
   preConfirm?: SweetAlertOptions['preConfirm']
   didOpen?: SweetAlertOptions['didOpen']
 }
@@ -13,8 +15,8 @@ export async function confirm(titulo: string, texto: string, options?: ConfirmOp
     title: titulo,
     text: texto,
     showCancelButton: true,
-    confirmButtonText: peligro ? 'Sí, continuar' : 'Confirmar',
-    cancelButtonText: 'Cancelar',
+    confirmButtonText: options?.confirmText ?? (peligro ? 'Sí, continuar' : 'Confirmar'),
+    cancelButtonText: options?.cancelText ?? 'Cancelar',
     focusCancel: peligro,
     reverseButtons: true,
     buttonsStyling: false,
