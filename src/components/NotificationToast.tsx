@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, type KeyboardEvent, type MouseEvent } from 'react'
 
 type Props = {
   text: string
@@ -13,10 +13,29 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
     return () => window.clearTimeout(timer)
   }, [onClose])
 
+  function activate() {
+    onAction()
+    onClose()
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    activate()
+  }
+
+  function onCloseClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation()
+    onClose()
+  }
+
   return (
     <div
-      className="fixed inset-x-4 top-16 z-40 rounded-2xl border border-lumi-line bg-white p-4 shadow-lg sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
-      role="status"
+      className="fixed inset-x-4 top-16 z-40 cursor-pointer rounded-2xl border border-lumi-line bg-white p-4 shadow-lg sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
+      role="button"
+      tabIndex={0}
+      onClick={activate}
+      onKeyDown={onKeyDown}
     >
       <div className="flex items-start gap-3">
         <p className="min-w-0 flex-1 text-sm font-medium text-lumi-ink">{text}</p>
@@ -24,7 +43,7 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
           type="button"
           className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-lumi-muted hover:bg-[#f7f4ea] hover:text-lumi-ink"
           aria-label="Cerrar"
-          onClick={onClose}
+          onClick={onCloseClick}
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
             <path
@@ -37,13 +56,9 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
           </svg>
         </button>
       </div>
-      <button
-        type="button"
-        className="mt-3 w-full rounded-xl bg-lumi-yellow px-3 py-2 text-sm font-semibold text-lumi-yellow-ink"
-        onClick={onAction}
-      >
+      <span className="mt-3 block w-full rounded-xl bg-lumi-yellow px-3 py-2 text-center text-sm font-semibold text-lumi-yellow-ink">
         {actionLabel}
-      </button>
+      </span>
     </div>
   )
 }
