@@ -62,6 +62,7 @@ export function canCancelOrder(role: Role) {
 }
 
 export function canEditOrder(user: Session, order: Order) {
+  if (order.status === 'entregado') return false
   if (user.role === 'admin' || user.role === 'encargado_deposito') return true
   if (user.role !== 'vendedor' || !ownsOrder(user, order)) return false
   return order.status === 'pendiente' || order.status === 'preparado'

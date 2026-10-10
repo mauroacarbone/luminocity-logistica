@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { EditReasonDialog } from '../components/EditReasonDialog'
 import { NoAccess } from '../components/NoAccess'
 import {
@@ -17,7 +17,7 @@ import {
   openAttachment,
   readAttachmentFile,
 } from '../lib/attachment'
-import { namesMatch } from '../lib/access'
+import { canEditOrder, namesMatch } from '../lib/access'
 import { confirm } from '../lib/alerts'
 import { slotQuestion } from '../lib/slot'
 import {
@@ -1149,8 +1149,27 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
 export function NuevoPedido() {
   const { user } = useAuth()
+  const { orders } = useOrders()
   const location = useLocation()
   const editingId = (location.state as { orderId?: string } | null)?.orderId
   if (user?.role === 'encargado_deposito' && !editingId) return <NoAccess />
+  if (editingId && user) {
+    const order = orders.find((item) => item.id === editingId)
+    if (order && (order.status === 'entregado' || !canEditOrder(user, order))) {
+      return (
+        <section className="page">
+          <header className="page-header">
+            <h1>Editar Pedido</h1>
+            <p>No se puede editar un pedido entregado.</p>
+            <p className="mt-3">
+              <Link className="text-lumi-ink underline" to={`/pedidos/${encodeURIComponent(editingId)}`}>
+                Ver pedido {editingId}
+              </Link>
+            </p>
+          </header>
+        </section>
+      )
+    }
+  }
   return <PedidoForm key={editingId ?? 'nuevo'} editingId={editingId} />
 }
