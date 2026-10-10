@@ -91,6 +91,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 27c | Sacar los retiros de chofer, franja y planificador | Hecho |
 | 27b | Página de Retiros por el local | Hecho |
 | 27b.1 | Abrir WhatsApp al avisar y volver a avisar | Hecho |
+| 28a | Menú lateral agrupado y sin barra de scroll | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -237,6 +238,8 @@ El Brief 27c saca los retiros del cupo de franja, del selector de chofer, del Pl
 El Brief 27b agrega `/retiros` para pedidos de retiro por el local: chips Pendiente · Listo para retirar · Retirado, búsqueda y fechas como Seguimiento, y aviso opcional al cliente por `wa.me` (`POST /api/orders/:id/pickup-notice`) que queda en el historial.
 
 El Brief 27b.1 abre WhatsApp en el mismo toque al avisar (popup `about:blank` como la campanita), permite volver a avisar y muestra "Sin teléfono" si el pedido no tiene número.
+
+El Brief 28a agrupa el menú lateral en Operación, Seguimiento, Post Venta y Administración (plegables, con el grupo activo siempre abierto) y deja la barra de scroll fina, solo al pasar el mouse.
 
 ## Pendientes
 
