@@ -854,10 +854,11 @@ function readOrderFields(body, current) {
   const storePickup = dispatchType === 'retiro'
 
   for (const [key, message] of REQUIRED_TEXT) {
-    if (key === 'address' && storePickup) {
-      const read = readOptionalText(body, current, 'address', 'La dirección')
+    if ((key === 'address' || key === 'propertyType') && storePickup) {
+      const label = key === 'address' ? 'La dirección' : 'El tipo de propiedad'
+      const read = readOptionalText(body, current, key, label)
       if (read.error) return read
-      if (read.value !== undefined) order.address = read.value
+      if (read.value !== undefined) order[key] = read.value
       continue
     }
     if (current && !Object.prototype.hasOwnProperty.call(body, key)) {
@@ -871,6 +872,9 @@ function readOrderFields(body, current) {
 
   if (!storePickup && !readRequiredText(order.address)) {
     return fail('Ingresá la dirección.')
+  }
+  if (!storePickup && !readRequiredText(order.propertyType)) {
+    return fail('Seleccioná el tipo de propiedad.')
   }
 
   if (current && !Object.prototype.hasOwnProperty.call(body, 'deliveryDate')) {

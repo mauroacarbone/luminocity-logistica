@@ -429,14 +429,16 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     if (!pickup && !betweenStreet1.trim() && !betweenStreet2.trim()) {
       nextErrors.between = 'Completá al menos una entre calle.'
     }
-    if (!propertyType) nextErrors.propertyType = 'Seleccioná el tipo de propiedad.'
-    const kind = placeKind(propertyType)
+    if (!pickup && !propertyType) nextErrors.propertyType = 'Seleccioná el tipo de propiedad.'
+    const kind = pickup ? 'other' : placeKind(propertyType)
     const floorValue = kind === 'building' ? floor.trim() : ''
     const unitValue = kind === 'building' ? unit.trim() : ''
     const doorbellValue = kind === 'house' || kind === 'building' ? doorbell.trim() : ''
-    if (floorValue.length > 20) nextErrors.floor = 'El piso puede tener hasta 20 caracteres.'
-    if (unitValue.length > 20) nextErrors.unit = 'El depto puede tener hasta 20 caracteres.'
-    if (doorbellValue.length > 20) nextErrors.doorbell = 'El timbre puede tener hasta 20 caracteres.'
+    if (!pickup && floorValue.length > 20) nextErrors.floor = 'El piso puede tener hasta 20 caracteres.'
+    if (!pickup && unitValue.length > 20) nextErrors.unit = 'El depto puede tener hasta 20 caracteres.'
+    if (!pickup && doorbellValue.length > 20) {
+      nextErrors.doorbell = 'El timbre puede tener hasta 20 caracteres.'
+    }
     if (!deliveryDate) {
       nextErrors.deliveryDate = pickup ? 'Elegí la fecha de retiro.' : 'Elegí la fecha de entrega.'
     }
@@ -464,10 +466,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           place: zoneHint?.place,
         })
     const stored = storedId ? orders.find((order) => order.id === storedId) : undefined
-    const draft = {
+    const draft: OrderDraft = {
       client: client.trim(),
-      zone: pickup ? resolvedZone || undefined : resolvedZone,
-      address: address.trim(),
+      address: pickup ? undefined : address.trim(),
       loadedAt: stored?.loadedAt ?? formatLoadedAt(new Date()),
       deliveryDate,
       status: stored?.status ?? 'pendiente',
@@ -477,12 +478,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       invoices: invoices.map((invoice) => invoice.trim()).filter(Boolean),
       collectOnDelivery,
       amount: collectOnDelivery ? amount.trim() : undefined,
-      betweenStreet1: betweenStreet1.trim(),
-      betweenStreet2: betweenStreet2.trim(),
-      propertyType,
-      floor: floorValue,
-      unit: unitValue,
-      doorbell: doorbellValue,
+      betweenStreet1: pickup ? undefined : betweenStreet1.trim(),
+      betweenStreet2: pickup ? undefined : betweenStreet2.trim(),
       timeWindow: pickup ? undefined : timeWindow,
       requiresPickup,
       dispatchType,
@@ -492,6 +489,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       attachmentDataUrl: attachmentDataUrl || undefined,
       receiverName: receiverName.trim() || undefined,
       receiverDni: receiverDni.trim() || undefined,
+    }
+    if (!pickup) {
+      draft.zone = resolvedZone
+      draft.propertyType = propertyType
+      draft.floor = floorValue
+      draft.unit = unitValue
+      draft.doorbell = doorbellValue
     }
     if (storedId) {
       draftRef.current = draft
@@ -757,208 +761,209 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           )}
         </section>
 
-        <section className="form-card">
-          <h2>Dirección de Entrega</h2>
-          <div className="field-grid">
-            <div className="field full">
-              <label htmlFor="delivery-address">
-                Dirección (Calle y Número){pickup ? '' : ' *'}
-              </label>
-              <div className="address-row" ref={addressRef}>
-                <div className="address-input-wrap">
-                  <input
-                    id="delivery-address"
-                    value={address}
-                    placeholder="Ej: Av. Corrientes 1234"
-                    autoComplete="off"
-                    role="combobox"
-                    aria-autocomplete="list"
-                    aria-expanded={suggestOpen}
-                    aria-controls={listId}
-                    aria-activedescendant={
-                      suggestOpen ? `${listId}-opt-${activeSuggestion}` : undefined
-                    }
-                    aria-invalid={Boolean(errors.address)}
-                    onChange={(event) => onAddressChange(event.target.value)}
-                    onKeyDown={onAddressKeyDown}
-                    onFocus={() => {
-                      if (blurTimer.current) {
-                        window.clearTimeout(blurTimer.current)
-                        blurTimer.current = null
+        {!pickup && (
+          <section className="form-card">
+            <h2>Dirección de Entrega</h2>
+            <div className="field-grid">
+              <div className="field full">
+                <label htmlFor="delivery-address">Dirección (Calle y Número) *</label>
+                <div className="address-row" ref={addressRef}>
+                  <div className="address-input-wrap">
+                    <input
+                      id="delivery-address"
+                      value={address}
+                      placeholder="Ej: Av. Corrientes 1234"
+                      autoComplete="off"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded={suggestOpen}
+                      aria-controls={listId}
+                      aria-activedescendant={
+                        suggestOpen ? `${listId}-opt-${activeSuggestion}` : undefined
                       }
-                      if (lookup.length >= 3 && suggestions.length > 0) setSuggestOpen(true)
-                    }}
-                    onBlur={onAddressBlur}
-                  />
-                  {suggestOpen && suggestions.length > 0 && (
-                    <ul className="address-suggest" id={listId} role="listbox">
-                      {suggestions.map((hit, index) => (
-                        <li key={hit.id} role="presentation">
-                          <button
-                            type="button"
-                            role="option"
-                            id={`${listId}-opt-${index}`}
-                            aria-selected={index === activeSuggestion}
-                            onPointerDown={() => {
-                              pickingSuggestion.current = true
-                            }}
-                            onMouseEnter={() => setActiveSuggestion(index)}
-                            onClick={() => chooseSuggestion(hit)}
-                          >
-                            <strong>{hit.label}</strong>
-                            {hit.detail && <small>{hit.detail}</small>}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                      aria-invalid={Boolean(errors.address)}
+                      onChange={(event) => onAddressChange(event.target.value)}
+                      onKeyDown={onAddressKeyDown}
+                      onFocus={() => {
+                        if (blurTimer.current) {
+                          window.clearTimeout(blurTimer.current)
+                          blurTimer.current = null
+                        }
+                        if (lookup.length >= 3 && suggestions.length > 0) setSuggestOpen(true)
+                      }}
+                      onBlur={onAddressBlur}
+                    />
+                    {suggestOpen && suggestions.length > 0 && (
+                      <ul className="address-suggest" id={listId} role="listbox">
+                        {suggestions.map((hit, index) => (
+                          <li key={hit.id} role="presentation">
+                            <button
+                              type="button"
+                              role="option"
+                              id={`${listId}-opt-${index}`}
+                              aria-selected={index === activeSuggestion}
+                              onPointerDown={() => {
+                                pickingSuggestion.current = true
+                              }}
+                              onMouseEnter={() => setActiveSuggestion(index)}
+                              onClick={() => chooseSuggestion(hit)}
+                            >
+                              <strong>{hit.label}</strong>
+                              {hit.detail && <small>{hit.detail}</small>}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="detect-btn"
+                    onClick={onLocate}
+                    disabled={locating || address.trim().length < 3}
+                    aria-busy={locating}
+                  >
+                    {locating ? 'Ubicando...' : 'Ubicar'}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="detect-btn"
-                  onClick={onLocate}
-                  disabled={locating || address.trim().length < 3}
-                  aria-busy={locating}
-                >
-                  {locating ? 'Ubicando...' : 'Ubicar'}
-                </button>
+                <small className="hint">
+                  Ingresá la dirección del cliente y tocá Ubicar para completar zona y, si se puede,
+                  entre calles.
+                </small>
+                {locateError && <small className="field-error">{locateError}</small>}
+                {errors.address && <small className="field-error">{errors.address}</small>}
               </div>
-              <small className="hint">
-                Ingresá la dirección del cliente y tocá Ubicar para completar zona y, si se puede,
-                entre calles.
-              </small>
-              {locateError && <small className="field-error">{locateError}</small>}
-              {errors.address && <small className="field-error">{errors.address}</small>}
+              <label className="field">
+                <span className="hint-danger">Entre calle 1 (al menos una obligatoria)</span>
+                <input
+                  value={betweenStreet1}
+                  placeholder="Ej: Callao"
+                  aria-invalid={Boolean(errors.between)}
+                  onChange={(event) => {
+                    setBetweenStreet1(event.target.value)
+                    setBetweenNote('')
+                  }}
+                />
+                {errors.between && <small className="field-error">{errors.between}</small>}
+                {betweenNote && <small className="field-warn">{betweenNote}</small>}
+              </label>
+              <label className="field">
+                <span>Entre calle 2</span>
+                <input
+                  value={betweenStreet2}
+                  placeholder="Ej: Uruguay"
+                  onChange={(event) => {
+                    setBetweenStreet2(event.target.value)
+                    setBetweenNote('')
+                  }}
+                />
+              </label>
+              <label className="field">
+                <span>Tipo de propiedad *</span>
+                <select
+                  value={propertyType}
+                  aria-invalid={Boolean(errors.propertyType)}
+                  onChange={(event) => {
+                    const next = event.target.value
+                    const nextKind = placeKind(next)
+                    setPropertyType(next)
+                    if (nextKind !== 'building') {
+                      setFloor('')
+                      setUnit('')
+                    }
+                    if (nextKind === 'other') setDoorbell('')
+                  }}
+                >
+                  <option value="">Seleccioná tipo</option>
+                  {propertyOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+                {errors.propertyType && (
+                  <small className="field-error">{errors.propertyType}</small>
+                )}
+              </label>
+              {placeKind(propertyType) === 'building' && (
+                <>
+                  <label className="field">
+                    <span>Piso</span>
+                    <input
+                      value={floor}
+                      maxLength={20}
+                      aria-invalid={Boolean(errors.floor)}
+                      onChange={(event) => setFloor(event.target.value)}
+                    />
+                    {errors.floor && <small className="field-error">{errors.floor}</small>}
+                  </label>
+                  <label className="field">
+                    <span>Depto / Unidad</span>
+                    <input
+                      value={unit}
+                      maxLength={20}
+                      aria-invalid={Boolean(errors.unit)}
+                      onChange={(event) => setUnit(event.target.value)}
+                    />
+                    {errors.unit && <small className="field-error">{errors.unit}</small>}
+                  </label>
+                </>
+              )}
+              {(placeKind(propertyType) === 'building' || placeKind(propertyType) === 'house') && (
+                <label className="field">
+                  <span>Timbre</span>
+                  <input
+                    value={doorbell}
+                    maxLength={20}
+                    aria-invalid={Boolean(errors.doorbell)}
+                    onChange={(event) => setDoorbell(event.target.value)}
+                  />
+                  {errors.doorbell && <small className="field-error">{errors.doorbell}</small>}
+                </label>
+              )}
             </div>
-            <label className="field">
-              <span className={pickup ? undefined : 'hint-danger'}>
-                {pickup ? 'Entre calle 1' : 'Entre calle 1 (al menos una obligatoria)'}
-              </span>
-              <input
-                value={betweenStreet1}
-                placeholder="Ej: Callao"
-                aria-invalid={Boolean(errors.between)}
-                onChange={(event) => {
-                  setBetweenStreet1(event.target.value)
-                  setBetweenNote('')
-                }}
-              />
-              {errors.between && <small className="field-error">{errors.between}</small>}
-              {betweenNote && <small className="field-warn">{betweenNote}</small>}
-            </label>
-            <label className="field">
-              <span>Entre calle 2</span>
-              <input
-                value={betweenStreet2}
-                placeholder="Ej: Uruguay"
-                onChange={(event) => {
-                  setBetweenStreet2(event.target.value)
-                  setBetweenNote('')
-                }}
-              />
-            </label>
-            <label className="field">
-              <span>Tipo de propiedad *</span>
+            <label className="field zone-field">
+              <span>Zona de reparto</span>
               <select
-                value={propertyType}
-                aria-invalid={Boolean(errors.propertyType)}
+                value={deliveryZone}
                 onChange={(event) => {
-                  const next = event.target.value
-                  const nextKind = placeKind(next)
-                  setPropertyType(next)
-                  if (nextKind !== 'building') {
-                    setFloor('')
-                    setUnit('')
-                  }
-                  if (nextKind === 'other') setDoorbell('')
+                  setDeliveryZone(event.target.value)
+                  setZoneManual(true)
+                  setZonePending(false)
                 }}
               >
-                <option value="">Seleccioná tipo</option>
-                {propertyOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
+                <option value="">Sin zona</option>
+                {zoneOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
                   </option>
                 ))}
               </select>
-              {errors.propertyType && (
-                <small className="field-error">{errors.propertyType}</small>
-              )}
+              <small className="hint">
+                {zonePending
+                  ? 'Calculando la zona…'
+                  : deliveryZone
+                    ? zoneManual
+                      ? `${deliveryZone}. Se mantiene hasta que cambies la dirección.`
+                      : `Detectada: ${deliveryZone}${zoneDays(deliveryZone, zones) ? ` · ${zoneDays(deliveryZone, zones)}` : ''}.`
+                    : zoneManual
+                      ? 'Sin zona. Si cambiás la dirección, se vuelve a calcular.'
+                      : 'Se calcula con la dirección. Podés elegirla a mano.'}
+              </small>
             </label>
-            {placeKind(propertyType) === 'building' && (
-              <>
-                <label className="field">
-                  <span>Piso</span>
-                  <input
-                    value={floor}
-                    maxLength={20}
-                    aria-invalid={Boolean(errors.floor)}
-                    onChange={(event) => setFloor(event.target.value)}
-                  />
-                  {errors.floor && <small className="field-error">{errors.floor}</small>}
-                </label>
-                <label className="field">
-                  <span>Depto / Unidad</span>
-                  <input
-                    value={unit}
-                    maxLength={20}
-                    aria-invalid={Boolean(errors.unit)}
-                    onChange={(event) => setUnit(event.target.value)}
-                  />
-                  {errors.unit && <small className="field-error">{errors.unit}</small>}
-                </label>
-              </>
-            )}
-            {(placeKind(propertyType) === 'building' || placeKind(propertyType) === 'house') && (
-              <label className="field">
-                <span>Timbre</span>
-                <input
-                  value={doorbell}
-                  maxLength={20}
-                  aria-invalid={Boolean(errors.doorbell)}
-                  onChange={(event) => setDoorbell(event.target.value)}
-                />
-                {errors.doorbell && <small className="field-error">{errors.doorbell}</small>}
-              </label>
-            )}
-          </div>
-          <label className="field zone-field">
-            <span>Zona de reparto</span>
-            <select
-              value={deliveryZone}
-              onChange={(event) => {
-                setDeliveryZone(event.target.value)
-                setZoneManual(true)
-                setZonePending(false)
-              }}
-            >
-              <option value="">Sin zona</option>
-              {zoneOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
+            <p className="zone-title">Días de reparto por zona</p>
+            <div className="zone-list">
+              {zones.map((item) => (
+                <span
+                  key={item.name}
+                  className={!zonePending && item.name === deliveryZone ? 'zone-chip active' : 'zone-chip'}
+                >
+                  <strong>{item.name}</strong> {item.days}
+                </span>
               ))}
-            </select>
-            <small className="hint">
-              {zonePending
-                ? 'Calculando la zona…'
-                : deliveryZone
-                  ? zoneManual
-                    ? `${deliveryZone}. Se mantiene hasta que cambies la dirección.`
-                    : `Detectada: ${deliveryZone}${zoneDays(deliveryZone, zones) ? ` · ${zoneDays(deliveryZone, zones)}` : ''}.`
-                  : zoneManual
-                    ? 'Sin zona. Si cambiás la dirección, se vuelve a calcular.'
-                    : 'Se calcula con la dirección. Podés elegirla a mano.'}
-            </small>
-          </label>
-          <p className="zone-title">Días de reparto por zona</p>
-          <div className="zone-list">
-            {zones.map((item) => (
-              <span key={item.name} className={!zonePending && item.name === deliveryZone ? 'zone-chip active' : 'zone-chip'}>
-                <strong>{item.name}</strong> {item.days}
-              </span>
-            ))}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
         <section className="form-card">
           <h2>Fecha y Horario</h2>

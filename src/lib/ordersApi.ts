@@ -152,19 +152,28 @@ function text(value: string | undefined) {
   return trimmed ? trimmed : undefined
 }
 
+const PICKUP_SKIP_TEXT = new Set(['zone', 'floor', 'unit', 'doorbell', 'betweenStreet1', 'betweenStreet2'])
+
 export function orderBody(order: OrderDraft, mode: 'create' | 'patch', previous?: Order) {
+  const pickup = order.dispatchType === 'retiro'
   const body: Record<string, unknown> = {
     client: order.client.trim(),
     seller: text(order.seller) ?? '',
     phone: text(order.phone) ?? '',
-    address: text(order.address) ?? '',
-    propertyType: text(order.propertyType) ?? '',
     loadedAt: order.loadedAt,
     deliveryDate: order.deliveryDate,
+  }
+  if (pickup) {
+    const address = text(order.address)
+    if (address) body.address = address
+  } else {
+    body.address = text(order.address) ?? ''
+    body.propertyType = text(order.propertyType) ?? ''
   }
   if (mode === 'create') body.status = order.status
 
   for (const key of TEXT_FIELDS) {
+    if (pickup && PICKUP_SKIP_TEXT.has(key)) continue
     const value = text(order[key])
     if (value) body[key] = value
     else if (mode === 'patch') body[key] = null
