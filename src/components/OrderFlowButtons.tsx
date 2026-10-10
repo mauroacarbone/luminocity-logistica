@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { Order, OrderStatus } from '../data/orders'
 import { isOwnDelivery, isPickup } from '../data/catalog'
 import {
@@ -18,6 +19,31 @@ import { listUsers } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 import type { OrderSaveResult } from '../state/OrdersContext'
+
+type MenuPos = { top: number; left: number }
+
+function placeMenu(button: HTMLElement, menu: HTMLElement): MenuPos {
+  const rect = button.getBoundingClientRect()
+  const pad = 8
+  const topbar = document.querySelector('.topbar')
+  const topMin =
+    topbar instanceof HTMLElement ? topbar.getBoundingClientRect().bottom + 4 : pad
+  const width = menu.offsetWidth
+  const height = menu.offsetHeight
+  // Preferir alinear al borde derecho del botón (abre hacia la izquierda).
+  let left = rect.right - width
+  if (left < pad) left = rect.left
+  if (left + width > window.innerWidth - pad) {
+    left = window.innerWidth - pad - width
+  }
+  left = Math.max(pad, left)
+  let top = rect.bottom + 4
+  if (top + height > window.innerHeight - pad) {
+    top = rect.top - height - 4
+  }
+  top = Math.max(topMin, Math.min(top, window.innerHeight - pad - height))
+  return { top, left }
+}
 
 type Props = {
   order: Order
@@ -49,15 +75,46 @@ export function OrderFlowButtons({
   const next = nextAction(role, order)
   const backs = backActions(role, order)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState<MenuPos | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const moreBtnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (!menuOpen) return
+    function update() {
+      if (!moreBtnRef.current || !menuRef.current) return
+      setMenuPos(placeMenu(moreBtnRef.current, menuRef.current))
+    }
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [menuOpen, backs.length])
 
   useEffect(() => {
     if (!menuOpen) return
-    function onDoc(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setMenuOpen(false)
+    function onPointer(event: MouseEvent | TouchEvent) {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (rootRef.current?.contains(target)) return
+      if (menuRef.current?.contains(target)) return
+      setMenuOpen(false)
     }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('touchstart', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('touchstart', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [menuOpen])
 
   if (!next && backs.length === 0) return null
@@ -197,8 +254,9 @@ export function OrderFlowButtons({
         </button>
       )}
       {backs.length > 0 && (
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
+            ref={moreBtnRef}
             type="button"
             className={moreClass}
             disabled={busy}
@@ -209,24 +267,32 @@ export function OrderFlowButtons({
           >
             ⋯
           </button>
-          {menuOpen && (
-            <div
-              role="menu"
-              className="absolute right-0 z-20 mt-1 min-w-44 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
-            >
-              {backs.map((action) => (
-                <button
-                  key={action.to}
-                  type="button"
-                  role="menuitem"
-                  className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea]"
-                  onClick={() => void onBack(action.to, action.label)}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
-          )}
+          {menuOpen &&
+            createPortal(
+              <div
+                ref={menuRef}
+                role="menu"
+                className="fixed z-30 min-w-max rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
+                style={
+                  menuPos
+                    ? { top: menuPos.top, left: menuPos.left }
+                    : { top: 0, left: 0, visibility: 'hidden' }
+                }
+              >
+                {backs.map((action) => (
+                  <button
+                    key={action.to}
+                    type="button"
+                    role="menuitem"
+                    className="block w-full whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea]"
+                    onClick={() => void onBack(action.to, action.label)}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>,
+              document.body,
+            )}
         </div>
       )}
     </div>
