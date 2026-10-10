@@ -20,7 +20,7 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
 
   return (
     <div
-      className="fixed inset-x-4 top-16 z-40 rounded-2xl border border-lumi-line bg-white p-4 shadow-lg sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
+      className="fixed inset-x-4 top-16 z-40 rounded-2xl border border-lumi-line bg-white p-4 shadow-md sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
       aria-live="polite"
     >
       <div className="relative">

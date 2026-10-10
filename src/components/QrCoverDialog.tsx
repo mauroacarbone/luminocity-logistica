@@ -72,7 +72,7 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
           role="dialog"
           aria-modal="true"
           aria-labelledby="cover-title"
-          className="pointer-events-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-lg"
+          className="pointer-events-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-md"
         >
           <p className="text-sm font-semibold tracking-wide text-lumi-muted">{BRAND.name}</p>
           <h2 id="cover-title" className="mt-1 text-2xl font-semibold">

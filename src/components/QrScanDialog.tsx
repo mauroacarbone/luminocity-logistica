@@ -160,7 +160,7 @@ export function QrScanDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="scan-title"
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg"
+        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-md"
         onSubmit={(event) => {
           event.preventDefault()
           onSubmit(code)
