@@ -392,16 +392,10 @@ export function PanelOperativo() {
     let dates = [...new Set(visibleOrders.map((order) => order.deliveryDate).filter(Boolean))]
     if (dateFilter === 'todos') {
       dates = dates.filter((date) => date >= today)
-    } else if (dateFilter === 'semana') {
-      dates = dates.filter((date) => date >= weekFrom && date <= weekTo)
-    } else if (dateFilter === 'hoy') {
-      dates = dates.filter((date) => date === today)
-    } else if (dateFilter === 'manana') {
-      dates = dates.filter((date) => date === tomorrow)
     }
     dates.sort()
     return dates.join('|')
-  }, [visibleOrders, dateFilter, today, tomorrow, weekFrom, weekTo])
+  }, [visibleOrders, dateFilter, today])
 
   useEffect(() => {
     let cancelled = false
