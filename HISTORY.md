@@ -87,6 +87,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 26b.1 | Panel sin parpadeo en celular y hojas de pedidos atrasados | Hecho |
 | 27a | Tipo de despacho Retiro por el local | Hecho |
 | 27a.1 | Pedidos viejos sin despacho y dirección al pasar a propia | Hecho |
+| 27a.2 | Retiro sin datos de dirección y aviso de campos faltantes | Hecho |
 | 27c | Sacar los retiros de chofer, franja y planificador | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
@@ -226,6 +227,8 @@ El Brief 26b.1 pide las hojas de todas las fechas visibles (también las atrasad
 El Brief 27a suma el tipo de despacho `retiro` (Retiro por el local). En Nuevo Pedido aparece como tercera opción: sin transportista, chofer ni franja, y sin exigir dirección, entrecalles ni zona; siguen cliente, teléfono y fecha de retiro (por defecto hoy). El flujo es pendiente → preparado (con bultos) → entregado; depósito, encargado o admin marcan retirado con "Retirado por" (nombre obligatorio, DNI opcional). Un retiro no pasa a asignado. El vendedor recibe el aviso "Pedido P-x retirado por {nombre}". Las pantallas de Retiros y las exclusiones del planificador quedan para 27b y 27c.
 
 El Brief 27a.1 trata un pedido sin `dispatchType` como entrega propia (`isOwnDelivery`), así el chofer puede pasar a en viaje y a entregado. Al cambiar un retiro a propia por PATCH sin dirección responde 400. Volver un retirado a preparado (solo admin) borra `receiverName` y `receiverDni`.
+
+El Brief 27a.2 oculta la tarjeta de dirección en un retiro y no exige ni manda tipo de propiedad, piso, depto, timbre ni zona. Al guardar con campos vacíos muestra "Faltan datos" con la lista, hace scroll al primero y lo enfoca. Un 400 del server abre "No se pudo guardar".
 
 El Brief 27c saca los retiros del cupo de franja, del selector de chofer, del Planificador y de las hojas de ruta. En Despacho y el Panel muestran el chip "Retiro por el local". Agregar un retiro a una hoja responde 409. Seguimiento usa "Listo para retirar" y "Retirado".
 

@@ -18,7 +18,7 @@ import {
   readAttachmentFile,
 } from '../lib/attachment'
 import { canEditOrder, namesMatch } from '../lib/access'
-import { confirm } from '../lib/alerts'
+import { confirm, error } from '../lib/alerts'
 import { slotQuestion } from '../lib/slot'
 import {
   isAuthorization,
@@ -35,23 +35,86 @@ import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 import { useOrders } from '../state/OrdersContext'
 
-type Errors = Partial<
-  Record<
-    | 'seller'
-    | 'client'
-    | 'phone'
-    | 'address'
-    | 'between'
-    | 'propertyType'
-    | 'floor'
-    | 'unit'
-    | 'doorbell'
-    | 'deliveryDate'
-    | 'amount'
-    | 'file',
-    string
-  >
->
+type ErrorKey =
+  | 'seller'
+  | 'client'
+  | 'phone'
+  | 'address'
+  | 'between'
+  | 'propertyType'
+  | 'floor'
+  | 'unit'
+  | 'doorbell'
+  | 'deliveryDate'
+  | 'amount'
+  | 'file'
+
+type Errors = Partial<Record<ErrorKey, string>>
+
+/** Orden visual en el formulario (de arriba hacia abajo). */
+const FIELD_ORDER: ErrorKey[] = [
+  'seller',
+  'client',
+  'phone',
+  'amount',
+  'address',
+  'between',
+  'propertyType',
+  'floor',
+  'unit',
+  'doorbell',
+  'deliveryDate',
+  'file',
+]
+
+const FIELD_LABELS: Record<ErrorKey, string> = {
+  seller: 'Vendedor',
+  client: 'Nombre',
+  phone: 'Teléfono',
+  amount: 'Monto',
+  address: 'Dirección',
+  between: 'Entre calle',
+  propertyType: 'Tipo de propiedad',
+  floor: 'Piso',
+  unit: 'Depto / Unidad',
+  doorbell: 'Timbre',
+  deliveryDate: 'Fecha de entrega',
+  file: 'Adjunto',
+}
+
+const SERVER_FIELD_MESSAGES: { message: string; field: ErrorKey }[] = [
+  { message: 'Seleccioná un vendedor.', field: 'seller' },
+  { message: 'Ingresá el nombre del cliente.', field: 'client' },
+  { message: 'Ingresá un teléfono.', field: 'phone' },
+  { message: 'Ingresá la dirección.', field: 'address' },
+  { message: 'Completá al menos una entre calle.', field: 'between' },
+  { message: 'Seleccioná el tipo de propiedad.', field: 'propertyType' },
+  { message: 'Elegí la fecha de entrega.', field: 'deliveryDate' },
+  { message: 'Elegí la fecha de retiro.', field: 'deliveryDate' },
+  { message: 'Ingresá el monto a cobrar.', field: 'amount' },
+]
+
+function fieldFromServerMessage(message: string): ErrorKey | undefined {
+  return SERVER_FIELD_MESSAGES.find((item) => item.message === message)?.field
+}
+
+function focusField(key: ErrorKey) {
+  const root = document.querySelector(`[data-field="${key}"]`)
+  if (!(root instanceof HTMLElement)) return
+  root.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  const control = root.querySelector<HTMLElement>('input, select, textarea')
+  control?.focus()
+}
+
+async function showMissingFields(nextErrors: Errors, pickup: boolean) {
+  const missing = FIELD_ORDER.filter((key) => nextErrors[key]).map((key) => {
+    if (key === 'deliveryDate') return pickup ? 'Fecha de retiro' : FIELD_LABELS.deliveryDate
+    return FIELD_LABELS[key]
+  })
+  await error('Faltan datos', missing.join('\n'))
+  const first = FIELD_ORDER.find((key) => nextErrors[key])
+  if (first) focusField(first)
+}
 
 function Toggle({
   pressed,
@@ -450,7 +513,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     }
     setSaveError('')
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    if (Object.keys(nextErrors).length > 0) {
+      await showMissingFields(nextErrors, pickup)
+      return
+    }
     if (!storedId && user?.role === 'vendedor' && !user.sellerName?.trim()) {
       setSaveError('Tu usuario todavía no está vinculado a un vendedor. Pedíselo al administrador.')
       return
@@ -518,6 +584,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     }
     if (result.status === 'not-saved') {
       setSaveError(result.message)
+      await error('No se pudo guardar', result.message)
+      const field = fieldFromServerMessage(result.message)
+      if (field) {
+        setErrors((current) => ({ ...current, [field]: result.message }))
+        focusField(field)
+      }
       return
     }
     navigate('/')
@@ -555,6 +627,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     }
     if (result.status === 'not-saved') {
       setSaveError(result.message)
+      await error('No se pudo guardar', result.message)
+      const field = fieldFromServerMessage(result.message)
+      if (field) {
+        setReasonOpen(false)
+        setErrors((current) => ({ ...current, [field]: result.message }))
+        focusField(field)
+      }
       return
     }
     setReasonOpen(false)
@@ -633,7 +712,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       <form className="form-stack" onSubmit={onSubmit} noValidate>
         <section className="form-card">
           <h2>Vendedor</h2>
-          <label className="field">
+          <label className="field" data-field="seller">
             <span>Vendedor *</span>
             <select
               value={seller}
@@ -683,7 +762,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         <section className="form-card">
           <h2>Datos del Cliente</h2>
           <div className="field-grid">
-            <label className="field">
+            <label className="field" data-field="client">
               <span>Nombre *</span>
               <input
                 value={client}
@@ -693,7 +772,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               />
               {errors.client && <small className="field-error">{errors.client}</small>}
             </label>
-            <label className="field">
+            <label className="field" data-field="phone">
               <span>Teléfono *</span>
               <input
                 value={phone}
@@ -747,7 +826,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             />
           </div>
           {collectOnDelivery && (
-            <label className="field amount-field">
+            <label className="field amount-field" data-field="amount">
               <span>Monto *</span>
               <input
                 value={amount}
@@ -765,7 +844,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           <section className="form-card">
             <h2>Dirección de Entrega</h2>
             <div className="field-grid">
-              <div className="field full">
+              <div className="field full" data-field="address">
                 <label htmlFor="delivery-address">Dirección (Calle y Número) *</label>
                 <div className="address-row" ref={addressRef}>
                   <div className="address-input-wrap">
@@ -833,7 +912,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 {locateError && <small className="field-error">{locateError}</small>}
                 {errors.address && <small className="field-error">{errors.address}</small>}
               </div>
-              <label className="field">
+              <label className="field" data-field="between">
                 <span className="hint-danger">Entre calle 1 (al menos una obligatoria)</span>
                 <input
                   value={betweenStreet1}
@@ -858,7 +937,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   }}
                 />
               </label>
-              <label className="field">
+              <label className="field" data-field="propertyType">
                 <span>Tipo de propiedad *</span>
                 <select
                   value={propertyType}
@@ -887,7 +966,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               </label>
               {placeKind(propertyType) === 'building' && (
                 <>
-                  <label className="field">
+                  <label className="field" data-field="floor">
                     <span>Piso</span>
                     <input
                       value={floor}
@@ -897,7 +976,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                     />
                     {errors.floor && <small className="field-error">{errors.floor}</small>}
                   </label>
-                  <label className="field">
+                  <label className="field" data-field="unit">
                     <span>Depto / Unidad</span>
                     <input
                       value={unit}
@@ -910,7 +989,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 </>
               )}
               {(placeKind(propertyType) === 'building' || placeKind(propertyType) === 'house') && (
-                <label className="field">
+                <label className="field" data-field="doorbell">
                   <span>Timbre</span>
                   <input
                     value={doorbell}
@@ -968,7 +1047,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         <section className="form-card">
           <h2>Fecha y Horario</h2>
           <div className="field-grid">
-            <label className="field">
+            <label className="field" data-field="deliveryDate">
               <span>{pickup ? 'Fecha de retiro *' : 'Fecha de Entrega *'}</span>
               <input
                 type="date"
@@ -1060,7 +1139,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           </label>
         </section>
 
-        <section className="form-card" ref={attachmentSectionRef}>
+        <section className="form-card" ref={attachmentSectionRef} data-field="file">
           <h2>Documentación</h2>
           <label className="field">
             <span>Adjuntar remito, factura u otro archivo (imagen, PDF o Word, opcional)</span>

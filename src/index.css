@@ -340,6 +340,15 @@ p {
   color: #1c1b19;
 }
 
+.lumi-swal-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1c1b19;
+}
+
 .lumi-swal-check {
   display: flex;
   align-items: center;

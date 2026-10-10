@@ -320,17 +320,24 @@ export function success(texto: string) {
   })
 }
 
-/** Muestra el mensaje que devolvió el server. */
-export function error(texto: string) {
+/** Muestra un error. El segundo argumento es el detalle (lista o mensaje del server). */
+export function error(titulo: string, detalle?: string) {
+  const lines = detalle?.split('\n').map((line) => line.trim()).filter(Boolean) ?? []
+  const listHtml =
+    lines.length > 1
+      ? `<ul class="lumi-swal-list">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>`
+      : undefined
   return Swal.fire({
     icon: 'error',
-    title: texto,
+    title: titulo,
+    ...(listHtml ? { html: listHtml } : { text: detalle }),
     confirmButtonText: 'Entendido',
     buttonsStyling: false,
     iconColor: '#e25b57',
     customClass: {
       popup: 'lumi-swal',
       title: 'lumi-swal-title',
+      htmlContainer: 'lumi-swal-text',
       confirmButton: 'lumi-swal-danger',
       actions: 'lumi-swal-actions',
     },
