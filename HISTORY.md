@@ -103,6 +103,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 30 | Prioridad de pedidos | Hecho |
 | 30.1 | Orden de prioridad consistente | Hecho |
 | 31 | Pendientes de Entregas con pedidos, filtros y CSV | Hecho |
+| 31.1 | Ajustes en Pendientes | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -273,6 +274,8 @@ El Brief 30 agrega la prioridad del pedido (normal, alta, inmediata). El vendedo
 El Brief 30.1 trata un pedido entregado como prioridad normal al ordenar, para que no rompa listas mixtas ni las columnas del Panel.
 
 El Brief 31 muestra en Pendientes de Entregas los pedidos abiertos unidos al picking, con filtros por vendedor, estado y fecha (en la URL), acceso de lectura para el vendedor y exportación CSV de lo filtrado.
+
+El Brief 31.1 usa `downloadCsvFile` para el CSV, oculta los botones de flujo al vendedor en “Sin picking” y muestra “Sin vendedor asignado” si no tiene `sellerName`.
 
 ## Pendientes
 

@@ -435,7 +435,7 @@ export function PendientesEntregas() {
   const fechaFilter = parseFechaFilter(searchParams.get('fecha'))
   const searchApplied = searchParams.get('q') ?? ''
   const sellerFromUrl = searchParams.get('vendedor') ?? 'todos'
-  const seller = lockedSeller || sellerFromUrl
+  const seller = isVendedor ? lockedSeller : sellerFromUrl
 
   function patchParams(updates: Record<string, string | null>) {
     setSearchParams(
@@ -450,7 +450,7 @@ export function PendientesEntregas() {
           if (isDefault) params.delete(key)
           else params.set(key, value)
         }
-        if (lockedSeller) params.delete('vendedor')
+        if (isVendedor) params.delete('vendedor')
         return params
       },
       { replace: true },
@@ -982,14 +982,7 @@ export function PendientesEntregas() {
       ])
     }
 
-    const content = toCsv(table)
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `pendientes-${today}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadCsvFile(toCsv(table), `pendientes-${today}.csv`)
   }
 
   if (loading && lines.length === 0) {
@@ -1260,14 +1253,16 @@ export function PendientesEntregas() {
         <label className="mt-3 block text-sm">
           Vendedor
           <select
-            value={seller || 'todos'}
+            value={isVendedor ? lockedSeller : seller || 'todos'}
             disabled={isVendedor}
             onChange={(event) => patchParams({ vendedor: event.target.value })}
             className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:opacity-60"
           >
             {!isVendedor && <option value="todos">Todos</option>}
-            {isVendedor && lockedSeller && (
-              <option value={lockedSeller}>{lockedSeller}</option>
+            {isVendedor && (
+              <option value={lockedSeller}>
+                {lockedSeller || 'Sin vendedor asignado'}
+              </option>
             )}
             {!isVendedor &&
               sellers.map((name) => (
@@ -1388,7 +1383,7 @@ export function PendientesEntregas() {
                         ) : (
                           <div className="mt-2">
                             <p className="text-sm text-lumi-muted">Sin picking</p>
-                            {user && (
+                            {user && canWrite && (
                               <div className="mt-2">
                                 <OrderFlowButtons
                                   order={order}
