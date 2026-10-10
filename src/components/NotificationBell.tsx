@@ -340,10 +340,13 @@ export function NotificationBell() {
         <div
           className={
             narrow
-              ? 'fixed inset-x-4 z-50 flex max-h-[70vh] w-auto flex-col rounded-2xl border border-lumi-line bg-surface p-3 shadow-md'
-              : 'absolute right-0 top-full z-30 mt-2 flex w-80 flex-col rounded-2xl border border-lumi-line bg-surface p-3 shadow-md'
+              ? 'fixed inset-x-4 flex max-h-[70vh] w-auto flex-col rounded-2xl border border-lumi-line bg-surface p-3 shadow-md'
+              : 'absolute right-0 top-full mt-2 flex w-80 flex-col rounded-2xl border border-lumi-line bg-surface p-3 shadow-md'
           }
-          style={open && narrow && panelTop !== null ? { top: panelTop } : undefined}
+          style={{
+            zIndex: 'var(--z-dropdown)',
+            ...(open && narrow && panelTop !== null ? { top: panelTop } : {}),
+          }}
         >
           <div className="flex shrink-0 items-center justify-between gap-2">
             <p className="text-sm font-semibold">Avisos</p>

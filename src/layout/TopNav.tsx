@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useId, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { NotificationBell } from '../components/NotificationBell'
 import { BRAND } from '../config/brand'
@@ -35,7 +35,12 @@ export function TopNav({ onOpenSearch }: TopNavProps) {
   const [openId, setOpenId] = useState<OpenMenuId | null>(null)
   const [focusIndex, setFocusIndex] = useState<number | null>(null)
   const [menuPath, setMenuPath] = useState(location.pathname)
-  const triggerRefs = useRef<Partial<Record<GroupId, HTMLButtonElement | null>>>({})
+  const [triggerBags] = useState(() => ({
+    operacion: { current: null as HTMLButtonElement | null },
+    seguimiento: { current: null as HTMLButtonElement | null },
+    'post-venta': { current: null as HTMLButtonElement | null },
+    admin: { current: null as HTMLButtonElement | null },
+  }))
 
   if (menuPath !== location.pathname) {
     setMenuPath(location.pathname)
@@ -88,9 +93,9 @@ export function TopNav({ onOpenSearch }: TopNavProps) {
       const next = triggers[(index + dir + triggers.length) % triggers.length]
       if (openId && openId !== 'user') {
         openMenu(next.id, 0)
-        queueMicrotask(() => triggerRefs.current[next.id]?.focus())
+        queueMicrotask(() => triggerBags[next.id].current?.focus())
       } else {
-        triggerRefs.current[next.id]?.focus()
+        triggerBags[next.id].current?.focus()
       }
     }
   }
@@ -100,7 +105,7 @@ export function TopNav({ onOpenSearch }: TopNavProps) {
     if (index < 0 || triggers.length === 0) return
     const next = triggers[(index + dir + triggers.length) % triggers.length]
     openMenu(next.id, 0)
-    queueMicrotask(() => triggerRefs.current[next.id]?.focus())
+    queueMicrotask(() => triggerBags[next.id].current?.focus())
   }
 
   function onUserOpenChange(next: boolean) {
@@ -147,7 +152,7 @@ export function TopNav({ onOpenSearch }: TopNavProps) {
               <div key={group.id} className="topnav-dropdown">
                 <button
                   ref={(el) => {
-                    triggerRefs.current[group.id] = el
+                    triggerBags[group.id].current = el
                   }}
                   type="button"
                   className={groupActive ? 'topnav-trigger is-active' : 'topnav-trigger'}
@@ -179,6 +184,7 @@ export function TopNav({ onOpenSearch }: TopNavProps) {
                   focusIndex={open ? focusIndex : null}
                   onClose={closeMenu}
                   onArrowNeighbor={(dir) => moveNeighbor(group.id, dir)}
+                  triggerRef={triggerBags[group.id]}
                 />
               </div>
             )

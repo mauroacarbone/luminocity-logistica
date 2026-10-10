@@ -110,6 +110,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32c | Componentes base de UI | Hecho |
 | 32e | Navegación superior y paleta de comandos | Hecho |
 | 32e.1 | Accesibilidad de la paleta y los menús | Hecho |
+| 32e.2 | Menús de la barra superior visibles | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -294,6 +295,8 @@ El Brief 32c agrega los componentes base en `src/components/ui/` (Button, Card, 
 El Brief 32e reemplaza la sidebar por una barra superior con menús por teclado, deja el drawer móvil con la misma accesibilidad y agrega una paleta de comandos (Ctrl/Cmd+K) para ir a páginas y pedidos.
 
 El Brief 32e.1 ajusta la accesibilidad de la paleta (aria-expanded y tabIndex) y evita dos menús abiertos a la vez, devolviendo el foco al disparador con Tab.
+
+Los menús de la barra superior quedaban recortados o detrás de los mapas; ahora se abren en un portal con posición fija, el contenido queda aislado y las capas usan tokens --z-*.
 
 ## Pendientes
 

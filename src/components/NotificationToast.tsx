@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 type Props = {
   text: string
@@ -18,9 +19,10 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
     onClose()
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-x-4 top-16 z-40 rounded-2xl border border-lumi-line bg-surface p-4 shadow-md sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
+      className="fixed inset-x-4 top-16 rounded-2xl border border-lumi-line bg-surface p-4 shadow-md sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
+      style={{ zIndex: 'var(--z-toast)' }}
       aria-live="polite"
     >
       <div className="relative">
@@ -47,6 +49,7 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
           </svg>
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

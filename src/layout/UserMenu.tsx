@@ -1,7 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { ROLE_LABEL } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
+import { usePopoverPosition } from './usePopoverPosition'
 
 type UserMenuProps = {
   open: boolean
@@ -11,9 +13,9 @@ type UserMenuProps = {
 export function UserMenu({ open, onOpenChange }: UserMenuProps) {
   const { user, logout } = useAuth()
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
   const focusOnOpen = useRef(false)
   const menuId = useId()
+  const { top, left, menuRef } = usePopoverPosition(buttonRef, open, 'end')
   const initial = user?.name.trim().charAt(0).toUpperCase() || 'L'
 
   useEffect(() => {
@@ -26,13 +28,13 @@ export function UserMenu({ open, onOpenChange }: UserMenuProps) {
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [open, onOpenChange])
+  }, [open, onOpenChange, menuRef])
 
   useLayoutEffect(() => {
     if (!open || !focusOnOpen.current) return
     focusOnOpen.current = false
     menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
-  }, [open])
+  }, [open, menuRef])
 
   function openAndFocusItem() {
     focusOnOpen.current = true
@@ -66,8 +68,9 @@ export function UserMenu({ open, onOpenChange }: UserMenuProps) {
       return
     }
     if (event.key === 'Tab') {
-      buttonRef.current?.focus()
+      event.preventDefault()
       onOpenChange(false)
+      buttonRef.current?.focus()
     }
   }
 
@@ -104,32 +107,36 @@ export function UserMenu({ open, onOpenChange }: UserMenuProps) {
           />
         </svg>
       </button>
-      {open ? (
-        <div
-          ref={menuRef}
-          id={menuId}
-          role="menu"
-          className="topnav-menu topnav-user-menu"
-          onKeyDown={onMenuKeyDown}
-        >
-          <div className="topnav-user-heading" aria-hidden="true">
-            <span className="topnav-user-name">{user.name}</span>
-            <span className="topnav-user-role">{ROLE_LABEL[user.role]}</span>
-          </div>
-          <button
-            type="button"
-            role="menuitem"
-            tabIndex={-1}
-            className="topnav-menuitem is-danger"
-            onClick={() => {
-              onOpenChange(false)
-              logout()
-            }}
-          >
-            Salir
-          </button>
-        </div>
-      ) : null}
+      {open
+        ? createPortal(
+            <div
+              ref={menuRef}
+              id={menuId}
+              role="menu"
+              className="topnav-menu topnav-user-menu"
+              style={{ top, left }}
+              onKeyDown={onMenuKeyDown}
+            >
+              <div className="topnav-user-heading" aria-hidden="true">
+                <span className="topnav-user-name">{user.name}</span>
+                <span className="topnav-user-role">{ROLE_LABEL[user.role]}</span>
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                tabIndex={-1}
+                className="topnav-menuitem is-danger"
+                onClick={() => {
+                  onOpenChange(false)
+                  logout()
+                }}
+              >
+                Salir
+              </button>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

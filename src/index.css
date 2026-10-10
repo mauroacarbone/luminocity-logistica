@@ -46,6 +46,11 @@
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --z-topnav: 1100;
+  --z-dropdown: 1200;
+  --z-drawer: 1300;
+  --z-palette: 1400;
+  --z-toast: 1500;
   --font-base: Inter, "Segoe UI", system-ui, sans-serif;
   font: 14px/1.5 var(--font-base);
   color: var(--text);
@@ -133,7 +138,7 @@ p {
 .topnav {
   position: sticky;
   top: 0;
-  z-index: 40;
+  z-index: var(--z-topnav);
   height: 56px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -180,7 +185,11 @@ p {
   flex: 1;
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+
+.topnav-sections::-webkit-scrollbar {
+  display: none;
 }
 
 .topnav-link,
@@ -241,21 +250,14 @@ p {
 }
 
 .topnav-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 50;
+  position: fixed;
+  z-index: var(--z-dropdown);
   min-width: 240px;
   padding: 6px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-md);
-}
-
-.topnav-user-menu {
-  left: auto;
-  right: 0;
 }
 
 .topnav-menuitem {
@@ -430,7 +432,7 @@ p {
 .command-palette-root {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-palette);
   display: grid;
   align-content: start;
   justify-items: center;
@@ -793,6 +795,11 @@ p {
   max-width: 1440px;
   margin: 0 auto;
   padding: 24px 32px 40px;
+  isolation: isolate;
+}
+
+.swal2-container {
+  z-index: var(--z-toast) !important;
 }
 
 .orders-note {
@@ -2002,7 +2009,7 @@ p {
     top: 0;
     left: 0;
     right: 0;
-    z-index: 40;
+    z-index: var(--z-topnav);
     height: 56px;
     padding: 0 12px;
     background: var(--surface);
@@ -2096,7 +2103,7 @@ p {
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 45;
+    z-index: var(--z-drawer);
     background: var(--overlay);
     opacity: 0;
     pointer-events: none;
@@ -2113,7 +2120,7 @@ p {
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 50;
+    z-index: var(--z-drawer);
     width: min(280px, 85vw);
     height: 100%;
     transform: translateX(-100%);

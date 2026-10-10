@@ -1,7 +1,9 @@
-import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { NavLink, useLocation } from 'react-router-dom'
 import { NavIcon } from './NavIcon'
 import { pathMatches, type NavItem } from './nav'
+import { usePopoverPosition } from './usePopoverPosition'
 
 type NavMenuProps = {
   id: string
@@ -11,6 +13,7 @@ type NavMenuProps = {
   onNavigate?: () => void
   onArrowNeighbor?: (dir: -1 | 1) => void
   focusIndex?: number | null
+  triggerRef: RefObject<HTMLElement | null>
 }
 
 export function NavMenu({
@@ -21,23 +24,27 @@ export function NavMenu({
   onNavigate,
   onArrowNeighbor,
   focusIndex = null,
+  triggerRef,
 }: NavMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
+  const { top, left, menuRef } = usePopoverPosition(triggerRef, open, 'start')
+  const focusDone = useRef(false)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      focusDone.current = false
+      return
+    }
     const menu = menuRef.current
-    if (!menu) return
+    if (!menu || focusIndex === null) return
     const links = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')]
     const target =
-      focusIndex === null
-        ? null
-        : focusIndex < 0
-          ? links[links.length - 1]
-          : links[Math.min(focusIndex, links.length - 1)]
+      focusIndex < 0
+        ? links[links.length - 1]
+        : links[Math.min(focusIndex, links.length - 1)]
     target?.focus()
-  }, [open, focusIndex])
+    focusDone.current = true
+  }, [open, focusIndex, menuRef])
 
   useEffect(() => {
     if (!open) return
@@ -46,13 +53,12 @@ export function NavMenu({
       const target = event.target as Node | null
       if (!menu || !target) return
       if (menu.contains(target)) return
-      const trigger = document.querySelector(`[aria-controls="${id}"]`)
-      if (trigger?.contains(target)) return
+      if (triggerRef.current?.contains(target)) return
       onClose()
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [open, onClose, id])
+  }, [open, onClose, menuRef, triggerRef])
 
   if (!open) return null
 
@@ -75,14 +81,13 @@ export function NavMenu({
     if (event.key === 'Escape') {
       event.preventDefault()
       onClose()
-      const trigger = document.querySelector<HTMLElement>(`[aria-controls="${id}"]`)
-      trigger?.focus()
+      triggerRef.current?.focus()
       return
     }
     if (event.key === 'Tab') {
-      const trigger = document.querySelector<HTMLElement>(`[aria-controls="${id}"]`)
-      trigger?.focus()
+      event.preventDefault()
       onClose()
+      triggerRef.current?.focus()
       return
     }
     if (event.key === 'ArrowDown') {
@@ -116,12 +121,13 @@ export function NavMenu({
     }
   }
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
       id={id}
       role="menu"
       className="topnav-menu"
+      style={{ top, left }}
       onKeyDown={onKeyDown}
     >
       {items.map((item) => {
@@ -144,6 +150,7 @@ export function NavMenu({
           </NavLink>
         )
       })}
-    </div>
+    </div>,
+    document.body,
   )
 }
