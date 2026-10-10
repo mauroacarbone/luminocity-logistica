@@ -40,7 +40,8 @@ function sheetForOrder(order: Order, sheets: RouteSheet[]) {
   return sheets.find((sheet) => sheet.id === order.routeId)
 }
 
-function withSheetFlag(order: Order, sheets: RouteSheet[]): Order {
+function withSheetFlag(order: Order, sheets: RouteSheet[], canPlan: boolean): Order {
+  if (!canPlan) return { ...order, sheetPlanned: false }
   if (!order.routeId) return { ...order, sheetPlanned: false }
   const sheet = sheetForOrder(order, sheets)
   if (!sheet) return order
@@ -102,7 +103,7 @@ function OrderCard({
   const { transitionOrder } = useOrders()
   const [busy, setBusy] = useState(false)
   const waiting = pendingEdit(order)
-  const flowOrder = withSheetFlag(order, sheets)
+  const flowOrder = withSheetFlag(order, sheets, canPlan)
 
   return (
     <article className="order-card">
@@ -208,7 +209,7 @@ function TableActions({
   const { user } = useAuth()
   const { transitionOrder } = useOrders()
   const [busy, setBusy] = useState(false)
-  const flowOrder = withSheetFlag(order, sheets)
+  const flowOrder = withSheetFlag(order, sheets, canPlan)
 
   return (
     <div className="flex flex-col items-start gap-1.5">
@@ -263,6 +264,13 @@ export function PanelOperativo() {
   useEffect(() => {
     let cancelled = false
     async function loadSheets() {
+      if (!canPlan) {
+        if (!cancelled) {
+          setSheets([])
+          setSheetsError(false)
+        }
+        return
+      }
       const dates = datesKey ? datesKey.split('|') : []
       if (dates.length === 0) {
         if (!cancelled) {
@@ -273,7 +281,7 @@ export function PanelOperativo() {
       }
       const results = await Promise.all(dates.map((date) => listRouteSheets(date)))
       if (cancelled) return
-      const failed = results.some((result) => !result.ok)
+      const failed = results.some((result) => !result.ok && result.status !== 403)
       const merged: RouteSheet[] = []
       for (const result of results) {
         if (!result.ok) continue
@@ -288,7 +296,7 @@ export function PanelOperativo() {
     return () => {
       cancelled = true
     }
-  }, [datesKey])
+  }, [canPlan, datesKey])
 
   function selectSummary(key: 'total' | OrderStatus) {
     if (key === 'total') {
