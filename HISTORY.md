@@ -79,6 +79,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 24b.2 | Post Venta: un solo stepper por tarjeta | Hecho |
 | 25 | Notificaciones que se cierran solas y aviso emergente | Hecho |
 | 25.1 | Avisos que se limpian al leer y pedidos entregados sin editar | Hecho |
+| 25.1.1 | Ajustes del aviso emergente y del mensaje de edición | Hecho |
 | 24c | Reclamos: autor del cambio y aviso al vendedor | Hecho |
 | 26a | Avanzar pedidos desde el Panel operativo | Hecho |
 | 26a.1 | Hojas de ruta del Panel solo para quien puede verlas | Hecho |
@@ -204,6 +205,8 @@ El Brief 24b.2 deja un solo indicador de avance en cada tarjeta de Post Venta: s
 El Brief 25 cierra el panel de avisos al tocar uno (y navega al pedido si hay `orderId`), al clic afuera o con Escape. En celular el panel queda fijo bajo la campana. Un aviso emergente muestra las notificaciones app nuevas una sola vez (ids en `luminocity.notifSeen.<userId>`).
 
 El Brief 25.1 deja el punto rojo solo con avisos app sin leer; los WhatsApp pendientes van en su sección y con un punto gris. Marcar leído (y todos) es optimista. Todo el toast es clickeable. No se edita un pedido entregado en el front ni con PATCH (409), salvo tracking de correo por encargado/admin.
+
+El Brief 25.1.1 reordena el toast: la X es botón hermano y cierra con teclado sin abrir el aviso; el cuerpo es un botón real. En Nuevo Pedido, el mensaje de bloqueo distingue entregado de falta de permiso.
 
 El Brief 24c deja al vendedor ver los reclamos cargados a su `sellerName`, no solo los que creó él. Cuando el encargado o el admin cambia el estado o agrega una nota, el vendedor dueño recibe un aviso in-app con `claimId`; al tocarlo abre Post Venta con el reclamo resaltado. Cada cambio y cada nota muestran quién lo hizo si el evento trae `by.userName`.
 

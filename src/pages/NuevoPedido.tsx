@@ -1156,11 +1156,15 @@ export function NuevoPedido() {
   if (editingId && user) {
     const order = orders.find((item) => item.id === editingId)
     if (order && (order.status === 'entregado' || !canEditOrder(user, order))) {
+      const message =
+        order.status === 'entregado'
+          ? 'No se puede editar un pedido entregado.'
+          : 'No podés editar este pedido.'
       return (
         <section className="page">
           <header className="page-header">
             <h1>Editar Pedido</h1>
-            <p>No se puede editar un pedido entregado.</p>
+            <p>{message}</p>
             <p className="mt-3">
               <Link className="text-lumi-ink underline" to={`/pedidos/${encodeURIComponent(editingId)}`}>
                 Ver pedido {editingId}
