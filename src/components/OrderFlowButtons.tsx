@@ -48,7 +48,7 @@ function placeMenu(button: HTMLElement, menu: HTMLElement): MenuPos {
 type Props = {
   order: Order
   role: Role
-  via: 'despacho' | 'pedidos' | 'panel' | 'retiros'
+  via: 'despacho' | 'pedidos' | 'panel' | 'retiros' | 'picking'
   busy: boolean
   onBusy: (busy: boolean) => void
   transition: (id: string, body: Record<string, unknown>) => Promise<OrderSaveResult>

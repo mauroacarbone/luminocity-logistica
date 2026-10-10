@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
+import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { STATUS_PILL, type Order } from '../data/orders'
+import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
 import { askPackages, confirm, error as showError, success } from '../lib/alerts'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
 import {
@@ -10,6 +12,7 @@ import {
   normalizeInvoiceKey,
   type InvoiceMatch,
 } from '../lib/invoiceKey'
+import { statusPillFor } from '../lib/orderFlow'
 import type { PickingStatus } from '../lib/pickingApi'
 import {
   batchRowsFromPreview,
@@ -18,6 +21,8 @@ import {
   type PickingLine,
   type PickingPreview,
 } from '../lib/pickingSheet'
+import { compareOpenPriority } from '../lib/priority'
+import { formatIsoDate, parseIso, toIso } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 import { usePicking } from '../state/PickingContext'
@@ -25,6 +30,8 @@ import { usePicking } from '../state/PickingContext'
 const ORDER_LINK_BATCH = 50
 
 const MODAL_ROW_LIMIT = 500
+
+const OPEN_STATUSES: OrderStatus[] = ['pendiente', 'preparado', 'asignado', 'en-viaje']
 
 type Mode = 'lista' | 'picking'
 type StatusFilter = 'todos' | PickingStatus | 'sin_pedido'
@@ -161,11 +168,11 @@ function currentPickedQty(line: PickingLine) {
   return typeof line.pickedQty === 'number' ? line.pickedQty : 0
 }
 
-function progressOf(group: PickingGroup) {
-  const total = group.lines.length
-  const complete = group.lines.filter(isLineComplete).length
+function progressOfLines(orderLines: PickingLine[]) {
+  const total = orderLines.length
+  const complete = orderLines.filter(isLineComplete).length
   const pct = total === 0 ? 0 : Math.round((complete / total) * 100)
-  const missing = group.lines
+  const missing = orderLines
     .filter((line) => !isLineComplete(line))
     .map((line) => ({
       id: line.id,
@@ -178,6 +185,45 @@ function progressOf(group: PickingGroup) {
     pct,
     missing,
     readyToPrepare: total > 0 && complete === total,
+  }
+}
+
+function progressOf(group: PickingGroup) {
+  return progressOfLines(group.lines)
+}
+
+function isOverdueOrder(order: Order, today: string) {
+  return Boolean(order.deliveryDate) && order.deliveryDate < today
+}
+
+function overdueDays(deliveryDate: string, today: string) {
+  if (!deliveryDate || deliveryDate >= today) return 0
+  const ms = parseIso(today).getTime() - parseIso(deliveryDate).getTime()
+  return Math.max(0, Math.round(ms / (24 * 60 * 60 * 1000)))
+}
+
+function compareListaOrders(left: Order, right: Order, today: string) {
+  const byPriority = compareOpenPriority(left, right)
+  if (byPriority !== 0) return byPriority
+  const leftOverdue = isOverdueOrder(left, today) ? 0 : 1
+  const rightOverdue = isOverdueOrder(right, today) ? 0 : 1
+  if (leftOverdue !== rightOverdue) return leftOverdue - rightOverdue
+  const byDate = (left.deliveryDate || '').localeCompare(right.deliveryDate || '')
+  if (byDate !== 0) return byDate
+  return left.id.localeCompare(right.id)
+}
+
+function groupForOrder(order: Order, orderLines: PickingLine[]): PickingGroup {
+  const invoice = order.invoices?.[0] ?? orderLines[0]?.invoice ?? order.id
+  const key = normalizeInvoiceKey(invoice) || invoice
+  return {
+    key,
+    invoice,
+    client: order.client,
+    seller: order.seller ?? '',
+    date: order.deliveryDate,
+    lines: orderLines,
+    link: { kind: 'one', order },
   }
 }
 
@@ -303,10 +349,29 @@ export function PendientesEntregas() {
   const [showAllData, setShowAllData] = useState(false)
   const [visibleColumnIds, setVisibleColumnIds] = useState<string[]>([])
 
+  const today = toIso(new Date())
+  const [flowBusy, setFlowBusy] = useState(false)
+
   const sellers = useMemo(
     () => [...new Set(lines.map((line) => line.seller).filter(Boolean))].sort(),
     [lines],
   )
+
+  const openOrders = useMemo(
+    () => pedidos.filter((order) => OPEN_STATUSES.includes(order.status)),
+    [pedidos],
+  )
+
+  const linesByOrderId = useMemo(() => {
+    const map = new Map<string, PickingLine[]>()
+    for (const line of lines) {
+      if (!line.orderId) continue
+      const bucket = map.get(line.orderId)
+      if (bucket) bucket.push(line)
+      else map.set(line.orderId, [line])
+    }
+    return map
+  }, [lines])
 
   const linesByInvoice = useMemo(() => {
     const map: LinesByInvoice = new Map()
@@ -319,6 +384,40 @@ export function PendientesEntregas() {
     }
     return map
   }, [lines])
+
+  const linesByOpenOrder = useMemo(() => {
+    const map = new Map<string, PickingLine[]>()
+    const claimed = new Set<string>()
+    for (const order of openOrders) {
+      const joined: PickingLine[] = []
+      for (const line of linesByOrderId.get(order.id) ?? []) {
+        if (claimed.has(line.id)) continue
+        claimed.add(line.id)
+        joined.push(line)
+      }
+      for (const line of linesForOrder(linesByInvoice, order)) {
+        if (line.orderId && line.orderId !== order.id) continue
+        if (claimed.has(line.id)) continue
+        claimed.add(line.id)
+        joined.push(line)
+      }
+      map.set(order.id, joined)
+    }
+    return { map, claimed }
+  }, [openOrders, linesByOrderId, linesByInvoice])
+
+  const orphanLines = useMemo(
+    () => lines.filter((line) => !linesByOpenOrder.claimed.has(line.id)),
+    [lines, linesByOpenOrder],
+  )
+
+  const sortedOpenOrders = useMemo(() => {
+    let list = [...openOrders]
+    if (seller !== 'todos') {
+      list = list.filter((order) => order.seller === seller)
+    }
+    return list.sort((left, right) => compareListaOrders(left, right, today))
+  }, [openOrders, seller, today])
 
   const filteredLines = useMemo(() => {
     const needle = searchApplied.trim().toLowerCase()
@@ -333,7 +432,22 @@ export function PendientesEntregas() {
     })
   }, [lines, mode, pedidos, searchApplied, seller, statusFilter])
 
+  const filteredOrphans = useMemo(() => {
+    const needle = searchApplied.trim().toLowerCase()
+    return orphanLines.filter((line) => {
+      if (statusFilter !== 'todos' && statusFilter !== 'sin_pedido') {
+        if (lineStatus(line) !== statusFilter) return false
+      }
+      if (mode === 'lista' && seller !== 'todos' && line.seller !== seller) return false
+      return matchesSearch(line, needle)
+    })
+  }, [mode, orphanLines, searchApplied, seller, statusFilter])
+
   const groups = useMemo(() => groupLines(filteredLines, pedidos), [filteredLines, pedidos])
+  const orphanGroups = useMemo(
+    () => groupLines(filteredOrphans, pedidos),
+    [filteredOrphans, pedidos],
+  )
   const dataColumns = useMemo(() => columnsFromLines(filteredLines), [filteredLines])
   const visibleColumns = dataColumns.filter((column) => visibleColumnIds.includes(column.id))
   const modalLines = filteredLines.slice(0, MODAL_ROW_LIMIT)
@@ -895,67 +1009,199 @@ export function PendientesEntregas() {
             className="mt-3 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-50"
             disabled={busy || loading}
             onClick={() => {
-              void refresh().then(() => {
-                setMessage(lines.length === 0 ? 'Todavía no hay filas de picking.' : 'Lista actualizada.')
+              void refresh().then((count) => {
+                setMessage(
+                  count === 0
+                    ? 'Todavía no hay filas de picking.'
+                    : `Lista actualizada: ${count} filas.`,
+                )
               })
             }}
           >
             Actualizar lista
           </button>
 
-          {groups.length === 0 ? (
+          {sortedOpenOrders.length === 0 && orphanGroups.length === 0 ? (
             <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
-              {lines.length === 0
-                ? 'Cargá un Excel con las columnas Factura, Cliente, Vendedor, Producto y Cantidad.'
-                : 'Ningún pedido coincide con el filtro.'}
+              No hay pedidos pendientes
             </div>
           ) : (
             <div className="mt-4 flex flex-col gap-3">
-              {groups.map((group) => {
-                const progress = progressOf(group)
+              {sortedOpenOrders.length > 0 && lines.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-lumi-line bg-white px-4 py-3 text-sm shadow-sm">
+                  <p className="text-lumi-muted">Todavía no se importó el Excel de picking</p>
+                  <button
+                    type="button"
+                    className="mt-2 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                    disabled={busy}
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    Cargar Excel al Sheet
+                  </button>
+                </div>
+              )}
+
+              {sortedOpenOrders.map((order) => {
+                const orderLines = linesByOpenOrder.map.get(order.id) ?? []
+                const hasPicking = orderLines.length > 0
+                const progress = progressOfLines(orderLines)
+                const days = overdueDays(order.deliveryDate, today)
+                const prepareGroup = hasPicking
+                  ? groupForOrder(order, linesForOrder(linesByInvoice, order))
+                  : null
                 return (
-                  <article key={group.key} className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="font-semibold">
-                          {group.invoice} — {group.client}
-                        </p>
-                        {subtitle(group) && (
-                          <p className="mt-1 text-sm text-lumi-muted">{subtitle(group)}</p>
-                        )}
-                        <OrderLinkBlock link={group.link} />
-                        <GroupPickingSummary group={group} />
-                        {prepareBlock(group)}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-3">
-                        <div
-                          className="h-1.5 overflow-hidden rounded-full bg-[#efeae0]"
-                          style={{ width: 96 }}
-                        >
-                          <div
-                            className="h-full bg-lumi-yellow"
-                            style={{ width: `${progress.pct}%` }}
-                          />
-                        </div>
-                        {progress.readyToPrepare ? (
-                          <span className="rounded-full bg-[#e5f6ea] px-2 py-0.5 text-xs font-medium text-[#1d7a3a]">
-                            Listo
+                  <article key={order.id} className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            className="order-link text-base font-semibold"
+                            to={`/pedidos/${order.id}`}
+                          >
+                            {order.id}
+                          </Link>
+                          <PriorityChip order={order} />
+                          <span className={`status-pill status-${order.status}`}>
+                            {statusPillFor(order, order.status)}
                           </span>
+                        </div>
+                        <p className="mt-1 text-sm">
+                          {order.client}
+                          {order.seller ? (
+                            <span className="text-lumi-muted"> · {order.seller}</span>
+                          ) : null}
+                        </p>
+                        <div className="mt-2">
+                          <OrderStepper order={order} variant="compact" />
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                          {order.deliveryDate ? (
+                            <span>Entrega: {formatIsoDate(order.deliveryDate)}</span>
+                          ) : (
+                            <span className="text-lumi-muted">Sin fecha de entrega</span>
+                          )}
+                          {days > 0 && (
+                            <span className="inline-flex rounded-full bg-[#fde8e7] px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
+                              Atrasado {days} día{days === 1 ? '' : 's'}
+                            </span>
+                          )}
+                        </div>
+                        {hasPicking ? (
+                          <>
+                            <GroupPickingSummary group={groupForOrder(order, orderLines)} />
+                            {prepareGroup ? prepareBlock(prepareGroup) : null}
+                          </>
                         ) : (
-                          <span className="text-xs text-lumi-muted">{progress.pct}%</span>
+                          <div className="mt-2">
+                            <p className="text-sm text-lumi-muted">Sin picking</p>
+                            {user && (
+                              <div className="mt-2">
+                                <OrderFlowButtons
+                                  order={order}
+                                  role={user.role}
+                                  via="picking"
+                                  busy={flowBusy}
+                                  onBusy={setFlowBusy}
+                                  transition={transitionOrder}
+                                  layout="compact"
+                                />
+                              </div>
+                            )}
+                          </div>
                         )}
-                        <button
-                          type="button"
-                          className="text-sm hover:underline"
-                          onClick={() => openDetail(group.key)}
-                        >
-                          Ver detalle
-                        </button>
                       </div>
+                      {hasPicking && (
+                        <div className="flex shrink-0 items-center gap-3">
+                          <div
+                            className="h-1.5 overflow-hidden rounded-full bg-[#efeae0]"
+                            style={{ width: 96 }}
+                          >
+                            <div
+                              className="h-full bg-lumi-yellow"
+                              style={{ width: `${progress.pct}%` }}
+                            />
+                          </div>
+                          {progress.readyToPrepare ? (
+                            <span className="rounded-full bg-[#e5f6ea] px-2 py-0.5 text-xs font-medium text-[#1d7a3a]">
+                              Listo
+                            </span>
+                          ) : (
+                            <span className="text-xs text-lumi-muted">{progress.pct}%</span>
+                          )}
+                          <button
+                            type="button"
+                            className="text-sm hover:underline"
+                            onClick={() =>
+                              openDetail(
+                                normalizeInvoiceKey(orderLines[0]?.invoice ?? '') ||
+                                  order.id,
+                              )
+                            }
+                          >
+                            Ver detalle
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </article>
                 )
               })}
+
+              {orphanGroups.length > 0 && (
+                <div className="mt-2">
+                  <h2 className="mb-2 text-sm font-semibold text-lumi-muted">Filas sin pedido</h2>
+                  <div className="flex flex-col gap-3">
+                    {orphanGroups.map((group) => {
+                      const progress = progressOf(group)
+                      return (
+                        <article
+                          key={group.key}
+                          className="rounded-2xl bg-white px-4 py-3 shadow-sm"
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="font-semibold">
+                                {group.invoice} — {group.client}
+                              </p>
+                              {subtitle(group) && (
+                                <p className="mt-1 text-sm text-lumi-muted">{subtitle(group)}</p>
+                              )}
+                              <OrderLinkBlock link={group.link} />
+                              <GroupPickingSummary group={group} />
+                              {prepareBlock(group)}
+                            </div>
+                            <div className="flex shrink-0 items-center gap-3">
+                              <div
+                                className="h-1.5 overflow-hidden rounded-full bg-[#efeae0]"
+                                style={{ width: 96 }}
+                              >
+                                <div
+                                  className="h-full bg-lumi-yellow"
+                                  style={{ width: `${progress.pct}%` }}
+                                />
+                              </div>
+                              {progress.readyToPrepare ? (
+                                <span className="rounded-full bg-[#e5f6ea] px-2 py-0.5 text-xs font-medium text-[#1d7a3a]">
+                                  Listo
+                                </span>
+                              ) : (
+                                <span className="text-xs text-lumi-muted">{progress.pct}%</span>
+                              )}
+                              <button
+                                type="button"
+                                className="text-sm hover:underline"
+                                onClick={() => openDetail(group.key)}
+                              >
+                                Ver detalle
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>

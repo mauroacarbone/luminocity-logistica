@@ -40,7 +40,7 @@ type PickingContextValue = {
   loading: boolean
   error: string
   legacyOffer: LegacyLine[] | null
-  refresh: () => Promise<void>
+  refresh: () => Promise<number>
   patchLine: (id: string, fields: Record<string, unknown>) => Promise<PickingPatchResult>
   uploadLegacy: () => Promise<{ ok: true; message: string } | { ok: false; message: string }>
   dismissLegacy: () => void
@@ -151,7 +151,6 @@ export function PickingProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState('')
   const [legacyOffer, setLegacyOffer] = useState<LegacyLine[] | null>(null)
   const [legacyShown, setLegacyShown] = useState(false)
-  const [attempt, setAttempt] = useState(0)
   const userId = user?.id ?? null
   const canUse = Boolean(user && PICKING_ROLES.has(user.role))
   const trackKey = canUse ? userId : null
@@ -168,45 +167,56 @@ export function PickingProvider({ children }: { children: ReactNode }) {
 
   const loading = Boolean(trackKey) && status !== 'ready' && status !== 'error'
 
-  const refresh = useCallback(async () => {
-    setError('')
-    setStatus('loading')
-    setAttempt((value) => value + 1)
-  }, [])
-
-  useEffect(() => {
-    if (!trackKey) return
-    let cancelled = false
-    void listPicking().then((result) => {
-      if (cancelled) return
+  const applyPickingResult = useCallback(
+    (result: Awaited<ReturnType<typeof listPicking>>) => {
       if (!result.ok) {
         if (result.status === 401) {
           logout()
-          return
+          return 0
         }
         setLines([])
         setError(result.message)
         setStatus('error')
-        return
+        return 0
       }
       const rows = asPickingList(result)
       if (!rows) {
         setLines([])
         setError('No se pudo leer el picking.')
         setStatus('error')
-        return
+        return 0
       }
-      setLines(rows.map(lineFromRow))
+      const mapped = rows.map(lineFromRow)
+      setLines(mapped)
       setStatus('ready')
       if (!legacyShown && rows.length === 0) {
         const legacy = readLegacy()
         if (legacy.length > 0) setLegacyOffer(legacy)
       }
+      return mapped.length
+    },
+    [legacyShown, logout],
+  )
+
+  const refresh = useCallback(async () => {
+    if (!trackKey) return 0
+    setError('')
+    setStatus('loading')
+    const result = await listPicking()
+    return applyPickingResult(result)
+  }, [applyPickingResult, trackKey])
+
+  useEffect(() => {
+    if (!trackKey) return
+    let cancelled = false
+    void listPicking().then((result) => {
+      if (cancelled) return
+      applyPickingResult(result)
     })
     return () => {
       cancelled = true
     }
-  }, [attempt, legacyShown, logout, trackKey])
+  }, [applyPickingResult, trackKey])
 
   async function patchLine(id: string, fields: Record<string, unknown>): Promise<PickingPatchResult> {
     const current = lines.find((line) => line.id === id)
