@@ -19,6 +19,15 @@ import {
 } from '../lib/attachment'
 import { canEditOrder, namesMatch } from '../lib/access'
 import { confirm, error } from '../lib/alerts'
+import {
+  clearOrderDraft,
+  formatDraftAgo,
+  orderDraftKey,
+  readOrderDraft,
+  writeOrderDraft,
+  type OrderDraftFields,
+  type OrderDraftRecord,
+} from '../lib/orderDraft'
 import { slotQuestion } from '../lib/slot'
 import {
   isAuthorization,
@@ -216,6 +225,19 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [authorizations, setAuthorizations] = useState<SellerAuthorization[]>([])
   const [authError, setAuthError] = useState('')
   const [askingAuth, setAskingAuth] = useState(false)
+  const [dirty, setDirty] = useState(false)
+  const [draftOffer, setDraftOffer] = useState<OrderDraftRecord | null>(() => {
+    if (!user) return null
+    const stored = readOrderDraft(orderDraftKey(user.id, editingId))
+    if (!stored) return null
+    if (editingId && existing?.updatedAt) {
+      const draftAt = new Date(stored.savedAt).getTime()
+      const orderAt = new Date(existing.updatedAt).getTime()
+      if (Number.isFinite(draftAt) && Number.isFinite(orderAt) && draftAt <= orderAt) return null
+    }
+    return stored
+  })
+  const [reattachName, setReattachName] = useState('')
   const draftRef = useRef<OrderDraft | null>(null)
   const addressRef = useRef<HTMLDivElement>(null)
   const searchAbort = useRef<AbortController | null>(null)
@@ -227,6 +249,151 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const readCancel = useRef<(() => void) | null>(null)
   const fileRequest = useRef(0)
   const listId = useId()
+  const storageKey = user ? orderDraftKey(user.id, editingId) : ''
+
+  function markDirty() {
+    setDirty(true)
+  }
+
+  function collectDraftFields(): OrderDraftFields {
+    return {
+      seller,
+      client,
+      phone,
+      invoices,
+      collectOnDelivery,
+      amount,
+      address,
+      deliveryZone,
+      zoneManual,
+      betweenStreet1,
+      betweenStreet2,
+      propertyType,
+      floor,
+      unit,
+      doorbell,
+      deliveryDate,
+      timeWindow,
+      requiresPickup,
+      dispatchType,
+      transporter,
+      notes,
+      attachmentName,
+      attachmentDataUrl,
+      attachmentNeedsReupload: Boolean(reattachName),
+      receiverName,
+      receiverDni,
+    }
+  }
+
+  function wipeLocalDraft() {
+    if (storageKey) clearOrderDraft(storageKey)
+    setDraftOffer(null)
+    setDirty(false)
+  }
+
+  function applyDraftFields(fields: OrderDraftFields) {
+    const next: DispatchType = isDispatchType(fields.dispatchType) ? fields.dispatchType : 'propia'
+    setDispatchType(next)
+    const isPickup = next === 'retiro'
+
+    if (user?.role === 'vendedor') {
+      setSeller(user.sellerName ?? '')
+    } else {
+      setSeller(fields.seller && sellers.includes(fields.seller) ? fields.seller : '')
+    }
+
+    setClient(typeof fields.client === 'string' ? fields.client : '')
+    setPhone(typeof fields.phone === 'string' ? fields.phone : '')
+    const nextInvoices = Array.isArray(fields.invoices)
+      ? fields.invoices.filter((item): item is string => typeof item === 'string')
+      : []
+    setInvoices(nextInvoices.length > 0 ? nextInvoices : [''])
+    setCollectOnDelivery(Boolean(fields.collectOnDelivery))
+    setAmount(typeof fields.amount === 'string' ? fields.amount : '')
+
+    if (isPickup) {
+      setAddress('')
+      setLookup('')
+      setSuggestions([])
+      setSuggestOpen(false)
+      setDeliveryZone('')
+      setZoneManual(false)
+      setZoneHint(null)
+      setZonePending(false)
+      setBetweenStreet1('')
+      setBetweenStreet2('')
+      setPropertyType('')
+      setFloor('')
+      setUnit('')
+      setDoorbell('')
+      setTimeWindow('')
+      setTransporter('')
+      setRequiresPickup(false)
+    } else {
+      setAddress(typeof fields.address === 'string' ? fields.address : '')
+      setLookup('')
+      setSuggestions([])
+      setSuggestOpen(false)
+      const zoneOk =
+        typeof fields.deliveryZone === 'string' &&
+        zones.some((item) => item.name === fields.deliveryZone)
+      setDeliveryZone(zoneOk ? fields.deliveryZone : '')
+      setZoneManual(Boolean(fields.zoneManual) && zoneOk)
+      setZoneHint(null)
+      setZonePending(false)
+      setBetweenStreet1(typeof fields.betweenStreet1 === 'string' ? fields.betweenStreet1 : '')
+      setBetweenStreet2(typeof fields.betweenStreet2 === 'string' ? fields.betweenStreet2 : '')
+      setPropertyType(
+        typeof fields.propertyType === 'string' && propertyTypes.includes(fields.propertyType)
+          ? fields.propertyType
+          : '',
+      )
+      setFloor(typeof fields.floor === 'string' ? fields.floor : '')
+      setUnit(typeof fields.unit === 'string' ? fields.unit : '')
+      setDoorbell(typeof fields.doorbell === 'string' ? fields.doorbell : '')
+      setTimeWindow(
+        typeof fields.timeWindow === 'string' && timeWindows.includes(fields.timeWindow)
+          ? fields.timeWindow
+          : '',
+      )
+      setRequiresPickup(Boolean(fields.requiresPickup))
+      const list = listForDispatch(next, transporterLists)
+      setTransporter(
+        typeof fields.transporter === 'string' && list.includes(fields.transporter)
+          ? fields.transporter
+          : '',
+      )
+    }
+
+    setDeliveryDate(typeof fields.deliveryDate === 'string' ? fields.deliveryDate : '')
+    setNotes(typeof fields.notes === 'string' ? fields.notes : '')
+    setReceiverName(typeof fields.receiverName === 'string' ? fields.receiverName : '')
+    setReceiverDni(typeof fields.receiverDni === 'string' ? fields.receiverDni : '')
+
+    const name = typeof fields.attachmentName === 'string' ? fields.attachmentName : ''
+    const dataUrl = typeof fields.attachmentDataUrl === 'string' ? fields.attachmentDataUrl : ''
+    const needsReupload = Boolean(fields.attachmentNeedsReupload) || Boolean(name && !dataUrl)
+    setAttachmentName(name)
+    setAttachmentDataUrl(needsReupload ? '' : dataUrl)
+    setReattachName(needsReupload && name ? name : '')
+    if (fileRef.current) fileRef.current.value = ''
+    setLocateError('')
+    setBetweenNote('')
+    setErrors({})
+  }
+
+  function recoverDraft() {
+    if (!draftOffer) return
+    applyDraftFields(draftOffer.fields)
+    setDraftOffer(null)
+    setDirty(true)
+  }
+
+  function discardDraft() {
+    wipeLocalDraft()
+    setReattachName('')
+  }
 
   useEffect(() => {
     if (user?.role !== 'vendedor') return
@@ -246,7 +413,49 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     }
   }, [user, logout])
 
+  useEffect(() => {
+    if (!user || !dirty || draftOffer || !storageKey) return
+    const handle = window.setTimeout(() => {
+      writeOrderDraft(storageKey, collectDraftFields())
+    }, 500)
+    return () => window.clearTimeout(handle)
+    // Campos del formulario: el debounce escribe el snapshot actual.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- snapshot al disparar
+  }, [
+    user,
+    dirty,
+    draftOffer,
+    storageKey,
+    seller,
+    client,
+    phone,
+    invoices,
+    collectOnDelivery,
+    amount,
+    address,
+    deliveryZone,
+    zoneManual,
+    betweenStreet1,
+    betweenStreet2,
+    propertyType,
+    floor,
+    unit,
+    doorbell,
+    deliveryDate,
+    timeWindow,
+    requiresPickup,
+    dispatchType,
+    transporter,
+    notes,
+    attachmentName,
+    attachmentDataUrl,
+    reattachName,
+    receiverName,
+    receiverDni,
+  ])
+
   function updateInvoice(index: number, value: string) {
+    markDirty()
     setInvoices((current) =>
       current.map((invoice, itemIndex) => (itemIndex === index ? value : invoice)),
     )
@@ -312,6 +521,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   }, [suggestOpen])
 
   function onAddressChange(value: string) {
+    markDirty()
     const nextLookup = value.trim()
     setAddress(value)
     setLookup(nextLookup)
@@ -327,6 +537,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   }
 
   function applyLocated(located: LocatedAddress) {
+    markDirty()
     setLookup('')
     setSuggestions([])
     setSuggestOpen(false)
@@ -437,12 +648,14 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   }
 
   function clearAttachment() {
+    markDirty()
     fileRequest.current += 1
     readCancel.current?.()
     readCancel.current = null
     setReadingFile(false)
     setAttachmentName('')
     setAttachmentDataUrl('')
+    setReattachName('')
     setErrors((current) => ({ ...current, file: undefined }))
     if (fileRef.current) fileRef.current.value = ''
   }
@@ -469,8 +682,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     job.promise
       .then((dataUrl) => {
         if (fileRequest.current !== request) return
+        markDirty()
         setAttachmentName(file.name)
         setAttachmentDataUrl(dataUrl)
+        setReattachName('')
         setReadingFile(false)
       })
       .catch((error: unknown) => {
@@ -579,6 +794,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       setAttachmentDataUrl(result.order.attachmentDataUrl ?? '')
       if (fileRef.current) fileRef.current.value = ''
       setErrors({ file: ATTACHMENT_SAVE_ERROR })
+      wipeLocalDraft()
       attachmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
@@ -592,6 +808,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       }
       return
     }
+    wipeLocalDraft()
     navigate('/')
   }
 
@@ -622,6 +839,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       setAttachmentDataUrl(result.order.attachmentDataUrl ?? '')
       if (fileRef.current) fileRef.current.value = ''
       setErrors({ file: ATTACHMENT_SAVE_ERROR })
+      wipeLocalDraft()
       attachmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
@@ -637,6 +855,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       return
     }
     setReasonOpen(false)
+    wipeLocalDraft()
     if (result.order.edits?.some((edit) => edit.status === 'pendiente')) {
       setHoldNotice('El cambio quedó esperando confirmación del encargado.')
       return
@@ -684,6 +903,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const transporterOptions = withCurrent(listForDispatch(dispatchType, transporterLists), transporter)
 
   function chooseDispatch(next: DispatchType) {
+    markDirty()
     setDispatchType(next)
     if (next === 'retiro') {
       setTransporter('')
@@ -709,6 +929,25 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         </p>
       </header>
 
+      {draftOffer && (
+        <p
+          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#fff6d8] px-4 py-3 text-sm"
+          role="status"
+        >
+          <span>
+            Tenés un pedido sin terminar · guardado {formatDraftAgo(draftOffer.savedAt)}
+          </span>
+          <span className="flex flex-wrap gap-2">
+            <button type="button" className="btn-primary" onClick={recoverDraft}>
+              Recuperar
+            </button>
+            <button type="button" className="btn-ghost" onClick={discardDraft}>
+              Descartar
+            </button>
+          </span>
+        </p>
+      )}
+
       <form className="form-stack" onSubmit={onSubmit} noValidate>
         <section className="form-card">
           <h2>Vendedor</h2>
@@ -718,7 +957,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               value={seller}
               aria-invalid={Boolean(errors.seller)}
               disabled={Boolean(storedId && user?.role === 'vendedor')}
-              onChange={(event) => setSeller(event.target.value)}
+              onChange={(event) => {
+                markDirty()
+                setSeller(event.target.value)
+              }}
             >
               <option value="">Seleccioná vendedor</option>
               {sellerOptions.map((name) => (
@@ -768,7 +1010,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 value={client}
                 placeholder="Nombre del cliente"
                 aria-invalid={Boolean(errors.client)}
-                onChange={(event) => setClient(event.target.value)}
+                onChange={(event) => {
+                  markDirty()
+                  setClient(event.target.value)
+                }}
               />
               {errors.client && <small className="field-error">{errors.client}</small>}
             </label>
@@ -778,7 +1023,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 value={phone}
                 placeholder="+54 11..."
                 aria-invalid={Boolean(errors.phone)}
-                onChange={(event) => setPhone(event.target.value)}
+                onChange={(event) => {
+                  markDirty()
+                  setPhone(event.target.value)
+                }}
               />
               {errors.phone && <small className="field-error">{errors.phone}</small>}
             </label>
@@ -796,9 +1044,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                     <button
                       type="button"
                       className="text-button"
-                      onClick={() =>
+                      onClick={() => {
+                        markDirty()
                         setInvoices((current) => current.filter((_, itemIndex) => itemIndex !== index))
-                      }
+                      }}
                     >
                       Quitar
                     </button>
@@ -808,7 +1057,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               <button
                 type="button"
                 className="text-button center"
-                onClick={() => setInvoices((current) => [...current, ''])}
+                onClick={() => {
+                  markDirty()
+                  setInvoices((current) => [...current, ''])
+                }}
               >
                 + Agregar otra factura
               </button>
@@ -822,7 +1074,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             <Toggle
               pressed={collectOnDelivery}
               label="Cobranza en la entrega"
-              onClick={() => setCollectOnDelivery((current) => !current)}
+              onClick={() => {
+                markDirty()
+                setCollectOnDelivery((current) => !current)
+              }}
             />
           </div>
           {collectOnDelivery && (
@@ -833,7 +1088,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 inputMode="decimal"
                 placeholder="Ej: 150000"
                 aria-invalid={Boolean(errors.amount)}
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={(event) => {
+                  markDirty()
+                  setAmount(event.target.value)
+                }}
               />
               {errors.amount && <small className="field-error">{errors.amount}</small>}
             </label>
@@ -919,6 +1177,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   placeholder="Ej: Callao"
                   aria-invalid={Boolean(errors.between)}
                   onChange={(event) => {
+                    markDirty()
                     setBetweenStreet1(event.target.value)
                     setBetweenNote('')
                   }}
@@ -932,6 +1191,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   value={betweenStreet2}
                   placeholder="Ej: Uruguay"
                   onChange={(event) => {
+                    markDirty()
                     setBetweenStreet2(event.target.value)
                     setBetweenNote('')
                   }}
@@ -943,6 +1203,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   value={propertyType}
                   aria-invalid={Boolean(errors.propertyType)}
                   onChange={(event) => {
+                    markDirty()
                     const next = event.target.value
                     const nextKind = placeKind(next)
                     setPropertyType(next)
@@ -972,7 +1233,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                       value={floor}
                       maxLength={20}
                       aria-invalid={Boolean(errors.floor)}
-                      onChange={(event) => setFloor(event.target.value)}
+                      onChange={(event) => {
+                        markDirty()
+                        setFloor(event.target.value)
+                      }}
                     />
                     {errors.floor && <small className="field-error">{errors.floor}</small>}
                   </label>
@@ -982,7 +1246,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                       value={unit}
                       maxLength={20}
                       aria-invalid={Boolean(errors.unit)}
-                      onChange={(event) => setUnit(event.target.value)}
+                      onChange={(event) => {
+                        markDirty()
+                        setUnit(event.target.value)
+                      }}
                     />
                     {errors.unit && <small className="field-error">{errors.unit}</small>}
                   </label>
@@ -995,7 +1262,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                     value={doorbell}
                     maxLength={20}
                     aria-invalid={Boolean(errors.doorbell)}
-                    onChange={(event) => setDoorbell(event.target.value)}
+                    onChange={(event) => {
+                      markDirty()
+                      setDoorbell(event.target.value)
+                    }}
                   />
                   {errors.doorbell && <small className="field-error">{errors.doorbell}</small>}
                 </label>
@@ -1006,6 +1276,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               <select
                 value={deliveryZone}
                 onChange={(event) => {
+                  markDirty()
                   setDeliveryZone(event.target.value)
                   setZoneManual(true)
                   setZonePending(false)
@@ -1053,7 +1324,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 type="date"
                 value={deliveryDate}
                 aria-invalid={Boolean(errors.deliveryDate)}
-                onChange={(event) => setDeliveryDate(event.target.value)}
+                onChange={(event) => {
+                  markDirty()
+                  setDeliveryDate(event.target.value)
+                }}
               />
               {errors.deliveryDate && (
                 <small className="field-error">{errors.deliveryDate}</small>
@@ -1065,7 +1339,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             {!pickup && (
               <label className="field">
                 <span>Franja Horaria</span>
-                <select value={timeWindow} onChange={(event) => setTimeWindow(event.target.value)}>
+                <select
+                  value={timeWindow}
+                  onChange={(event) => {
+                    markDirty()
+                    setTimeWindow(event.target.value)
+                  }}
+                >
                   {timeOptions.map((window) => (
                     <option key={window} value={window}>
                       {window}
@@ -1086,7 +1366,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             <Toggle
               pressed={requiresPickup}
               label="Requiere retiro"
-              onClick={() => setRequiresPickup((current) => !current)}
+              onClick={() => {
+                markDirty()
+                setRequiresPickup((current) => !current)
+              }}
             />
           </div>
         </section>
@@ -1110,7 +1393,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           {!pickup && (
             <label className="field">
               <span>Transportista</span>
-              <select value={transporter} onChange={(event) => setTransporter(event.target.value)}>
+              <select
+                value={transporter}
+                onChange={(event) => {
+                  markDirty()
+                  setTransporter(event.target.value)
+                }}
+              >
                 <option value="">Seleccioná transportista</option>
                 {transporterOptions.map((name) => (
                   <option key={name} value={name}>
@@ -1134,7 +1423,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               value={notes}
               rows={4}
               placeholder="Observaciones..."
-              onChange={(event) => setNotes(event.target.value)}
+              onChange={(event) => {
+                markDirty()
+                setNotes(event.target.value)
+              }}
             />
           </label>
         </section>
@@ -1177,10 +1469,17 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   Quitar
                 </button>
               </div>
-              {attachmentName && !attachmentDataUrl && (
-                <small className="hint">
-                  El archivo no está guardado. Volvé a adjuntarlo para verlo.
+              {reattachName ? (
+                <small className="field-warn" role="status">
+                  Volvé a adjuntar {reattachName}
                 </small>
+              ) : (
+                attachmentName &&
+                !attachmentDataUrl && (
+                  <small className="hint">
+                    El archivo no está guardado. Volvé a adjuntarlo para verlo.
+                  </small>
+                )
               )}
             </div>
           )}
@@ -1199,7 +1498,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               <input
                 value={receiverName}
                 placeholder="Nombre completo de quien recibe"
-                onChange={(event) => setReceiverName(event.target.value)}
+                onChange={(event) => {
+                  markDirty()
+                  setReceiverName(event.target.value)
+                }}
               />
             </label>
             <label className="field">
@@ -1207,7 +1509,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               <input
                 value={receiverDni}
                 placeholder="Ej: 30123456"
-                onChange={(event) => setReceiverDni(event.target.value)}
+                onChange={(event) => {
+                  markDirty()
+                  setReceiverDni(event.target.value)
+                }}
               />
             </label>
           </div>
@@ -1228,7 +1533,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           <button
             type="button"
             className="btn-ghost"
-            onClick={() => navigate(storedId ? '/pedidos' : '/')}
+            onClick={() => {
+              wipeLocalDraft()
+              navigate(storedId ? '/pedidos' : '/')
+            }}
           >
             Cancelar
           </button>
