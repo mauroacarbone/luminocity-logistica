@@ -101,6 +101,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 29c.1 | Ubicar compatible con iPhone viejos | Hecho |
 | 29c.2 | Confirmaciones que se cierran con Escape como antes | Hecho |
 | 30 | Prioridad de pedidos | Hecho |
+| 30.1 | Orden de prioridad consistente | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -267,6 +268,8 @@ El Brief 29c.1 hace el timeout de Ubicar sin depender de `AbortSignal.any` (iPho
 El Brief 29c.2 pasa `allowOutsideClick` y `allowEscapeKey` en `confirm()` solo cuando vienen definidos, para que el resto de las confirmaciones sigan cerrándose con Escape o tocando afuera.
 
 El Brief 30 agrega la prioridad del pedido (normal, alta, inmediata). El vendedor la elige al cargar y el encargado o el admin la cambian después; el cambio queda en el historial. Las listas ordenan inmediata, después alta, después normal, con chip naranja o rojo. Una inmediata avisa en la app al depósito y al encargado.
+
+El Brief 30.1 trata un pedido entregado como prioridad normal al ordenar, para que no rompa listas mixtas ni las columnas del Panel.
 
 ## Pendientes
 

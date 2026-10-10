@@ -593,7 +593,7 @@ export function PanelOperativo() {
         <div className="board-scroll">
           <div className={statusFilter ? 'kanban filtered' : 'kanban'}>
             {columns.map((status) => {
-              const column = ordersByStatus(visibleOrders, status)
+              const column = [...ordersByStatus(visibleOrders, status)].sort(sortPanelList)
               return (
                 <section key={status} className="column" aria-label={STATUS_LABEL[status]}>
                   <header className="column-head">
