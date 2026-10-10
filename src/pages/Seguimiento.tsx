@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { Spinner } from '../components/LoadState'
-import { DISPATCH_LABEL } from '../data/catalog'
+import { DISPATCH_LABEL, isOwnDelivery, isPickup } from '../data/catalog'
 import type { Order, OrderStatus } from '../data/orders'
 import { normalizeInvoiceKey } from '../lib/invoiceKey'
 import { statusPillFor } from '../lib/orderFlow'
@@ -15,16 +15,18 @@ import {
 } from '../lib/week'
 import { useOrders } from '../state/OrdersContext'
 
-type StatusFilter = 'todos' | OrderStatus | 'despachado'
+type StatusFilter = 'todos' | OrderStatus | 'despachado' | 'listo-retirar' | 'retirado'
 
 const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
   { value: 'todos', label: 'Todos' },
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'preparado', label: 'Preparado' },
+  { value: 'listo-retirar', label: 'Listo para retirar' },
   { value: 'asignado', label: 'Asignado' },
   { value: 'despachado', label: 'Despachado' },
   { value: 'en-viaje', label: 'En viaje' },
   { value: 'entregado', label: 'Entregado' },
+  { value: 'retirado', label: 'Retirado' },
 ]
 
 function weekRange() {
@@ -56,7 +58,19 @@ function matchesStatus(order: Order, filter: StatusFilter) {
     return order.status === 'asignado' && order.dispatchType === 'correo'
   }
   if (filter === 'asignado') {
-    return order.status === 'asignado' && order.dispatchType !== 'correo'
+    return order.status === 'asignado' && isOwnDelivery(order)
+  }
+  if (filter === 'listo-retirar') {
+    return order.status === 'preparado' && isPickup(order)
+  }
+  if (filter === 'retirado') {
+    return order.status === 'entregado' && isPickup(order)
+  }
+  if (filter === 'preparado') {
+    return order.status === 'preparado' && !isPickup(order)
+  }
+  if (filter === 'entregado') {
+    return order.status === 'entregado' && !isPickup(order)
   }
   return order.status === filter
 }
@@ -76,6 +90,7 @@ function carrierLine(order: Order) {
 
 function dispatchLabel(order: Order) {
   if (order.dispatchType === 'correo') return DISPATCH_LABEL.correo
+  if (isPickup(order)) return DISPATCH_LABEL.retiro
   return DISPATCH_LABEL.propia
 }
 
@@ -93,10 +108,13 @@ export function Seguimiento() {
     () => orders.some((order) => order.dispatchType === 'correo'),
     [orders],
   )
+  const hasPickup = useMemo(() => orders.some((order) => isPickup(order)), [orders])
 
-  const chips = STATUS_CHIPS.filter(
-    (chip) => chip.value !== 'despachado' || hasCorreo,
-  )
+  const chips = STATUS_CHIPS.filter((chip) => {
+    if (chip.value === 'despachado') return hasCorreo
+    if (chip.value === 'listo-retirar' || chip.value === 'retirado') return hasPickup
+    return true
+  })
 
   const filtered = useMemo(() => {
     const list = orders.filter(
@@ -243,14 +261,20 @@ export function Seguimiento() {
                     <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
                       {order.seller && <p>Vendedor: {order.seller}</p>}
                       <p>
-                        Entrega: {formatIsoDate(order.deliveryDate)}
-                        {slot ? ` · ${slot}` : ''}
+                        {isPickup(order) ? 'Retiro' : 'Entrega'}: {formatIsoDate(order.deliveryDate)}
+                        {!isPickup(order) && slot ? ` · ${slot}` : ''}
                       </p>
                       <p>Despacho: {dispatchLabel(order)}</p>
-                      <p>
-                        {order.dispatchType === 'correo' ? 'Transportista' : 'Chofer'}:{' '}
-                        {carrierLine(order)}
-                      </p>
+                      {isPickup(order) ? (
+                        <p>
+                          <span className="status-pill">{DISPATCH_LABEL.retiro}</span>
+                        </p>
+                      ) : (
+                        <p>
+                          {order.dispatchType === 'correo' ? 'Transportista' : 'Chofer'}:{' '}
+                          {carrierLine(order)}
+                        </p>
+                      )}
                       {order.invoices && order.invoices.length > 0 && (
                         <p>Factura: {order.invoices.join(', ')}</p>
                       )}

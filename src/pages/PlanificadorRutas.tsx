@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { isOwnDelivery } from '../data/catalog'
 import { STATUS_PILL, type Order } from '../data/orders'
 import { confirm, error as showError, success } from '../lib/alerts'
 import { placeLine } from '../lib/place'
@@ -183,7 +184,7 @@ export function PlanificadorRutas() {
 
   const pool = orders.filter((order) => {
     if (order.deliveryDate !== iso || normalizeTimeWindow(order.timeWindow) !== timeWindow) return false
-    if (order.dispatchType === 'correo') return false
+    if (!isOwnDelivery(order)) return false
     return true
   })
   const listed = readOnly
@@ -200,7 +201,7 @@ export function PlanificadorRutas() {
     : pool.filter((order) => !listedIds.has(order.id))
   const preparedWithoutSlot = orders.filter((order) => {
     if (order.deliveryDate !== iso || order.status !== 'preparado') return false
-    if (order.dispatchType === 'correo') return false
+    if (!isOwnDelivery(order)) return false
     return !normalizeTimeWindow(order.timeWindow)
   })
 

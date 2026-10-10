@@ -1,3 +1,4 @@
+import { isOwnDelivery } from '../data/catalog'
 import type { Order } from '../data/orders'
 
 export const SLOT_LIMIT = 3
@@ -26,6 +27,7 @@ export function driverSlotCount(orders: Order[], driverId: string, deliveryDate:
   if (!driverId || !window) return 0
   return orders.filter((order) => {
     return (
+      isOwnDelivery(order) &&
       order.driverId === driverId &&
       order.deliveryDate === deliveryDate &&
       normalizeTimeWindow(order.timeWindow) === window

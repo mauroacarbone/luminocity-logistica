@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
-import { DISPATCH_LABEL } from '../data/catalog'
+import { DISPATCH_LABEL, isOwnDelivery, isPickup } from '../data/catalog'
 import {
   ordersByStatus,
   pendingEdit,
@@ -155,12 +155,7 @@ function SheetLinks({
       </p>
     )
   }
-  if (
-    canPlan &&
-    order.status === 'asignado' &&
-    order.dispatchType !== 'correo' &&
-    !order.routeId
-  ) {
+  if (canPlan && order.status === 'asignado' && isOwnDelivery(order) && !order.routeId) {
     return (
       <p className="order-zone mt-2">
         <Link className="text-xs text-lumi-muted underline hover:text-lumi-ink" to="/rutas">
@@ -231,10 +226,18 @@ function OrderCard({
       {order.address && <p className="order-zone">{order.address}</p>}
       {placeLine(order) && <p className="order-zone">{placeLine(order)}</p>}
       {order.zone && <p className="order-zone">{order.zone}</p>}
-      {order.dispatchType && (
-        <p className="order-zone">Despacho: {DISPATCH_LABEL[order.dispatchType]}</p>
+      {isPickup(order) ? (
+        <p className="order-zone">
+          <span className="status-pill">{DISPATCH_LABEL.retiro}</span>
+        </p>
+      ) : (
+        <>
+          {order.dispatchType && (
+            <p className="order-zone">Despacho: {DISPATCH_LABEL[order.dispatchType]}</p>
+          )}
+          {order.transporter && <p className="order-zone">Transportista: {order.transporter}</p>}
+        </>
       )}
-      {order.transporter && <p className="order-zone">Transportista: {order.transporter}</p>}
       {order.packages != null && <p className="order-zone">Bultos: {order.packages}</p>}
       <SheetLinks order={order} sheets={sheets} canPlan={canPlan} />
       <p className="order-meta">
@@ -662,9 +665,15 @@ export function PanelOperativo() {
                       </span>
                     </td>
                     <td>
-                      {order.transporter || '—'}
-                      {order.dispatchType && (
-                        <span className="zone-inline"> · {DISPATCH_LABEL[order.dispatchType]}</span>
+                      {isPickup(order) ? (
+                        <span className="status-pill">{DISPATCH_LABEL.retiro}</span>
+                      ) : (
+                        <>
+                          {order.transporter || '—'}
+                          {order.dispatchType && (
+                            <span className="zone-inline"> · {DISPATCH_LABEL[order.dispatchType]}</span>
+                          )}
+                        </>
                       )}
                     </td>
                     <td>{order.packages != null ? order.packages : '—'}</td>

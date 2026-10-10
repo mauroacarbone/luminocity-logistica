@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
+import { isOwnDelivery } from '../data/catalog'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
 import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
 import { businessToday } from '../lib/schedule'
@@ -165,6 +166,14 @@ export function ChoferesEnRuta() {
   const filterMissing =
     driverFilter !== '' && !drivers.some((driver) => driver.id === driverFilter)
 
+  const deliveryOrders = useMemo(
+    () =>
+      orders
+        .filter((order) => isOwnDelivery(order))
+        .map((order) => ({ id: order.id, client: order.client, status: order.status })),
+    [orders],
+  )
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return drivers.filter((driver) => {
@@ -220,7 +229,7 @@ export function ChoferesEnRuta() {
 
           <div className="mt-4 overflow-hidden rounded-2xl bg-[#e6e2d8]" style={{ height: 480 }}>
             {visible.length > 0 ? (
-              <DriversMap drivers={visible} now={now} sheets={sheets} orders={orders} />
+              <DriversMap drivers={visible} now={now} sheets={sheets} orders={deliveryOrders} />
             ) : (
               <div className="grid h-full place-items-center px-6 text-center text-sm text-lumi-muted">
                 {drivers.length === 0
@@ -234,7 +243,7 @@ export function ChoferesEnRuta() {
           {visible.length > 0 && (
             <ul className="mt-4 flex flex-col gap-2">
               {visible.map((driver) => {
-                const line = sheetLine(driver.id, sheets, orders)
+                const line = sheetLine(driver.id, sheets, deliveryOrders)
                 return (
                   <li key={driver.id} className="rounded-2xl bg-white px-4 py-3 text-sm shadow-sm">
                     <p className="font-semibold">{driver.name}</p>

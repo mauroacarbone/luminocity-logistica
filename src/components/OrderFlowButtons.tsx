@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Order, OrderStatus } from '../data/orders'
+import { isOwnDelivery, isPickup } from '../data/catalog'
 import {
   askAssignDriver,
   askPackages,
@@ -114,7 +115,7 @@ export function OrderFlowButtons({
 
   async function onNext() {
     if (!next) return
-    if (next.to === 'asignado' && order.dispatchType !== 'correo') {
+    if (next.to === 'asignado' && isOwnDelivery(order)) {
       if (!driverSelectId) {
         await assignFromDialog()
         return
@@ -146,7 +147,7 @@ export function OrderFlowButtons({
       await runTransition(next.to, body)
       return
     }
-    if (next.to === 'entregado' && order.dispatchType === 'retiro') {
+    if (next.to === 'entregado' && isPickup(order)) {
       const receiver = await askPickupReceiver(
         'Marcar retirado',
         `Indicá quién retira el pedido ${order.id}.`,

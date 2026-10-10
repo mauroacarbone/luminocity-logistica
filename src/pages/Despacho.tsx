@@ -5,7 +5,14 @@ import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
-import { DISPATCH_LABEL, listForDispatch, withCurrent, withExtras } from '../data/catalog'
+import {
+  DISPATCH_LABEL,
+  isOwnDelivery,
+  isPickup,
+  listForDispatch,
+  withCurrent,
+  withExtras,
+} from '../data/catalog'
 import {
   pendingEdit,
   type Order,
@@ -598,13 +605,22 @@ export function Despacho() {
                   )}
                   <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
                     {order.zone && <p>Zona: {order.zone}</p>}
-                    {order.dispatchType && <p>Despacho: {DISPATCH_LABEL[order.dispatchType]}</p>}
-                    {order.transporter && <p>Transportista: {order.transporter}</p>}
+                    {isPickup(order) ? (
+                      <p>
+                        <span className="status-pill">{DISPATCH_LABEL.retiro}</span>
+                      </p>
+                    ) : (
+                      <>
+                        {order.dispatchType && <p>Despacho: {DISPATCH_LABEL[order.dispatchType]}</p>}
+                        {order.transporter && <p>Transportista: {order.transporter}</p>}
+                        {order.timeWindow && <p>{order.timeWindow}</p>}
+                      </>
+                    )}
                     {pendingEdit(order) && <p>Esperando confirmación</p>}
                     <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
                     {order.trackingNumber && <p>Tracking: {order.trackingNumber}</p>}
-                    {order.timeWindow && <p>{order.timeWindow}</p>}
-                    {order.status === 'en-viaje' &&
+                    {isOwnDelivery(order) &&
+                      order.status === 'en-viaje' &&
                       (leftAgo(order.departedAt, now) || sheetProgress(order, sheets, orders)) && (
                       <p>
                         {[leftAgo(order.departedAt, now), sheetProgress(order, sheets, orders)]
@@ -612,20 +628,29 @@ export function Despacho() {
                           .join(' · ')}
                       </p>
                     )}
-                    {(order.status === 'asignado' || order.status === 'en-viaje') &&
+                    {isOwnDelivery(order) &&
+                      (order.status === 'asignado' || order.status === 'en-viaje') &&
                       slotEnded(order.deliveryDate, order.timeWindow, now) && (
                       <p className="font-semibold text-lumi-danger">Atrasado</p>
                     )}
-                    {order.status === 'entregado' && order.deliveredAt && <p>Entregado {clockTime(order.deliveredAt)}</p>}
+                    {order.status === 'entregado' && order.deliveredAt && (
+                      <p>
+                        {isPickup(order) ? 'Retirado' : 'Entregado'} {clockTime(order.deliveredAt)}
+                      </p>
+                    )}
                     {order.invoices && order.invoices.length > 0 && (
                       <p>{order.invoices.join(', ')}</p>
                     )}
-                    {searching && <p>Entrega: {formatIsoDate(order.deliveryDate)}</p>}
+                    {searching && (
+                      <p>
+                        {isPickup(order) ? 'Retiro' : 'Entrega'}: {formatIsoDate(order.deliveryDate)}
+                      </p>
+                    )}
                     <OrderAttachmentLink name={order.attachmentName} dataUrl={order.attachmentDataUrl} />
                   </div>
                 </div>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-56 sm:shrink-0 sm:items-end">
-                  {assign && (
+                  {assign && !isPickup(order) && (
                     <>
                       <label className="text-xs text-lumi-muted">
                         Transportista
@@ -656,7 +681,7 @@ export function Despacho() {
                           ))}
                         </select>
                       </label>
-                      {order.dispatchType !== 'correo' && (
+                      {isOwnDelivery(order) && (
                       <div className="text-xs text-lumi-muted">
                         <label htmlFor={`chofer-${order.id}`}>Chofer</label>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -744,7 +769,7 @@ export function Despacho() {
                         </div>
                       </div>
                       )}
-                      {order.dispatchType !== 'correo' && <SlotUsage orders={orders} order={order} />}
+                      {isOwnDelivery(order) && <SlotUsage orders={orders} order={order} />}
                     </>
                   )}
                   {user && (
@@ -752,7 +777,8 @@ export function Despacho() {
                       order={{
                         ...order,
                         sheetPlanned: Boolean(
-                          order.routeId &&
+                          isOwnDelivery(order) &&
+                            order.routeId &&
                             sheets.some((sheet) => sheet.id === order.routeId && sheet.status === 'planificada'),
                         ),
                       }}
@@ -761,7 +787,7 @@ export function Despacho() {
                       busy={busyId === order.id}
                       onBusy={(busy) => setBusyId(busy ? order.id : '')}
                       transition={transitionOrder}
-                      driverSelectId={`chofer-${order.id}`}
+                      driverSelectId={isOwnDelivery(order) ? `chofer-${order.id}` : undefined}
                     />
                   )}
                   {user && canEditOrder(user, order) && (
