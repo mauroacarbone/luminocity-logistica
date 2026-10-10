@@ -1,4 +1,4 @@
-import { useEffect, type KeyboardEvent, type MouseEvent } from 'react'
+import { useEffect } from 'react'
 
 type Props = {
   text: string
@@ -18,32 +18,23 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
     onClose()
   }
 
-  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key !== 'Enter' && event.key !== ' ') return
-    event.preventDefault()
-    activate()
-  }
-
-  function onCloseClick(event: MouseEvent<HTMLButtonElement>) {
-    event.stopPropagation()
-    onClose()
-  }
-
   return (
     <div
-      className="fixed inset-x-4 top-16 z-40 cursor-pointer rounded-2xl border border-lumi-line bg-white p-4 shadow-lg sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
-      role="button"
-      tabIndex={0}
-      onClick={activate}
-      onKeyDown={onKeyDown}
+      className="fixed inset-x-4 top-16 z-40 rounded-2xl border border-lumi-line bg-white p-4 shadow-lg sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
+      aria-live="polite"
     >
-      <div className="flex items-start gap-3">
-        <p className="min-w-0 flex-1 text-sm font-medium text-lumi-ink">{text}</p>
+      <div className="relative">
+        <button type="button" className="w-full text-left" onClick={activate}>
+          <p className="pr-10 text-sm font-medium text-lumi-ink">{text}</p>
+          <span className="mt-3 block w-full rounded-xl bg-lumi-yellow px-3 py-2 text-center text-sm font-semibold text-lumi-yellow-ink">
+            {actionLabel}
+          </span>
+        </button>
         <button
           type="button"
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-lumi-muted hover:bg-[#f7f4ea] hover:text-lumi-ink"
+          className="absolute right-0 top-0 grid h-7 w-7 place-items-center rounded-full text-lumi-muted hover:bg-[#f7f4ea] hover:text-lumi-ink"
           aria-label="Cerrar"
-          onClick={onCloseClick}
+          onClick={onClose}
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
             <path
@@ -56,9 +47,6 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
           </svg>
         </button>
       </div>
-      <span className="mt-3 block w-full rounded-xl bg-lumi-yellow px-3 py-2 text-center text-sm font-semibold text-lumi-yellow-ink">
-        {actionLabel}
-      </span>
     </div>
   )
 }
