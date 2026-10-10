@@ -16,13 +16,20 @@ import { geocodeAddress } from './geocode.js'
 import { locked } from './lock.js'
 import { forgetUsers, putLocation, readLocations } from './locations.js'
 import { requireAuth, requireRole } from './middleware.js'
-import { notifyDelivered, notifyEncargados, notifySeller, notifyUser } from './notifications.js'
+import {
+  notifyDelivered,
+  notifyEncargados,
+  notifySeller,
+  notifyUser,
+  notifyWarehouse,
+} from './notifications.js'
 import { applyTransition, stampStatus, withHistory } from './orderFlow.js'
 import { blockPlannedDeparture, closeFinishedSheets, pullOrderFromSheets, syncSheetOnEdit } from './routeSheets.js'
 import { isActive, readUsersList } from './users.js'
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
 const DISPATCH = ['propia', 'correo', 'retiro']
+const PRIORITIES = ['normal', 'alta', 'inmediata']
 
 export function isOwnDelivery(order) {
   return order?.dispatchType !== 'correo' && order?.dispatchType !== 'retiro'
@@ -312,6 +319,14 @@ function createOrder(body, user) {
         throw error
       }
     }
+    if (order.priority === 'inmediata') {
+      const client = typeof order.client === 'string' ? order.client : ''
+      await notifyWarehouse({
+        text: `Pedido ${order.id} cargado con prioridad INMEDIATA (${client})`,
+        orderId: order.id,
+        actorId: user.id,
+      })
+    }
     return { order }
   })
 }
@@ -438,6 +453,22 @@ function patchOrder(id, body, user) {
       })
       order.history = history
     }
+    const prevPriority = current.priority ?? 'normal'
+    const nextPriority = order.priority ?? 'normal'
+    if (prevPriority !== nextPriority) {
+      const history = Array.isArray(order.history)
+        ? order.history.map((entry) => ({ ...entry, by: { ...entry.by } }))
+        : withHistory(current).history.map((entry) => ({ ...entry, by: { ...entry.by } }))
+      history.push({
+        at: order.updatedAt,
+        by: { id: user.id, name: typeof user.name === 'string' ? user.name : '' },
+        from: current.status,
+        to: current.status,
+        reason: `Prioridad: ${prevPriority} → ${nextPriority}`,
+        via: historyVia || 'pedidos',
+      })
+      order.history = history
+    }
     const blocked = await blockPlannedDeparture(user, current, order)
     if (blocked) return blocked
     const synced = await syncSheetOnEdit(orders, current, order)
@@ -445,6 +476,13 @@ function patchOrder(id, body, user) {
     orders[index] = order
     await writeOrders(orders)
     await closeFinishedSheets(orders)
+    if (nextPriority === 'inmediata' && prevPriority !== 'inmediata') {
+      await notifyWarehouse({
+        text: `Pedido ${order.id} pasó a prioridad INMEDIATA`,
+        orderId: order.id,
+        actorId: user.id,
+      })
+    }
     if (user.role === 'vendedor') {
       await notifyEncargados({
         text: `${user.name} editó el pedido ${order.id}: ${reason.value}`,
@@ -694,9 +732,13 @@ function hasPending(order) {
 }
 
 function needsReason(user, changes) {
+  const relevant = Object.fromEntries(
+    Object.entries(changes).filter(([key]) => key !== 'priority'),
+  )
+  if (Object.keys(relevant).length === 0) return false
   if (user.role === 'vendedor') return true
   if (user.role === 'encargado_deposito') {
-    return commercialKeys(changes).length > 0 || hasPlaceChange(changes)
+    return commercialKeys(relevant).length > 0 || hasPlaceChange(relevant)
   }
   return false
 }
@@ -867,6 +909,7 @@ function hasChange(body) {
     'dispatchType',
     'packages',
     'driverId',
+    'priority',
     ...PLACE_FIELDS.map(([key]) => key),
   ]
   return keys.some((key) => Object.prototype.hasOwnProperty.call(body, key))
@@ -999,6 +1042,17 @@ function readOrderFields(body, current) {
   const driver = readDriver(body, current)
   if (driver.error) return driver
   if (driver.value !== undefined) order.driverId = driver.value
+
+  if (Object.prototype.hasOwnProperty.call(body, 'priority')) {
+    if (typeof body.priority !== 'string' || !PRIORITIES.includes(body.priority)) {
+      return fail('La prioridad no es válida.')
+    }
+    order.priority = body.priority
+  } else if (!current) {
+    order.priority = 'normal'
+  } else {
+    order.priority = current.priority ?? 'normal'
+  }
 
   if (storePickup) {
     delete order.driverId

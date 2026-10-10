@@ -4,7 +4,7 @@ import { normalizeName } from './access.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth } from './middleware.js'
-import { readUsersList } from './users.js'
+import { isActive, readUsersList } from './users.js'
 
 export const notificationsRouter = Router()
 notificationsRouter.use(requireAuth)
@@ -116,6 +116,19 @@ export async function notifyEncargados({ text, orderId, whatsapp, phone }) {
   const items = encargados.map((user) => buildNote({ to: user.id, text, orderId, channel: 'app' }))
   if (whatsapp) items.push(whatsappNote({ text, orderId, phone }))
   await pushNotifications(items)
+}
+
+/** Avisa en la app a depósito y encargado (activos), sin WhatsApp. Se llama dentro del lock. */
+export async function notifyWarehouse({ text, orderId, actorId }) {
+  const users = (await readUsersList()).filter(
+    (user) =>
+      (user.role === 'encargado_deposito' || user.role === 'deposito') &&
+      isActive(user) &&
+      user.id !== actorId,
+  )
+  await pushNotifications(
+    users.map((user) => buildNote({ to: user.id, text, orderId, channel: 'app' })),
+  )
 }
 
 /** Se llama dentro del lock de pedidos. */

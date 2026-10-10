@@ -22,7 +22,15 @@ const DATA_FIELDS = [
   'dispatchType',
 ]
 
-const TRACKED = [...DATA_FIELDS, 'transporter', 'driverId', 'status', 'packages', 'trackingNumber']
+const TRACKED = [
+  ...DATA_FIELDS,
+  'transporter',
+  'driverId',
+  'status',
+  'packages',
+  'trackingNumber',
+  'priority',
+]
 
 export function normalizeName(value) {
   return String(value ?? '')
@@ -117,6 +125,10 @@ export function assertPatch(user, current, changes) {
   const keys = Object.keys(changes)
 
   if (user.role === 'admin') return { ok: true }
+
+  if (Object.prototype.hasOwnProperty.call(changes, 'priority') && user.role !== 'encargado_deposito') {
+    return deny('Solo el encargado cambia la prioridad.')
+  }
 
   if (user.role === 'deposito') {
     const extra = keys.filter((key) => key !== 'status' && key !== 'packages')
