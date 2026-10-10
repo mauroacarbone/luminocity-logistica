@@ -1,4 +1,5 @@
 import Swal, { type SweetAlertOptions } from 'sweetalert2'
+import { cssVar } from './theme'
 
 type ConfirmOptions = {
   peligro?: boolean
@@ -336,7 +337,7 @@ export function success(texto: string) {
     showConfirmButton: false,
     timer: 2000,
     timerProgressBar: true,
-    iconColor: '#15803d',
+    iconColor: cssVar('--success', '#15803d'),
   })
 }
 
@@ -353,7 +354,7 @@ export function error(titulo: string, detalle?: string) {
     ...(listHtml ? { html: listHtml } : { text: detalle }),
     confirmButtonText: 'Entendido',
     buttonsStyling: false,
-    iconColor: '#dc2626',
+    iconColor: cssVar('--danger', '#dc2626'),
     customClass: {
       popup: 'lumi-swal',
       title: 'lumi-swal-title',

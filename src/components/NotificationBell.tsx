@@ -303,7 +303,7 @@ export function NotificationBell() {
       )}
       <button
         type="button"
-        className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white"
+        className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-surface"
         aria-label={
           unread > 0
             ? `Avisos, ${unread} sin leer`
@@ -340,8 +340,8 @@ export function NotificationBell() {
         <div
           className={
             narrow
-              ? 'fixed inset-x-4 z-50 flex max-h-[70vh] w-auto flex-col rounded-2xl border border-lumi-line bg-white p-3 shadow-md'
-              : 'absolute right-0 top-full z-30 mt-2 flex w-80 flex-col rounded-2xl border border-lumi-line bg-white p-3 shadow-md'
+              ? 'fixed inset-x-4 z-50 flex max-h-[70vh] w-auto flex-col rounded-2xl border border-lumi-line bg-surface p-3 shadow-md'
+              : 'absolute right-0 top-full z-30 mt-2 flex w-80 flex-col rounded-2xl border border-lumi-line bg-surface p-3 shadow-md'
           }
           style={open && narrow && panelTop !== null ? { top: panelTop } : undefined}
         >

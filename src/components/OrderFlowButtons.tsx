@@ -272,7 +272,7 @@ export function OrderFlowButtons({
               <div
                 ref={menuRef}
                 role="menu"
-                className="fixed z-30 min-w-max rounded-xl border border-lumi-line bg-white p-1 shadow-md"
+                className="fixed z-30 min-w-max rounded-xl border border-lumi-line bg-surface p-1 shadow-md"
                 style={
                   menuPos
                     ? { top: menuPos.top, left: menuPos.left }

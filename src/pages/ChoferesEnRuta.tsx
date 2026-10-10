@@ -5,6 +5,7 @@ import { isOwnDelivery } from '../data/catalog'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
 import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
 import { businessToday } from '../lib/schedule'
+import { cssVar } from '../lib/theme'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 import 'leaflet/dist/leaflet.css'
@@ -91,9 +92,11 @@ function DriversMap({
             center={[driver.lat, driver.lng]}
             radius={11}
             pathOptions={{
-              color: '#1a1a1a',
+              color: cssVar('--primary-fg', '#1a1a1a'),
               weight: 2,
-              fillColor: stale ? '#b9b9b9' : '#f5c400',
+              fillColor: stale
+                ? cssVar('--text-muted', '#64748b')
+                : cssVar('--primary', '#f5c400'),
               fillOpacity: 1,
             }}
           >

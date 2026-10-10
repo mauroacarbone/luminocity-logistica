@@ -16,6 +16,7 @@ import {
 } from '../lib/route'
 import { deleteRouteSheet, isRouteSheet, listRouteSheets, saveRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
 import { driverSlotCount, normalizeTimeWindow, slotQuestion } from '../lib/slot'
+import { cssVar } from '../lib/theme'
 import { DAY_SHORT, MONTH_SHORT, formatDayLabel, toIso, weekDays } from '../lib/week'
 import { listUsers } from '../lib/usersApi'
 import { isSession } from '../lib/authStore'
@@ -133,16 +134,20 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <Polyline positions={line} pathOptions={{ color: '#1c1b19', weight: 4 }} />
+      <Polyline
+        positions={line}
+        pathOptions={{ color: cssVar('--text', '#0f172a'), weight: 4 }}
+      />
       {stops.map((stop, index) => (
         <CircleMarker
           key={stop.key}
           center={[stop.point.lat, stop.point.lng]}
           radius={index === 0 ? 9 : 7}
           pathOptions={{
-            color: '#1a1a1a',
+            color: cssVar('--primary-fg', '#1a1a1a'),
             weight: 2,
-            fillColor: index === 0 ? '#f5c400' : '#ffffff',
+            fillColor:
+              index === 0 ? cssVar('--primary', '#f5c400') : cssVar('--surface', '#fff'),
             fillOpacity: 1,
           }}
         >
@@ -757,7 +762,7 @@ export function PlanificadorRutas() {
                         checked={selectedIds.includes(order.id)}
                         disabled={readOnly}
                         onChange={() => toggle(order.id)}
-                        style={{ accentColor: '#f5c400' }}
+                        style={{ accentColor: cssVar('--primary', '#f5c400') }}
                       />
                       <span className="flex min-w-0 flex-1 items-start justify-between gap-3">
                         <span className="min-w-0">

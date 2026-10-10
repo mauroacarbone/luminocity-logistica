@@ -160,7 +160,7 @@ export function QrScanDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="scan-title"
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-md"
+        className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-md"
         onSubmit={(event) => {
           event.preventDefault()
           onSubmit(code)
@@ -185,7 +185,7 @@ export function QrScanDialog({
             </p>
           )}
           {phase === 'error' && (
-            <p role="status" className="bg-white px-3 py-8 text-center text-sm text-lumi-danger">
+            <p role="status" className="bg-surface px-3 py-8 text-center text-sm text-lumi-danger">
               {cameraNote}
             </p>
           )}
