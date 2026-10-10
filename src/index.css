@@ -25,6 +25,7 @@
   --sidebar-indicator: var(--primary);
   --sidebar-border: var(--border);
   --sidebar-scroll: rgba(15, 23, 42, 0.18);
+  --overlay: rgba(15, 23, 42, 0.4);
   --success: #15803d;
   --success-soft: #dcfce7;
   --warning: #b45309;
@@ -71,8 +72,8 @@
   --color-border-strong: var(--border-strong);
   --color-text: var(--text);
   --color-muted: var(--text-muted);
-  --color-text-subtle: var(--text-subtle);
-  --color-text-inverse: var(--text-inverse);
+  --color-subtle: var(--text-subtle);
+  --color-inverse: var(--text-inverse);
   --color-primary: var(--primary);
   --color-primary-fg: var(--primary-fg);
   --color-primary-soft: var(--primary-soft);
@@ -523,7 +524,7 @@ p {
 .lumi-swal-select,
 .lumi-swal-input {
   width: 100%;
-  border: 1px solid #d8d2c4;
+  border: 1px solid var(--border-strong);
   border-radius: var(--r-lg);
   padding: 10px 12px;
   font: inherit;
@@ -846,7 +847,7 @@ p {
 .icon-button {
   border: 0;
   background: transparent;
-  color: #8d8880;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 2px;
 }
@@ -872,13 +873,13 @@ p {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #6f6b64;
+  color: var(--text-subtle);
   font-size: 13px;
   margin-top: 8px;
 }
 
 .order-meta.delivery {
-  color: #3d6fbe;
+  color: var(--info);
   margin-top: 4px;
 }
 
@@ -928,23 +929,23 @@ p {
 }
 
 .status-pendiente {
-  background: #fff4cc;
-  color: #3f3c37;
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 
 .status-preparado {
-  background: #fde8d4;
-  color: #8a4b12;
+  background: var(--orange-soft);
+  color: var(--orange);
 }
 
 .status-asignado {
-  background: #efe6ff;
-  color: #5b3d99;
+  background: var(--purple-soft);
+  color: var(--purple);
 }
 
 .status-en-viaje {
-  background: #e7f0ff;
-  color: #2458a6;
+  background: var(--info-soft);
+  color: var(--info);
 }
 
 .status-entregado {
@@ -1032,8 +1033,8 @@ p {
 }
 
 .order-step-todo .order-step-dot {
-  border-color: #cfc9bc;
-  background: #efece4;
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
 }
 
 .order-step-line {
@@ -1273,7 +1274,7 @@ p {
 }
 
 .field-warn {
-  color: #8a5a12;
+  color: var(--warning);
   font-size: 13px;
 }
 
@@ -1329,7 +1330,7 @@ p {
 .text-button {
   border: 0;
   background: transparent;
-  color: #7a756d;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 4px 0;
 }
@@ -1485,8 +1486,8 @@ p {
   border-radius: 999px;
   padding: 6px 10px;
   font-size: 12px;
-  color: #5c5852;
-  background: #faf9f6;
+  color: var(--text-subtle);
+  background: var(--surface-muted);
 }
 
 .zone-chip strong {
@@ -1685,7 +1686,7 @@ p {
     position: fixed;
     inset: 0;
     z-index: 45;
-    background: rgba(15, 23, 42, 0.4);
+    background: var(--overlay);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;

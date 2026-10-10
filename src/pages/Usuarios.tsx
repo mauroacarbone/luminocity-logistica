@@ -642,7 +642,7 @@ export function Usuarios() {
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    account.active ? 'bg-success-soft text-success' : 'bg-[#f3f1ea] text-lumi-muted'
+                    account.active ? 'bg-success-soft text-success' : 'bg-surface-muted text-lumi-muted'
                   }`}
                 >
                   {account.active ? 'Activo' : 'Inactivo'}

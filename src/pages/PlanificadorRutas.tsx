@@ -696,7 +696,7 @@ export function PlanificadorRutas() {
         <span>{route && route.line.length > 0 ? `${route.minutes} min` : sheet ? `${sheet.minutes} min` : '—'}</span>
       </div>
 
-      <div className="no-print mt-3 overflow-hidden rounded-2xl bg-[#e6e2d8]" style={{ height: 420 }}>
+      <div className="no-print mt-3 overflow-hidden rounded-2xl bg-border-strong" style={{ height: 420 }}>
         {route && stops.length > 0 && route.line.length > 0 ? (
           <RouteMap stops={stops} line={route.line} />
         ) : (

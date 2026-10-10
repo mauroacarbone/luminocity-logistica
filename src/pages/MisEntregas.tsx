@@ -514,7 +514,7 @@ function DeliveryCard({
           {canDeliver && (
             <button
               type="button"
-              className="min-h-12 rounded-xl bg-[#1d7a3a] px-4 text-base font-semibold text-white disabled:opacity-50"
+              className="min-h-12 rounded-xl bg-success px-4 text-base font-semibold text-inverse disabled:opacity-50"
               disabled={busy}
               onClick={onDelivered}
             >

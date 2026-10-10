@@ -263,7 +263,7 @@ export function Seguimiento() {
                         {order.client}
                       </Link>
                     </p>
-                    <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
+                    <div className="mt-3 flex flex-col gap-1 text-sm text-subtle">
                       {order.seller && <p>Vendedor: {order.seller}</p>}
                       <p>
                         {isPickup(order) ? 'Retiro' : 'Entrega'}: {formatIsoDate(order.deliveryDate)}

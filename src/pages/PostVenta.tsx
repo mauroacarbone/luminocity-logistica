@@ -51,13 +51,13 @@ const PERIODS: { id: Period; label: string }[] = [
 const MAX_PHOTOS = 5
 
 const STATUS_BADGE: Record<ClaimStatus, string> = {
-  nuevo: 'bg-[#f1efe8] text-lumi-ink',
-  recepcion: 'bg-[#e7f0ff] text-[#2458a6]',
-  'pendiente-retiro': 'bg-[#ffe8cc] text-[#9a4d00]',
-  'enviado-proveedor': 'bg-[#efe8ff] text-[#5b3d99]',
-  reparacion: 'bg-[#fff4cc] text-lumi-ink',
+  nuevo: 'bg-surface-muted text-lumi-ink',
+  recepcion: 'bg-info-soft text-info',
+  'pendiente-retiro': 'bg-orange-soft text-orange',
+  'enviado-proveedor': 'bg-purple-soft text-purple',
+  reparacion: 'bg-primary-soft text-lumi-ink',
   entregado: 'bg-success-soft text-success',
-  cancelado: 'bg-danger-soft text-[#a33b38]',
+  cancelado: 'bg-danger-soft text-danger-deep',
 }
 
 type FormErrors = Partial<
@@ -942,19 +942,19 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
             {claim.id} — {claim.client}
             {invoice ? ` (${invoice})` : ''}
           </p>
-          <p className="mt-1 text-sm text-[#5f5b55]">
+          <p className="mt-1 text-sm text-subtle">
             {claim.motive} · {formatWhen(claim.createdAt)}
             {claim.phone ? ` · ${claim.phone}` : ''}
             {claim.seller ? ` · Vendedor: ${claim.seller}` : ''}
             {claim.email ? ` · ${claim.email}` : ''}
           </p>
           <p className="mt-2 text-sm">{claim.description}</p>
-          <p className="mt-2 text-sm text-[#5f5b55]">
+          <p className="mt-2 text-sm text-subtle">
             {claim.products.map((product) => `${product.name} (x${product.quantity})`).join(' · ')}
           </p>
           <ClaimAttachments claim={claim} />
           {notes.map((event, index) => (
-            <p key={`${event.at}-${index}`} className="mt-1 text-sm text-[#5f5b55]">
+            <p key={`${event.at}-${index}`} className="mt-1 text-sm text-subtle">
               Nota · {formatWhen(event.at)} · {event.note}
               {event.by?.userName ? ` · por ${event.by.userName}` : ''}
             </p>
@@ -977,7 +977,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
               <div className="flex items-center gap-2 text-sm">
                 <button
                   type="button"
-                  className="text-[#a33b38] disabled:opacity-50"
+                  className="text-danger-deep disabled:opacity-50"
                   disabled={busy}
                   onClick={() => void cancelClaim()}
                 >
@@ -995,7 +995,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
             ) : (
               <button
                 type="button"
-                className="text-sm text-[#a33b38] disabled:opacity-50"
+                className="text-sm text-danger-deep disabled:opacity-50"
                 disabled={busy}
                 onClick={() => setConfirmCancel(true)}
               >
@@ -1169,15 +1169,15 @@ function Dashboard({
   const motiveMax = Math.max(1, ...byMotive.map((item) => item.count))
 
   const stats = [
-    { label: 'Total reclamos', value: String(claims.length), tone: 'text-[#2458a6]' },
-    { label: 'En curso', value: String(open), tone: 'text-[#c2610c]' },
+    { label: 'Total reclamos', value: String(claims.length), tone: 'text-info' },
+    { label: 'En curso', value: String(open), tone: 'text-orange' },
     { label: 'Resueltos', value: String(resolved.length), tone: 'text-success' },
     {
       label: 'Tiempo prom. resolución',
       value: averageDays === null ? '—' : `${averageDays.toFixed(1)}d`,
       tone: 'text-success',
     },
-    { label: 'Tasa de resolución', value: `${rate}%`, tone: 'text-[#5b3d99]' },
+    { label: 'Tasa de resolución', value: `${rate}%`, tone: 'text-purple' },
   ]
 
   return (
@@ -1210,9 +1210,9 @@ function Dashboard({
                   <span className="truncate">{item.label}</span>
                   <span className="tabular-nums">{item.count}</span>
                 </div>
-                <span className="mt-1 block h-2 overflow-hidden rounded-full bg-[#f3f1ea]">
+                <span className="mt-1 block h-2 overflow-hidden rounded-full bg-surface-muted">
                   <span
-                    className="block h-full rounded-full bg-[#3b6fd8]"
+                    className="block h-full rounded-full bg-info"
                     style={{ width: `${(item.count / statusMax) * 100}%` }}
                   />
                 </span>
@@ -1234,9 +1234,9 @@ function Dashboard({
                   <span>{item.motive}</span>
                   <span className="tabular-nums">{item.count}</span>
                 </div>
-                <span className="mt-1 block h-2 overflow-hidden rounded-full bg-[#f3f1ea]">
+                <span className="mt-1 block h-2 overflow-hidden rounded-full bg-surface-muted">
                   <span
-                    className="block h-full rounded-full bg-[#e39b2b]"
+                    className="block h-full rounded-full bg-warning"
                     style={{ width: `${(item.count / motiveMax) * 100}%` }}
                   />
                 </span>
@@ -1360,7 +1360,7 @@ export function PostVenta() {
       </header>
 
       {linkNotice && (
-        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-[#fff4cc] px-4 py-2 text-sm text-lumi-ink">
+        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-primary-soft px-4 py-2 text-sm text-lumi-ink">
           <span>{linkNotice}</span>
           <button type="button" className="shrink-0 font-medium" onClick={() => setLinkNotice(null)}>
             Cerrar
@@ -1369,7 +1369,7 @@ export function PostVenta() {
       )}
 
       {notice && (
-        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-[#fff4cc] px-4 py-2 text-sm text-lumi-ink">
+        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-primary-soft px-4 py-2 text-sm text-lumi-ink">
           <span>{notice}</span>
           <button type="button" className="shrink-0 font-medium" onClick={dismissNotice}>
             Cerrar

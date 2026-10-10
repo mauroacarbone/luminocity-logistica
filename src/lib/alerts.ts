@@ -336,7 +336,7 @@ export function success(texto: string) {
     showConfirmButton: false,
     timer: 2000,
     timerProgressBar: true,
-    iconColor: '#1d7a3a',
+    iconColor: '#15803d',
   })
 }
 
@@ -353,7 +353,7 @@ export function error(titulo: string, detalle?: string) {
     ...(listHtml ? { html: listHtml } : { text: detalle }),
     confirmButtonText: 'Entendido',
     buttonsStyling: false,
-    iconColor: '#e25b57',
+    iconColor: '#dc2626',
     customClass: {
       popup: 'lumi-swal',
       title: 'lumi-swal-title',

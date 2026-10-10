@@ -227,7 +227,7 @@ export function ChoferesEnRuta() {
             </select>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-2xl bg-[#e6e2d8]" style={{ height: 480 }}>
+          <div className="mt-4 overflow-hidden rounded-2xl bg-border-strong" style={{ height: 480 }}>
             {visible.length > 0 ? (
               <DriversMap drivers={visible} now={now} sheets={sheets} orders={deliveryOrders} />
             ) : (

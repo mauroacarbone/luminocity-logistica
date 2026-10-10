@@ -612,7 +612,7 @@ export function Despacho() {
                   {placeLine(order) && (
                     <p className="mt-1 text-sm text-lumi-muted">{placeLine(order)}</p>
                   )}
-                  <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
+                  <div className="mt-3 flex flex-col gap-1 text-sm text-subtle">
                     {order.zone && <p>Zona: {order.zone}</p>}
                     {isPickup(order) ? (
                       <p>

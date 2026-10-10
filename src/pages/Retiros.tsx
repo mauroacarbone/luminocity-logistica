@@ -348,7 +348,7 @@ function PickupCard({
               {order.client}
             </Link>
           </p>
-          <div className="mt-3 flex flex-col gap-1 text-sm text-[#5f5b55]">
+          <div className="mt-3 flex flex-col gap-1 text-sm text-subtle">
             {order.phone && <p>Teléfono: {order.phone}</p>}
             <p>Fecha de retiro: {formatIsoDate(order.deliveryDate)}</p>
             {order.invoices && order.invoices.length > 0 && (

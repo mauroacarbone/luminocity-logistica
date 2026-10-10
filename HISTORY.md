@@ -105,6 +105,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 31 | Pendientes de Entregas con pedidos, filtros y CSV | Hecho |
 | 31.1 | Ajustes en Pendientes | Hecho |
 | 32a | Tokens de diseño y marca configurable | Hecho |
+| 32b | Nueva paleta clara y sidebar clara | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -279,6 +280,8 @@ El Brief 31 muestra en Pendientes de Entregas los pedidos abiertos unidos al pic
 El Brief 31.1 usa `downloadCsvFile` para el CSV, oculta los botones de flujo al vendedor en “Sin picking” y muestra “Sin vendedor asignado” si no tiene `sellerName`.
 
 El Brief 32a unifica la paleta en tokens semánticos de `:root` / `@theme inline` (sin cambio visual) y centraliza nombre y logo en `src/config/brand.ts`, aplicables con variables `VITE_BRAND_*`.
+
+El Brief 32b aplica la paleta clara (neutros slate, amarillo de marca) y pasa la sidebar, el drawer y el topbar a fondo claro, con estados y radios nuevos.
 
 ## Pendientes
 

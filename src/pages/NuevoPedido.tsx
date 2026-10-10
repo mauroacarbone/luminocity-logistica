@@ -1138,7 +1138,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
       {draftOffer && (
         <p
-          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#fff6d8] px-4 py-3 text-sm"
+          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-primary-soft px-4 py-3 text-sm"
           role="status"
         >
           <span>
@@ -1761,7 +1761,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         </section>
 
         {holdNotice && (
-          <p className="rounded-xl bg-[#fff6d8] px-3 py-2 text-sm" role="status">
+          <p className="rounded-xl bg-primary-soft px-3 py-2 text-sm" role="status">
             {holdNotice}
           </p>
         )}
