@@ -97,6 +97,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 28b.1 | Menú hamburguesa cerrado fuera del foco | Hecho |
 | 28c | Menú ⋯ de pedidos sin cortarse en celular | Hecho |
 | 29b | Borrador de Nuevo pedido que sobrevive a recargar | Hecho |
+| 29c | Búsqueda de dirección con 3 intentos y confirmar Cancelar | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -255,6 +256,8 @@ El Brief 28b.1 deja el drawer cerrado con `inert` (fuera del Tab y del lector de
 El Brief 28c ubica el menú ⋯ de `OrderFlowButtons` con posición fija para que no se corte en celular, alineado al botón y por encima de las tarjetas.
 
 El Brief 29b guarda un borrador de Nuevo pedido en `localStorage` (por usuario y modo alta/edición), ofrece recuperarlo al volver, avisa si hay que readjuntar un archivo grande y pide confirmación con `beforeunload` si hay cambios sin guardar.
+
+El Brief 29c reintenta Ubicar hasta 3 veces con variantes de búsqueda, ofrece seguir buscando o ingresar a mano con "Ubicación pendiente", y pide confirmación al Cancelar si hay cambios sin guardar.
 
 ## Pendientes
 

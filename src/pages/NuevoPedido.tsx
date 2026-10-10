@@ -1684,8 +1684,17 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             type="button"
             className="btn-ghost"
             onClick={() => {
-              wipeLocalDraft()
-              navigate(storedId ? '/pedidos' : '/')
+              void (async () => {
+                if (dirty) {
+                  const accepted = await confirm(
+                    'Descartar cambios',
+                    'Se pierde lo que cargaste.',
+                  )
+                  if (!accepted) return
+                }
+                wipeLocalDraft()
+                navigate(storedId ? '/pedidos' : '/')
+              })()
             }}
           >
             Cancelar
