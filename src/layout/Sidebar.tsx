@@ -9,6 +9,7 @@ const NAV = [
   { to: '/nuevo-pedido', label: 'Nuevo Pedido', icon: 'plus' },
   { to: '/pedidos', label: 'Pedidos y Preparación', icon: 'box' },
   { to: '/despacho', label: 'Despacho', icon: 'truck' },
+  { to: '/retiros', label: 'Retiros', icon: 'store' },
   { to: '/seguimiento', label: 'Seguimiento', icon: 'search' },
   { to: '/choferes', label: 'Choferes en ruta', icon: 'map' },
   { to: '/rutas', label: 'Planificador de Rutas', icon: 'route' },
@@ -53,6 +54,12 @@ function Icon({ name }: { name: (typeof NAV)[number]['icon'] }) {
       {name === 'truck' && (
         <path
           d="M3 7h11v8H3zM14 10h4l3 3v2h-7zM7 18a1.5 1.5 0 1 0 0.01 0M17 18a1.5 1.5 0 1 0 0.01 0"
+          {...common}
+        />
+      )}
+      {name === 'store' && (
+        <path
+          d="M4 9l1.5-5h13L20 9M4 9v10h16V9M9 19v-6h6v6"
           {...common}
         />
       )}

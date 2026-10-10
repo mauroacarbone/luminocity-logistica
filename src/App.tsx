@@ -18,6 +18,7 @@ import { PedidosPreparacion } from './pages/PedidosPreparacion'
 import { PendientesEntregas } from './pages/PendientesEntregas'
 import { PostVenta } from './pages/PostVenta'
 import { Registro } from './pages/Registro'
+import { Retiros } from './pages/Retiros'
 import { Seguimiento } from './pages/Seguimiento'
 import { Usuarios } from './pages/Usuarios'
 import { useAuth } from './state/AuthContext'
@@ -99,6 +100,14 @@ export default function App() {
           element={
             <Gate path="/despacho">
               <Despacho />
+            </Gate>
+          }
+        />
+        <Route
+          path="/retiros"
+          element={
+            <Gate path="/retiros">
+              <Retiros />
             </Gate>
           }
         />

@@ -22,7 +22,7 @@ import type { OrderSaveResult } from '../state/OrdersContext'
 type Props = {
   order: Order
   role: Role
-  via: 'despacho' | 'pedidos' | 'panel'
+  via: 'despacho' | 'pedidos' | 'panel' | 'retiros'
   busy: boolean
   onBusy: (busy: boolean) => void
   transition: (id: string, body: Record<string, unknown>) => Promise<OrderSaveResult>

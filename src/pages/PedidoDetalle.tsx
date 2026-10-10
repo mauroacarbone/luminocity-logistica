@@ -21,6 +21,7 @@ const VIA_LABEL: Record<string, string> = {
   qr: 'QR',
   picking: 'desde picking',
   panel: 'Panel',
+  retiros: 'Retiros',
 }
 
 function formatWhen(value: string) {

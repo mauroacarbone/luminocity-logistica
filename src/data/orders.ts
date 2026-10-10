@@ -32,6 +32,7 @@ export type OrderHistoryVia =
   | 'qr'
   | 'picking'
   | 'panel'
+  | 'retiros'
 
 export type OrderHistoryEntry = {
   at: string
