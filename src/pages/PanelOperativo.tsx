@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { DISPATCH_LABEL } from '../data/catalog'
@@ -15,11 +15,23 @@ import { canEditOrder, canOpen } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
 import { placeLine } from '../lib/place'
 import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
-import { formatIsoDate } from '../lib/week'
+import { addDays, formatIsoDate, startOfWeek, toIso } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 
 type View = 'kanban' | 'tabla'
+type FechaFilter = 'atrasados' | 'hoy' | 'manana' | 'semana' | 'todos'
+
+const VIEW_KEY = 'luminocity.panelView'
+const FECHA_VALUES: FechaFilter[] = ['atrasados', 'hoy', 'manana', 'semana', 'todos']
+
+const FECHA_CHIPS: { value: FechaFilter; label: string }[] = [
+  { value: 'atrasados', label: 'Atrasados' },
+  { value: 'hoy', label: 'Hoy' },
+  { value: 'manana', label: 'Mañana' },
+  { value: 'semana', label: 'Esta semana' },
+  { value: 'todos', label: 'Todos' },
+]
 
 const SUMMARY: { key: 'total' | OrderStatus; label: string }[] = [
   { key: 'total', label: 'Total' },
@@ -30,9 +42,54 @@ const SUMMARY: { key: 'total' | OrderStatus; label: string }[] = [
   { key: 'entregado', label: 'Entregados' },
 ]
 
+function loadView(): View {
+  try {
+    const raw = localStorage.getItem(VIEW_KEY)
+    if (raw === 'tabla' || raw === 'kanban') return raw
+  } catch {
+    /* ignore */
+  }
+  return 'kanban'
+}
+
+function parseFecha(raw: string | null): FechaFilter {
+  if (raw && (FECHA_VALUES as string[]).includes(raw)) return raw as FechaFilter
+  return 'semana'
+}
+
 function countFor(list: Order[], key: 'total' | OrderStatus) {
   if (key === 'total') return list.length
   return ordersByStatus(list, key).length
+}
+
+function hasDeliveryDate(order: Order) {
+  return Boolean(order.deliveryDate && order.deliveryDate.trim())
+}
+
+function isOverdue(order: Order, today: string) {
+  return hasDeliveryDate(order) && order.deliveryDate < today && order.status !== 'entregado'
+}
+
+function matchesFecha(
+  order: Order,
+  filter: FechaFilter,
+  today: string,
+  tomorrow: string,
+  weekFrom: string,
+  weekTo: string,
+) {
+  const noDate = !hasDeliveryDate(order)
+  const overdue = isOverdue(order, today)
+  if (filter === 'todos') return true
+  if (filter === 'atrasados') return overdue || noDate
+  if (noDate) return false
+  if (filter === 'hoy') return order.deliveryDate === today || overdue
+  if (filter === 'manana') return order.deliveryDate === tomorrow
+  if (filter === 'semana') {
+    const inWeek = order.deliveryDate >= weekFrom && order.deliveryDate <= weekTo
+    return inWeek || overdue
+  }
+  return true
 }
 
 function sheetForOrder(order: Order, sheets: RouteSheet[]) {
@@ -46,6 +103,15 @@ function withSheetFlag(order: Order, sheets: RouteSheet[], canPlan: boolean): Or
   const sheet = sheetForOrder(order, sheets)
   if (!sheet) return order
   return { ...order, sheetPlanned: sheet.status === 'planificada' }
+}
+
+function OverdueChip({ order, today }: { order: Order; today: string }) {
+  if (!isOverdue(order, today)) return null
+  return (
+    <span className="inline-flex rounded-full bg-[#fde8e7] px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
+      Atrasado
+    </span>
+  )
 }
 
 function SheetLinks({
@@ -93,10 +159,12 @@ function OrderCard({
   order,
   sheets,
   canPlan,
+  today,
 }: {
   order: Order
   sheets: RouteSheet[]
   canPlan: boolean
+  today: string
 }) {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -133,8 +201,9 @@ function OrderCard({
           </button>
         )}
       </div>
-      <div className="mt-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <OrderStepper order={order} variant="compact" />
+        <OverdueChip order={order} today={today} />
       </div>
       <p className="order-client">
         <Link className="order-link" to={`/pedidos/${order.id}`}>
@@ -246,20 +315,48 @@ function TableActions({
 export function PanelOperativo() {
   const { user } = useAuth()
   const { orders } = useOrders()
-  const [view, setView] = useState<View>('kanban')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [view, setView] = useState<View>(loadView)
   const [statusFilter, setStatusFilter] = useState<OrderStatus | null>(null)
   const [sheets, setSheets] = useState<RouteSheet[]>([])
   const [sheetsError, setSheetsError] = useState(false)
 
+  const dateFilter = parseFecha(searchParams.get('fecha'))
+  const today = toIso(new Date())
+  const tomorrow = toIso(addDays(new Date(), 1))
+  const weekStart = startOfWeek(new Date())
+  const weekFrom = toIso(weekStart)
+  const weekTo = toIso(addDays(weekStart, 6))
+  const fechaLabel = FECHA_CHIPS.find((chip) => chip.value === dateFilter)?.label ?? 'Esta semana'
+
   const canPlan = Boolean(user && canOpen(user.role, '/rutas'))
-  const visibleOrders = statusFilter ? ordersByStatus(orders, statusFilter) : orders
+
+  const datedOrders = useMemo(
+    () =>
+      orders.filter((order) =>
+        matchesFecha(order, dateFilter, today, tomorrow, weekFrom, weekTo),
+      ),
+    [orders, dateFilter, today, tomorrow, weekFrom, weekTo],
+  )
+
+  const visibleOrders = statusFilter ? ordersByStatus(datedOrders, statusFilter) : datedOrders
   const columns = statusFilter ? [statusFilter] : STATUS_ORDER
+  const undatedCount = datedOrders.filter((order) => !hasDeliveryDate(order)).length
 
   const datesKey = useMemo(() => {
-    const dates = [...new Set(visibleOrders.map((order) => order.deliveryDate).filter(Boolean))]
+    let dates = [...new Set(visibleOrders.map((order) => order.deliveryDate).filter(Boolean))]
+    if (dateFilter === 'todos') {
+      dates = dates.filter((date) => date >= today)
+    } else if (dateFilter === 'semana') {
+      dates = dates.filter((date) => date >= weekFrom && date <= weekTo)
+    } else if (dateFilter === 'hoy') {
+      dates = dates.filter((date) => date === today)
+    } else if (dateFilter === 'manana') {
+      dates = dates.filter((date) => date === tomorrow)
+    }
     dates.sort()
     return dates.join('|')
-  }, [visibleOrders])
+  }, [visibleOrders, dateFilter, today, tomorrow, weekFrom, weekTo])
 
   useEffect(() => {
     let cancelled = false
@@ -298,6 +395,26 @@ export function PanelOperativo() {
     }
   }, [canPlan, datesKey])
 
+  function selectFecha(next: FechaFilter) {
+    setSearchParams(
+      (current) => {
+        const params = new URLSearchParams(current)
+        params.set('fecha', next)
+        return params
+      },
+      { replace: true },
+    )
+  }
+
+  function selectView(next: View) {
+    setView(next)
+    try {
+      localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      /* ignore */
+    }
+  }
+
   function selectSummary(key: 'total' | OrderStatus) {
     if (key === 'total') {
       setStatusFilter(null)
@@ -318,7 +435,7 @@ export function PanelOperativo() {
             type="button"
             className={view === 'kanban' ? 'active' : undefined}
             aria-pressed={view === 'kanban'}
-            onClick={() => setView('kanban')}
+            onClick={() => selectView('kanban')}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="4" width="5" height="16" rx="1" fill="none" stroke="currentColor" strokeWidth="1.8" />
@@ -331,7 +448,7 @@ export function PanelOperativo() {
             type="button"
             className={view === 'tabla' ? 'active' : undefined}
             aria-pressed={view === 'tabla'}
-            onClick={() => setView('tabla')}
+            onClick={() => selectView('tabla')}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="4" y="5" width="16" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
@@ -341,6 +458,20 @@ export function PanelOperativo() {
           </button>
         </div>
       </header>
+
+      <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Fecha de entrega">
+        {FECHA_CHIPS.map((chip) => (
+          <button
+            key={chip.value}
+            type="button"
+            className={dateFilter === chip.value ? 'zone-chip active' : 'zone-chip'}
+            aria-pressed={dateFilter === chip.value}
+            onClick={() => selectFecha(chip.value)}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
 
       {sheetsError && (
         <p className="mt-3 text-sm text-lumi-muted">No se pudieron cargar las hojas de ruta</p>
@@ -357,12 +488,16 @@ export function PanelOperativo() {
               aria-pressed={active}
               onClick={() => selectSummary(item.key)}
             >
-              <strong>{countFor(orders, item.key)}</strong>
+              <strong>{countFor(datedOrders, item.key)}</strong>
               <span>{item.label}</span>
             </button>
           )
         })}
       </div>
+      <p className="mt-2 text-sm text-lumi-muted">
+        {fechaLabel}
+        {undatedCount > 0 ? ` · ${undatedCount} sin fecha` : ''}
+      </p>
 
       {view === 'kanban' ? (
         <div className="board-scroll">
@@ -380,7 +515,13 @@ export function PanelOperativo() {
                   ) : (
                     <div className="column-cards">
                       {column.map((order) => (
-                        <OrderCard key={order.id} order={order} sheets={sheets} canPlan={canPlan} />
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          sheets={sheets}
+                          canPlan={canPlan}
+                          today={today}
+                        />
                       ))}
                     </div>
                   )}
@@ -418,6 +559,11 @@ export function PanelOperativo() {
                       <Link className="order-link" to={`/pedidos/${order.id}`}>
                         {order.id}
                       </Link>
+                      {isOverdue(order, today) ? (
+                        <span className="ml-2 inline-flex align-middle">
+                          <OverdueChip order={order} today={today} />
+                        </span>
+                      ) : null}
                     </td>
                     <td>
                       <Link className="order-link" to={`/pedidos/${order.id}`}>
