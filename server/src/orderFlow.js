@@ -251,6 +251,11 @@ export async function applyTransition(orders, current, input, user, via, options
     delete next.trackingNumber
   }
 
+  if (rule.direction === 'back' && rule.pickupOnly && to === 'preparado') {
+    delete next.receiverName
+    delete next.receiverDni
+  }
+
   stampStatus(next, current)
 
   if (options.fromSheet !== true) {

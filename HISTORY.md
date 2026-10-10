@@ -86,6 +86,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 26b | Panel operativo con filtro por fecha y lista para celular | Hecho |
 | 26b.1 | Panel sin parpadeo en celular y hojas de pedidos atrasados | Hecho |
 | 27a | Tipo de despacho Retiro por el local | Hecho |
+| 27a.1 | Pedidos viejos sin despacho y dirección al pasar a propia | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -220,6 +221,10 @@ El Brief 26a.1 pide las hojas de ruta del Panel solo si el rol puede abrir `/rut
 El Brief 26b filtra el Panel por fecha de entrega (Atrasados, Hoy, Mañana, Esta semana, Todos) en la URL, con atrasados visibles también en Hoy y Esta semana. En celular, Tablero sin filtro de estado pasa a la lista "Para avanzar" y un desplegable de en viaje y entregados.
 
 El Brief 26b.1 pide las hojas de todas las fechas visibles (también las atrasadas en Hoy y Esta semana) y arranca `narrow` con matchMedia para no parpadear las columnas en celular.
+
+El Brief 27a suma el tipo de despacho `retiro` (Retiro por el local). En Nuevo Pedido aparece como tercera opción: sin transportista, chofer ni franja, y sin exigir dirección, entrecalles ni zona; siguen cliente, teléfono y fecha de retiro (por defecto hoy). El flujo es pendiente → preparado (con bultos) → entregado; depósito, encargado o admin marcan retirado con "Retirado por" (nombre obligatorio, DNI opcional). Un retiro no pasa a asignado. El vendedor recibe el aviso "Pedido P-x retirado por {nombre}". Las pantallas de Retiros y las exclusiones del planificador quedan para 27b y 27c.
+
+El Brief 27a.1 trata un pedido sin `dispatchType` como entrega propia (`isOwnDelivery`), así el chofer puede pasar a en viaje y a entregado. Al cambiar un retiro a propia por PATCH sin dirección responde 400. Volver un retirado a preparado (solo admin) borra `receiverName` y `receiverDni`.
 
 ## Pendientes
 
