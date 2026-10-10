@@ -109,6 +109,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32b.1 | Colores de JS desde los tokens | Hecho |
 | 32c | Componentes base de UI | Hecho |
 | 32e | Navegación superior y paleta de comandos | Hecho |
+| 32e.1 | Accesibilidad de la paleta y los menús | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -291,6 +292,8 @@ El Brief 32b.1 lee los colores de alerts, Leaflet y accentos desde los tokens CS
 El Brief 32c agrega los componentes base en `src/components/ui/` (Button, Card, Badge, Field, Input, Select, Textarea, PageHeader, EmptyState) con tokens y foco accesible. Como prueba, PriorityChip usa Badge y Pendientes de Entregas muestra el estado y los vacíos con Badge y EmptyState.
 
 El Brief 32e reemplaza la sidebar por una barra superior con menús por teclado, deja el drawer móvil con la misma accesibilidad y agrega una paleta de comandos (Ctrl/Cmd+K) para ir a páginas y pedidos.
+
+El Brief 32e.1 ajusta la accesibilidad de la paleta (aria-expanded y tabIndex) y evita dos menús abiertos a la vez, devolviendo el foco al disparador con Tab.
 
 ## Pendientes
 

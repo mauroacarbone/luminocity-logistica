@@ -19,6 +19,8 @@ type TopNavProps = {
   onOpenSearch?: () => void
 }
 
+type OpenMenuId = GroupId | 'user'
+
 type MenuTrigger = {
   id: GroupId
   title: string
@@ -30,7 +32,7 @@ export function TopNav({ onOpenSearch }: TopNavProps) {
   const { user } = useAuth()
   const location = useLocation()
   const baseId = useId()
-  const [openId, setOpenId] = useState<GroupId | null>(null)
+  const [openId, setOpenId] = useState<OpenMenuId | null>(null)
   const [focusIndex, setFocusIndex] = useState<number | null>(null)
   const [menuPath, setMenuPath] = useState(location.pathname)
   const triggerRefs = useRef<Partial<Record<GroupId, HTMLButtonElement | null>>>({})
@@ -53,7 +55,7 @@ export function TopNav({ onOpenSearch }: TopNavProps) {
     menuDomId: `${baseId}-${g.id}`,
   }))
 
-  function openMenu(id: GroupId, index: number | null) {
+  function openMenu(id: OpenMenuId, index: number | null = null) {
     setOpenId(id)
     setFocusIndex(index)
   }
@@ -84,7 +86,7 @@ export function TopNav({ onOpenSearch }: TopNavProps) {
       if (index < 0 || triggers.length === 0) return
       event.preventDefault()
       const next = triggers[(index + dir + triggers.length) % triggers.length]
-      if (openId) {
+      if (openId && openId !== 'user') {
         openMenu(next.id, 0)
         queueMicrotask(() => triggerRefs.current[next.id]?.focus())
       } else {
@@ -99,6 +101,11 @@ export function TopNav({ onOpenSearch }: TopNavProps) {
     const next = triggers[(index + dir + triggers.length) % triggers.length]
     openMenu(next.id, 0)
     queueMicrotask(() => triggerRefs.current[next.id]?.focus())
+  }
+
+  function onUserOpenChange(next: boolean) {
+    if (next) openMenu('user')
+    else closeMenu()
   }
 
   function renderDirectLink(item: NavItem) {
@@ -181,7 +188,7 @@ export function TopNav({ onOpenSearch }: TopNavProps) {
         <div className="topnav-right">
           {onOpenSearch ? <SearchTrigger onOpen={onOpenSearch} /> : null}
           {user ? <NotificationBell /> : null}
-          <UserMenu />
+          <UserMenu open={openId === 'user'} onOpenChange={onUserOpenChange} />
         </div>
       </div>
     </header>

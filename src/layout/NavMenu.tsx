@@ -80,6 +80,8 @@ export function NavMenu({
       return
     }
     if (event.key === 'Tab') {
+      const trigger = document.querySelector<HTMLElement>(`[aria-controls="${id}"]`)
+      trigger?.focus()
       onClose()
       return
     }

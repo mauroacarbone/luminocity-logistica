@@ -238,7 +238,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             }}
             onKeyDown={onInputKeyDown}
             role="combobox"
-            aria-expanded="true"
+            aria-expanded={results.length > 0}
             aria-controls={listId}
             aria-activedescendant={activeOptionId}
             autoComplete="off"
@@ -264,6 +264,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                         type="button"
                         id={`${listId}-${index}`}
                         role="option"
+                        tabIndex={-1}
                         aria-selected={selected}
                         className={
                           selected
@@ -292,6 +293,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                         type="button"
                         id={`${listId}-${index}`}
                         role="option"
+                        tabIndex={-1}
                         aria-selected={selected}
                         className={
                           selected

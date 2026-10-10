@@ -1,11 +1,15 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ROLE_LABEL } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
 
-export function UserMenu() {
+type UserMenuProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function UserMenu({ open, onOpenChange }: UserMenuProps) {
   const { user, logout } = useAuth()
-  const [open, setOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const focusOnOpen = useRef(false)
@@ -18,11 +22,11 @@ export function UserMenu() {
       const target = event.target as Node | null
       if (!target) return
       if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return
-      setOpen(false)
+      onOpenChange(false)
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [open])
+  }, [open, onOpenChange])
 
   useLayoutEffect(() => {
     if (!open || !focusOnOpen.current) return
@@ -32,12 +36,12 @@ export function UserMenu() {
 
   function openAndFocusItem() {
     focusOnOpen.current = true
-    setOpen(true)
+    onOpenChange(true)
   }
 
   function closeAndFocusButton() {
-    setOpen(false)
-    queueMicrotask(() => buttonRef.current?.focus())
+    buttonRef.current?.focus()
+    onOpenChange(false)
   }
 
   function onButtonKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
@@ -51,7 +55,7 @@ export function UserMenu() {
     }
     if (event.key === 'Escape' && open) {
       event.preventDefault()
-      setOpen(false)
+      onOpenChange(false)
     }
   }
 
@@ -62,7 +66,8 @@ export function UserMenu() {
       return
     }
     if (event.key === 'Tab') {
-      setOpen(false)
+      buttonRef.current?.focus()
+      onOpenChange(false)
     }
   }
 
@@ -78,7 +83,7 @@ export function UserMenu() {
         aria-expanded={open}
         aria-controls={menuId}
         aria-label={`${user.name}, ${ROLE_LABEL[user.role]}`}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => onOpenChange(!open)}
         onKeyDown={onButtonKeyDown}
       >
         <span className="topnav-avatar" aria-hidden="true">
@@ -117,7 +122,7 @@ export function UserMenu() {
             tabIndex={-1}
             className="topnav-menuitem is-danger"
             onClick={() => {
-              setOpen(false)
+              onOpenChange(false)
               logout()
             }}
           >
