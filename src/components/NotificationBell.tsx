@@ -160,27 +160,61 @@ export function NotificationBell() {
   const whatsappItems = canSend
     ? items.filter((item) => item.channel === 'whatsapp' && item.status === 'pendiente')
     : []
-  const visible = [...appItems, ...whatsappItems]
-  const unread = appItems.filter((item) => !item.read).length + whatsappItems.length
+  const unread = appItems.filter((item) => !item.read).length
+  const pendingWhatsapp = whatsappItems.length
+  const hasPanelContent = appItems.length > 0 || pendingWhatsapp > 0
 
   async function markRead(id: string) {
+    const current = items.find((item) => item.id === id)
+    if (!current || current.read) return true
+    setItems((list) => list.map((item) => (item.id === id ? { ...item, read: true } : item)))
     const result = await markNotificationRead(id)
     if (!result.ok) {
+      setItems((list) => list.map((item) => (item.id === id ? { ...item, read: false } : item)))
       if (result.status === 401) logout()
-      else setError(result.message)
+      else await showError(result.message)
       return false
     }
-    setItems((current) => current.map((item) => (item.id === id ? { ...item, read: true } : item)))
     return true
+  }
+
+  async function markAllRead() {
+    const unreadIds = appItems.filter((item) => !item.read).map((item) => item.id)
+    if (unreadIds.length === 0) return
+    setItems((current) =>
+      current.map((item) =>
+        item.channel === 'app' && !item.read ? { ...item, read: true } : item,
+      ),
+    )
+    const results = await Promise.allSettled(unreadIds.map((id) => markNotificationRead(id)))
+    const failedIds: string[] = []
+    let unauthorized = false
+    let failMessage = 'No se pudieron marcar todos como leídos.'
+    results.forEach((result, index) => {
+      const id = unreadIds[index]
+      if (result.status === 'rejected') {
+        failedIds.push(id)
+        return
+      }
+      if (result.value.ok) return
+      failedIds.push(id)
+      if (result.value.status === 401) unauthorized = true
+      else if (result.value.message) failMessage = result.value.message
+    })
+    if (failedIds.length === 0) return
+    setItems((current) =>
+      current.map((item) =>
+        failedIds.includes(item.id) ? { ...item, read: false } : item,
+      ),
+    )
+    if (unauthorized) logout()
+    else await showError(failMessage)
   }
 
   async function openAppNotification(item: AppNotification) {
     setOpen(false)
     setToastItems(null)
-    if (!item.read) {
-      const ok = await markRead(item.id)
-      if (!ok) return
-    }
+    if (!item.read) void markRead(item.id)
     if (item.claimId) {
       navigate(`/post-venta?reclamo=${encodeURIComponent(item.claimId)}`)
       return
@@ -267,12 +301,18 @@ export function NotificationBell() {
       )}
       <button
         type="button"
-        className="relative grid h-9 w-9 place-items-center rounded-full hover:bg-white"
-        aria-label={unread > 0 ? `Avisos, ${unread} sin leer` : 'Avisos'}
+        className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white"
+        aria-label={
+          unread > 0
+            ? `Avisos, ${unread} sin leer`
+            : pendingWhatsapp > 0
+              ? `Avisos, ${pendingWhatsapp} por enviar por WhatsApp`
+              : 'Avisos'
+        }
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+        <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
           <path
             d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zM10 18a2 2 0 0 0 4 0"
             fill="none"
@@ -283,9 +323,15 @@ export function NotificationBell() {
           />
         </svg>
         {unread > 0 && (
-          <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-lumi-danger px-1 text-[10px] font-semibold text-white">
+          <span className="absolute right-0.5 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-lumi-danger px-1 text-[10px] font-semibold text-white">
             {unread}
           </span>
+        )}
+        {pendingWhatsapp > 0 && (
+          <span
+            className="absolute bottom-0.5 right-0.5 h-2 w-2 rounded-full bg-lumi-muted"
+            aria-hidden="true"
+          />
         )}
       </button>
       {open && (
@@ -293,73 +339,98 @@ export function NotificationBell() {
           className="fixed inset-x-4 z-30 flex max-h-[70vh] w-auto flex-col rounded-2xl border border-lumi-line bg-white p-3 shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-none sm:w-80"
           style={open && narrow && panelTop !== null ? { top: panelTop } : undefined}
         >
-          <p className="shrink-0 text-sm font-semibold">Avisos</p>
+          <div className="flex shrink-0 items-center justify-between gap-2">
+            <p className="text-sm font-semibold">Avisos</p>
+            {unread > 0 && (
+              <button
+                type="button"
+                className="text-xs text-lumi-muted underline hover:text-lumi-ink"
+                onClick={() => void markAllRead()}
+              >
+                Marcar todos leídos
+              </button>
+            )}
+          </div>
           {loading && items.length === 0 && <Spinner compact label="Cargando avisos…" />}
           {error && <ServerDown message={error} onRetry={() => {
             setError('')
             setLoading(true)
             setAttempt((current) => current + 1)
           }} />}
-          {!loading && !error && visible.length === 0 ? (
+          {!loading && !error && !hasPanelContent ? (
             <p className="mt-3 text-sm text-lumi-muted">No hay avisos.</p>
-          ) : visible.length > 0 ? (
-            <ul className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-auto sm:max-h-80">
-              {visible.map((item) => {
-                const phone = item.channel === 'whatsapp' ? sellerPhone(item, orders, users) : ''
-                const canOpen = Boolean(phone && whatsappLink(phone, item.text))
-                return (
-                  <li key={item.id} className="rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm">
-                    {item.channel === 'app' ? (
-                      <>
-                        <button
-                          type="button"
-                          className="w-full text-left"
-                          onClick={() => void openAppNotification(item)}
-                        >
-                          <p className={item.read ? 'text-lumi-muted' : 'font-medium'}>{item.text}</p>
-                          <p className="mt-1 text-xs text-lumi-muted">{formatWhen(item.createdAt)}</p>
-                        </button>
-                        {!item.read && (
-                          <div className="mt-1 flex justify-end">
-                            <button
-                              type="button"
-                              className="text-xs text-lumi-muted underline"
-                              onClick={() => void markRead(item.id)}
-                            >
-                              Marcar leído
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-medium">{item.text}</p>
-                        <div className="mt-1 flex items-center justify-between gap-2 text-xs text-lumi-muted">
-                          <span>{formatWhen(item.createdAt)}</span>
-                        </div>
-                        {canOpen ? (
+          ) : hasPanelContent ? (
+            <div className="mt-2 flex min-h-0 flex-1 flex-col gap-3 overflow-auto sm:max-h-80">
+              {appItems.length > 0 && (
+                <ul className="flex flex-col gap-2">
+                  {appItems.map((item) => (
+                    <li key={item.id} className="rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm">
+                      <button
+                        type="button"
+                        className="w-full text-left"
+                        onClick={() => void openAppNotification(item)}
+                      >
+                        <p className={item.read ? 'text-lumi-muted' : 'font-medium'}>{item.text}</p>
+                        <p className="mt-1 text-xs text-lumi-muted">{formatWhen(item.createdAt)}</p>
+                      </button>
+                      {!item.read && (
+                        <div className="mt-1 flex justify-end">
                           <button
                             type="button"
-                            className="mt-2 w-full rounded-lg bg-lumi-yellow px-3 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
-                            disabled={sending === item.id}
-                            onClick={() => void sendWhatsapp(item)}
+                            className="text-xs text-lumi-muted underline"
+                            onClick={() => void markRead(item.id)}
                           >
-                            Enviar por WhatsApp
+                            Marcar leído
                           </button>
-                        ) : (
-                          <p className="mt-2 text-xs text-lumi-muted">
-                            <button type="button" className="w-full rounded-lg bg-lumi-line px-3 py-2 font-semibold" disabled>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {pendingWhatsapp > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-lumi-muted">
+                    Por enviar por WhatsApp ({pendingWhatsapp})
+                  </p>
+                  <ul className="flex flex-col gap-2">
+                    {whatsappItems.map((item) => {
+                      const phone = sellerPhone(item, orders, users)
+                      const canOpenWa = Boolean(phone && whatsappLink(phone, item.text))
+                      return (
+                        <li key={item.id} className="rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm">
+                          <p className="font-medium">{item.text}</p>
+                          <div className="mt-1 flex items-center justify-between gap-2 text-xs text-lumi-muted">
+                            <span>{formatWhen(item.createdAt)}</span>
+                          </div>
+                          {canOpenWa ? (
+                            <button
+                              type="button"
+                              className="mt-2 w-full rounded-lg bg-lumi-yellow px-3 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                              disabled={sending === item.id}
+                              onClick={() => void sendWhatsapp(item)}
+                            >
                               Enviar por WhatsApp
                             </button>
-                            Sin celular cargado
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
+                          ) : (
+                            <p className="mt-2 text-xs text-lumi-muted">
+                              <button
+                                type="button"
+                                className="w-full rounded-lg bg-lumi-line px-3 py-2 font-semibold"
+                                disabled
+                              >
+                                Enviar por WhatsApp
+                              </button>
+                              Sin celular cargado
+                            </p>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
           ) : null}
         </div>
       )}
