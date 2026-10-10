@@ -859,6 +859,10 @@ function readOrderFields(body, current) {
     order[key] = text
   }
 
+  if (!storePickup && !readRequiredText(order.address)) {
+    return fail('Ingresá la dirección.')
+  }
+
   if (current && !Object.prototype.hasOwnProperty.call(body, 'deliveryDate')) {
     order.deliveryDate = current.deliveryDate
   } else {
