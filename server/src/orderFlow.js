@@ -2,6 +2,8 @@ import { normalizeName } from './access.js'
 import {
   checkDriver,
   checkSlot,
+  isOwnDelivery,
+  isPickup,
   normalizeTimeWindow,
   rememberOverride,
 } from './orders.js'
@@ -18,6 +20,12 @@ const TRANSITIONS = {
   'preparado|asignado': {
     direction: 'forward',
     roles: new Set(['encargado_deposito', 'admin']),
+    notPickup: true,
+  },
+  'preparado|entregado': {
+    direction: 'forward',
+    roles: new Set(['encargado_deposito', 'deposito', 'admin']),
+    pickupOnly: true,
   },
   'asignado|en-viaje': {
     direction: 'forward',
@@ -52,6 +60,12 @@ const TRANSITIONS = {
   'entregado|en-viaje': {
     direction: 'back',
     roles: new Set(['admin']),
+    notPickup: true,
+  },
+  'entregado|preparado': {
+    direction: 'back',
+    roles: new Set(['admin']),
+    pickupOnly: true,
   },
 }
 
@@ -155,7 +169,9 @@ export async function applyTransition(orders, current, input, user, via, options
   const rule = TRANSITIONS[key]
   if (!rule) return invalidTransition(current.status, to)
   if (rule.courierOnly && !isCourier(current)) return invalidTransition(current.status, to)
-  if (rule.ownDelivery && isCourier(current)) return invalidTransition(current.status, to)
+  if (rule.ownDelivery && !isOwnDelivery(current)) return invalidTransition(current.status, to)
+  if (rule.pickupOnly && !isPickup(current)) return invalidTransition(current.status, to)
+  if (rule.notPickup && isPickup(current)) return invalidTransition(current.status, to)
   if (!rule.roles.has(user.role)) {
     return fail('No tenés permiso para ese cambio de estado.', 403)
   }
@@ -189,6 +205,16 @@ export async function applyTransition(orders, current, input, user, via, options
     const packages = readPackages(input, current)
     if (packages.error) return packages
     next.packages = packages.value
+  }
+
+  let historyReason = reason.value
+  if (rule.direction === 'forward' && to === 'entregado' && rule.pickupOnly) {
+    const receiver = readPickupReceiver(input)
+    if (receiver.error) return receiver
+    next.receiverName = receiver.name
+    if (receiver.dni) next.receiverDni = receiver.dni
+    else delete next.receiverDni
+    historyReason = `Retirado por ${receiver.name}`
   }
 
   if (rule.direction === 'forward' && to === 'asignado') {
@@ -239,7 +265,7 @@ export async function applyTransition(orders, current, input, user, via, options
     by: { id: user.id, name: typeof user.name === 'string' ? user.name : '' },
     from: current.status,
     to,
-    reason: reason.value,
+    reason: historyReason,
     via,
   })
 
@@ -282,6 +308,29 @@ function readPackages(input, current) {
     return { value: current.packages }
   }
   return fail('Indicá la cantidad de bultos.')
+}
+
+function readPickupReceiver(input) {
+  const rawName = Object.prototype.hasOwnProperty.call(input, 'receiverName')
+    ? input.receiverName
+    : undefined
+  if (typeof rawName !== 'string' || !rawName.trim()) {
+    return fail('Falta quién retira')
+  }
+  const name = rawName.trim()
+  if (name.length > 120) return fail('El nombre de quien retira es demasiado largo.')
+  let dni
+  if (Object.prototype.hasOwnProperty.call(input, 'receiverDni')) {
+    const value = input.receiverDni
+    if (value === null || value === '') dni = undefined
+    else if (typeof value !== 'string') return fail('El DNI no es válido.')
+    else {
+      const trimmed = value.trim()
+      if (trimmed.length > 20) return fail('El DNI es demasiado largo.')
+      dni = trimmed || undefined
+    }
+  }
+  return { name, dni }
 }
 
 function readDriverId(input, current) {

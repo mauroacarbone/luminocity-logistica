@@ -85,6 +85,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 26a.1 | Hojas de ruta del Panel solo para quien puede verlas | Hecho |
 | 26b | Panel operativo con filtro por fecha y lista para celular | Hecho |
 | 26b.1 | Panel sin parpadeo en celular y hojas de pedidos atrasados | Hecho |
+| 27a | Tipo de despacho Retiro por el local | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 

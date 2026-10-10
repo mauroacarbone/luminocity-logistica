@@ -1,3 +1,4 @@
+import { isOwnDelivery, isPickup } from '../data/catalog'
 import type { Order, OrderStatus } from '../data/orders'
 import type { Role } from './authStore'
 
@@ -15,12 +16,25 @@ export type TransitionRule = {
   roles: Role[]
   courierOnly?: boolean
   ownDelivery?: boolean
+  pickupOnly?: boolean
+  notPickup?: boolean
 }
 
 /** Misma tabla que server/src/orderFlow.js. */
 export const TRANSITIONS: TransitionRule[] = [
   { from: 'pendiente', to: 'preparado', roles: ['deposito', 'encargado_deposito', 'admin'] },
-  { from: 'preparado', to: 'asignado', roles: ['encargado_deposito', 'admin'] },
+  {
+    from: 'preparado',
+    to: 'asignado',
+    roles: ['encargado_deposito', 'admin'],
+    notPickup: true,
+  },
+  {
+    from: 'preparado',
+    to: 'entregado',
+    roles: ['encargado_deposito', 'deposito', 'admin'],
+    pickupOnly: true,
+  },
   {
     from: 'asignado',
     to: 'en-viaje',
@@ -42,25 +56,36 @@ export const TRANSITIONS: TransitionRule[] = [
   { from: 'preparado', to: 'pendiente', roles: ['encargado_deposito', 'admin'] },
   { from: 'asignado', to: 'preparado', roles: ['encargado_deposito', 'admin'] },
   { from: 'en-viaje', to: 'asignado', roles: ['admin'] },
-  { from: 'entregado', to: 'en-viaje', roles: ['admin'] },
+  { from: 'entregado', to: 'en-viaje', roles: ['admin'], notPickup: true },
+  { from: 'entregado', to: 'preparado', roles: ['admin'], pickupOnly: true },
 ]
 
 function isCourier(order: Pick<Order, 'dispatchType'>) {
   return order.dispatchType === 'correo'
 }
 
+function ruleMatches(rule: TransitionRule, order: Pick<Order, 'dispatchType'>) {
+  if (rule.courierOnly && !isCourier(order)) return false
+  if (rule.ownDelivery && !isOwnDelivery(order)) return false
+  if (rule.pickupOnly && !isPickup(order)) return false
+  if (rule.notPickup && isPickup(order)) return false
+  return true
+}
+
 export function statusChoices(role: Role, order: Pick<Order, 'status' | 'dispatchType'>): OrderStatus[] {
   return TRANSITIONS.filter((rule) => {
     if (rule.from !== order.status) return false
     if (!rule.roles.includes(role)) return false
-    if (rule.courierOnly && !isCourier(order)) return false
-    if (rule.ownDelivery && isCourier(order)) return false
-    return true
+    return ruleMatches(rule, order)
   }).map((rule) => rule.to)
 }
 
 export function statusPillFor(order: Pick<Order, 'dispatchType'>, status: OrderStatus) {
   if (status === 'asignado' && isCourier(order)) return 'Despachado'
+  if (isPickup(order)) {
+    if (status === 'preparado') return 'Listo para retirar'
+    if (status === 'entregado') return 'Retirado'
+  }
   const labels: Record<OrderStatus, string> = {
     pendiente: 'Pendiente',
     preparado: 'Preparado',
@@ -81,9 +106,7 @@ export function forwardPath(order: Pick<Order, 'dispatchType'>): OrderStatus[] {
     const next = TRANSITIONS.find((rule) => {
       if (rule.from !== at) return false
       if (STATUS_RANK[rule.to] <= STATUS_RANK[rule.from]) return false
-      if (rule.courierOnly && !isCourier(order)) return false
-      if (rule.ownDelivery && isCourier(order)) return false
-      return true
+      return ruleMatches(rule, order)
     })
     if (!next) break
     path.push(next.to)
@@ -105,8 +128,7 @@ function allowedTransitions(
   return TRANSITIONS.filter((rule) => {
     if (rule.from !== order.status) return false
     if (!rule.roles.includes(role)) return false
-    if (rule.courierOnly && !isCourier(order)) return false
-    if (rule.ownDelivery && isCourier(order)) return false
+    if (!ruleMatches(rule, order)) return false
     const forward = STATUS_RANK[rule.to] > STATUS_RANK[rule.from]
     return direction === 'forward' ? forward : !forward
   })
@@ -116,7 +138,7 @@ function forwardLabel(order: Pick<Order, 'dispatchType'>, to: OrderStatus) {
   if (to === 'preparado') return 'Marcar preparado'
   if (to === 'asignado') return isCourier(order) ? 'Despachar' : 'Asignar chofer'
   if (to === 'en-viaje') return 'Iniciar viaje'
-  if (to === 'entregado') return 'Marcar entregado'
+  if (to === 'entregado') return isPickup(order) ? 'Marcar retirado' : 'Marcar entregado'
   return statusPillFor(order, to)
 }
 

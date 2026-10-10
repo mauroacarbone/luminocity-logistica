@@ -328,7 +328,8 @@ p {
   color: #1c1b19;
 }
 
-.lumi-swal-select {
+.lumi-swal-select,
+.lumi-swal-input {
   width: 100%;
   border: 1px solid #d8d2c4;
   border-radius: 12px;

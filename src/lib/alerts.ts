@@ -207,6 +207,73 @@ function escapeHtml(value: string) {
     .replace(/"/g, '&quot;')
 }
 
+export type PickupReceiver = {
+  name: string
+  dni?: string
+}
+
+/** Nombre obligatorio y DNI opcional al marcar un retiro. */
+export async function askPickupReceiver(titulo: string, texto: string): Promise<PickupReceiver | null> {
+  const result = await Swal.fire({
+    title: titulo,
+    html: `<p class="lumi-swal-text">${escapeHtml(texto)}</p>
+      <div class="lumi-swal-form">
+        <label class="lumi-swal-field">
+          <span>Retirado por *</span>
+          <input id="lumi-pickup-name" class="lumi-swal-input" type="text" autocomplete="name" />
+        </label>
+        <label class="lumi-swal-field">
+          <span>DNI (opcional)</span>
+          <input id="lumi-pickup-dni" class="lumi-swal-input" type="text" autocomplete="off" />
+        </label>
+      </div>`,
+    showCancelButton: true,
+    confirmButtonText: 'Confirmar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    buttonsStyling: false,
+    focusConfirm: false,
+    customClass: {
+      popup: 'lumi-swal',
+      title: 'lumi-swal-title',
+      htmlContainer: 'lumi-swal-text',
+      confirmButton: 'lumi-swal-confirm',
+      cancelButton: 'lumi-swal-cancel',
+      actions: 'lumi-swal-actions',
+    },
+    didOpen: () => {
+      const input = document.getElementById('lumi-pickup-name')
+      if (input instanceof HTMLInputElement) input.focus()
+    },
+    preConfirm: () => {
+      const nameInput = document.getElementById('lumi-pickup-name')
+      const dniInput = document.getElementById('lumi-pickup-dni')
+      const name = nameInput instanceof HTMLInputElement ? nameInput.value.trim() : ''
+      const dni = dniInput instanceof HTMLInputElement ? dniInput.value.trim() : ''
+      if (!name) {
+        Swal.showValidationMessage('Falta quién retira')
+        return false
+      }
+      if (name.length > 120) {
+        Swal.showValidationMessage('El nombre de quien retira es demasiado largo.')
+        return false
+      }
+      if (dni.length > 20) {
+        Swal.showValidationMessage('El DNI es demasiado largo.')
+        return false
+      }
+      return { name, dni: dni || undefined }
+    },
+  })
+  if (!result.isConfirmed || !result.value || typeof result.value !== 'object') return null
+  const value = result.value as PickupReceiver
+  if (typeof value.name !== 'string' || !value.name.trim()) return null
+  return {
+    name: value.name.trim(),
+    dni: typeof value.dni === 'string' && value.dni.trim() ? value.dni.trim() : undefined,
+  }
+}
+
 /** Tracking opcional (hasta 80 caracteres). Cancelar aborta; vacío es válido. */
 export async function askTracking(titulo: string, texto: string): Promise<string | null | undefined> {
   const result = await Swal.fire({

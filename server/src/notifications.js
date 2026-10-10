@@ -178,7 +178,11 @@ export async function notifyDelivered(order) {
   const seller = sellerUser(await readUsersList(), order)
   if (!seller) return
   const phone = typeof seller.phone === 'string' ? seller.phone.trim() : ''
-  const text = `Tu pedido ${order.id} fue entregado.`
+  const name = typeof order.receiverName === 'string' ? order.receiverName.trim() : ''
+  const text =
+    order.dispatchType === 'retiro' && name
+      ? `Pedido ${order.id} retirado por ${name}`
+      : `Tu pedido ${order.id} fue entregado.`
   await pushNotifications([
     buildNote({ to: seller.id, text, orderId: order.id, channel: 'app' }),
     whatsappNote({ text, orderId: order.id, phone }),

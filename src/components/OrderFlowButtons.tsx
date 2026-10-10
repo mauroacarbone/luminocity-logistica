@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Order, OrderStatus } from '../data/orders'
-import { askAssignDriver, askPackages, askReason, askTracking, error, success } from '../lib/alerts'
+import {
+  askAssignDriver,
+  askPackages,
+  askPickupReceiver,
+  askReason,
+  askTracking,
+  error,
+  success,
+} from '../lib/alerts'
 import type { Role } from '../lib/authStore'
 import { isSession } from '../lib/authStore'
 import { backActions, nextAction, statusPillFor } from '../lib/orderFlow'
@@ -135,6 +143,17 @@ export function OrderFlowButtons({
       if (tracking === null) return
       const body: Record<string, unknown> = {}
       if (tracking) body.trackingNumber = tracking
+      await runTransition(next.to, body)
+      return
+    }
+    if (next.to === 'entregado' && order.dispatchType === 'retiro') {
+      const receiver = await askPickupReceiver(
+        'Marcar retirado',
+        `Indicá quién retira el pedido ${order.id}.`,
+      )
+      if (!receiver) return
+      const body: Record<string, unknown> = { receiverName: receiver.name }
+      if (receiver.dni) body.receiverDni = receiver.dni
       await runTransition(next.to, body)
       return
     }
