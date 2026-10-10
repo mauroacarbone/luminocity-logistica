@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
+import { PriorityChip } from '../components/PriorityChip'
 import { DISPATCH_LABEL } from '../data/catalog'
 import { pendingEdit, type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { canCancelOrder, canEditOrder, canPrepare } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
+import { compareOpenPriority } from '../lib/priority'
 import { placeLine } from '../lib/place'
 import {
   DAY_LONG,
@@ -130,6 +132,8 @@ export function PedidosPreparacion() {
   const dayOrders = weekOrders
     .filter((order) => order.deliveryDate === toIso(selectedDate))
     .sort((left, right) => {
+      const byPriority = compareOpenPriority(left, right)
+      if (byPriority !== 0) return byPriority
       if (left.status !== right.status) {
         return left.status === 'pendiente' ? -1 : 1
       }
@@ -268,6 +272,7 @@ export function PedidosPreparacion() {
                         {order.id}
                       </Link>
                     </strong>
+                    <PriorityChip order={order} />
                     <span className={`status-pill status-${order.status}`}>
                       {statusPillFor(order, order.status)}
                     </span>

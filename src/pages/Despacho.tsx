@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
+import { PriorityChip } from '../components/PriorityChip'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
 import {
@@ -31,6 +32,7 @@ import {
 import { askReason, confirm, error, success } from '../lib/alerts'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder } from '../lib/access'
 import { placeLine } from '../lib/place'
+import { compareOpenPriority } from '../lib/priority'
 import { driverSlotCount, normalizeTimeWindow, SLOT_LIMIT, slotQuestion } from '../lib/slot'
 import { isSession } from '../lib/authStore'
 import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
@@ -245,11 +247,17 @@ export function Despacho() {
   }
 
   const scoped = orders.filter(inScope)
-  const dayOrders = searching
-    ? scoped.filter(matchesQuery)
-    : scoped.filter(
-        (order) => order.deliveryDate === toIso(selectedDate) && matchesQuery(order),
-      )
+  const dayOrders = (
+    searching
+      ? scoped.filter(matchesQuery)
+      : scoped.filter(
+          (order) => order.deliveryDate === toIso(selectedDate) && matchesQuery(order),
+        )
+  ).sort((left, right) => {
+    const byPriority = compareOpenPriority(left, right)
+    if (byPriority !== 0) return byPriority
+    return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
+  })
 
   function showWeek(offset: number) {
     const nextDays = weekDays(offset)
@@ -590,6 +598,7 @@ export function Despacho() {
                         {order.id}
                       </Link>
                     </strong>
+                    <PriorityChip order={order} />
                     <OrderStepper order={order} variant="compact" />
                   </div>
                   <p className="mt-2 font-semibold uppercase">

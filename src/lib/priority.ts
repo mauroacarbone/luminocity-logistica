@@ -28,3 +28,9 @@ export function comparePriority(
 ) {
   return PRIORITY_RANK[priorityOf(left)] - PRIORITY_RANK[priorityOf(right)]
 }
+
+/** Prioridad solo entre pedidos abiertos; un entregado no sube por prioridad. */
+export function compareOpenPriority(left: Order, right: Order) {
+  if (left.status === 'entregado' || right.status === 'entregado') return 0
+  return comparePriority(left, right)
+}

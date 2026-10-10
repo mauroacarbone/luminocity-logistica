@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { NoAccess } from '../components/NoAccess'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
+import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { DISPATCH_LABEL } from '../data/catalog'
 import { type Order, type OrderHistoryEntry, type OrderPriority, type OrderStatus } from '../data/orders'
@@ -174,7 +175,10 @@ function PedidoDetalleView({ id }: { id: string }) {
         </p>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1>{order.id}</h1>
+            <h1 className="inline-flex flex-wrap items-center gap-2">
+              <span>{order.id}</span>
+              <PriorityChip order={order} />
+            </h1>
             <p className="font-semibold uppercase">{order.client}</p>
           </div>
           <OrderFlowButtons

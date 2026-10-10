@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { PriorityChip } from '../components/PriorityChip'
 import { isOwnDelivery } from '../data/catalog'
 import { STATUS_PILL, type Order } from '../data/orders'
 import { confirm, error as showError, success } from '../lib/alerts'
 import { placeLine } from '../lib/place'
+import { compareOpenPriority } from '../lib/priority'
 import {
   drivingRoute,
   geocode,
@@ -199,6 +201,13 @@ export function PlanificadorRutas() {
   const others = readOnly
     ? []
     : pool.filter((order) => !listedIds.has(order.id))
+  const sortListed = (left: Order, right: Order) => {
+    const byPriority = compareOpenPriority(left, right)
+    if (byPriority !== 0) return byPriority
+    return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
+  }
+  const listedView = [...listed].sort(sortListed)
+  const othersView = [...others].sort(sortListed)
   const preparedWithoutSlot = orders.filter((order) => {
     if (order.deliveryDate !== iso || order.status !== 'preparado') return false
     if (!isOwnDelivery(order)) return false
@@ -731,13 +740,13 @@ export function PlanificadorRutas() {
             </div>
           ) : (
             <>
-              {listed.length === 0 ? (
+              {listedView.length === 0 ? (
                 <div className="mt-3 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
                   {emptySelectableMessage(others.length, preparedWithoutSlot.length, used)}
                 </div>
               ) : (
                 <div className="mt-3 flex flex-col gap-2">
-                  {listed.map((order) => (
+                  {listedView.map((order) => (
                     <label
                       key={order.id}
                       className="flex items-start gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm"
@@ -752,8 +761,11 @@ export function PlanificadorRutas() {
                       />
                       <span className="flex min-w-0 flex-1 items-start justify-between gap-3">
                         <span className="min-w-0">
-                          <span className="block font-medium">
-                            {order.id} — {order.client.toUpperCase()}
+                          <span className="flex flex-wrap items-center gap-2 font-medium">
+                            <span>
+                              {order.id} — {order.client.toUpperCase()}
+                            </span>
+                            <PriorityChip order={order} />
                           </span>
                           {order.address && (
                             <span className="mt-1 block text-sm text-lumi-muted">{order.address}</span>
@@ -779,23 +791,23 @@ export function PlanificadorRutas() {
                 </p>
               )}
 
-              {others.length > 0 && (
+              {othersView.length > 0 && (
                 <div className="mt-4">
                   <h3 className="text-sm font-semibold tracking-wide text-lumi-muted">
                     Otros pedidos de la franja
                   </h3>
                   <ul className="mt-2 flex flex-col gap-2">
-                    {others.map((order) => (
+                    {othersView.map((order) => (
                       <li
                         key={order.id}
                         className="rounded-2xl bg-white px-4 py-3 text-sm text-lumi-muted shadow-sm"
                       >
-                        <p>
+                        <p className="flex flex-wrap items-center gap-2">
                           <Link className="order-link font-medium" to={`/pedidos/${order.id}`}>
                             {order.id}
                           </Link>
-                          {' — '}
-                          {order.client.toUpperCase()}
+                          <span>— {order.client.toUpperCase()}</span>
+                          <PriorityChip order={order} />
                         </p>
                         <p className="mt-1">{otherSlotReason(order, driverId)}</p>
                       </li>

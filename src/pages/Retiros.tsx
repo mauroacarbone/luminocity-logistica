@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
+import { PriorityChip } from '../components/PriorityChip'
 import { Spinner } from '../components/LoadState'
 import { isPickup } from '../data/catalog'
 import type { Order, OrderStatus } from '../data/orders'
@@ -9,6 +10,7 @@ import { error } from '../lib/alerts'
 import type { Role } from '../lib/authStore'
 import { normalizeInvoiceKey } from '../lib/invoiceKey'
 import { statusPillFor } from '../lib/orderFlow'
+import { compareOpenPriority } from '../lib/priority'
 import { sendPickupNotice } from '../lib/ordersApi'
 import {
   addDays,
@@ -139,6 +141,8 @@ export function Retiros() {
   const filtered = useMemo(() => {
     const list = scoped.filter((order) => selected.has(order.status as ChipStatus))
     return [...list].sort((left, right) => {
+      const byPriority = compareOpenPriority(left, right)
+      if (byPriority !== 0) return byPriority
       const leftUpcoming = left.deliveryDate >= today
       const rightUpcoming = right.deliveryDate >= today
       if (leftUpcoming !== rightUpcoming) return leftUpcoming ? -1 : 1
@@ -331,6 +335,7 @@ function PickupCard({
                 {order.id}
               </Link>
             </strong>
+            <PriorityChip order={order} />
             <span className={`status-pill status-${status}`}>{statusPillFor(order, status)}</span>
             {overdue && (
               <span className="inline-flex rounded-full bg-[#fde8e7] px-2.5 py-0.5 text-xs font-medium text-lumi-danger">

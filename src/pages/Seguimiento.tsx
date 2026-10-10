@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
+import { PriorityChip } from '../components/PriorityChip'
 import { Spinner } from '../components/LoadState'
 import { DISPATCH_LABEL, isOwnDelivery, isPickup } from '../data/catalog'
 import type { Order, OrderStatus } from '../data/orders'
 import { normalizeInvoiceKey } from '../lib/invoiceKey'
 import { statusPillFor } from '../lib/orderFlow'
+import { compareOpenPriority } from '../lib/priority'
 import { normalizeTimeWindow } from '../lib/slot'
 import {
   addDays,
@@ -124,6 +126,8 @@ export function Seguimiento() {
         inDateRange(order, from, to, allDates),
     )
     return [...list].sort((left, right) => {
+      const byPriority = compareOpenPriority(left, right)
+      if (byPriority !== 0) return byPriority
       const leftUpcoming = left.deliveryDate >= today
       const rightUpcoming = right.deliveryDate >= today
       if (leftUpcoming !== rightUpcoming) return leftUpcoming ? -1 : 1
@@ -249,6 +253,7 @@ export function Seguimiento() {
                           {order.id}
                         </Link>
                       </strong>
+                      <PriorityChip order={order} />
                       <span className={`status-pill status-${order.status}`}>
                         {statusPillFor(order, order.status)}
                       </span>

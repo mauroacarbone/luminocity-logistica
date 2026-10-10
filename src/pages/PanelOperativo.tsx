@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
+import { PriorityChip } from '../components/PriorityChip'
 import { DISPATCH_LABEL, isOwnDelivery, isPickup } from '../data/catalog'
 import {
   ordersByStatus,
@@ -13,6 +14,7 @@ import {
 } from '../data/orders'
 import { canEditOrder, canOpen } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
+import { compareOpenPriority } from '../lib/priority'
 import { placeLine } from '../lib/place'
 import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
 import { normalizeTimeWindow } from '../lib/slot'
@@ -24,6 +26,8 @@ const ADVANCE_STATUSES: OrderStatus[] = ['pendiente', 'preparado', 'asignado']
 const DONE_STATUSES: OrderStatus[] = ['en-viaje', 'entregado']
 
 function sortPanelList(left: Order, right: Order) {
+  const byPriority = compareOpenPriority(left, right)
+  if (byPriority !== 0) return byPriority
   const leftDate = left.deliveryDate || ''
   const rightDate = right.deliveryDate || ''
   if (leftDate !== rightDate) return leftDate < rightDate ? -1 : 1
@@ -188,10 +192,11 @@ function OrderCard({
   return (
     <article className="order-card">
       <div className="order-card-top">
-        <strong>
+        <strong className="inline-flex flex-wrap items-center gap-2">
           <Link className="order-link" to={`/pedidos/${order.id}`}>
             {order.id}
           </Link>
+          <PriorityChip order={order} />
         </strong>
         {user && canEditOrder(user, order) && (
           <button
@@ -373,23 +378,20 @@ export function PanelOperativo() {
     [orders, dateFilter, today, tomorrow, weekFrom, weekTo],
   )
 
-  const visibleOrders = statusFilter ? ordersByStatus(datedOrders, statusFilter) : datedOrders
+  const visibleOrders = useMemo(() => {
+    const list = statusFilter ? ordersByStatus(datedOrders, statusFilter) : datedOrders
+    return [...list].sort(sortPanelList)
+  }, [datedOrders, statusFilter])
   const columns = statusFilter ? [statusFilter] : STATUS_ORDER
   const undatedCount = datedOrders.filter((order) => !hasDeliveryDate(order)).length
   const useAdvanceList = narrow && view === 'kanban' && !statusFilter
 
   const advanceOrders = useMemo(
-    () =>
-      visibleOrders
-        .filter((order) => ADVANCE_STATUSES.includes(order.status))
-        .sort(sortPanelList),
+    () => visibleOrders.filter((order) => ADVANCE_STATUSES.includes(order.status)),
     [visibleOrders],
   )
   const doneOrders = useMemo(
-    () =>
-      visibleOrders
-        .filter((order) => DONE_STATUSES.includes(order.status))
-        .sort(sortPanelList),
+    () => visibleOrders.filter((order) => DONE_STATUSES.includes(order.status)),
     [visibleOrders],
   )
 
@@ -644,14 +646,13 @@ export function PanelOperativo() {
                 visibleOrders.map((order) => (
                   <tr key={order.id}>
                     <td>
-                      <Link className="order-link" to={`/pedidos/${order.id}`}>
-                        {order.id}
-                      </Link>
-                      {isOverdue(order, today) ? (
-                        <span className="ml-2 inline-flex align-middle">
-                          <OverdueChip order={order} today={today} />
-                        </span>
-                      ) : null}
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        <Link className="order-link" to={`/pedidos/${order.id}`}>
+                          {order.id}
+                        </Link>
+                        <PriorityChip order={order} />
+                        {isOverdue(order, today) ? <OverdueChip order={order} today={today} /> : null}
+                      </span>
                     </td>
                     <td>
                       <Link className="order-link" to={`/pedidos/${order.id}`}>
