@@ -3,10 +3,10 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { NotificationBell } from '../components/NotificationBell'
 import { BRAND } from '../config/brand'
-import { ROLE_LABEL } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 import { Sidebar } from './Sidebar'
+import { TopNav } from './TopNav'
 
 const MENU_MQ = '(max-width: 1024px)'
 
@@ -145,38 +145,35 @@ export function AppShell() {
           </div>
           {user ? <NotificationBell /> : <span className="topbar-spacer" />}
         </header>
+      ) : (
+        <TopNav />
+      )}
+
+      {compact ? (
+        <>
+          <div
+            className={menuOpen ? 'sidebar-backdrop is-open' : 'sidebar-backdrop'}
+            aria-hidden={!menuOpen}
+            onClick={closeMenu}
+          />
+
+          <div
+            ref={drawerRef}
+            className={menuOpen ? 'sidebar-shell is-open' : 'sidebar-shell'}
+            inert={drawerClosed ? true : undefined}
+            {...(drawerDialog
+              ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Menú' }
+              : {})}
+          >
+            <Sidebar
+              onClose={closeMenu}
+              onNavigate={closeMenu}
+            />
+          </div>
+        </>
       ) : null}
 
-      <div
-        className={menuOpen ? 'sidebar-backdrop is-open' : 'sidebar-backdrop'}
-        aria-hidden={!menuOpen}
-        onClick={closeMenu}
-      />
-
-      <div
-        ref={drawerRef}
-        className={menuOpen ? 'sidebar-shell is-open' : 'sidebar-shell'}
-        inert={drawerClosed ? true : undefined}
-        {...(drawerDialog
-          ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Menú' }
-          : {})}
-      >
-        <Sidebar
-          onClose={compact ? closeMenu : undefined}
-          onNavigate={compact ? closeMenu : undefined}
-        />
-      </div>
-
       <main className="main">
-        {user && !compact && (
-          <header className="session-banner no-print">
-            <NotificationBell />
-            <p>
-              <strong>{user.name}</strong>
-              <span> · {ROLE_LABEL[user.role]}</span>
-            </p>
-          </header>
-        )}
         {loading && <Spinner label="Cargando pedidos…" />}
         {error && <ServerDown message={error} onRetry={reload} />}
         {showImport && (
