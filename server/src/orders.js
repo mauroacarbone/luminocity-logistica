@@ -338,8 +338,11 @@ function patchOrder(id, body, user) {
 
     const driverChanged = Object.prototype.hasOwnProperty.call(changes, 'driverId')
     if (driverChanged) {
-      if (baseline.dispatchType === 'correo') {
-        return fail('Los envíos por correo no llevan chofer', 409)
+      if (!isOwnDelivery(baseline)) {
+        return fail(
+          isPickup(baseline) ? 'Los retiros por el local no llevan chofer' : 'Los envíos por correo no llevan chofer',
+          409,
+        )
       }
       if (current.status !== 'asignado') {
         return fail('Para cambiar el chofer usá Asignar o Volver a preparado', 409)
@@ -716,7 +719,13 @@ function requireDriverWindow(current, next) {
 }
 
 function occupiesSlot(order) {
-  return Boolean(order && order.driverId && order.deliveryDate && normalizeTimeWindow(order.timeWindow))
+  return Boolean(
+    order &&
+      isOwnDelivery(order) &&
+      order.driverId &&
+      order.deliveryDate &&
+      normalizeTimeWindow(order.timeWindow),
+  )
 }
 
 function sameSlot(left, right) {
@@ -733,6 +742,7 @@ export function countDriverSlot(orders, driverId, deliveryDate, timeWindow, exce
   if (!driverId || !deliveryDate || !window) return 0
   return orders.filter((order) => {
     if (order.id === exceptId) return false
+    if (!isOwnDelivery(order)) return false
     if (order.driverId !== driverId) return false
     if (order.deliveryDate !== deliveryDate) return false
     return normalizeTimeWindow(order.timeWindow) === window
@@ -1103,6 +1113,7 @@ function isStoredPoint(point) {
 }
 
 function driverTraveling(user, order) {
+  if (!isOwnDelivery(order)) return false
   if (order.status !== 'en-viaje' || !nearbyDelivery(order.deliveryDate)) return false
   if (typeof order.driverId === 'string' && order.driverId) return order.driverId === user?.id
   const carrier = normalizeName(user?.carrierName)

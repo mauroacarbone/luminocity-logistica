@@ -4,7 +4,14 @@ import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { applyTransition, STATUS_RANK } from './orderFlow.js'
-import { checkDriver, checkSlot, normalizeTimeWindow, rememberOverride } from './orders.js'
+import {
+  checkDriver,
+  checkSlot,
+  isOwnDelivery,
+  isPickup,
+  normalizeTimeWindow,
+  rememberOverride,
+} from './orders.js'
 
 const OPEN_ORDER = new Set(['preparado', 'asignado'])
 
@@ -81,14 +88,17 @@ function saveSheet(body, user) {
     for (const id of parsed.orderIds) {
       const order = byId.get(id)
       if (!order) return fail(`No existe el pedido ${id}.`, 404)
+      if (!isOwnDelivery(order)) {
+        return fail(
+          isPickup(order) ? 'Un retiro no va en hoja de ruta' : 'Los envíos por correo no van en hoja de ruta',
+          409,
+        )
+      }
       if (order.deliveryDate !== parsed.date || normalizeTimeWindow(order.timeWindow) !== parsed.slot) {
         return fail(`El pedido ${id} no es de esa fecha y franja.`)
       }
       if (!OPEN_ORDER.has(order.status)) {
         return fail(`El pedido ${id} no está preparado ni asignado.`)
-      }
-      if (order.dispatchType === 'correo') {
-        return fail('Los envíos por correo no van en hoja de ruta', 409)
       }
       if (order.driverId && order.driverId !== parsed.driverId) {
         return fail(`El pedido ${id} ya está asignado a otro chofer`, 409)
