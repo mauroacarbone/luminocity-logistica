@@ -1,3 +1,5 @@
+export type OrderPriority = 'normal' | 'alta' | 'inmediata'
+
 export type OrderStatus =
   | 'pendiente'
   | 'preparado'
@@ -66,6 +68,7 @@ export type Order = {
   timeWindow?: string
   requiresPickup?: boolean
   dispatchType?: 'propia' | 'correo' | 'retiro'
+  priority?: OrderPriority
   transporter?: string
   notes?: string
   attachmentName?: string

@@ -1,4 +1,5 @@
 import type { DispatchType } from '../data/catalog'
+import type { OrderPriority } from '../data/orders'
 
 export const ORDER_DRAFT_PREFIX = 'luminocity.orderDraft.'
 export const ORDER_DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
@@ -25,6 +26,7 @@ export type OrderDraftFields = {
   timeWindow: string
   requiresPickup: boolean
   dispatchType: DispatchType
+  priority: OrderPriority
   transporter: string
   notes: string
   attachmentName: string

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { isDispatchType } from '../data/catalog'
 import { isOrderEdit, isSlotOverride, type Order, type OrderStatus } from '../data/orders'
+import { isOrderPriority } from '../lib/priority'
 import { loadList, saveList } from '../lib/localStore'
 import { slotNotice } from '../lib/slot'
 import {
@@ -111,6 +112,7 @@ function isOrder(value: unknown): value is Order {
   if (order.collectOnDelivery !== undefined && typeof order.collectOnDelivery !== 'boolean') return false
   if (order.requiresPickup !== undefined && typeof order.requiresPickup !== 'boolean') return false
   if (order.dispatchType !== undefined && !isDispatchType(order.dispatchType)) return false
+  if (order.priority !== undefined && !isOrderPriority(order.priority)) return false
   if (order.edits !== undefined && (!Array.isArray(order.edits) || !order.edits.every(isOrderEdit))) {
     return false
   }
@@ -167,6 +169,7 @@ function draftOf(order: Order): OrderDraft {
     timeWindow: order.timeWindow,
     requiresPickup: order.requiresPickup,
     dispatchType: order.dispatchType,
+    priority: order.priority,
     transporter: order.transporter,
     notes: order.notes,
     attachmentName: order.attachmentName,

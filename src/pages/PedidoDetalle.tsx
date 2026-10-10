@@ -5,10 +5,12 @@ import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { DISPATCH_LABEL } from '../data/catalog'
-import { type Order, type OrderHistoryEntry, type OrderStatus } from '../data/orders'
+import { type Order, type OrderHistoryEntry, type OrderPriority, type OrderStatus } from '../data/orders'
+import { confirm, error as showError } from '../lib/alerts'
 import { placeLine } from '../lib/place'
 import { statusPillFor } from '../lib/orderFlow'
 import { getOrder } from '../lib/ordersApi'
+import { PRIORITIES, PRIORITY_LABEL, priorityOf } from '../lib/priority'
 import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -55,13 +57,14 @@ function statusText(order: Order, status: OrderStatus | null) {
 
 function PedidoDetalleView({ id }: { id: string }) {
   const { user, logout } = useAuth()
-  const { transitionOrder } = useOrders()
+  const { transitionOrder, updateOrder } = useOrders()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [forbidden, setForbidden] = useState(false)
   const [missing, setMissing] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [priorityBusy, setPriorityBusy] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -137,6 +140,27 @@ function PedidoDetalleView({ id }: { id: string }) {
   if (!order || !user) return <NoAccess />
 
   const history = historyOf(order)
+  const currentPriority = priorityOf(order)
+  const canEditPriority =
+    (user.role === 'encargado_deposito' || user.role === 'admin') && order.status !== 'entregado'
+
+  async function changePriority(next: OrderPriority) {
+    if (!order || next === priorityOf(order)) return
+    const accepted = await confirm(
+      'Cambiar prioridad',
+      `Pasar de ${PRIORITY_LABEL[priorityOf(order)]} a ${PRIORITY_LABEL[next]}.`,
+    )
+    if (!accepted) return
+    setPriorityBusy(true)
+    const result = await updateOrder({ ...order, priority: next })
+    setPriorityBusy(false)
+    if (result.status === 'not-saved') {
+      await showError('No se pudo cambiar la prioridad', result.message)
+      return
+    }
+    setOrder(result.order)
+    setReloadKey((key) => key + 1)
+  }
 
   return (
     <section className="page">
@@ -195,6 +219,29 @@ function PedidoDetalleView({ id }: { id: string }) {
           <div>
             <dt>Despacho</dt>
             <dd>{order.dispatchType ? DISPATCH_LABEL[order.dispatchType] : 'Entrega propia'}</dd>
+          </div>
+          <div>
+            <dt>Prioridad</dt>
+            <dd>
+              {canEditPriority ? (
+                <select
+                  className="mt-1"
+                  value={currentPriority}
+                  disabled={priorityBusy || busy}
+                  onChange={(event) => {
+                    void changePriority(event.target.value as OrderPriority)
+                  }}
+                >
+                  {PRIORITIES.map((value) => (
+                    <option key={value} value={value}>
+                      {PRIORITY_LABEL[value]}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                PRIORITY_LABEL[currentPriority]
+              )}
+            </dd>
           </div>
           <div>
             <dt>Transportista</dt>

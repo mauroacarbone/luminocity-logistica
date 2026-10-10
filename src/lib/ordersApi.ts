@@ -203,6 +203,12 @@ export function orderBody(order: OrderDraft, mode: 'create' | 'patch', previous?
     body.dispatchType = order.dispatchType ?? null
   }
 
+  if (mode === 'create') {
+    if (order.priority) body.priority = order.priority
+  } else if (order.priority !== previous?.priority) {
+    body.priority = order.priority ?? 'normal'
+  }
+
   if (typeof order.packages === 'number') body.packages = order.packages
   else if (mode === 'patch') body.packages = null
 

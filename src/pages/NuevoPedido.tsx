@@ -28,6 +28,8 @@ import {
   type OrderDraftFields,
   type OrderDraftRecord,
 } from '../lib/orderDraft'
+import { isOrderPriority, PRIORITIES, PRIORITY_LABEL, priorityOf } from '../lib/priority'
+import type { OrderPriority } from '../data/orders'
 import { slotQuestion } from '../lib/slot'
 import {
   isAuthorization,
@@ -214,6 +216,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     ? existing.dispatchType
     : 'propia'
   const [dispatchType, setDispatchType] = useState<DispatchType>(initialDispatch)
+  const [priority, setPriority] = useState<OrderPriority>(() => priorityOf(existing))
   const [transporter, setTransporter] = useState(
     () => existing?.transporter ?? listForDispatch(initialDispatch, transporterLists)[0] ?? '',
   )
@@ -288,6 +291,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       timeWindow,
       requiresPickup,
       dispatchType,
+      priority,
       transporter,
       notes,
       attachmentName,
@@ -379,6 +383,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     }
 
     setDeliveryDate(typeof fields.deliveryDate === 'string' ? fields.deliveryDate : '')
+    setPriority(isOrderPriority(fields.priority) ? fields.priority : 'normal')
     setNotes(typeof fields.notes === 'string' ? fields.notes : '')
     setReceiverName(typeof fields.receiverName === 'string' ? fields.receiverName : '')
     setReceiverDni(typeof fields.receiverDni === 'string' ? fields.receiverDni : '')
@@ -467,6 +472,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     timeWindow,
     requiresPickup,
     dispatchType,
+    priority,
     transporter,
     notes,
     attachmentName,
@@ -957,6 +963,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       timeWindow: pickup ? undefined : timeWindow,
       requiresPickup,
       dispatchType,
+      priority,
       transporter: pickup ? undefined : transporter.trim() || undefined,
       notes: notes.trim(),
       attachmentName: attachmentName || undefined,
@@ -977,6 +984,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       setHoldNotice('')
       setReasonOpen(true)
       return
+    }
+    if (priority === 'inmediata') {
+      const accepted = await confirm(
+        'Prioridad inmediata',
+        'Se avisa al depósito y al encargado.',
+      )
+      if (!accepted) return
     }
     setSaving(true)
     const result = await addOrder(draft)
@@ -1574,6 +1588,32 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               }}
             />
           </div>
+        </section>
+
+        <section className="form-card">
+          <h2>Prioridad</h2>
+          <div className="dispatch-types" role="radiogroup" aria-label="Prioridad">
+            {PRIORITIES.map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={priority === value}
+                className={priority === value ? 'dispatch-type active' : 'dispatch-type'}
+                disabled={Boolean(storedId && user?.role === 'vendedor')}
+                onClick={() => {
+                  if (storedId && user?.role === 'vendedor') return
+                  markDirty()
+                  setPriority(value)
+                }}
+              >
+                {PRIORITY_LABEL[value]}
+              </button>
+            ))}
+          </div>
+          {storedId && user?.role === 'vendedor' && (
+            <small className="hint mt-2 block">Solo el encargado cambia la prioridad.</small>
+          )}
         </section>
 
         <section className="form-card">
