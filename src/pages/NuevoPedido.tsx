@@ -29,6 +29,7 @@ import {
 import { geocodeSearch, locateAddress, locatePoint, type GeocodeHit, type LocatedAddress } from '../lib/geocode'
 import type { OrderDraft } from '../lib/ordersApi'
 import { placeKind } from '../lib/place'
+import { toIso } from '../lib/week'
 import { asDeliveryZone, inferZone, zoneDayWarning, zoneDays, type ZoneQuery } from '../lib/zone'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
@@ -419,12 +420,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const pickup = dispatchType === 'retiro'
     const nextErrors: Errors = {}
     if (!seller) nextErrors.seller = 'Seleccioná un vendedor.'
     if (!client.trim()) nextErrors.client = 'Ingresá el nombre del cliente.'
     if (!phone.trim()) nextErrors.phone = 'Ingresá un teléfono.'
-    if (!address.trim()) nextErrors.address = 'Ingresá la dirección.'
-    if (!betweenStreet1.trim() && !betweenStreet2.trim()) {
+    if (!pickup && !address.trim()) nextErrors.address = 'Ingresá la dirección.'
+    if (!pickup && !betweenStreet1.trim() && !betweenStreet2.trim()) {
       nextErrors.between = 'Completá al menos una entre calle.'
     }
     if (!propertyType) nextErrors.propertyType = 'Seleccioná el tipo de propiedad.'
@@ -435,7 +437,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     if (floorValue.length > 20) nextErrors.floor = 'El piso puede tener hasta 20 caracteres.'
     if (unitValue.length > 20) nextErrors.unit = 'El depto puede tener hasta 20 caracteres.'
     if (doorbellValue.length > 20) nextErrors.doorbell = 'El timbre puede tener hasta 20 caracteres.'
-    if (!deliveryDate) nextErrors.deliveryDate = 'Elegí la fecha de entrega.'
+    if (!deliveryDate) {
+      nextErrors.deliveryDate = pickup ? 'Elegí la fecha de retiro.' : 'Elegí la fecha de entrega.'
+    }
     if (collectOnDelivery && !amount.trim()) {
       nextErrors.amount = 'Ingresá el monto a cobrar.'
     }
@@ -462,7 +466,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     const stored = storedId ? orders.find((order) => order.id === storedId) : undefined
     const draft = {
       client: client.trim(),
-      zone: resolvedZone,
+      zone: pickup ? resolvedZone || undefined : resolvedZone,
       address: address.trim(),
       loadedAt: stored?.loadedAt ?? formatLoadedAt(new Date()),
       deliveryDate,
@@ -479,10 +483,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       floor: floorValue,
       unit: unitValue,
       doorbell: doorbellValue,
-      timeWindow,
+      timeWindow: pickup ? undefined : timeWindow,
       requiresPickup,
       dispatchType,
-      transporter: transporter.trim() || undefined,
+      transporter: pickup ? undefined : transporter.trim() || undefined,
       notes: notes.trim(),
       attachmentName: attachmentName || undefined,
       attachmentDataUrl: attachmentDataUrl || undefined,
@@ -598,9 +602,18 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
   function chooseDispatch(next: DispatchType) {
     setDispatchType(next)
+    if (next === 'retiro') {
+      setTransporter('')
+      setTimeWindow('')
+      setDeliveryDate((current) => current || toIso(new Date()))
+      return
+    }
     const list = listForDispatch(next, transporterLists)
     setTransporter((current) => (current && list.includes(current) ? current : ''))
+    setTimeWindow((current) => current || timeWindows[0] || '')
   }
+
+  const pickup = dispatchType === 'retiro'
 
   return (
     <section className="page">
@@ -748,7 +761,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           <h2>Dirección de Entrega</h2>
           <div className="field-grid">
             <div className="field full">
-              <label htmlFor="delivery-address">Dirección (Calle y Número) *</label>
+              <label htmlFor="delivery-address">
+                Dirección (Calle y Número){pickup ? '' : ' *'}
+              </label>
               <div className="address-row" ref={addressRef}>
                 <div className="address-input-wrap">
                   <input
@@ -816,7 +831,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               {errors.address && <small className="field-error">{errors.address}</small>}
             </div>
             <label className="field">
-              <span className="hint-danger">Entre calle 1 (al menos una obligatoria)</span>
+              <span className={pickup ? undefined : 'hint-danger'}>
+                {pickup ? 'Entre calle 1' : 'Entre calle 1 (al menos una obligatoria)'}
+              </span>
               <input
                 value={betweenStreet1}
                 placeholder="Ej: Callao"
@@ -947,7 +964,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           <h2>Fecha y Horario</h2>
           <div className="field-grid">
             <label className="field">
-              <span>Fecha de Entrega *</span>
+              <span>{pickup ? 'Fecha de retiro *' : 'Fecha de Entrega *'}</span>
               <input
                 type="date"
                 value={deliveryDate}
@@ -957,20 +974,22 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               {errors.deliveryDate && (
                 <small className="field-error">{errors.deliveryDate}</small>
               )}
-              {!errors.deliveryDate && dayWarning && (
+              {!pickup && !errors.deliveryDate && dayWarning && (
                 <small className="field-warn">{dayWarning}</small>
               )}
             </label>
-            <label className="field">
-              <span>Franja Horaria</span>
-              <select value={timeWindow} onChange={(event) => setTimeWindow(event.target.value)}>
-                {timeOptions.map((window) => (
-                  <option key={window} value={window}>
-                    {window}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!pickup && (
+              <label className="field">
+                <span>Franja Horaria</span>
+                <select value={timeWindow} onChange={(event) => setTimeWindow(event.target.value)}>
+                  {timeOptions.map((window) => (
+                    <option key={window} value={window}>
+                      {window}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
         </section>
 
@@ -991,7 +1010,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         <section className="form-card">
           <h2>Tipo de despacho</h2>
           <div className="dispatch-types" role="radiogroup" aria-label="Tipo de despacho">
-            {(['propia', 'correo'] as const).map((type) => (
+            {(['propia', 'correo', 'retiro'] as const).map((type) => (
               <button
                 key={type}
                 type="button"
@@ -1004,22 +1023,24 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               </button>
             ))}
           </div>
-          <label className="field">
-            <span>Transportista</span>
-            <select value={transporter} onChange={(event) => setTransporter(event.target.value)}>
-              <option value="">Seleccioná transportista</option>
-              {transporterOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <small className="hint">
-              {transporterOptions.length === 0
-                ? 'No hay transportistas de este tipo. Cargalos en Datos maestros.'
-                : 'El transportista queda asignado para cuando el pedido llegue a Despacho.'}
-            </small>
-          </label>
+          {!pickup && (
+            <label className="field">
+              <span>Transportista</span>
+              <select value={transporter} onChange={(event) => setTransporter(event.target.value)}>
+                <option value="">Seleccioná transportista</option>
+                {transporterOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <small className="hint">
+                {transporterOptions.length === 0
+                  ? 'No hay transportistas de este tipo. Cargalos en Datos maestros.'
+                  : 'El transportista queda asignado para cuando el pedido llegue a Despacho.'}
+              </small>
+            </label>
+          )}
         </section>
 
         <section className="form-card">

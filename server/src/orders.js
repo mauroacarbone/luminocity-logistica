@@ -277,11 +277,13 @@ function createOrder(body, user) {
         },
       ],
     }
-    const windowRule = requireDriverWindow(null, order)
-    if (windowRule.error) return windowRule
-    const slot = await checkSlot(orders, null, order, user, body.override === true)
-    if (slot.error) return slot
-    if (slot.authorized) rememberOverride(order, user)
+    if (!isPickup(order)) {
+      const windowRule = requireDriverWindow(null, order)
+      if (windowRule.error) return windowRule
+      const slot = await checkSlot(orders, null, order, user, body.override === true)
+      if (slot.error) return slot
+      if (slot.authorized) rememberOverride(order, user)
+    }
     let staged = null
     if (otherSeller) {
       staged = await stageAuthorization(user.id, parsed.order.seller, order.id)
@@ -357,13 +359,15 @@ function patchOrder(id, body, user) {
     }
     const driver = await checkDriver(parsed.order.driverId, current.driverId)
     if (driver.error) return driver
-    const windowRule = requireDriverWindow(current, parsed.order)
-    if (windowRule.error) return windowRule
     const proposing = user.role === 'vendedor' && current.status === 'preparado'
     let slot = { ok: true }
-    if (!proposing) {
-      slot = await checkSlot(orders, current, parsed.order, user, body.override === true)
-      if (slot.error) return slot
+    if (!isPickup(parsed.order)) {
+      const windowRule = requireDriverWindow(current, parsed.order)
+      if (windowRule.error) return windowRule
+      if (!proposing) {
+        slot = await checkSlot(orders, current, parsed.order, user, body.override === true)
+        if (slot.error) return slot
+      }
     }
     if (needsReason(user, changes) && !reason.value && !driverChanged) {
       return fail('Ingresá el motivo de la edición.')
@@ -562,10 +566,13 @@ function reviewEdit(orderId, editId, body, user) {
     }
     const parsed = readOrderFields(pending.changes, current)
     if (parsed.error) return parsed
-    const windowRule = requireDriverWindow(current, parsed.order)
-    if (windowRule.error) return windowRule
-    const slot = await checkSlot(orders, current, parsed.order, user, body?.override === true)
-    if (slot.error) return slot
+    let slot = { ok: true }
+    if (!isPickup(parsed.order)) {
+      const windowRule = requireDriverWindow(current, parsed.order)
+      if (windowRule.error) return windowRule
+      slot = await checkSlot(orders, current, parsed.order, user, body?.override === true)
+      if (slot.error) return slot
+    }
     edits[editIndex] = { ...pending, status: 'aplicada' }
     const order = {
       ...parsed.order,
@@ -811,6 +818,18 @@ function nextId(orders) {
   return id
 }
 
+function effectiveDispatch(body, current) {
+  if (Object.prototype.hasOwnProperty.call(body, 'dispatchType')) {
+    const value = body.dispatchType
+    if (typeof value === 'string' && DISPATCH.includes(value)) return value
+    return null
+  }
+  if (current?.dispatchType === 'propia' || current?.dispatchType === 'correo' || current?.dispatchType === 'retiro') {
+    return current.dispatchType
+  }
+  return 'propia'
+}
+
 function readOrderFields(body, current) {
   const order = current
     ? {
@@ -820,7 +839,17 @@ function readOrderFields(body, current) {
       }
     : {}
 
+  const dispatchType = effectiveDispatch(body, current)
+  if (dispatchType === null) return fail('El tipo de despacho no es válido.')
+  const storePickup = dispatchType === 'retiro'
+
   for (const [key, message] of REQUIRED_TEXT) {
+    if (key === 'address' && storePickup) {
+      const read = readOptionalText(body, current, 'address', 'La dirección')
+      if (read.error) return read
+      if (read.value !== undefined) order.address = read.value
+      continue
+    }
     if (current && !Object.prototype.hasOwnProperty.call(body, key)) {
       order[key] = current[key]
       continue
@@ -834,8 +863,10 @@ function readOrderFields(body, current) {
     order.deliveryDate = current.deliveryDate
   } else {
     const date = readRequiredText(body.deliveryDate)
-    if (!date) return fail('Elegí la fecha de entrega.')
-    if (!isIsoDate(date)) return fail('La fecha de entrega no es válida.')
+    if (!date) return fail(storePickup ? 'Elegí la fecha de retiro.' : 'Elegí la fecha de entrega.')
+    if (!isIsoDate(date)) {
+      return fail(storePickup ? 'La fecha de retiro no es válida.' : 'La fecha de entrega no es válida.')
+    }
     order.deliveryDate = date
   }
 
@@ -879,6 +910,7 @@ function readOrderFields(body, current) {
   const dispatch = readDispatch(body, current)
   if (dispatch.error) return dispatch
   if (dispatch.value !== undefined) order.dispatchType = dispatch.value
+  else order.dispatchType = dispatchType
 
   const packages = readPackages(body, current)
   if (packages.error) return packages
@@ -888,10 +920,16 @@ function readOrderFields(body, current) {
   if (driver.error) return driver
   if (driver.value !== undefined) order.driverId = driver.value
 
+  if (storePickup) {
+    delete order.driverId
+    delete order.transporter
+    delete order.timeWindow
+  }
+
   if (order.status === 'preparado' && order.packages == null) {
     return fail('Indicá la cantidad de bultos.')
   }
-  if (!order.betweenStreet1 && !order.betweenStreet2) {
+  if (!storePickup && !order.betweenStreet1 && !order.betweenStreet2) {
     return fail('Completá al menos una entre calle.')
   }
   if (order.collectOnDelivery && !order.amount) {
@@ -1106,6 +1144,7 @@ function hasCoords(order) {
 const GEO_RETRY_MS = 60 * 60 * 1000
 
 function needsGeo(order) {
+  if (isPickup(order)) return false
   if (!order?.address || hasCoords(order) || order.geoMiss === true) return false
   if (typeof order.geoRetryAt === 'string') {
     const at = Date.parse(order.geoRetryAt)
