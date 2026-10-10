@@ -15,9 +15,26 @@ import { canEditOrder, canOpen } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
 import { placeLine } from '../lib/place'
 import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
+import { normalizeTimeWindow } from '../lib/slot'
 import { addDays, formatIsoDate, startOfWeek, toIso } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
+
+const ADVANCE_STATUSES: OrderStatus[] = ['pendiente', 'preparado', 'asignado']
+const DONE_STATUSES: OrderStatus[] = ['en-viaje', 'entregado']
+
+function sortPanelList(left: Order, right: Order) {
+  const leftDate = left.deliveryDate || ''
+  const rightDate = right.deliveryDate || ''
+  if (leftDate !== rightDate) return leftDate < rightDate ? -1 : 1
+  const leftStatus = STATUS_ORDER.indexOf(left.status)
+  const rightStatus = STATUS_ORDER.indexOf(right.status)
+  if (leftStatus !== rightStatus) return leftStatus - rightStatus
+  const leftSlot = normalizeTimeWindow(left.timeWindow) || left.timeWindow || ''
+  const rightSlot = normalizeTimeWindow(right.timeWindow) || right.timeWindow || ''
+  if (leftSlot !== rightSlot) return leftSlot < rightSlot ? -1 : 1
+  return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
+}
 
 type View = 'kanban' | 'tabla'
 type FechaFilter = 'atrasados' | 'hoy' | 'manana' | 'semana' | 'todos'
@@ -320,6 +337,8 @@ export function PanelOperativo() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | null>(null)
   const [sheets, setSheets] = useState<RouteSheet[]>([])
   const [sheetsError, setSheetsError] = useState(false)
+  const [narrow, setNarrow] = useState(false)
+  const [showDone, setShowDone] = useState(false)
 
   const dateFilter = parseFecha(searchParams.get('fecha'))
   const today = toIso(new Date())
@@ -330,6 +349,16 @@ export function PanelOperativo() {
   const fechaLabel = FECHA_CHIPS.find((chip) => chip.value === dateFilter)?.label ?? 'Esta semana'
 
   const canPlan = Boolean(user && canOpen(user.role, '/rutas'))
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 800px)')
+    function syncNarrow() {
+      setNarrow(media.matches)
+    }
+    syncNarrow()
+    media.addEventListener('change', syncNarrow)
+    return () => media.removeEventListener('change', syncNarrow)
+  }, [])
 
   const datedOrders = useMemo(
     () =>
@@ -342,6 +371,22 @@ export function PanelOperativo() {
   const visibleOrders = statusFilter ? ordersByStatus(datedOrders, statusFilter) : datedOrders
   const columns = statusFilter ? [statusFilter] : STATUS_ORDER
   const undatedCount = datedOrders.filter((order) => !hasDeliveryDate(order)).length
+  const useAdvanceList = narrow && view === 'kanban' && !statusFilter
+
+  const advanceOrders = useMemo(
+    () =>
+      visibleOrders
+        .filter((order) => ADVANCE_STATUSES.includes(order.status))
+        .sort(sortPanelList),
+    [visibleOrders],
+  )
+  const doneOrders = useMemo(
+    () =>
+      visibleOrders
+        .filter((order) => DONE_STATUSES.includes(order.status))
+        .sort(sortPanelList),
+    [visibleOrders],
+  )
 
   const datesKey = useMemo(() => {
     let dates = [...new Set(visibleOrders.map((order) => order.deliveryDate).filter(Boolean))]
@@ -499,7 +544,51 @@ export function PanelOperativo() {
         {undatedCount > 0 ? ` · ${undatedCount} sin fecha` : ''}
       </p>
 
-      {view === 'kanban' ? (
+      {view === 'kanban' && useAdvanceList ? (
+        <div className="mt-4 flex flex-col gap-3">
+          <h2 className="text-base font-semibold text-lumi-ink">Para avanzar</h2>
+          {advanceOrders.length === 0 ? (
+            <p className="empty">No hay pedidos.</p>
+          ) : (
+            advanceOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                sheets={sheets}
+                canPlan={canPlan}
+                today={today}
+              />
+            ))
+          )}
+          <div className="mt-2">
+            <button
+              type="button"
+              className="text-sm font-medium text-lumi-ink underline"
+              aria-expanded={showDone}
+              onClick={() => setShowDone((current) => !current)}
+            >
+              Ver en viaje y entregados ({doneOrders.length})
+            </button>
+            {showDone && (
+              <div className="mt-3 flex flex-col gap-3">
+                {doneOrders.length === 0 ? (
+                  <p className="empty">No hay pedidos.</p>
+                ) : (
+                  doneOrders.map((order) => (
+                    <OrderCard
+                      key={order.id}
+                      order={order}
+                      sheets={sheets}
+                      canPlan={canPlan}
+                      today={today}
+                    />
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : view === 'kanban' ? (
         <div className="board-scroll">
           <div className={statusFilter ? 'kanban filtered' : 'kanban'}>
             {columns.map((status) => {
