@@ -28,8 +28,12 @@ export async function confirm(
     focusCancel: peligro,
     reverseButtons: true,
     buttonsStyling: false,
-    allowOutsideClick: options?.allowOutsideClick,
-    allowEscapeKey: options?.allowEscapeKey,
+    ...(options?.allowOutsideClick !== undefined && {
+      allowOutsideClick: options.allowOutsideClick,
+    }),
+    ...(options?.allowEscapeKey !== undefined && {
+      allowEscapeKey: options.allowEscapeKey,
+    }),
     customClass: {
       popup: 'lumi-swal',
       title: 'lumi-swal-title',

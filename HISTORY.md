@@ -99,6 +99,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 29b | Borrador de Nuevo pedido que sobrevive a recargar | Hecho |
 | 29c | Búsqueda de dirección con 3 intentos y confirmar Cancelar | Hecho |
 | 29c.1 | Ubicar compatible con iPhone viejos | Hecho |
+| 29c.2 | Confirmaciones que se cierran con Escape como antes | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -261,6 +262,8 @@ El Brief 29b guarda un borrador de Nuevo pedido en `localStorage` (por usuario y
 El Brief 29c reintenta Ubicar hasta 3 veces con variantes de búsqueda, ofrece seguir buscando o ingresar a mano con "Ubicación pendiente", y pide confirmación al Cancelar si hay cambios sin guardar.
 
 El Brief 29c.1 hace el timeout de Ubicar sin depender de `AbortSignal.any` (iPhone viejos) y evita que Escape o tocar afuera activen "Ingresar a mano".
+
+El Brief 29c.2 pasa `allowOutsideClick` y `allowEscapeKey` en `confirm()` solo cuando vienen definidos, para que el resto de las confirmaciones sigan cerrándose con Escape o tocando afuera.
 
 ## Pendientes
 
