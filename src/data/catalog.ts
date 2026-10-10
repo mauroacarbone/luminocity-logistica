@@ -31,11 +31,12 @@ export const PROPERTY_TYPES = [
 
 export const TIME_WINDOWS = ['10:00-15:00', '09:00-13:00', '15:00-19:00']
 
-export type DispatchType = 'propia' | 'correo'
+export type DispatchType = 'propia' | 'correo' | 'retiro'
 
 export const DISPATCH_LABEL: Record<DispatchType, string> = {
   propia: 'Entrega propia',
   correo: 'Correo / Courier',
+  retiro: 'Retiro por el local',
 }
 
 export const OWN_TRANSPORTERS = [
@@ -57,7 +58,15 @@ export const COURIER_TRANSPORTERS = [
 ]
 
 export function isDispatchType(value: unknown): value is DispatchType {
-  return value === 'propia' || value === 'correo'
+  return value === 'propia' || value === 'correo' || value === 'retiro'
+}
+
+export function isOwnDelivery(order: { dispatchType?: string } | null | undefined) {
+  return order?.dispatchType === 'propia'
+}
+
+export function isPickup(order: { dispatchType?: string } | null | undefined) {
+  return order?.dispatchType === 'retiro'
 }
 
 export function listForDispatch(

@@ -64,7 +64,7 @@ export type Order = {
   doorbell?: string
   timeWindow?: string
   requiresPickup?: boolean
-  dispatchType?: 'propia' | 'correo'
+  dispatchType?: 'propia' | 'correo' | 'retiro'
   transporter?: string
   notes?: string
   attachmentName?: string

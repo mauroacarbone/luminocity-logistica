@@ -21,7 +21,15 @@ import { blockPlannedDeparture, closeFinishedSheets, pullOrderFromSheets, syncSh
 import { isActive, readUsersList } from './users.js'
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
-const DISPATCH = ['propia', 'correo']
+const DISPATCH = ['propia', 'correo', 'retiro']
+
+export function isOwnDelivery(order) {
+  return order?.dispatchType === 'propia'
+}
+
+export function isPickup(order) {
+  return order?.dispatchType === 'retiro'
+}
 
 const REQUIRED_TEXT = [
   ['client', 'Ingresá el nombre del cliente.'],
@@ -490,7 +498,9 @@ function patchVia(body) {
 
 function withDefaultDispatch(order) {
   if (!order || typeof order !== 'object') return order
-  if (order.dispatchType === 'propia' || order.dispatchType === 'correo') return order
+  if (order.dispatchType === 'propia' || order.dispatchType === 'correo' || order.dispatchType === 'retiro') {
+    return order
+  }
   return { ...order, dispatchType: 'propia' }
 }
 
