@@ -331,7 +331,7 @@ function GroupPickingSummary({ group }: { group: PickingGroup }) {
         {progress.complete} de {progress.total} artículos completos
       </p>
       {progress.readyToPrepare ? (
-        <p className="mt-1 font-medium text-[#1d7a3a]">Listo para preparar</p>
+        <p className="mt-1 font-medium text-success">Listo para preparar</p>
       ) : progress.missing.length > 0 ? (
         <ul className="mt-1 list-disc pl-5 text-lumi-muted">
           {progress.missing.map((item) => (
@@ -1084,7 +1084,7 @@ export function PendientesEntregas() {
       )}
 
       {message && (
-        <p className="mt-4 rounded-xl bg-[#e5f6ea] px-4 py-2 text-sm text-[#1d7a3a]">{message}</p>
+        <p className="mt-4 rounded-xl bg-success-soft px-4 py-2 text-sm text-success">{message}</p>
       )}
       {error && <p className="mt-4 text-sm text-lumi-danger">{error}</p>}
 
@@ -1370,7 +1370,7 @@ export function PendientesEntregas() {
                             <span className="text-lumi-muted">Sin fecha de entrega</span>
                           )}
                           {days > 0 && (
-                            <span className="inline-flex rounded-full bg-[#fde8e7] px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
+                            <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
                               Atrasado {days} día{days === 1 ? '' : 's'}
                             </span>
                           )}
@@ -1402,7 +1402,7 @@ export function PendientesEntregas() {
                       {hasPicking && (
                         <div className="flex shrink-0 items-center gap-3">
                           <div
-                            className="h-1.5 overflow-hidden rounded-full bg-[#efeae0]"
+                            className="h-1.5 overflow-hidden rounded-full bg-neutral-soft"
                             style={{ width: 96 }}
                           >
                             <div
@@ -1411,7 +1411,7 @@ export function PendientesEntregas() {
                             />
                           </div>
                           {progress.readyToPrepare ? (
-                            <span className="rounded-full bg-[#e5f6ea] px-2 py-0.5 text-xs font-medium text-[#1d7a3a]">
+                            <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success">
                               Listo
                             </span>
                           ) : (
@@ -1461,7 +1461,7 @@ export function PendientesEntregas() {
                             </div>
                             <div className="flex shrink-0 items-center gap-3">
                               <div
-                                className="h-1.5 overflow-hidden rounded-full bg-[#efeae0]"
+                                className="h-1.5 overflow-hidden rounded-full bg-neutral-soft"
                                 style={{ width: 96 }}
                               >
                                 <div
@@ -1470,7 +1470,7 @@ export function PendientesEntregas() {
                                 />
                               </div>
                               {progress.readyToPrepare ? (
-                                <span className="rounded-full bg-[#e5f6ea] px-2 py-0.5 text-xs font-medium text-[#1d7a3a]">
+                                <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success">
                                   Listo
                                 </span>
                               ) : (
@@ -1530,7 +1530,7 @@ export function PendientesEntregas() {
                         </span>
                         <span className="flex shrink-0 items-center gap-3">
                           <span
-                            className="h-1.5 overflow-hidden rounded-full bg-[#efeae0]"
+                            className="h-1.5 overflow-hidden rounded-full bg-neutral-soft"
                             style={{ width: 96 }}
                           >
                             <span
@@ -1558,7 +1558,7 @@ export function PendientesEntregas() {
                             <div
                               key={line.id}
                               className={`flex flex-wrap items-center justify-between gap-3 rounded-xl px-3 py-3 ${
-                                complete ? 'bg-[#e5f6ea]' : 'bg-[#f7f4ea]'
+                                complete ? 'bg-success-soft' : 'bg-surface-muted'
                               }`}
                             >
                               <div className="min-w-0">

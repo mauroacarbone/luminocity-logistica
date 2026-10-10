@@ -101,7 +101,7 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
           <div className="no-print mt-5 flex justify-end gap-2">
             <button
               type="button"
-              className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea]"
+              className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted"
               onClick={onClose}
             >
               Cerrar

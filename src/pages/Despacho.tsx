@@ -459,7 +459,7 @@ export function Despacho() {
       </header>
 
       {notice && (
-        <p className="mt-4 rounded-xl bg-[#e5f6ea] px-4 py-2 text-sm text-[#1d7a3a]">{notice}</p>
+        <p className="mt-4 rounded-xl bg-success-soft px-4 py-2 text-sm text-success">{notice}</p>
       )}
 
       <div className="mt-6 flex gap-1 overflow-x-auto border-b border-lumi-line">
@@ -811,7 +811,7 @@ export function Despacho() {
                   {(assign || confirmDelivery) && (
                     <button
                       type="button"
-                      className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-[#f7f4ea]"
+                      className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-surface-muted"
                       onClick={() => setCoverId(order.id)}
                     >
                       Carátula

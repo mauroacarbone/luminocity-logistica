@@ -481,7 +481,7 @@ function DeliveryCard({
             </button>
           )}
           {plannedNotice && (
-            <p className="rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm font-semibold">
+            <p className="rounded-xl bg-surface-muted px-3 py-2 text-sm font-semibold">
               En hoja de ruta planificada para el {formatIsoDate(order.deliveryDate)}. Salís con
               «Iniciar recorrido».
             </p>

@@ -338,7 +338,7 @@ function PickupCard({
             <PriorityChip order={order} />
             <span className={`status-pill status-${status}`}>{statusPillFor(order, status)}</span>
             {overdue && (
-              <span className="inline-flex rounded-full bg-[#fde8e7] px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
+              <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
                 Atrasado
               </span>
             )}

@@ -196,7 +196,7 @@ export function Bandeja() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl px-3 py-1.5 text-sm text-lumi-danger hover:bg-[#fde8e7]"
+                  className="rounded-xl px-3 py-1.5 text-sm text-lumi-danger hover:bg-danger-soft"
                   disabled={busy === item.id}
                   onClick={() => void decideAuth(item.id, 'rechazada')}
                 >
@@ -241,7 +241,7 @@ export function Bandeja() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl px-3 py-1.5 text-sm text-lumi-danger hover:bg-[#fde8e7]"
+                  className="rounded-xl px-3 py-1.5 text-sm text-lumi-danger hover:bg-danger-soft"
                   disabled={busy === edit.id}
                   onClick={() => void decideEdit(order, edit, 'rechazada')}
                 >

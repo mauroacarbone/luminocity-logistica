@@ -56,8 +56,8 @@ const STATUS_BADGE: Record<ClaimStatus, string> = {
   'pendiente-retiro': 'bg-[#ffe8cc] text-[#9a4d00]',
   'enviado-proveedor': 'bg-[#efe8ff] text-[#5b3d99]',
   reparacion: 'bg-[#fff4cc] text-lumi-ink',
-  entregado: 'bg-[#e5f6ea] text-[#1d7a3a]',
-  cancelado: 'bg-[#fde8e7] text-[#a33b38]',
+  entregado: 'bg-success-soft text-success',
+  cancelado: 'bg-danger-soft text-[#a33b38]',
 }
 
 type FormErrors = Partial<
@@ -475,7 +475,7 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
                 <button
                   key={order.id}
                   type="button"
-                  className="block w-full border-b border-lumi-line px-3 py-2 text-left text-sm last:border-b-0 hover:bg-[#f7f4ea]"
+                  className="block w-full border-b border-lumi-line px-3 py-2 text-left text-sm last:border-b-0 hover:bg-surface-muted"
                   onClick={() => applyOrder(order)}
                 >
                   <strong>{order.id}</strong> — {order.client}
@@ -920,7 +920,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
                       key={status}
                       type="button"
                       role="menuitem"
-                      className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea] disabled:opacity-50 ${
+                      className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-muted disabled:opacity-50 ${
                         claim.status === status ? 'font-semibold' : ''
                       }`}
                       disabled={busy}
@@ -1171,11 +1171,11 @@ function Dashboard({
   const stats = [
     { label: 'Total reclamos', value: String(claims.length), tone: 'text-[#2458a6]' },
     { label: 'En curso', value: String(open), tone: 'text-[#c2610c]' },
-    { label: 'Resueltos', value: String(resolved.length), tone: 'text-[#1d7a3a]' },
+    { label: 'Resueltos', value: String(resolved.length), tone: 'text-success' },
     {
       label: 'Tiempo prom. resolución',
       value: averageDays === null ? '—' : `${averageDays.toFixed(1)}d`,
-      tone: 'text-[#1d7a3a]',
+      tone: 'text-success',
     },
     { label: 'Tasa de resolución', value: `${rate}%`, tone: 'text-[#5b3d99]' },
   ]

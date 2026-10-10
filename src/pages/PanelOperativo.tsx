@@ -129,7 +129,7 @@ function withSheetFlag(order: Order, sheets: RouteSheet[], canPlan: boolean): Or
 function OverdueChip({ order, today }: { order: Order; today: string }) {
   if (!isOverdue(order, today)) return null
   return (
-    <span className="inline-flex rounded-full bg-[#fde8e7] px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
+    <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
       Atrasado
     </span>
   )
@@ -150,7 +150,7 @@ function SheetLinks({
     const slot = sheet.slot || order.timeWindow || 'sin franja'
     return (
       <p className="order-zone mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="inline-flex rounded-full bg-[#f7f4ea] px-2.5 py-0.5 text-xs font-medium text-lumi-ink">
+        <span className="inline-flex rounded-full bg-surface-muted px-2.5 py-0.5 text-xs font-medium text-lumi-ink">
           En hoja de {driver} · {slot}
         </span>
         <Link className="text-xs text-lumi-ink underline" to="/rutas">

@@ -204,7 +204,7 @@ export function QrScanDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea] disabled:opacity-50"
+            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted disabled:opacity-50"
             disabled={pending}
             onClick={onClose}
           >

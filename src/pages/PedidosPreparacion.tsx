@@ -88,7 +88,7 @@ function PackagesDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea] disabled:opacity-50"
+            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted disabled:opacity-50"
             disabled={saving}
             onClick={onClose}
           >
@@ -303,7 +303,7 @@ export function PedidosPreparacion() {
                     <OrderAttachmentLink name={order.attachmentName} dataUrl={order.attachmentDataUrl} />
                   </div>
                   {order.notes && (
-                    <p className="mt-3 rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm">{order.notes}</p>
+                    <p className="mt-3 rounded-xl bg-surface-muted px-3 py-2 text-sm">{order.notes}</p>
                   )}
                 </div>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:items-end">

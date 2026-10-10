@@ -281,7 +281,7 @@ function NewUserDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea]"
+            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted"
             onClick={onClose}
           >
             Volver
@@ -388,7 +388,7 @@ function PasswordDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea]"
+            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted"
             onClick={onClose}
           >
             Volver
@@ -622,7 +622,7 @@ export function Usuarios() {
       {loading && <Spinner label="Cargando usuarios…" />}
       {error && <ServerDown message={error} onRetry={retry} />}
       {notice && (
-        <p className="mt-4 rounded-xl bg-[#e5f6ea] px-4 py-2 text-sm text-[#1d7a3a]">{notice}</p>
+        <p className="mt-4 rounded-xl bg-success-soft px-4 py-2 text-sm text-success">{notice}</p>
       )}
       {!loading && !error && (
       <div className="mt-6 flex flex-col gap-3">
@@ -642,7 +642,7 @@ export function Usuarios() {
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    account.active ? 'bg-[#e5f6ea] text-[#1d7a3a]' : 'bg-[#f3f1ea] text-lumi-muted'
+                    account.active ? 'bg-success-soft text-success' : 'bg-[#f3f1ea] text-lumi-muted'
                   }`}
                 >
                   {account.active ? 'Activo' : 'Inactivo'}
@@ -658,7 +658,7 @@ export function Usuarios() {
                   <input
                     value={draft.name}
                     disabled={locked}
-                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
+                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { name: event.target.value })}
                   />
                 </label>
@@ -668,7 +668,7 @@ export function Usuarios() {
                     type="email"
                     value={draft.email}
                     disabled={locked}
-                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
+                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { email: event.target.value })}
                   />
                 </label>
@@ -677,7 +677,7 @@ export function Usuarios() {
                   <select
                     value={draft.role}
                     disabled={locked}
-                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
+                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { role: event.target.value as Role })}
                   >
                     {choices.map((role) => (
@@ -693,7 +693,7 @@ export function Usuarios() {
                     <select
                       value={draft.sellerName}
                       disabled={locked}
-                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
+                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
                       onChange={(event) => setDraft(account.id, { sellerName: event.target.value })}
                     >
                       <option value="">Sin vincular</option>
@@ -711,7 +711,7 @@ export function Usuarios() {
                     <select
                       value={draft.carrierName}
                       disabled={locked}
-                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
+                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
                       onChange={(event) => setDraft(account.id, { carrierName: event.target.value })}
                     >
                       <option value="">Sin vincular</option>
@@ -729,7 +729,7 @@ export function Usuarios() {
                     value={draft.phone}
                     disabled={locked}
                     placeholder="11 5555 0101"
-                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-[#f7f4ea]"
+                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { phone: event.target.value })}
                   />
                 </label>
@@ -745,7 +745,7 @@ export function Usuarios() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl px-4 py-2 text-sm font-semibold hover:bg-[#f7f4ea] disabled:opacity-50"
+                  className="rounded-xl px-4 py-2 text-sm font-semibold hover:bg-surface-muted disabled:opacity-50"
                   disabled={locked || busy === account.id}
                   onClick={() => setResetAccount(account)}
                 >
@@ -754,7 +754,7 @@ export function Usuarios() {
                 {!mine && (
                   <button
                     type="button"
-                    className="rounded-xl px-4 py-2 text-sm font-semibold hover:bg-[#f7f4ea] disabled:opacity-50"
+                    className="rounded-xl px-4 py-2 text-sm font-semibold hover:bg-surface-muted disabled:opacity-50"
                     disabled={locked || busy === account.id}
                     onClick={() => void toggleActive(account)}
                   >

@@ -32,7 +32,7 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
         </button>
         <button
           type="button"
-          className="absolute right-0 top-0 grid h-7 w-7 place-items-center rounded-full text-lumi-muted hover:bg-[#f7f4ea] hover:text-lumi-ink"
+          className="absolute right-0 top-0 grid h-7 w-7 place-items-center rounded-full text-lumi-muted hover:bg-surface-muted hover:text-lumi-ink"
           aria-label="Cerrar"
           onClick={onClose}
         >

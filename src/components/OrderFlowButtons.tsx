@@ -233,10 +233,10 @@ export function OrderFlowButtons({
       ? 'min-h-9 rounded-xl bg-lumi-yellow px-2.5 py-1 text-xs font-semibold text-lumi-yellow-ink disabled:opacity-50'
       : 'min-h-11 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50'
   const moreClass = stretch
-    ? 'grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-lumi-line text-lg leading-none hover:bg-[#f7f4ea] disabled:opacity-50'
+    ? 'grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-lumi-line text-lg leading-none hover:bg-surface-muted disabled:opacity-50'
     : compact
-      ? 'grid h-9 w-9 place-items-center rounded-xl border border-lumi-line text-base leading-none hover:bg-[#f7f4ea] disabled:opacity-50'
-      : 'grid h-11 w-11 place-items-center rounded-xl border border-lumi-line text-lg leading-none hover:bg-[#f7f4ea] disabled:opacity-50'
+      ? 'grid h-9 w-9 place-items-center rounded-xl border border-lumi-line text-base leading-none hover:bg-surface-muted disabled:opacity-50'
+      : 'grid h-11 w-11 place-items-center rounded-xl border border-lumi-line text-lg leading-none hover:bg-surface-muted disabled:opacity-50'
 
   return (
     <div
@@ -284,7 +284,7 @@ export function OrderFlowButtons({
                     key={action.to}
                     type="button"
                     role="menuitem"
-                    className="block w-full whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f7f4ea]"
+                    className="block w-full whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-muted"
                     onClick={() => void onBack(action.to, action.label)}
                   >
                     {action.label}

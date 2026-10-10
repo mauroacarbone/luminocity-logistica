@@ -55,7 +55,7 @@ export function EditReasonDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-[#f7f4ea]"
+            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted"
             onClick={onClose}
           >
             Volver

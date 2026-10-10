@@ -370,7 +370,7 @@ export function NotificationBell() {
               {appItems.length > 0 && (
                 <ul className="flex flex-col gap-2">
                   {appItems.map((item) => (
-                    <li key={item.id} className="rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm">
+                    <li key={item.id} className="rounded-xl bg-surface-muted px-3 py-2 text-sm">
                       <button
                         type="button"
                         className="w-full text-left"
@@ -404,7 +404,7 @@ export function NotificationBell() {
                       const phone = sellerPhone(item, orders, users)
                       const canOpenWa = Boolean(phone && whatsappLink(phone, item.text))
                       return (
-                        <li key={item.id} className="rounded-xl bg-[#f7f4ea] px-3 py-2 text-sm">
+                        <li key={item.id} className="rounded-xl bg-surface-muted px-3 py-2 text-sm">
                           <p className="font-medium">{item.text}</p>
                           <div className="mt-1 flex items-center justify-between gap-2 text-xs text-lumi-muted">
                             <span>{formatWhen(item.createdAt)}</span>
