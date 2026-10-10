@@ -263,11 +263,14 @@ export function Retiros() {
                 busy={busyId === order.id}
                 onBusy={(busy) => setBusyId(busy ? order.id : '')}
                 transition={transitionOrder}
-                onNotice={async () => {
+                onNotice={async (url) => {
+                  const popup = window.open('about:blank')
+                  if (popup) popup.opener = null
                   setBusyId(order.id)
                   const result = await sendPickupNotice(order.id)
                   setBusyId('')
                   if (!result.ok) {
+                    if (popup && !popup.closed) popup.close()
                     if (result.status === 401) {
                       logout()
                       return
@@ -276,11 +279,11 @@ export function Retiros() {
                     return
                   }
                   await refresh({ silent: true })
-                  const url = whatsappLink(
-                    order.phone ?? '',
-                    pickupReadyText(order.client, order.id),
-                  )
-                  if (url) window.open(url, '_blank', 'noopener,noreferrer')
+                  if (!popup || popup.closed) {
+                    window.location.assign(url)
+                    return
+                  }
+                  popup.location.assign(url)
                 }}
               />
             </li>
@@ -306,7 +309,7 @@ function PickupCard({
   busy: boolean
   onBusy: (busy: boolean) => void
   transition: (id: string, body: Record<string, unknown>) => Promise<OrderSaveResult>
-  onNotice: () => Promise<void>
+  onNotice: (url: string) => Promise<void>
 }) {
   const overdue = isOverdue(order, today)
   const withdrawnAt = formatWhen(order.deliveredAt)
@@ -369,16 +372,21 @@ function PickupCard({
             transition={transition}
             layout="stretch"
           />
-          {order.status === 'preparado' && !noticeAt && noticeUrl && (
+          {order.status === 'preparado' && !noticeAt && noticeUrl ? (
             <button
               type="button"
               className="min-h-11 w-full rounded-xl border border-lumi-line bg-white px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
               disabled={busy}
-              onClick={() => void onNotice()}
+              onClick={() => void onNotice(noticeUrl)}
             >
               Avisar al cliente
             </button>
-          )}
+          ) : null}
+          {order.status === 'preparado' && !noticeAt && !noticeUrl ? (
+            <p className="min-h-11 grid place-items-center rounded-xl bg-lumi-line/40 px-3 py-1.5 text-sm font-semibold text-lumi-muted">
+              Sin teléfono
+            </p>
+          ) : null}
         </div>
       </div>
     </article>
