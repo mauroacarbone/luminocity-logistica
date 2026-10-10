@@ -25,7 +25,7 @@ export function EditReasonDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-30 grid place-items-center bg-overlay p-4">
       <form noValidate className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-md" onSubmit={onSubmit}>
         <h2 className="text-xl font-semibold">Motivo de la edición</h2>
         <p className="mt-1 text-sm text-lumi-muted">Contá por qué cambia el pedido.</p>

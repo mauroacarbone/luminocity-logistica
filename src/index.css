@@ -80,6 +80,7 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-ink: var(--primary-ink);
   --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
