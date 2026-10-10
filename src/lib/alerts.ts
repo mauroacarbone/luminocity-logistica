@@ -4,12 +4,20 @@ type ConfirmOptions = {
   peligro?: boolean
   confirmText?: string
   cancelText?: string
+  allowOutsideClick?: boolean
+  allowEscapeKey?: boolean
+  /** Si es true, solo el botón cancel cuenta como no confirmado; Escape/afuera = null. */
+  cancelOnly?: boolean
   preConfirm?: SweetAlertOptions['preConfirm']
   didOpen?: SweetAlertOptions['didOpen']
 }
 
 /** Confirmación en español, con el amarillo de la app o rojo si es destructiva. */
-export async function confirm(titulo: string, texto: string, options?: ConfirmOptions) {
+export async function confirm(
+  titulo: string,
+  texto: string,
+  options?: ConfirmOptions,
+): Promise<boolean | null> {
   const peligro = options?.peligro === true
   const result = await Swal.fire({
     title: titulo,
@@ -20,6 +28,8 @@ export async function confirm(titulo: string, texto: string, options?: ConfirmOp
     focusCancel: peligro,
     reverseButtons: true,
     buttonsStyling: false,
+    allowOutsideClick: options?.allowOutsideClick,
+    allowEscapeKey: options?.allowEscapeKey,
     customClass: {
       popup: 'lumi-swal',
       title: 'lumi-swal-title',
@@ -31,7 +41,11 @@ export async function confirm(titulo: string, texto: string, options?: ConfirmOp
     preConfirm: options?.preConfirm,
     didOpen: options?.didOpen,
   })
-  return result.isConfirmed
+  if (result.isConfirmed) return true
+  if (options?.cancelOnly) {
+    return result.dismiss === Swal.DismissReason.cancel ? false : null
+  }
+  return false
 }
 
 /** Motivo obligatorio (mínimo 5 caracteres) para volver un estado atrás. */

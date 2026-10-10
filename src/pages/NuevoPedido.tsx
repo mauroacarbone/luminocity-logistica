@@ -773,13 +773,21 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         const keepLooking = await confirm(
           'No encontramos esa dirección',
           'Revisá calle y número, o ingresala a mano.',
-          { confirmText: 'Seguir buscando', cancelText: 'Ingresar a mano' },
+          {
+            confirmText: 'Seguir buscando',
+            cancelText: 'Ingresar a mano',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            cancelOnly: true,
+          },
         )
         if (controller.signal.aborted) return
-        if (!keepLooking) {
+        if (keepLooking === true) continue
+        if (keepLooking === false) {
           enterManualLocation()
           return
         }
+        return
       }
     } finally {
       if (locateAbort.current === controller) {
