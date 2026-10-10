@@ -77,11 +77,10 @@ export function AppShell() {
   }
 
   useEffect(() => {
-    if (!menuOpen) return
+    if (!menuOpen || !compact) return
     const drawer = drawerRef.current
     if (!drawer) return
-    const items = focusables(drawer)
-    items[0]?.focus()
+    focusables(drawer)[0]?.focus()
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -89,7 +88,11 @@ export function AppShell() {
         closeMenu()
         return
       }
-      if (event.key !== 'Tab' || items.length === 0) return
+      if (event.key !== 'Tab') return
+      const root = drawerRef.current
+      if (!root) return
+      const items = focusables(root)
+      if (items.length === 0) return
       const current = document.activeElement as HTMLElement | null
       const index = current ? items.indexOf(current) : -1
       if (event.shiftKey) {
@@ -107,7 +110,10 @@ export function AppShell() {
 
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [menuOpen])
+  }, [menuOpen, compact])
+
+  const drawerClosed = compact && !menuOpen
+  const drawerDialog = compact && menuOpen
 
   return (
     <div className={menuOpen ? 'app menu-open' : 'app'}>
@@ -146,7 +152,14 @@ export function AppShell() {
         onClick={closeMenu}
       />
 
-      <div ref={drawerRef} className={menuOpen ? 'sidebar-shell is-open' : 'sidebar-shell'}>
+      <div
+        ref={drawerRef}
+        className={menuOpen ? 'sidebar-shell is-open' : 'sidebar-shell'}
+        inert={drawerClosed ? true : undefined}
+        {...(drawerDialog
+          ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Menú' }
+          : {})}
+      >
         <Sidebar
           onClose={compact ? closeMenu : undefined}
           onNavigate={compact ? closeMenu : undefined}
