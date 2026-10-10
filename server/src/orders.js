@@ -8,6 +8,7 @@ import {
   diffOrder,
   nearbyDelivery,
   normalizeName,
+  ownsOrder,
 } from './access.js'
 import { saveAuthorizations, stageAuthorization } from './authorizations.js'
 import { readCollection, writeCollection } from './db/store.js'
@@ -162,6 +163,16 @@ ordersRouter.post('/:id/transition', async (req, res) => {
     }
     res.json(withHistory(result.order))
     queueGeo(result.order)
+  })
+})
+ordersRouter.post('/:id/pickup-notice', async (req, res) => {
+  await send(res, async () => {
+    const result = await recordPickupNotice(req.params.id, req.user)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(withHistory(result.order))
   })
 })
 ordersRouter.patch('/:id', async (req, res) => {
@@ -538,6 +549,57 @@ function transitionOrder(id, body, user) {
     }
     await releaseIfIdle(orders, current, result.order)
     return { order: result.order }
+  })
+}
+
+const PICKUP_NOTICE_REASON = 'Aviso de retiro enviado'
+
+function canSendPickupNotice(user, order) {
+  if (user.role === 'deposito' || user.role === 'encargado_deposito' || user.role === 'admin') {
+    return true
+  }
+  if (user.role === 'vendedor') return ownsOrder(user, order)
+  return false
+}
+
+function hasPickupNotice(order) {
+  const history = Array.isArray(order.history) ? order.history : []
+  return history.some((entry) => entry && entry.reason === PICKUP_NOTICE_REASON)
+}
+
+function recordPickupNotice(id, user) {
+  return locked(async () => {
+    const orders = await readOrders()
+    const index = orders.findIndex((item) => item.id === id)
+    if (index < 0) return fail('No existe ese pedido.', 404)
+    const current = orders[index]
+    if (!canSeeOrder(user, current)) return fail('No tenés permiso para modificar este pedido.', 403)
+    if (!canSendPickupNotice(user, current)) {
+      return fail('No tenés permiso para avisar este retiro.', 403)
+    }
+    if (!isPickup(current)) return fail('Solo se avisa un retiro por el local.', 400)
+    if (current.status !== 'preparado') {
+      return fail('Solo se avisa un pedido listo para retirar.', 409)
+    }
+    if (hasPickupNotice(current)) {
+      return fail('Este retiro ya fue avisado.', 409)
+    }
+    const at = new Date().toISOString()
+    const history = Array.isArray(current.history)
+      ? current.history.map((entry) => ({ ...entry, by: entry.by ? { ...entry.by } : entry.by }))
+      : withHistory(current).history.map((entry) => ({ ...entry, by: { ...entry.by } }))
+    history.push({
+      at,
+      by: { id: user.id, name: typeof user.name === 'string' ? user.name : '' },
+      from: 'preparado',
+      to: 'preparado',
+      reason: PICKUP_NOTICE_REASON,
+      via: 'retiros',
+    })
+    const order = { ...current, history, updatedAt: at }
+    orders[index] = order
+    await writeOrders(orders)
+    return { order }
   })
 }
 

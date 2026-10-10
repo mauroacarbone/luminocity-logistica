@@ -127,6 +127,15 @@ export function transitionOrder(id: string, body: Record<string, unknown>) {
   )
 }
 
+export function sendPickupNotice(id: string) {
+  return request(
+    `/api/orders/${encodeURIComponent(id)}/pickup-notice`,
+    'POST',
+    {},
+    'No se pudo registrar el aviso de retiro.',
+  )
+}
+
 export function reviewOrderEdit(
   id: string,
   editId: string,

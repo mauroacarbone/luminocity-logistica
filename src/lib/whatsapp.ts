@@ -43,3 +43,7 @@ export function mapsLink(address: string) {
 export function onTheWayText(client: string, orderId: string) {
   return `Hola ${client}, soy el chofer de Luminocity. Tu pedido ${orderId} va en camino.`
 }
+
+export function pickupReadyText(client: string, orderId: string) {
+  return `Hola ${client}, tu pedido ${orderId} de Luminocity ya está listo para retirar por el local.`
+}

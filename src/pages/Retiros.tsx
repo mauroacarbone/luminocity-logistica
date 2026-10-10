@@ -5,17 +5,22 @@ import { OrderStepper } from '../components/OrderStepper'
 import { Spinner } from '../components/LoadState'
 import { isPickup } from '../data/catalog'
 import type { Order, OrderStatus } from '../data/orders'
+import { error } from '../lib/alerts'
 import type { Role } from '../lib/authStore'
 import { normalizeInvoiceKey } from '../lib/invoiceKey'
 import { statusPillFor } from '../lib/orderFlow'
+import { sendPickupNotice } from '../lib/ordersApi'
 import {
   addDays,
   formatIsoDate,
   startOfWeek,
   toIso,
 } from '../lib/week'
+import { pickupReadyText, whatsappLink } from '../lib/whatsapp'
 import { useAuth } from '../state/AuthContext'
 import { useOrders, type OrderSaveResult } from '../state/OrdersContext'
+
+const PICKUP_NOTICE_REASON = 'Aviso de retiro enviado'
 
 type ChipStatus = 'pendiente' | 'preparado' | 'entregado'
 
@@ -83,6 +88,15 @@ function formatWhen(value: string | undefined) {
   })
 }
 
+function pickupNoticeAt(order: Order) {
+  const history = order.history ?? []
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const entry = history[index]
+    if (entry.reason === PICKUP_NOTICE_REASON) return entry.at
+  }
+  return undefined
+}
+
 function toggleChip(current: Set<ChipStatus>, value: ChipStatus) {
   const next = new Set(current)
   if (next.has(value)) next.delete(value)
@@ -91,8 +105,8 @@ function toggleChip(current: Set<ChipStatus>, value: ChipStatus) {
 }
 
 export function Retiros() {
-  const { user } = useAuth()
-  const { orders, loading, error: ordersError, transitionOrder } = useOrders()
+  const { user, logout } = useAuth()
+  const { orders, loading, error: ordersError, transitionOrder, refresh } = useOrders()
   const defaults = weekRange()
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Set<ChipStatus>>(
@@ -249,6 +263,25 @@ export function Retiros() {
                 busy={busyId === order.id}
                 onBusy={(busy) => setBusyId(busy ? order.id : '')}
                 transition={transitionOrder}
+                onNotice={async () => {
+                  setBusyId(order.id)
+                  const result = await sendPickupNotice(order.id)
+                  setBusyId('')
+                  if (!result.ok) {
+                    if (result.status === 401) {
+                      logout()
+                      return
+                    }
+                    await error(result.message)
+                    return
+                  }
+                  await refresh({ silent: true })
+                  const url = whatsappLink(
+                    order.phone ?? '',
+                    pickupReadyText(order.client, order.id),
+                  )
+                  if (url) window.open(url, '_blank', 'noopener,noreferrer')
+                }}
               />
             </li>
           ))}
@@ -265,6 +298,7 @@ function PickupCard({
   busy,
   onBusy,
   transition,
+  onNotice,
 }: {
   order: Order
   today: string
@@ -272,10 +306,17 @@ function PickupCard({
   busy: boolean
   onBusy: (busy: boolean) => void
   transition: (id: string, body: Record<string, unknown>) => Promise<OrderSaveResult>
+  onNotice: () => Promise<void>
 }) {
   const overdue = isOverdue(order, today)
   const withdrawnAt = formatWhen(order.deliveredAt)
+  const noticeAt = pickupNoticeAt(order)
+  const noticeWhen = formatWhen(noticeAt)
   const status = order.status as OrderStatus
+  const noticeUrl =
+    order.status === 'preparado'
+      ? whatsappLink(order.phone ?? '', pickupReadyText(order.client, order.id))
+      : ''
 
   return (
     <article className="rounded-2xl bg-white p-4 shadow-sm">
@@ -312,12 +353,13 @@ function PickupCard({
                 {withdrawnAt ? ` · ${withdrawnAt}` : ''}
               </p>
             )}
+            {order.status === 'preparado' && noticeWhen && <p>Avisado {noticeWhen}</p>}
           </div>
           <div className="mt-3">
             <OrderStepper order={order} variant="compact" />
           </div>
         </div>
-        <div className="shrink-0">
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:min-w-44">
           <OrderFlowButtons
             order={order}
             role={role}
@@ -327,6 +369,16 @@ function PickupCard({
             transition={transition}
             layout="stretch"
           />
+          {order.status === 'preparado' && !noticeAt && noticeUrl && (
+            <button
+              type="button"
+              className="min-h-11 w-full rounded-xl border border-lumi-line bg-white px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
+              disabled={busy}
+              onClick={() => void onNotice()}
+            >
+              Avisar al cliente
+            </button>
+          )}
         </div>
       </div>
     </article>
