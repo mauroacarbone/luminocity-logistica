@@ -62,7 +62,7 @@ export function isDispatchType(value: unknown): value is DispatchType {
 }
 
 export function isOwnDelivery(order: { dispatchType?: string } | null | undefined) {
-  return order?.dispatchType === 'propia'
+  return order?.dispatchType !== 'correo' && order?.dispatchType !== 'retiro'
 }
 
 export function isPickup(order: { dispatchType?: string } | null | undefined) {

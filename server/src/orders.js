@@ -24,7 +24,7 @@ const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
 const DISPATCH = ['propia', 'correo', 'retiro']
 
 export function isOwnDelivery(order) {
-  return order?.dispatchType === 'propia'
+  return order?.dispatchType !== 'correo' && order?.dispatchType !== 'retiro'
 }
 
 export function isPickup(order) {
