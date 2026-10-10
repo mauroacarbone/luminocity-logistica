@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
+import { normalizeName } from '../lib/access'
 import { askPackages, confirm, error as showError, success } from '../lib/alerts'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
 import {
@@ -22,8 +23,9 @@ import {
   type PickingPreview,
 } from '../lib/pickingSheet'
 import { compareOpenPriority } from '../lib/priority'
-import { formatIsoDate, parseIso, toIso } from '../lib/week'
+import { addDays, formatIsoDate, parseIso, startOfWeek, toIso } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
+import { useCatalog } from '../state/CatalogContext'
 import { useOrders } from '../state/OrdersContext'
 import { usePicking } from '../state/PickingContext'
 
@@ -34,7 +36,16 @@ const MODAL_ROW_LIMIT = 500
 const OPEN_STATUSES: OrderStatus[] = ['pendiente', 'preparado', 'asignado', 'en-viaje']
 
 type Mode = 'lista' | 'picking'
-type StatusFilter = 'todos' | PickingStatus | 'sin_pedido'
+type StatusFilter =
+  | 'todos'
+  | 'pendiente'
+  | 'preparado'
+  | 'asignado'
+  | 'en-viaje'
+  | 'atrasados'
+  | 'sin_picking'
+  | 'sin_pedido'
+type FechaFilter = 'hoy' | 'semana' | 'todos'
 type ImportMode = 'replace' | 'merge'
 
 type PickingGroup = {
@@ -50,10 +61,32 @@ type PickingGroup = {
 const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
   { value: 'todos', label: 'Todos' },
   { value: 'pendiente', label: 'Pendiente' },
-  { value: 'en_preparacion', label: 'En preparación' },
   { value: 'preparado', label: 'Preparado' },
+  { value: 'asignado', label: 'Asignado/Despachado' },
+  { value: 'en-viaje', label: 'En viaje' },
+  { value: 'atrasados', label: 'Atrasados' },
+  { value: 'sin_picking', label: 'Sin picking' },
   { value: 'sin_pedido', label: 'Sin pedido' },
 ]
+
+const FECHA_CHIPS: { value: FechaFilter; label: string }[] = [
+  { value: 'hoy', label: 'Hoy' },
+  { value: 'semana', label: 'Esta semana' },
+  { value: 'todos', label: 'Todos' },
+]
+
+const STATUS_VALUES = new Set<StatusFilter>(STATUS_CHIPS.map((chip) => chip.value))
+const FECHA_VALUES = new Set<FechaFilter>(FECHA_CHIPS.map((chip) => chip.value))
+
+function parseStatusFilter(value: string | null): StatusFilter {
+  if (value && STATUS_VALUES.has(value as StatusFilter)) return value as StatusFilter
+  return 'todos'
+}
+
+function parseFechaFilter(value: string | null): FechaFilter {
+  if (value && FECHA_VALUES.has(value as FechaFilter)) return value as FechaFilter
+  return 'semana'
+}
 
 const FIXED_COLUMNS: { id: string; label: string }[] = [
   { id: 'cliente', label: 'cliente' },
@@ -72,14 +105,54 @@ function matchesSearch(line: PickingLine, needle: string) {
   if (!needle) return true
   if (line.client.toLowerCase().includes(needle)) return true
   if (line.invoice.toLowerCase().includes(needle)) return true
+  const invoiceKey = normalizeInvoiceKey(line.invoice)
+  const needleKey = normalizeInvoiceKey(needle)
+  if (invoiceKey && needleKey && invoiceKey.includes(needleKey)) return true
   if (line.product.toLowerCase().includes(needle)) return true
   if (line.seller.toLowerCase().includes(needle)) return true
+  if (line.orderId?.toLowerCase().includes(needle)) return true
   if (line.raw) {
     for (const value of Object.values(line.raw)) {
       if (String(value).toLowerCase().includes(needle)) return true
     }
   }
   return false
+}
+
+function matchesOrderSearch(order: Order, needle: string, orderLines: PickingLine[]) {
+  if (!needle) return true
+  if (order.id.toLowerCase().includes(needle)) return true
+  if (order.client.toLowerCase().includes(needle)) return true
+  if ((order.phone ?? '').toLowerCase().includes(needle)) return true
+  const needleKey = normalizeInvoiceKey(needle)
+  for (const invoice of order.invoices ?? []) {
+    if (invoice.toLowerCase().includes(needle)) return true
+    const key = normalizeInvoiceKey(invoice)
+    if (key && needleKey && key.includes(needleKey)) return true
+  }
+  for (const line of orderLines) {
+    if (matchesSearch(line, needle)) return true
+  }
+  return false
+}
+
+function matchesFecha(
+  deliveryDate: string | undefined,
+  filter: FechaFilter,
+  today: string,
+  weekFrom: string,
+  weekTo: string,
+) {
+  if (deliveryDate && deliveryDate < today) return true
+  if (filter === 'todos') return true
+  if (!deliveryDate) return false
+  if (filter === 'hoy') return deliveryDate === today
+  if (filter === 'semana') return deliveryDate >= weekFrom && deliveryDate <= weekTo
+  return true
+}
+
+function sellerKey(value: string | undefined) {
+  return normalizeName(value)
 }
 
 function cellValue(line: PickingLine, columnId: string) {
@@ -316,11 +389,13 @@ function downloadTemplate() {
 
 export function PendientesEntregas() {
   const { user } = useAuth()
+  const { sellers: catalogSellers } = useCatalog()
   const { orders: pedidos, transitionOrder } = useOrders()
   const {
     lines,
     loading,
     error: loadError,
+    canWrite,
     legacyOffer,
     refresh,
     patchLine,
@@ -329,13 +404,13 @@ export function PendientesEntregas() {
     applyBatch,
   } = usePicking()
   const canLinkOrders = user?.role === 'encargado_deposito' || user?.role === 'admin'
+  const isVendedor = user?.role === 'vendedor'
+  const lockedSeller = isVendedor ? (user?.sellerName?.trim() ?? '') : ''
   const fileRef = useRef<HTMLInputElement>(null)
   const linkingRef = useRef(new Set<string>())
+  const [searchParams, setSearchParams] = useSearchParams()
   const [mode, setMode] = useState<Mode>('lista')
-  const [seller, setSeller] = useState('todos')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos')
-  const [searchDraft, setSearchDraft] = useState('')
-  const [searchApplied, setSearchApplied] = useState('')
+  const [searchDraft, setSearchDraft] = useState(() => searchParams.get('q') ?? '')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -348,19 +423,60 @@ export function PendientesEntregas() {
   const [excelByIndex, setExcelByIndex] = useState<number[][]>([])
   const [showAllData, setShowAllData] = useState(false)
   const [visibleColumnIds, setVisibleColumnIds] = useState<string[]>([])
-
-  const today = toIso(new Date())
   const [flowBusy, setFlowBusy] = useState(false)
 
-  const sellers = useMemo(
-    () => [...new Set(lines.map((line) => line.seller).filter(Boolean))].sort(),
-    [lines],
-  )
+  const today = toIso(new Date())
+  const weekStart = startOfWeek(new Date())
+  const weekFrom = toIso(weekStart)
+  const weekTo = toIso(addDays(weekStart, 6))
+
+  const statusFilter = parseStatusFilter(searchParams.get('estado'))
+  const fechaFilter = parseFechaFilter(searchParams.get('fecha'))
+  const searchApplied = searchParams.get('q') ?? ''
+  const sellerFromUrl = searchParams.get('vendedor') ?? 'todos'
+  const seller = lockedSeller || sellerFromUrl
+
+  function patchParams(updates: Record<string, string | null>) {
+    setSearchParams(
+      (current) => {
+        const params = new URLSearchParams(current)
+        for (const [key, value] of Object.entries(updates)) {
+          const isDefault =
+            value == null ||
+            value === '' ||
+            value === 'todos' ||
+            (key === 'fecha' && value === 'semana')
+          if (isDefault) params.delete(key)
+          else params.set(key, value)
+        }
+        if (lockedSeller) params.delete('vendedor')
+        return params
+      },
+      { replace: true },
+    )
+  }
 
   const openOrders = useMemo(
     () => pedidos.filter((order) => OPEN_STATUSES.includes(order.status)),
     [pedidos],
   )
+
+  const sellers = useMemo(() => {
+    const byKey = new Map<string, string>()
+    for (const name of catalogSellers) {
+      const key = sellerKey(name)
+      if (key && !byKey.has(key)) byKey.set(key, name.trim())
+    }
+    for (const order of openOrders) {
+      const key = sellerKey(order.seller)
+      if (key && !byKey.has(key)) byKey.set(key, order.seller!.trim())
+    }
+    for (const line of lines) {
+      const key = sellerKey(line.seller)
+      if (key && !byKey.has(key)) byKey.set(key, line.seller.trim())
+    }
+    return [...byKey.values()].sort((left, right) => left.localeCompare(right, 'es'))
+  }, [catalogSellers, lines, openOrders])
 
   const linesByOrderId = useMemo(() => {
     const map = new Map<string, PickingLine[]>()
@@ -411,37 +527,103 @@ export function PendientesEntregas() {
     [lines, linesByOpenOrder],
   )
 
-  const sortedOpenOrders = useMemo(() => {
-    let list = [...openOrders]
-    if (seller !== 'todos') {
-      list = list.filter((order) => order.seller === seller)
+  const filteredOpenOrders = useMemo(() => {
+    const needle = searchApplied.trim().toLowerCase()
+    const sellerNorm = seller === 'todos' ? '' : sellerKey(seller)
+    return openOrders
+      .filter((order) => {
+        if (statusFilter === 'sin_pedido') return false
+        const orderLines = linesByOpenOrder.map.get(order.id) ?? []
+        if (sellerNorm && sellerKey(order.seller) !== sellerNorm) return false
+        if (statusFilter === 'atrasados') {
+          if (!isOverdueOrder(order, today)) return false
+        } else if (statusFilter === 'sin_picking') {
+          if (orderLines.length > 0) return false
+        } else if (statusFilter !== 'todos' && order.status !== statusFilter) {
+          return false
+        }
+        if (!matchesFecha(order.deliveryDate, fechaFilter, today, weekFrom, weekTo)) {
+          return false
+        }
+        return matchesOrderSearch(order, needle, orderLines)
+      })
+      .sort((left, right) => compareListaOrders(left, right, today))
+  }, [
+    fechaFilter,
+    linesByOpenOrder,
+    openOrders,
+    searchApplied,
+    seller,
+    statusFilter,
+    today,
+    weekFrom,
+    weekTo,
+  ])
+
+  const filteredOrphans = useMemo(() => {
+    if (statusFilter === 'sin_picking') return []
+    if (
+      statusFilter !== 'todos' &&
+      statusFilter !== 'sin_pedido' &&
+      statusFilter !== 'atrasados'
+    ) {
+      return []
     }
-    return list.sort((left, right) => compareListaOrders(left, right, today))
-  }, [openOrders, seller, today])
+    const needle = searchApplied.trim().toLowerCase()
+    const sellerNorm = seller === 'todos' ? '' : sellerKey(seller)
+    return orphanLines.filter((line) => {
+      if (sellerNorm && sellerKey(line.seller) !== sellerNorm) return false
+      if (statusFilter === 'atrasados') {
+        if (!line.date || line.date >= today) return false
+      }
+      if (!matchesFecha(line.date, fechaFilter, today, weekFrom, weekTo)) return false
+      return matchesSearch(line, needle)
+    })
+  }, [fechaFilter, orphanLines, searchApplied, seller, statusFilter, today, weekFrom, weekTo])
 
   const filteredLines = useMemo(() => {
     const needle = searchApplied.trim().toLowerCase()
+    const sellerNorm = seller === 'todos' ? '' : sellerKey(seller)
     return lines.filter((line) => {
-      if (statusFilter === 'sin_pedido') {
-        if (matchOrdersByInvoice(pedidos, line.invoice).kind !== 'none') return false
-      } else if (statusFilter !== 'todos' && lineStatus(line) !== statusFilter) {
-        return false
+      const claimed = linesByOpenOrder.claimed.has(line.id)
+      if (statusFilter === 'sin_pedido' && claimed) return false
+      if (statusFilter === 'sin_picking') return false
+      const linkedOrder = line.orderId
+        ? (openOrders.find((item) => item.id === line.orderId) ??
+          pedidos.find((item) => item.id === line.orderId))
+        : (() => {
+            const match = matchOrdersByInvoice(pedidos, line.invoice)
+            return match.kind === 'one' ? match.order : undefined
+          })()
+      const date = linkedOrder?.deliveryDate ?? line.date
+      if (statusFilter === 'atrasados') {
+        if (!date || date >= today) return false
+      } else if (
+        statusFilter !== 'todos' &&
+        statusFilter !== 'sin_pedido' &&
+        OPEN_STATUSES.includes(statusFilter as OrderStatus)
+      ) {
+        if (!linkedOrder || linkedOrder.status !== statusFilter) return false
       }
-      if (mode === 'lista' && seller !== 'todos' && line.seller !== seller) return false
+      if (sellerNorm && sellerKey(line.seller) !== sellerNorm) {
+        if (!linkedOrder || sellerKey(linkedOrder.seller) !== sellerNorm) return false
+      }
+      if (!matchesFecha(date, fechaFilter, today, weekFrom, weekTo)) return false
       return matchesSearch(line, needle)
     })
-  }, [lines, mode, pedidos, searchApplied, seller, statusFilter])
-
-  const filteredOrphans = useMemo(() => {
-    const needle = searchApplied.trim().toLowerCase()
-    return orphanLines.filter((line) => {
-      if (statusFilter !== 'todos' && statusFilter !== 'sin_pedido') {
-        if (lineStatus(line) !== statusFilter) return false
-      }
-      if (mode === 'lista' && seller !== 'todos' && line.seller !== seller) return false
-      return matchesSearch(line, needle)
-    })
-  }, [mode, orphanLines, searchApplied, seller, statusFilter])
+  }, [
+    fechaFilter,
+    lines,
+    linesByOpenOrder,
+    openOrders,
+    pedidos,
+    searchApplied,
+    seller,
+    statusFilter,
+    today,
+    weekFrom,
+    weekTo,
+  ])
 
   const groups = useMemo(() => groupLines(filteredLines, pedidos), [filteredLines, pedidos])
   const orphanGroups = useMemo(
@@ -492,12 +674,12 @@ export function PendientesEntregas() {
   }, [canLinkOrders, lines, patchLine, pedidos])
 
   function applySearch() {
-    setSearchApplied(searchDraft)
+    patchParams({ q: searchDraft.trim() })
   }
 
   function clearSearch() {
     setSearchDraft('')
-    setSearchApplied('')
+    patchParams({ q: null })
   }
 
   function openAllData() {
@@ -670,6 +852,7 @@ export function PendientesEntregas() {
   }
 
   function prepareBlock(group: PickingGroup) {
+    if (!canWrite) return null
     if (group.link.kind !== 'one') return null
     const order = group.link.order
     if (
@@ -760,34 +943,38 @@ export function PendientesEntregas() {
           <h1>Pendientes de Entregas</h1>
           <p>Lista de pedidos y modo picking con stock de Clanbox</p>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-xl border border-lumi-line bg-white px-4 py-2 text-sm shadow-sm"
-            onClick={downloadTemplate}
-          >
-            Descargar plantilla
-          </button>
-          <button
-            type="button"
-            className="rounded-xl bg-white px-4 py-2 text-sm shadow-sm disabled:opacity-50"
-            disabled={busy}
-            onClick={() => fileRef.current?.click()}
-          >
-            Cargar Excel al Sheet
-          </button>
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".xlsx,.xls,.csv,text/csv"
-          style={{ display: 'none' }}
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            if (file) void onFile(file)
-            event.target.value = ''
-          }}
-        />
+        {canWrite && (
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-xl border border-lumi-line bg-white px-4 py-2 text-sm shadow-sm"
+              onClick={downloadTemplate}
+            >
+              Descargar plantilla
+            </button>
+            <button
+              type="button"
+              className="rounded-xl bg-white px-4 py-2 text-sm shadow-sm disabled:opacity-50"
+              disabled={busy}
+              onClick={() => fileRef.current?.click()}
+            >
+              Cargar Excel al Sheet
+            </button>
+          </div>
+        )}
+        {canWrite && (
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls,.csv,text/csv"
+            style={{ display: 'none' }}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void onFile(file)
+              event.target.value = ''
+            }}
+          />
+        )}
       </header>
 
       <div className="mt-6 flex gap-1 border-b border-lumi-line">
@@ -938,7 +1125,7 @@ export function PendientesEntregas() {
                   applySearch()
                 }
               }}
-              placeholder="Cliente, comprobante, artículo, vendedor o dato del Excel"
+              placeholder="Número, cliente, comprobante o teléfono"
               className="w-full rounded-xl border border-lumi-line px-3 py-2"
             />
           </label>
@@ -967,13 +1154,28 @@ export function PendientesEntregas() {
               type="button"
               className={statusFilter === chip.value ? 'zone-chip active' : 'zone-chip'}
               aria-pressed={statusFilter === chip.value}
-              onClick={() => setStatusFilter(chip.value)}
+              onClick={() => patchParams({ estado: chip.value })}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {FECHA_CHIPS.map((chip) => (
+            <button
+              key={chip.value}
+              type="button"
+              className={fechaFilter === chip.value ? 'zone-chip active' : 'zone-chip'}
+              aria-pressed={fechaFilter === chip.value}
+              onClick={() => patchParams({ fecha: chip.value })}
             >
               {chip.label}
             </button>
           ))}
           <p className="ml-auto text-sm text-lumi-muted">
-            {filteredLines.length} de {lines.length} filas
+            {mode === 'lista'
+              ? `${filteredOpenOrders.length} pedidos · ${filteredOrphans.length} sin pedido`
+              : `${filteredLines.length} de ${lines.length} filas`}
           </p>
           <button
             type="button"
@@ -983,23 +1185,26 @@ export function PendientesEntregas() {
             Ver todos los datos
           </button>
         </div>
-        {mode === 'lista' && (
-          <label className="mt-3 block text-sm">
-            Vendedor
-            <select
-              value={seller}
-              onChange={(event) => setSeller(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
-            >
-              <option value="todos">Todos los vendedores</option>
-              {sellers.map((name) => (
+        <label className="mt-3 block text-sm">
+          Vendedor
+          <select
+            value={seller || 'todos'}
+            disabled={isVendedor}
+            onChange={(event) => patchParams({ vendedor: event.target.value })}
+            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:opacity-60"
+          >
+            {!isVendedor && <option value="todos">Todos</option>}
+            {isVendedor && lockedSeller && (
+              <option value={lockedSeller}>{lockedSeller}</option>
+            )}
+            {!isVendedor &&
+              sellers.map((name) => (
                 <option key={name} value={name}>
                   {name}
                 </option>
               ))}
-            </select>
-          </label>
-        )}
+          </select>
+        </label>
       </div>
 
       {mode === 'lista' ? (
@@ -1021,13 +1226,15 @@ export function PendientesEntregas() {
             Actualizar lista
           </button>
 
-          {sortedOpenOrders.length === 0 && orphanGroups.length === 0 ? (
+          {filteredOpenOrders.length === 0 && orphanGroups.length === 0 ? (
             <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
-              No hay pedidos pendientes
+              {openOrders.length === 0 && orphanLines.length === 0
+                ? 'No hay pedidos pendientes'
+                : 'Ningún pedido coincide con el filtro.'}
             </div>
           ) : (
             <div className="mt-4 flex flex-col gap-3">
-              {sortedOpenOrders.length > 0 && lines.length === 0 && (
+              {filteredOpenOrders.length > 0 && lines.length === 0 && canWrite && (
                 <div className="rounded-2xl border border-dashed border-lumi-line bg-white px-4 py-3 text-sm shadow-sm">
                   <p className="text-lumi-muted">Todavía no se importó el Excel de picking</p>
                   <button
@@ -1040,8 +1247,13 @@ export function PendientesEntregas() {
                   </button>
                 </div>
               )}
+              {filteredOpenOrders.length > 0 && lines.length === 0 && !canWrite && (
+                <p className="rounded-2xl border border-dashed border-lumi-line bg-white px-4 py-3 text-sm text-lumi-muted shadow-sm">
+                  Todavía no se importó el Excel de picking
+                </p>
+              )}
 
-              {sortedOpenOrders.map((order) => {
+              {filteredOpenOrders.map((order) => {
                 const orderLines = linesByOpenOrder.map.get(order.id) ?? []
                 const hasPicking = orderLines.length > 0
                 const progress = progressOfLines(orderLines)
@@ -1279,34 +1491,44 @@ export function PendientesEntregas() {
                                 </p>
                               </div>
                               <div className="flex shrink-0 flex-wrap items-center gap-2">
-                                <label className="text-sm">
-                                  <span className="sr-only">Cantidad pickeada</span>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    max={line.quantity}
-                                    step={1}
-                                    value={qtyDraftFor(line)}
-                                    disabled={prepared || saving}
-                                    className="w-20 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm disabled:opacity-60"
-                                    onChange={(event) => setQtyDraft(line.id, event.target.value)}
-                                    onBlur={() => void savePickedQty(line, qtyDraftFor(line))}
-                                    onKeyDown={(event) => {
-                                      if (event.key === 'Enter') {
-                                        event.preventDefault()
-                                        ;(event.target as HTMLInputElement).blur()
-                                      }
-                                    }}
-                                  />
-                                </label>
-                                <button
-                                  type="button"
-                                  className="rounded-xl border border-lumi-line bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-                                  disabled={prepared || complete || saving}
-                                  onClick={() => void markComplete(line)}
-                                >
-                                  Completo
-                                </button>
+                                {canWrite ? (
+                                  <>
+                                    <label className="text-sm">
+                                      <span className="sr-only">Cantidad pickeada</span>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={line.quantity}
+                                        step={1}
+                                        value={qtyDraftFor(line)}
+                                        disabled={prepared || saving}
+                                        className="w-20 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm disabled:opacity-60"
+                                        onChange={(event) =>
+                                          setQtyDraft(line.id, event.target.value)
+                                        }
+                                        onBlur={() => void savePickedQty(line, qtyDraftFor(line))}
+                                        onKeyDown={(event) => {
+                                          if (event.key === 'Enter') {
+                                            event.preventDefault()
+                                            ;(event.target as HTMLInputElement).blur()
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      className="rounded-xl border border-lumi-line bg-white px-3 py-1.5 text-sm disabled:opacity-50"
+                                      disabled={prepared || complete || saving}
+                                      onClick={() => void markComplete(line)}
+                                    >
+                                      Completo
+                                    </button>
+                                  </>
+                                ) : (
+                                  <p className="text-sm text-lumi-muted">
+                                    {pickedOf(line)} / {line.quantity}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           )

@@ -3,7 +3,16 @@ import type { Role, Session } from './authStore'
 import { statusChoices as choicesFromTable } from './orderFlow'
 
 const MENU: Record<Role, readonly string[]> = {
-  vendedor: ['/', '/nuevo-pedido', '/pedidos', '/despacho', '/retiros', '/seguimiento', '/post-venta'],
+  vendedor: [
+    '/',
+    '/nuevo-pedido',
+    '/pedidos',
+    '/despacho',
+    '/retiros',
+    '/seguimiento',
+    '/pendientes',
+    '/post-venta',
+  ],
   deposito: ['/', '/pedidos', '/despacho', '/retiros', '/seguimiento', '/pendientes'],
   encargado_deposito: [
     '/',
@@ -45,9 +54,13 @@ export function canOpen(role: Role, path: string) {
   return MENU[role].includes(path)
 }
 
+export function normalizeName(value: string | undefined) {
+  return value?.trim().toLowerCase().replace(/\s+/g, ' ') ?? ''
+}
+
 export function namesMatch(left: string | undefined, right: string | undefined) {
-  const a = left?.trim().toLowerCase().replace(/\s+/g, ' ') ?? ''
-  const b = right?.trim().toLowerCase().replace(/\s+/g, ' ') ?? ''
+  const a = normalizeName(left)
+  const b = normalizeName(right)
   return a.length > 0 && a === b
 }
 

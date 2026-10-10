@@ -20,7 +20,8 @@ import { mergeKey, type PickingLine } from '../lib/pickingSheet'
 import { useAuth } from './AuthContext'
 
 const PICKING_KEY = 'luminocity.picking.v1'
-const PICKING_ROLES = new Set(['deposito', 'encargado_deposito', 'admin'])
+const PICKING_READ_ROLES = new Set(['vendedor', 'deposito', 'encargado_deposito', 'admin'])
+const PICKING_WRITE_ROLES = new Set(['deposito', 'encargado_deposito', 'admin'])
 
 type LegacyLine = {
   id: string
@@ -39,6 +40,7 @@ type PickingContextValue = {
   lines: PickingLine[]
   loading: boolean
   error: string
+  canWrite: boolean
   legacyOffer: LegacyLine[] | null
   refresh: () => Promise<number>
   patchLine: (id: string, fields: Record<string, unknown>) => Promise<PickingPatchResult>
@@ -152,7 +154,8 @@ export function PickingProvider({ children }: { children: ReactNode }) {
   const [legacyOffer, setLegacyOffer] = useState<LegacyLine[] | null>(null)
   const [legacyShown, setLegacyShown] = useState(false)
   const userId = user?.id ?? null
-  const canUse = Boolean(user && PICKING_ROLES.has(user.role))
+  const canUse = Boolean(user && PICKING_READ_ROLES.has(user.role))
+  const canWrite = Boolean(user && PICKING_WRITE_ROLES.has(user.role))
   const trackKey = canUse ? userId : null
   const [trackedKey, setTrackedKey] = useState(trackKey)
 
@@ -219,6 +222,7 @@ export function PickingProvider({ children }: { children: ReactNode }) {
   }, [applyPickingResult, trackKey])
 
   async function patchLine(id: string, fields: Record<string, unknown>): Promise<PickingPatchResult> {
+    if (!canWrite) return { ok: false, message: 'No tenés permiso para esto.' }
     const current = lines.find((line) => line.id === id)
     if (!current) return { ok: false, message: 'No existe esa fila de picking.' }
     const result = await patchPicking(id, fields)
@@ -235,6 +239,7 @@ export function PickingProvider({ children }: { children: ReactNode }) {
   }
 
   async function uploadLegacy() {
+    if (!canWrite) return { ok: false as const, message: 'No tenés permiso para esto.' }
     if (!legacyOffer || legacyOffer.length === 0) {
       return { ok: false as const, message: 'No hay datos locales para subir.' }
     }
@@ -260,6 +265,9 @@ export function PickingProvider({ children }: { children: ReactNode }) {
   }
 
   async function applyBatch(mode: 'replace' | 'merge', rows: PickingBatchRow[]) {
+    if (!canWrite) {
+      return { ok: false as const, message: 'No tenés permiso para esto.' }
+    }
     const result = await batchPickingChunks(mode, rows)
     if (!result.ok) {
       if (result.status === 401) logout()
@@ -287,7 +295,8 @@ export function PickingProvider({ children }: { children: ReactNode }) {
         lines,
         loading,
         error,
-        legacyOffer,
+        canWrite,
+        legacyOffer: canWrite ? legacyOffer : null,
         refresh,
         patchLine,
         uploadLegacy,

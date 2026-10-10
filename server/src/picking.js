@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { Router } from 'express'
+import { normalizeName } from './access.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
 
 const ROLES = ['deposito', 'encargado_deposito', 'admin']
+const READ_ROLES = ['vendedor', ...ROLES]
 const STATUSES = new Set(['pendiente', 'en_preparacion', 'preparado'])
 const RAW_MAX_KEYS = 100
 const RAW_KEY_MAX = 100
@@ -17,16 +19,26 @@ const BATCH_MODES = new Set(['replace', 'merge'])
 
 export const pickingRouter = Router()
 pickingRouter.use(requireAuth)
-pickingRouter.use(requireRole(...ROLES))
 
-pickingRouter.get('/', async (_req, res) => {
+pickingRouter.get('/', requireRole(...READ_ROLES), async (req, res) => {
   await send(res, async () => {
     const list = await locked(readPicking)
+    if (req.user.role === 'vendedor') {
+      const seller = normalizeName(req.user.sellerName)
+      if (!seller) {
+        res.json([])
+        return
+      }
+      res.json(
+        byNewest(list.filter((row) => normalizeName(row.vendedor) === seller)),
+      )
+      return
+    }
     res.json(byNewest(list))
   })
 })
 
-pickingRouter.post('/', async (req, res) => {
+pickingRouter.post('/', requireRole(...ROLES), async (req, res) => {
   await send(res, async () => {
     const result = await createRow(req.body)
     if (result.error) {
@@ -37,7 +49,7 @@ pickingRouter.post('/', async (req, res) => {
   })
 })
 
-pickingRouter.post('/batch', async (req, res) => {
+pickingRouter.post('/batch', requireRole(...ROLES), async (req, res) => {
   await send(res, async () => {
     const result = await batchRows(req.body)
     if (result.error) {
@@ -48,7 +60,7 @@ pickingRouter.post('/batch', async (req, res) => {
   })
 })
 
-pickingRouter.patch('/:id', async (req, res) => {
+pickingRouter.patch('/:id', requireRole(...ROLES), async (req, res) => {
   await send(res, async () => {
     const result = await updateRow(req.params.id, req.body)
     if (result.error) {
