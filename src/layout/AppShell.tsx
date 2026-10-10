@@ -3,8 +3,11 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { NotificationBell } from '../components/NotificationBell'
 import { BRAND } from '../config/brand'
+import { focusables } from '../lib/focus'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
+import { CommandPalette, SearchTrigger } from './CommandPalette'
+import { isEditableTarget, shouldIgnorePaletteShortcut } from './commandHotkeys'
 import { MobileNav } from './MobileNav'
 import { TopNav } from './TopNav'
 
@@ -26,26 +29,20 @@ function ImportReport({ text }: { text: string }) {
   )
 }
 
-function focusables(root: HTMLElement) {
-  return [
-    ...root.querySelectorAll<HTMLElement>(
-      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
-    ),
-  ].filter((el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true')
-}
-
 export function AppShell() {
   const { user } = useAuth()
   const { loading, error, legacyCount, importing, importError, importLegacy, reload } = useOrders()
   const location = useLocation()
   const showImport = !loading && !error && legacyCount > 0
   const [menuOpen, setMenuOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const [menuPath, setMenuPath] = useState(location.pathname)
   const [compact, setCompact] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia(MENU_MQ).matches : false,
   )
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
+  const paletteOpenerRef = useRef<HTMLElement | null>(null)
 
   if (menuPath !== location.pathname) {
     setMenuPath(location.pathname)
@@ -85,6 +82,44 @@ export function AppShell() {
     setMenuOpen(false)
     queueMicrotask(() => menuButtonRef.current?.focus())
   }
+
+  function openPalette() {
+    if (shouldIgnorePaletteShortcut(menuOpen)) return
+    paletteOpenerRef.current = document.activeElement as HTMLElement | null
+    setPaletteOpen(true)
+  }
+
+  function closePalette() {
+    setPaletteOpen(false)
+    queueMicrotask(() => paletteOpenerRef.current?.focus())
+  }
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const mod = event.metaKey || event.ctrlKey
+      if (mod && event.key.toLowerCase() === 'k') {
+        if (shouldIgnorePaletteShortcut(menuOpen)) return
+        event.preventDefault()
+        if (paletteOpen) {
+          setPaletteOpen(false)
+          queueMicrotask(() => paletteOpenerRef.current?.focus())
+          return
+        }
+        paletteOpenerRef.current = document.activeElement as HTMLElement | null
+        setPaletteOpen(true)
+        return
+      }
+      if (event.key === '/' && !mod) {
+        if (shouldIgnorePaletteShortcut(menuOpen) || paletteOpen) return
+        if (isEditableTarget(event.target)) return
+        event.preventDefault()
+        paletteOpenerRef.current = document.activeElement as HTMLElement | null
+        setPaletteOpen(true)
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [menuOpen, paletteOpen])
 
   useEffect(() => {
     if (!menuOpen || !compact) return
@@ -152,29 +187,11 @@ export function AppShell() {
             <img src={BRAND.logoUrl} alt="" width={28} height={28} />
             <span>{BRAND.name}</span>
           </div>
-          <button
-            type="button"
-            className="topbar-search-btn"
-            aria-label="Buscar"
-            onClick={() => {
-              /* 32e punto 3: CommandPalette */
-            }}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
-              <path
-                d="M16 16l4 4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+          <SearchTrigger onOpen={openPalette} compact />
           {user ? <NotificationBell /> : <span className="topbar-spacer" />}
         </header>
       ) : (
-        <TopNav />
+        <TopNav onOpenSearch={openPalette} />
       )}
 
       {compact ? (
@@ -213,6 +230,8 @@ export function AppShell() {
         {!showImport && importError && <ImportReport text={importError} />}
         {!loading && !error && <Outlet />}
       </main>
+
+      {paletteOpen ? <CommandPalette open onClose={closePalette} /> : null}
     </div>
   )
 }

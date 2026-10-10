@@ -1,8 +1,9 @@
-import { useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { NotificationBell } from '../components/NotificationBell'
 import { BRAND } from '../config/brand'
 import { useAuth } from '../state/AuthContext'
+import { SearchTrigger } from './CommandPalette'
 import { NavMenu } from './NavMenu'
 import { UserMenu } from './UserMenu'
 import {
@@ -15,7 +16,7 @@ import {
 } from './nav'
 
 type TopNavProps = {
-  searchSlot?: ReactNode
+  onOpenSearch?: () => void
 }
 
 type MenuTrigger = {
@@ -25,7 +26,7 @@ type MenuTrigger = {
   menuDomId: string
 }
 
-export function TopNav({ searchSlot }: TopNavProps) {
+export function TopNav({ onOpenSearch }: TopNavProps) {
   const { user } = useAuth()
   const location = useLocation()
   const baseId = useId()
@@ -178,7 +179,7 @@ export function TopNav({ searchSlot }: TopNavProps) {
         </nav>
 
         <div className="topnav-right">
-          {searchSlot}
+          {onOpenSearch ? <SearchTrigger onOpen={onOpenSearch} /> : null}
           {user ? <NotificationBell /> : null}
           <UserMenu />
         </div>
