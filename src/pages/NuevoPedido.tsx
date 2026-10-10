@@ -414,6 +414,16 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   }, [user, logout])
 
   useEffect(() => {
+    if (!dirty) return
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty])
+
+  useEffect(() => {
     if (!user || !dirty || draftOffer || !storageKey) return
     const handle = window.setTimeout(() => {
       writeOrderDraft(storageKey, collectDraftFields())
