@@ -129,7 +129,7 @@ export function NotificationBell() {
   }, [open])
 
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 639px)')
+    const media = window.matchMedia('(max-width: 1024px)')
     function syncNarrow() {
       setNarrow(media.matches)
     }
@@ -144,7 +144,9 @@ export function NotificationBell() {
       const root = rootRef.current
       if (!root) return
       const rect = root.getBoundingClientRect()
-      setPanelTop(Math.round(rect.bottom + 8))
+      const topbar = document.querySelector('.topbar')
+      const minTop = topbar instanceof HTMLElement ? topbar.getBoundingClientRect().bottom + 8 : 8
+      setPanelTop(Math.max(Math.round(rect.bottom + 8), Math.round(minTop)))
     }
     const frame = window.requestAnimationFrame(place)
     window.addEventListener('resize', place)
@@ -336,7 +338,11 @@ export function NotificationBell() {
       </button>
       {open && (
         <div
-          className="fixed inset-x-4 z-30 flex max-h-[70vh] w-auto flex-col rounded-2xl border border-lumi-line bg-white p-3 shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-none sm:w-80"
+          className={
+            narrow
+              ? 'fixed inset-x-4 z-50 flex max-h-[70vh] w-auto flex-col rounded-2xl border border-lumi-line bg-white p-3 shadow-lg'
+              : 'absolute right-0 top-full z-30 mt-2 flex w-80 flex-col rounded-2xl border border-lumi-line bg-white p-3 shadow-lg'
+          }
           style={open && narrow && panelTop !== null ? { top: panelTop } : undefined}
         >
           <div className="flex shrink-0 items-center justify-between gap-2">

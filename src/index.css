@@ -1576,6 +1576,14 @@ p {
   .sidebar-close {
     display: grid;
   }
+
+  .main {
+    padding: calc(56px + 16px) 24px 32px;
+  }
+
+  .topbar .relative > button:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
 }
 
 @media (max-width: 800px) {
@@ -1584,7 +1592,7 @@ p {
   }
 
   .main {
-    padding: 20px 16px 32px;
+    padding: calc(56px + 12px) 16px 32px;
   }
 
   .view-toggle {

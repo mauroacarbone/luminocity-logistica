@@ -93,6 +93,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 27b.1 | Abrir WhatsApp al avisar y volver a avisar | Hecho |
 | 28a | Menú lateral agrupado y sin barra de scroll | Hecho |
 | 28x | Logo de Luminocity en el login | Hecho |
+| 28b | Menú hamburguesa en celular y tablet | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -243,6 +244,8 @@ El Brief 27b.1 abre WhatsApp en el mismo toque al avisar (popup `about:blank` co
 El Brief 28a agrupa el menú lateral en Operación, Seguimiento, Post Venta y Administración (plegables, con el grupo activo siempre abierto) y deja la barra de scroll fina, solo al pasar el mouse.
 
 El Brief 28x pone el logo de Luminocity en el login, el menú lateral y el favicon (`public/logo-luminocity.png`).
+
+El Brief 28b muestra una barra superior con menú hamburguesa hasta 1024 px: el Sidebar entra como drawer, se cierra con fondo, Escape, X o al navegar, y el contenido no queda tapado por la barra.
 
 ## Pendientes
 
