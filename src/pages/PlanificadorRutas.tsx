@@ -515,13 +515,13 @@ export function PlanificadorRutas() {
   )
 
   return (
-    <section className="page">
+    <section className="page planner-screen">
       <header className="page-header">
         <h1>Planificador de Rutas</h1>
         <p>Armá la hoja de un chofer para una fecha y una franja</p>
       </header>
 
-      <div className="no-print mt-6 grid grid-cols-3 items-center gap-2">
+      <div className="planner-week no-print grid grid-cols-3 items-center gap-2">
         <button
           type="button"
           className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
@@ -544,7 +544,7 @@ export function PlanificadorRutas() {
         </button>
       </div>
 
-      <div className="no-print mt-4 grid min-w-0 grid-cols-7 gap-1">
+      <div className="planner-days no-print grid min-w-0 grid-cols-7 gap-1">
         {days.map((day) => {
           const dayIso = toIso(day)
           const count = orders.filter((order) => order.deliveryDate === dayIso && order.status !== 'entregado').length
@@ -573,7 +573,7 @@ export function PlanificadorRutas() {
         })}
       </div>
 
-      <div className="no-print mt-4 flex flex-wrap items-end gap-2">
+      <div className="planner-filters no-print flex flex-wrap items-end gap-2">
         <label className="text-sm">
           Fecha
           <input
@@ -632,106 +632,7 @@ export function PlanificadorRutas() {
         )}
       </div>
 
-      <div className="no-print mt-4 flex flex-wrap items-center gap-2">
-        <input
-          value={origin}
-          onChange={(event) => {
-            setOrigin(event.target.value)
-            setStops([])
-            setRoute(null)
-          }}
-          disabled={readOnly}
-          aria-label="Origen de la ruta"
-          className="w-full min-w-0 rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm disabled:opacity-60 sm:w-auto sm:min-w-48 sm:flex-1"
-        />
-        <button
-          type="button"
-          className="shrink-0 rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-60"
-          disabled={loading || readOnly || !driverId || !timeWindow}
-          onClick={() => void confirmSheet()}
-        >
-          Confirmar hoja de ruta
-        </button>
-        <button
-          type="button"
-          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-60"
-          disabled={loading || readOnly}
-          onClick={() => void draw(origin, selectedIds, false)}
-        >
-          {loading ? 'Calculando…' : 'Calcular ruta'}
-        </button>
-        <button
-          type="button"
-          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-60"
-          disabled={loading || readOnly}
-          onClick={() => void draw(origin, selectedIds, true)}
-        >
-          Optimizar orden
-        </button>
-        <button type="button" className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white" onClick={() => window.print()}>
-          Imprimir
-        </button>
-        {sheet?.status === 'planificada' && (
-          <button
-            type="button"
-            className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-danger hover:bg-white disabled:opacity-60"
-            disabled={loading}
-            onClick={() => void removeSheet()}
-          >
-            Borrar hoja
-          </button>
-        )}
-        <button
-          type="button"
-          className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-white disabled:opacity-60"
-          disabled={readOnly}
-          onClick={clearPlan}
-        >
-          Limpiar
-        </button>
-      </div>
-
-      {error && <p className="no-print mt-3 text-sm text-lumi-danger">{error}</p>}
-
-      <div className="no-print mt-3 flex flex-wrap gap-6 rounded-2xl bg-white px-4 py-3 text-sm shadow-sm">
-        <span>
-          {deliveryStops} parada{deliveryStops === 1 ? '' : 's'}
-        </span>
-        <span>{route && route.line.length > 0 ? formatKm(route.kilometers) : sheet ? formatKm(sheet.km) : '— km'}</span>
-        <span>{route && route.line.length > 0 ? `${route.minutes} min` : sheet ? `${sheet.minutes} min` : '—'}</span>
-      </div>
-
-      <div className="no-print mt-3 overflow-hidden rounded-2xl bg-border-strong" style={{ height: 420 }}>
-        {route && stops.length > 0 && route.line.length > 0 ? (
-          <RouteMap stops={stops} line={route.line} />
-        ) : (
-          <div className="grid h-full place-items-center px-6 text-center text-sm text-lumi-muted">
-            El mapa aparecerá aquí al calcular la ruta
-          </div>
-        )}
-      </div>
-
-      <section className="route-print mt-6">
-        <h2 className="text-xl font-semibold">Hoja de ruta</h2>
-        <p className="mt-1 text-sm">
-          {driverName || 'Sin chofer'} · {iso} · {timeWindow || 'Sin franja'}
-        </p>
-        <ol className="mt-4 flex flex-col gap-3">
-          {printOrders.map((order, index) => (
-            <li key={order.id}>
-              <p className="font-semibold">
-                {index + 1}. {order.client}
-              </p>
-              <p>{order.address || 'Sin dirección'}</p>
-              {placeLine(order) && <p>{placeLine(order)}</p>}
-              <p>Teléfono: {order.phone || '—'}</p>
-              <p>Bultos: {order.packages ?? '—'}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <div className="no-print mt-6 grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+      <div className="planner-list no-print grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
         <section>
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-sm font-semibold tracking-wide text-lumi-muted">PEDIDOS DE LA FRANJA</h2>
@@ -847,6 +748,106 @@ export function PlanificadorRutas() {
           )}
         </section>
       </div>
+
+      <div className="planner-actions no-print flex flex-wrap items-center gap-2">
+        <input
+          value={origin}
+          onChange={(event) => {
+            setOrigin(event.target.value)
+            setStops([])
+            setRoute(null)
+          }}
+          disabled={readOnly}
+          aria-label="Origen de la ruta"
+          className="w-full min-w-0 rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm disabled:opacity-60 sm:w-auto sm:min-w-48 sm:flex-1"
+        />
+        <button
+          type="button"
+          className="shrink-0 rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-60"
+          disabled={loading || readOnly || !driverId || !timeWindow}
+          onClick={() => void confirmSheet()}
+        >
+          Confirmar hoja de ruta
+        </button>
+        <button
+          type="button"
+          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-60"
+          disabled={loading || readOnly}
+          onClick={() => void draw(origin, selectedIds, false)}
+        >
+          {loading ? 'Calculando…' : 'Calcular ruta'}
+        </button>
+        <button
+          type="button"
+          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-60"
+          disabled={loading || readOnly}
+          onClick={() => void draw(origin, selectedIds, true)}
+        >
+          Optimizar orden
+        </button>
+        <button type="button" className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white" onClick={() => window.print()}>
+          Imprimir
+        </button>
+        {sheet?.status === 'planificada' && (
+          <button
+            type="button"
+            className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-danger hover:bg-white disabled:opacity-60"
+            disabled={loading}
+            onClick={() => void removeSheet()}
+          >
+            Borrar hoja
+          </button>
+        )}
+        <button
+          type="button"
+          className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-white disabled:opacity-60"
+          disabled={readOnly}
+          onClick={clearPlan}
+        >
+          Limpiar
+        </button>
+      </div>
+
+      {error && <p className="no-print text-sm text-lumi-danger">{error}</p>}
+
+      <p className="planner-stats no-print text-sm text-lumi-muted">
+        {deliveryStops} parada{deliveryStops === 1 ? '' : 's'}
+        {' · '}
+        {route && route.line.length > 0 ? formatKm(route.kilometers) : sheet ? formatKm(sheet.km) : '— km'}
+        {' · '}
+        {route && route.line.length > 0 ? `${route.minutes} min` : sheet ? `${sheet.minutes} min` : '—'}
+      </p>
+
+      <div className="planner-map no-print overflow-hidden rounded-2xl bg-border-strong">
+        {route && stops.length > 0 && route.line.length > 0 ? (
+          <RouteMap stops={stops} line={route.line} />
+        ) : (
+          <div className="grid h-full place-items-center px-6 text-center text-sm text-lumi-muted">
+            El mapa aparecerá aquí al calcular la ruta
+          </div>
+        )}
+      </div>
+
+      <section className="route-print">
+        <h2 className="text-xl font-semibold">Hoja de ruta</h2>
+        <p className="mt-1 text-sm">
+          {driverName || 'Sin chofer'} · {iso} · {timeWindow || 'Sin franja'}
+        </p>
+        <ol className="mt-4 flex flex-col gap-3">
+          {printOrders.map((order, index) => (
+            <li key={order.id}>
+              <p className="font-semibold">
+                {index + 1}. {order.client}
+              </p>
+              <p>{order.address || 'Sin dirección'}</p>
+              {placeLine(order) && <p>{placeLine(order)}</p>}
+              <p>Teléfono: {order.phone || '—'}</p>
+              <p>Bultos: {order.packages ?? '—'}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
     </section>
   )
 }
