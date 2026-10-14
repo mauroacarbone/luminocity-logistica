@@ -61,20 +61,29 @@ function formatDistance(meters: number) {
   return `a ${text} km`
 }
 
-function sortDeliveries(list: Order[], here: Point | null) {
-  if (!here) return [...list].sort(byZoneThenAddress)
-  const located = list.filter((order) => pointOf(order))
-  const missing = list.filter((order) => !pointOf(order))
-  located.sort((left, right) => {
-    const leftPoint = pointOf(left)
-    const rightPoint = pointOf(right)
-    if (!leftPoint || !rightPoint) return 0
-    const distance = haversine(here, leftPoint) - haversine(here, rightPoint)
-    if (distance !== 0) return distance
-    return byZoneThenAddress(left, right)
-  })
-  missing.sort(byZoneThenAddress)
-  return [...located, ...missing]
+function isOverdue(order: Order, today: string) {
+  return Boolean(order.deliveryDate) && order.deliveryDate < today && order.status !== 'entregado'
+}
+
+function sortDeliveries(list: Order[], here: Point | null, today: string) {
+  const ordered = (() => {
+    if (!here) return [...list].sort(byZoneThenAddress)
+    const located = list.filter((order) => pointOf(order))
+    const missing = list.filter((order) => !pointOf(order))
+    located.sort((left, right) => {
+      const leftPoint = pointOf(left)
+      const rightPoint = pointOf(right)
+      if (!leftPoint || !rightPoint) return 0
+      const distance = haversine(here, leftPoint) - haversine(here, rightPoint)
+      if (distance !== 0) return distance
+      return byZoneThenAddress(left, right)
+    })
+    missing.sort(byZoneThenAddress)
+    return [...located, ...missing]
+  })()
+  const late = ordered.filter((order) => isOverdue(order, today))
+  const rest = ordered.filter((order) => !isOverdue(order, today))
+  return [...late, ...rest]
 }
 
 export function MisEntregas() {
@@ -224,10 +233,12 @@ export function MisEntregas() {
   const assigned = sortDeliveries(
     loose.filter((order) => order.status === 'preparado' || order.status === 'asignado'),
     position,
+    today,
   )
   const traveling = sortDeliveries(
     loose.filter((order) => order.status === 'en-viaje'),
     position,
+    today,
   )
   const assignedCount = orders.filter(
     (order) => order.status === 'preparado' || order.status === 'asignado',
@@ -447,6 +458,11 @@ function DeliveryCard({
     <article className="rounded-2xl bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-lg font-bold">{order.id}</p>
+        {isOverdue(order, businessToday()) && (
+          <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-sm font-semibold text-danger">
+            Atrasado
+          </span>
+        )}
         <OrderStepper order={order} variant="compact" />
       </div>
       {stopLabel && <p className="mt-1 text-sm font-semibold">{stopLabel}</p>}

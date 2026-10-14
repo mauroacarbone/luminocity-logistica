@@ -110,7 +110,6 @@ function isOwnDelivery(order) {
 function driverSees(user, order) {
   if (!isOwnDelivery(order)) return false
   if (!DRIVER_STATUSES.includes(order.status)) return false
-  if (!nearbyDelivery(order.deliveryDate)) return false
   if (typeof order.driverId === 'string' && order.driverId) return order.driverId === user.id
   const carrier = normalizeName(user.carrierName)
   if (!carrier) return false

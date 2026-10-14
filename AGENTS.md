@@ -69,7 +69,7 @@ Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar 
 
 ### Chofer
 
-Entrega y deja constancia. Al entrar ve solo Mis entregas. El server le manda los pedidos con su `driverId` en `preparado`, `asignado` o `en-viaje`, con fecha de ayer, hoy o mañana. Si el pedido no tiene `driverId`, sigue viéndolo por el `carrierName`. Sin `driverId` en el pedido y sin `carrierName` no ve nada.
+Entrega y deja constancia. Al entrar ve solo Mis entregas. El server le manda los pedidos con su `driverId` en `preparado`, `asignado` o `en-viaje`, aunque la fecha ya haya pasado. Si el pedido no tiene `driverId`, sigue viéndolo por el `carrierName`. Sin `driverId` en el pedido y sin `carrierName` no ve nada. Los de una fecha anterior a hoy se marcan Atrasado y van primero.
 
 - Pantalla: Mis entregas (editar).
 - Puede: pasar de `asignado` a `en-viaje` y de `en-viaje` a `entregado`. Desde en viaje avisa al cliente con un link `wa.me`. Con al menos un pedido en viaje, la pantalla pide el GPS y manda la última posición. Si el pedido está en una hoja planificada, tiene que usar Iniciar recorrido (no sale a `en-viaje` solo).
