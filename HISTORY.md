@@ -111,6 +111,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32e | Navegación superior y paleta de comandos | Hecho |
 | 32e.1 | Accesibilidad de la paleta y los menús | Hecho |
 | 32e.2 | Menús de la barra superior visibles | Hecho |
+| 32e.3 | Diálogos sobre la barra superior | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -297,6 +298,8 @@ El Brief 32e reemplaza la sidebar por una barra superior con menús por teclado,
 El Brief 32e.1 ajusta la accesibilidad de la paleta (aria-expanded y tabIndex) y evita dos menús abiertos a la vez, devolviendo el foco al disparador con Tab.
 
 Los menús de la barra superior quedaban recortados o detrás de los mapas; ahora se abren en un portal con posición fija, el contenido queda aislado y las capas usan tokens --z-*.
+
+El Brief 32e.3 saca los diálogos a un portal en `document.body` con `--z-modal` (1350, entre el drawer y la paleta). SweetAlert queda en esa capa, por encima de la barra y por debajo del toast. Los menús de la barra tienen altura máxima y scroll propio.
 
 ## Pendientes
 

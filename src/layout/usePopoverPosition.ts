@@ -16,7 +16,13 @@ function place(
     left = window.innerWidth - EDGE - width
   }
   left = Math.max(EDGE, left)
-  const top = rect.bottom + GAP
+  const height = menu.offsetHeight
+  let top = rect.bottom + GAP
+  const bottomLimit = window.innerHeight - EDGE
+  if (top + height > bottomLimit) {
+    const above = rect.top - GAP - height
+    top = above >= EDGE ? above : Math.max(EDGE, bottomLimit - height)
+  }
   return { top, left }
 }
 

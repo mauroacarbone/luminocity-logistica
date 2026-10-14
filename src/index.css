@@ -255,6 +255,9 @@ p {
   position: fixed;
   z-index: var(--z-dropdown);
   min-width: 240px;
+  max-height: calc(100vh - 56px - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px;
   background: var(--surface);
   border: 1px solid var(--border);
