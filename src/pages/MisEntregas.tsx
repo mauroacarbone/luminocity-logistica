@@ -89,26 +89,21 @@ export function MisEntregas() {
         dates.add(order.deliveryDate)
       }
     }
-    void Promise.all(
-      [...dates].map((date) => listRouteSheets(date).then((result) => ({ date, result }))),
-    ).then((results) => {
+    void Promise.all([...dates].map((date) => listRouteSheets(date))).then((results) => {
       if (cancelled) return
-      const failed = results.find((item) => !item.result.ok)
-      if (failed && !failed.result.ok) {
-        setSheetsError(failed.result.message)
+      const failed = results.find((result) => !result.ok)
+      if (failed && !failed.ok) {
+        setSheetsError(failed.message)
       } else {
         setSheetsError('')
       }
       const open: RouteSheet[] = []
-      for (const { date, result } of results) {
+      for (const result of results) {
         if (!result.ok) continue
         for (const sheet of result.data) {
           if (open.some((item) => item.id === sheet.id)) continue
-          if (date === yesterday) {
-            if (sheet.status === 'en_curso') open.push(sheet)
-            continue
-          }
-          if (sheet.status !== 'cerrada') open.push(sheet)
+          if (sheet.status === 'cerrada' || sheet.date > today) continue
+          open.push(sheet)
         }
       }
       setSheets(open)
