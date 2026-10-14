@@ -499,7 +499,9 @@ function DeliveryCard({
         )}
         <p className={`text-lg font-bold ${strike}`}>{order.id}</p>
         <PriorityChip order={order} showNormal />
-        <Badge tone={timelinessTone(punctuality)}>{TIMELINESS_LABEL[punctuality]}</Badge>
+        {order.status !== 'entregado' && (
+          <Badge tone={timelinessTone(punctuality)}>{TIMELINESS_LABEL[punctuality]}</Badge>
+        )}
         <OrderStepper order={order} variant="compact" />
       </div>
       <p className={`mt-1 text-lg font-semibold ${strike}`}>{order.client}</p>
