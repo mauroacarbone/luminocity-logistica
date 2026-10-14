@@ -2312,6 +2312,20 @@ a.bg-lumi-yellow:focus-visible {
     display: block !important;
   }
 
+  .driver-sheet {
+    break-inside: auto;
+  }
+
+  .driver-sheet article {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #d4d1c9;
+  }
+
+  .driver-sheet .leaflet-container {
+    height: 220px;
+  }
+
   .app {
     display: block;
   }

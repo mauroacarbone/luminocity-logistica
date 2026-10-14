@@ -256,20 +256,20 @@ export function MisEntregas() {
 
   return (
     <section className="page">
-      <header className="page-header">
+      <header className="page-header no-print">
         <h1>Mis entregas</h1>
         {user?.carrierName?.trim() ? <p>{user.carrierName}</p> : null}
       </header>
-      <p className={`mt-3 text-sm font-semibold ${shownGps === 'on' ? 'text-lumi-ink' : 'text-lumi-muted'}`}>
+      <p className={`no-print mt-3 text-sm font-semibold ${shownGps === 'on' ? 'text-lumi-ink' : 'text-lumi-muted'}`}>
         {shownGps === 'on' ? 'Ubicación activa' : 'Ubicación apagada'}
       </p>
       {shownGps === 'denied' && (
-        <p className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold shadow-sm">
+        <p className="no-print mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold shadow-sm">
           Activá la ubicación para ordenar las entregas
         </p>
       )}
       {sheetsError && (
-        <p className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-lumi-danger shadow-sm">
+        <p className="no-print mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-lumi-danger shadow-sm">
           {sheetsError}
         </p>
       )}
@@ -281,6 +281,15 @@ export function MisEntregas() {
         const nextId = stops.find((order) => order.status !== 'entregado')?.id
         const origin = position ? `${position.lat},${position.lng}` : sheet.origin
         const legs = mapsRouteLegs(origin, stops.map((order) => stopPoint(order)))
+        const deliveredCount = stops.filter((order) => order.status === 'entregado').length
+        const pendingCount = stops.length - deliveredCount
+        const lateCount = stops.filter(
+          (order) => order.status !== 'entregado' && deliveryTimeliness(order) === 'atrasado',
+        ).length
+        const packageCount = stops.reduce(
+          (sum, order) => sum + (typeof order.packages === 'number' ? order.packages : 0),
+          0,
+        )
         const mapStops: MapStop[] = stops.flatMap((order, index) => {
           const place = pointOf(order)
           if (!place) return []
@@ -297,14 +306,48 @@ export function MisEntregas() {
           ]
         })
         return (
-          <section key={sheet.id} className="mt-4">
+          <section key={sheet.id} className="driver-sheet mt-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-base font-semibold">
-                Hoja de ruta · {sheetDateLabel} · Franja {sheet.slot} · {stops.length}{' '}
-                parada{stops.length === 1 ? '' : 's'}
+              <h2 className="text-xl font-semibold">
+                Hoja de ruta · {sheetDateLabel} · Franja {sheet.slot}
               </h2>
+              <button
+                type="button"
+                className="no-print min-h-12 rounded-xl border border-lumi-line bg-white px-4 text-base font-semibold"
+                onClick={() => window.print()}
+              >
+                Descargar PDF
+              </button>
             </div>
-            <div className="mt-3 flex flex-col gap-2">
+            <dl className="mt-3 grid grid-cols-2 gap-2 text-base sm:grid-cols-3">
+              <div className="rounded-xl bg-white px-3 py-2">
+                <dt className="text-sm text-lumi-muted">Paradas</dt>
+                <dd className="text-lg font-semibold">{stops.length}</dd>
+              </div>
+              <div className="rounded-xl bg-white px-3 py-2">
+                <dt className="text-sm text-lumi-muted">Entregadas</dt>
+                <dd className="text-lg font-semibold">{deliveredCount}</dd>
+              </div>
+              <div className="rounded-xl bg-white px-3 py-2">
+                <dt className="text-sm text-lumi-muted">Pendientes</dt>
+                <dd className="text-lg font-semibold">{pendingCount}</dd>
+              </div>
+              <div className="rounded-xl bg-white px-3 py-2">
+                <dt className="text-sm text-lumi-muted">Atrasadas</dt>
+                <dd className="text-lg font-semibold">{lateCount}</dd>
+              </div>
+              <div className="rounded-xl bg-white px-3 py-2">
+                <dt className="text-sm text-lumi-muted">Bultos</dt>
+                <dd className="text-lg font-semibold">{packageCount}</dd>
+              </div>
+              <div className="rounded-xl bg-white px-3 py-2">
+                <dt className="text-sm text-lumi-muted">Recorrido</dt>
+                <dd className="text-lg font-semibold">
+                  {sheet.km > 0 || sheet.minutes > 0 ? `${sheet.km} km · ${sheet.minutes} min` : '—'}
+                </dd>
+              </div>
+            </dl>
+            <div className="no-print mt-3 flex flex-col gap-2">
               {sheet.status === 'planificada' && sheet.date <= today && (
                 <>
                   {!sheetIsReady(sheet, orders) && (
@@ -364,7 +407,7 @@ export function MisEntregas() {
           </section>
         )
       })}
-      <div className="view-toggle mt-4" role="tablist" aria-label="Entregas">
+      <div className="view-toggle no-print mt-4" role="tablist" aria-label="Entregas">
         <button
           type="button"
           role="tab"
@@ -387,13 +430,13 @@ export function MisEntregas() {
         </button>
       </div>
       {visible.length === 0 ? (
-        <p className="mt-6 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+        <p className="no-print mt-6 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
           {(tab === 'asignados' ? assignedCount : travelingCount) > 0
             ? 'Tus entregas están en la hoja de ruta de arriba.'
             : 'No hay entregas.'}
         </p>
       ) : (
-        <ul className="mt-4 flex flex-col gap-3">
+        <ul className="no-print mt-4 flex flex-col gap-3">
           {visible.map((order) => {
             const place = position ? pointOf(order) : null
             return (
@@ -464,13 +507,15 @@ function DeliveryCard({
         <Badge tone={timelinessTone(punctuality)}>{TIMELINESS_LABEL[punctuality]}</Badge>
         <OrderStepper order={order} variant="compact" />
       </div>
-      <p className={`mt-1 text-base font-semibold ${strike}`}>{order.client}</p>
-      <p className={`mt-2 text-sm ${strike}`}>{order.address || 'Sin dirección'}</p>
-      {placeLine(order) && <p className="text-sm">{placeLine(order)}</p>}
-      <p className="text-sm text-lumi-muted">{order.zone || 'Sin zona'}</p>
-      {distance && <p className="mt-1 text-sm font-semibold">{distance}</p>}
-      <p className="mt-2 text-sm">Bultos: {order.packages ?? '—'}</p>
-      <p className="text-sm">Teléfono: {order.phone || '—'}</p>
+      <p className={`mt-1 text-lg font-semibold ${strike}`}>{order.client}</p>
+      <p className={`mt-2 text-base ${strike}`}>{order.address || 'Sin dirección'}</p>
+      {placeLine(order) && <p className="text-base">{placeLine(order)}</p>}
+      <p className="text-base text-lumi-muted">{order.zone || 'Sin zona'}</p>
+      {distance && <p className="mt-1 text-base font-semibold">{distance}</p>}
+      {inSheet && <p className="mt-2 text-base">Franja: {order.timeWindow || '—'}</p>}
+      <p className="text-base">Teléfono: {order.phone || '—'}</p>
+      <p className="text-base">Bultos: {order.packages ?? '—'}</p>
+      {inSheet && <p className="text-base">Notas: {order.notes?.trim() || '—'}</p>}
       <p className="mt-2">
         <Link className="order-link text-sm font-semibold" to={`/pedidos/${order.id}`}>
           Ver detalle
