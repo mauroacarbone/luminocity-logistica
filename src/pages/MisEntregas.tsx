@@ -9,6 +9,7 @@ import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
 import { mapsLink, onTheWayText, whatsappLink } from '../lib/whatsapp'
 import { placeLine } from '../lib/place'
 import { listRouteSheets, startRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
+import { sheetIsReady, WAITING_SHEET } from '../lib/routeReady'
 import { businessOffset, businessToday, mapsDirections, stopPoint } from '../lib/schedule'
 import { compareDriverQueue, deliveryTimeliness, TIMELINESS_LABEL, timelinessTone } from '../lib/timeliness'
 import { formatIsoDate } from '../lib/week'
@@ -300,15 +301,22 @@ export function MisEntregas() {
               </h2>
             </div>
             <div className="mt-3 flex flex-col gap-2">
-              {sheet.status === 'planificada' && sheet.date === today && (
-                <button
-                  type="button"
-                  className="min-h-12 rounded-xl bg-lumi-yellow px-4 text-base font-semibold text-lumi-yellow-ink disabled:opacity-50"
-                  disabled={starting === sheet.id}
-                  onClick={() => void startSheet(sheet)}
-                >
-                  Iniciar recorrido
-                </button>
+              {sheet.status === 'planificada' && sheet.date <= today && (
+                <>
+                  {!sheetIsReady(sheet, orders) && (
+                    <p className="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm">
+                      {WAITING_SHEET}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="min-h-12 rounded-xl bg-lumi-yellow px-4 text-base font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                    disabled={starting === sheet.id || !sheetIsReady(sheet, orders)}
+                    onClick={() => void startSheet(sheet)}
+                  >
+                    Iniciar recorrido
+                  </button>
+                </>
               )}
               {sheet.status === 'planificada' && sheet.date !== today && (
                 <p className="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm">
@@ -340,6 +348,7 @@ export function MisEntregas() {
                     busy={busy === order.id}
                     stopLabel={`Parada ${order.routeSeq} de ${sheet.orderIds.length}`}
                     allowLeave={sheet.status === 'en_curso'}
+                    routeReady={sheetIsReady(sheet, orders)}
                     onLeave={() => void changeStatus(order, 'en-viaje')}
                     onDelivered={() => void changeStatus(order, 'entregado')}
                   />
@@ -405,6 +414,7 @@ function DeliveryCard({
   busy,
   stopLabel,
   allowLeave = false,
+  routeReady = false,
   onLeave,
   onDelivered,
 }: {
@@ -413,6 +423,7 @@ function DeliveryCard({
   busy: boolean
   stopLabel?: string
   allowLeave?: boolean
+  routeReady?: boolean
   onLeave: () => void
   onDelivered: () => void
 }) {
@@ -464,17 +475,20 @@ function DeliveryCard({
               Cómo llegar
             </button>
           )}
-          {plannedNotice && (
+          {plannedNotice && routeReady && (
             <p className="rounded-xl bg-surface-muted px-3 py-2 text-sm font-semibold">
               En hoja de ruta planificada para el {formatIsoDate(order.deliveryDate)}. Salís con
               «Iniciar recorrido».
             </p>
           )}
+          {canLeave && !routeReady && !stopLabel && (
+            <p className="rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow-sm">{WAITING_SHEET}</p>
+          )}
           {showLeave && (
             <button
               type="button"
               className="min-h-12 rounded-xl bg-lumi-yellow px-4 text-base font-semibold text-lumi-yellow-ink disabled:opacity-50"
-              disabled={busy}
+              disabled={busy || !routeReady}
               onClick={onLeave}
             >
               Salir a reparto

@@ -120,6 +120,16 @@ export type AssignDriverChoice = {
   override: boolean
 }
 
+/** Después de asignar un chofer: abrir el planificador o seguir después. */
+export async function askPlanRoute() {
+  const accepted = await confirm(
+    'Planificar ruta',
+    'Podés armar la hoja ahora o dejarla para después.',
+    { confirmText: 'Planificar ruta ahora', cancelText: 'Más tarde' },
+  )
+  return accepted === true
+}
+
 /** Chofer, franja y override de cupo para asignar desde el detalle. */
 export async function askAssignDriver(options: {
   drivers: { id: string; name: string }[]

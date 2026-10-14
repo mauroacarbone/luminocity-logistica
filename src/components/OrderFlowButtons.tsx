@@ -1,10 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import type { Order, OrderStatus } from '../data/orders'
 import { isOwnDelivery, isPickup } from '../data/catalog'
 import {
   askAssignDriver,
   askPackages,
+  askPlanRoute,
   askPickupReceiver,
   askReason,
   askTracking,
@@ -71,6 +73,7 @@ export function OrderFlowButtons({
 }: Props) {
   const { logout } = useAuth()
   const { timeWindows } = useCatalog()
+  const navigate = useNavigate()
   const next = nextAction(role, order)
   const backs = backActions(role, order)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -166,7 +169,18 @@ export function OrderFlowButtons({
       timeWindow: choice.timeWindow,
     }
     if (choice.override) extras.override = true
-    await runTransition('asignado', extras)
+    const result = await runTransition('asignado', extras)
+    await offerPlan(result, choice.driverId)
+  }
+
+  async function offerPlan(result: OrderSaveResult | undefined, driverId: string) {
+    if (!result || result.status === 'not-saved') return
+    if (role !== 'encargado_deposito' && role !== 'admin') return
+    if (!driverId || !order.deliveryDate) return
+    const plan = await askPlanRoute()
+    if (!plan) return
+    const params = new URLSearchParams({ chofer: driverId, fecha: order.deliveryDate })
+    navigate(`/rutas?${params.toString()}`)
   }
 
   async function onNext() {
@@ -186,7 +200,8 @@ export function OrderFlowButtons({
         await error('Elegí un chofer para asignar el pedido.')
         return
       }
-      await runTransition(next.to, { driverId: order.driverId })
+      const result = await runTransition(next.to, { driverId: order.driverId })
+      await offerPlan(result, order.driverId)
       return
     }
     if (next.to === 'preparado') {

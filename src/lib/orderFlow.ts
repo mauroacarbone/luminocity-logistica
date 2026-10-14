@@ -38,7 +38,7 @@ export const TRANSITIONS: TransitionRule[] = [
   {
     from: 'asignado',
     to: 'en-viaje',
-    roles: ['chofer', 'admin'],
+    roles: ['chofer'],
     ownDelivery: true,
   },
   {

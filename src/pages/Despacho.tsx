@@ -29,7 +29,7 @@ import {
   weekDays,
   weekOffsetForIso,
 } from '../lib/week'
-import { askReason, confirm, error, success } from '../lib/alerts'
+import { askPlanRoute, askReason, confirm, error, success } from '../lib/alerts'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder } from '../lib/access'
 import { placeLine } from '../lib/place'
 import { compareOpenPriority } from '../lib/priority'
@@ -369,6 +369,7 @@ export function Despacho() {
         return false
       }
       await success('Chofer asignado')
+      await offerPlan(driverId, order.deliveryDate)
       return true
     }
     const fields: Record<string, unknown> = { driverId: driverId || null, via: 'despacho' }
@@ -391,7 +392,17 @@ export function Despacho() {
       await error(result.message)
       return false
     }
+    if (driverId) await offerPlan(driverId, order.deliveryDate)
     return true
+  }
+
+  async function offerPlan(driverId: string, deliveryDate: string | undefined) {
+    if (!driverId || !deliveryDate) return
+    if (!user || (user.role !== 'encargado_deposito' && user.role !== 'admin')) return
+    const plan = await askPlanRoute()
+    if (!plan) return
+    const params = new URLSearchParams({ chofer: driverId, fecha: deliveryDate })
+    navigate(`/rutas?${params.toString()}`)
   }
 
   async function submitCode(code: string) {

@@ -63,7 +63,7 @@ Deja listo lo que se entrega hoy. Ve pendientes y preparados.
 Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar solo.
 
 - Pantallas: las de depósito, más Despacho (editar), Choferes en ruta (ver), Planificador de Rutas (editar), Post Venta (editar), Bandeja (editar) y Usuarios (editar).
-- Puede: asignar transportista y chofer, armar rutas, autorizar una carga a nombre de otro, aprobar o rechazar ediciones, cargar reclamos, editar y cancelar pedidos que no salieron. Puede pasar el límite de 3 pedidos por chofer y franja si lo confirma. En Usuarios ve a todos y puede crear y modificar cuentas que no sean admin.
+- Puede: asignar transportista y chofer, armar rutas, autorizar una carga a nombre de otro, aprobar o rechazar ediciones, cargar reclamos, editar y cancelar pedidos que no salieron. Al asignar un chofer puede abrir el planificador con ese chofer y esa fecha, o dejarlo para después. Puede pasar el límite de 3 pedidos por chofer y franja si lo confirma. En Usuarios ve a todos y puede crear y modificar cuentas que no sean admin.
 - Si edita un pedido, se avisa al vendedor de ese pedido.
 - No puede: marcar `en-viaje` o `entregado`, datos maestros. Tampoco puede modificar, desactivar ni cambiar la contraseña de un admin, ni asignar el rol admin.
 
@@ -72,7 +72,7 @@ Panel completo. Supervisa, asigna y confirma lo que el vendedor no puede cerrar 
 Entrega y deja constancia. Al entrar ve solo Mis entregas. El server le manda los pedidos con su `driverId` en `preparado`, `asignado` o `en-viaje`, aunque la fecha ya haya pasado. Si el pedido no tiene `driverId`, sigue viéndolo por el `carrierName`. Sin `driverId` en el pedido y sin `carrierName` no ve nada. Los de una fecha anterior a hoy se marcan Atrasado y van primero.
 
 - Pantalla: Mis entregas (editar).
-- Puede: pasar de `asignado` a `en-viaje` y de `en-viaje` a `entregado`. Desde en viaje avisa al cliente con un link `wa.me`. Con al menos un pedido en viaje, la pantalla pide el GPS y manda la última posición. Si el pedido está en una hoja planificada, tiene que usar Iniciar recorrido (no sale a `en-viaje` solo).
+- Puede: pasar de `asignado` a `en-viaje` y de `en-viaje` a `entregado`. Desde en viaje avisa al cliente con un link `wa.me`. Con al menos un pedido en viaje, la pantalla pide el GPS y manda la última posición. Para salir hace falta una hoja calculada de esa fecha y franja que incluya todos sus pedidos asignados y no esté desactualizada. Si falta, ve «Esperando hoja de ruta del encargado» y el botón queda deshabilitado. Si la hoja está planificada, tiene que usar Iniciar recorrido (no sale a `en-viaje` solo). Puede iniciar la de hoy o una atrasada; una fecha futura no.
 - No puede: crear ni editar el pedido, preparar, asignar, picking, reclamos, datos maestros, el resto de las pantallas.
 - Con la ubicación activa, Mis entregas muestra la distancia en línea recta. El orden es atrasados, después prioridad y después el inicio de la franja.
 
@@ -81,7 +81,7 @@ Entrega y deja constancia. Al entrar ve solo Mis entregas. El server le manda lo
 Mauro, desarrollador. Todo, más usuarios, roles y datos maestros.
 
 - Pantallas: todas, Datos maestros y Usuarios incluidos (editar).
-- Puede: cualquier estado del pedido y del reclamo. En Usuarios ve, crea y modifica a todos, incluidos otros admins: rol, datos, activo y contraseña. Carga el celular corporativo, vincula cada vendedor con su cuenta y vincula cada chofer con su transportista.
+- Puede: cualquier estado del pedido y del reclamo, salvo pasar a `en-viaje`: eso es solo del chofer. En Usuarios ve, crea y modifica a todos, incluidos otros admins: rol, datos, activo y contraseña. Carga el celular corporativo, vincula cada vendedor con su cuenta y vincula cada chofer con su transportista. Al asignar un chofer puede abrir el planificador con ese chofer y esa fecha, o dejarlo para después.
 - Primero: el Panel, Datos maestros y Usuarios.
 
 ### Rol × pantalla
@@ -128,7 +128,7 @@ El server obliga ese orden con `POST /api/orders/:id/transition` (`orderFlow.js`
 | --- | --- | --- | --- |
 | `pendiente` | `preparado` | Depósito, encargado, admin | `packages` ≥ 1 |
 | `preparado` | `asignado` | Encargado, admin | Entrega propia: chofer activo, franja y cupo. Correo: sin chofer ni cupo, `trackingNumber` opcional. En UI el correo muestra "Despachado". Asignar a un pendiente responde 409 |
-| `asignado` | `en-viaje` | Chofer del pedido (o por `carrierName` si no hay `driverId`), o admin | Solo entrega propia. Si está en hoja `planificada`, solo con Iniciar recorrido |
+| `asignado` | `en-viaje` | Solo el chofer del pedido | Solo entrega propia. Hoja calculada de esa fecha y franja, con todos los asignados y sin estar desactualizada. Otro rol: 403. Si está `planificada`, solo con Iniciar recorrido |
 | `en-viaje` | `entregado` | Chofer del pedido (o por transportista), o admin (QR) | Solo entrega propia |
 | `asignado` | `entregado` | Encargado, admin | Solo correo / courier |
 | `preparado` | `pendiente` | Encargado, admin | `reason` ≥ 5 caracteres |
@@ -164,14 +164,14 @@ Datos maestros puede cambiar zonas, franjas (`10:00-15:00`, `09:00-13:00`, `15:0
 
 ### Hojas de ruta (`/api/route-sheets`)
 
-Una hoja es por chofer, fecha y franja (`planificada` → `en_curso` → `cerrada`). Vive en `routeSheets`. Al confirmar, los preparados pasan a `asignado` y guardan `routeId` / `routeSeq`. Al iniciar (solo el chofer, y solo la hoja de hoy), pasan a `en-viaje`. Cuando todos los pedidos de la hoja están `entregado` o ya no existen (cancelar borra el pedido), la hoja se cierra. Si en Despacho se cambia chofer, fecha o franja, o se baja de `asignado` a `pendiente`/`preparado`, y la hoja sigue `planificada`, el pedido sale de la hoja y se renumeran los que quedan; si la hoja queda vacía, se borra. Si la hoja está `en_curso`, ese cambio responde 409, salvo pasar a `entregado`.
+Una hoja es por chofer, fecha y franja (`planificada` → `en_curso` → `cerrada`). Vive en `routeSheets`. Al confirmar, los preparados pasan a `asignado` y guardan `routeId` / `routeSeq`. Al iniciar (solo el chofer, la de hoy o una atrasada), pasan a `en-viaje`. Si falta algún pedido asignado de esa fecha y franja, la hoja queda `stale` y el inicio responde 409 «Esperando hoja de ruta del encargado» hasta recalcularla. Cuando todos los pedidos de la hoja están `entregado` o ya no existen (cancelar borra el pedido), la hoja se cierra. Si en Despacho se cambia chofer, fecha o franja, o se baja de `asignado` a `pendiente`/`preparado`, y la hoja sigue `planificada`, el pedido sale de la hoja y se renumeran los que quedan; si la hoja queda vacía, se borra. Si la hoja está `en_curso`, ese cambio responde 409, salvo pasar a `entregado`.
 
 | Método | Ruta | Quién | Qué hace |
 | --- | --- | --- | --- |
 | GET | `/api/route-sheets?date=` | Encargado, admin, chofer | Lista del día. El chofer solo ve las suyas. |
 | POST | `/api/route-sheets` | Encargado, admin | Crea o reemplaza una hoja `planificada` (`driverId`, `date`, `slot`, `origin`, `orderIds`, `km`, `minutes`, `override`). |
 | DELETE | `/api/route-sheets/:id` | Encargado, admin | Borra una hoja `planificada` y limpia `routeId` / `routeSeq`. |
-| POST | `/api/route-sheets/:id/start` | Chofer | Pasa la hoja a `en_curso` y sus pedidos a `en-viaje`. Solo la del día. |
+| POST | `/api/route-sheets/:id/start` | Chofer | Pasa la hoja a `en_curso` y sus pedidos a `en-viaje`. Hoy o una fecha atrasada, si la hoja incluye todos los asignados. |
 
 Cada pedido guarda `edits`: `{ by, at, reason, changes, status }` con `aplicada`, `pendiente` o `rechazada`. Una edición pendiente no toca los datos hasta que el encargado la aprueba. Si la dirección no trae coordenadas, el server la geocodifica con Nominatim (una consulta por segundo, User-Agent propio) y guarda `lat` y `lng` en el pedido. Los avisos viven en `server/data/notifications.json` (`id`, `to`, `text`, `orderId`, `read`, `createdAt`, `channel`). `channel` es `app` y, cuando hay que avisar por celular, también `whatsapp` con `status` `pendiente`. El encargado lo manda con un link `wa.me` y el aviso pasa a `enviado`. La última ubicación del chofer vive en `server/data/locations.json` (fuera de git): una sola posición por usuario (`lat`, `lng`, `accuracy`, `timestamp`, `updatedAt`), sin historial. `POST /api/drivers/location` la guarda y solo la llama el chofer, como máximo cada 30 segundos, mientras tiene pedidos en viaje contados por `driverId` (y por transportista solo si el pedido no tiene chofer). `DELETE /api/drivers/location` la borra al terminar el último en viaje o al cerrar sesión. `GET /api/drivers/locations` la ven el encargado y el admin: choferes con pedidos en viaje, transportista y cantidad. Si la posición tiene más de 10 minutos, el mapa la marca sin señal. Ningún otro rol ve ubicaciones. El link de seguimiento para el cliente y la API de WhatsApp Business quedan **Pendiente**.
 

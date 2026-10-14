@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { PriorityChip } from '../components/PriorityChip'
 import { isOwnDelivery } from '../data/catalog'
@@ -17,7 +17,7 @@ import {
 import { deleteRouteSheet, isRouteSheet, listRouteSheets, saveRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
 import { driverSlotCount, normalizeTimeWindow, slotQuestion } from '../lib/slot'
 import { cssVar } from '../lib/theme'
-import { DAY_SHORT, MONTH_SHORT, formatDayLabel, toIso, weekDays } from '../lib/week'
+import { DAY_SHORT, MONTH_SHORT, formatDayLabel, toIso, weekDays, weekOffsetForIso } from '../lib/week'
 import { listUsers } from '../lib/usersApi'
 import { isSession } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
@@ -160,13 +160,17 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
 }
 
 export function PlanificadorRutas() {
+  const [searchParams] = useSearchParams()
+  const presetDriver = searchParams.get('chofer')?.trim() ?? ''
+  const presetFecha = searchParams.get('fecha')?.trim() ?? ''
+  const presetIso = /^\d{4}-\d{2}-\d{2}$/.test(presetFecha) ? presetFecha : ''
   const { logout } = useAuth()
   const { orders, refresh } = useOrders()
   const { timeWindows } = useCatalog()
-  const [weekOffset, setWeekOffset] = useState(0)
-  const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
+  const [weekOffset, setWeekOffset] = useState(() => (presetIso ? weekOffsetForIso(presetIso) : 0))
+  const [selectedIso, setSelectedIso] = useState(() => presetIso || toIso(new Date()))
   const [drivers, setDrivers] = useState<DriverOption[]>([])
-  const [driverId, setDriverId] = useState('')
+  const [driverId, setDriverId] = useState(presetDriver)
   const [slot, setSlot] = useState('')
   const [sheet, setSheet] = useState<RouteSheet | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])

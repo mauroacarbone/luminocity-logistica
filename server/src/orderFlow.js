@@ -7,7 +7,12 @@ import {
   normalizeTimeWindow,
   rememberOverride,
 } from './orders.js'
-import { blockPlannedDeparture, syncSheetOnEdit } from './routeSheets.js'
+import {
+  blockPlannedDeparture,
+  requireFreshSheet,
+  syncSheetFreshness,
+  syncSheetOnEdit,
+} from './routeSheets.js'
 
 const STATUSES = new Set(['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado'])
 export const STATUS_RANK = { pendiente: 0, preparado: 1, asignado: 2, 'en-viaje': 3, entregado: 4 }
@@ -29,8 +34,8 @@ const TRANSITIONS = {
   },
   'asignado|en-viaje': {
     direction: 'forward',
-    roles: new Set(['chofer', 'admin']),
-    mustBeDriverUnlessAdmin: true,
+    roles: new Set(['chofer']),
+    mustBeDriver: true,
     ownDelivery: true,
   },
   'en-viaje|entregado': {
@@ -178,11 +183,6 @@ export async function applyTransition(orders, current, input, user, via, options
   if (rule.mustBeDriver && !isOrderDriver(user, current)) {
     return fail('No tenés permiso para ese cambio de estado.', 403)
   }
-  if (rule.mustBeDriverUnlessAdmin) {
-    if (user.role !== 'admin' && !isOrderDriver(user, current)) {
-      return fail('No tenés permiso para ese cambio de estado.', 403)
-    }
-  }
   if (rule.mustBeDriverOrAdmin) {
     if (user.role !== 'admin' && !isOrderDriver(user, current)) {
       return fail('No tenés permiso para ese cambio de estado.', 403)
@@ -258,6 +258,10 @@ export async function applyTransition(orders, current, input, user, via, options
 
   stampStatus(next, current)
 
+  if (options.fromSheet !== true && current.status === 'asignado' && to === 'en-viaje') {
+    const waiting = await requireFreshSheet(orders, current)
+    if (waiting) return waiting
+  }
   if (options.fromSheet !== true) {
     const blocked = await blockPlannedDeparture(user, current, next)
     if (blocked) return blocked
@@ -277,6 +281,7 @@ export async function applyTransition(orders, current, input, user, via, options
   const index = orders.findIndex((item) => item.id === current.id)
   if (index < 0) return fail('No existe ese pedido.', 404)
   orders[index] = next
+  if (options.fromSheet !== true) await syncSheetFreshness(orders)
   return { order: next, from: current.status, reason: reason.value, via }
 }
 

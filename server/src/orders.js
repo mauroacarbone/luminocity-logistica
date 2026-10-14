@@ -24,7 +24,13 @@ import {
   notifyWarehouse,
 } from './notifications.js'
 import { applyTransition, stampStatus, withHistory } from './orderFlow.js'
-import { blockPlannedDeparture, closeFinishedSheets, pullOrderFromSheets, syncSheetOnEdit } from './routeSheets.js'
+import {
+  blockPlannedDeparture,
+  closeFinishedSheets,
+  pullOrderFromSheets,
+  syncSheetFreshness,
+  syncSheetOnEdit,
+} from './routeSheets.js'
 import { isActive, readUsersList } from './users.js'
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
@@ -474,6 +480,7 @@ function patchOrder(id, body, user) {
     const synced = await syncSheetOnEdit(orders, current, order)
     if (synced.error) return synced
     orders[index] = order
+    await syncSheetFreshness(orders)
     await writeOrders(orders)
     await closeFinishedSheets(orders)
     if (nextPriority === 'inmediata' && prevPriority !== 'inmediata') {
@@ -707,6 +714,7 @@ function deleteOrder(id, user) {
     }
     const remaining = orders.filter((item) => item.id !== id)
     await pullOrderFromSheets(remaining, id)
+    await syncSheetFreshness(remaining)
     await writeOrders(remaining)
     await closeFinishedSheets(remaining)
     if (current.status === 'en-viaje') await releaseIdleDrivers(remaining, driverIdOf(current))

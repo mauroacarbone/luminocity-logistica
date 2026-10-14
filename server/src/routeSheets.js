@@ -182,8 +182,11 @@ function saveSheet(body, user) {
     const nextSheets = existing
       ? sheets.map((item) => (item.id === sheet.id ? sheet : item))
       : [...sheets, sheet]
+    if (assignedMissing(orders, sheet)) sheet.stale = true
+    else delete sheet.stale
     await writeCollection('orders', orders)
     await writeCollection('routeSheets', nextSheets)
+    await syncSheetFreshness(orders)
     return { sheet, created: !existing }
   })
 }
@@ -218,8 +221,11 @@ function startSheet(id, user) {
     if (sheet.driverId !== user.id) return fail('No tenés permiso para iniciar esta hoja.', 403)
     if (sheet.status === 'en_curso') return fail('Esa hoja ya está en curso', 409)
     if (sheet.status !== 'planificada') return fail('Esa hoja ya está cerrada', 409)
-    if (sheet.date !== businessToday()) return fail('Solo podés iniciar la hoja del día', 409)
+    if (sheet.date > businessToday()) return fail('Solo podés iniciar la hoja del día', 409)
     const orders = await readCollection('orders')
+    if (sheet.stale === true || assignedMissing(orders, sheet)) {
+      return fail('Esperando hoja de ruta del encargado', 409)
+    }
     const now = new Date().toISOString()
     let started = 0
     for (const order of orders) {
@@ -336,6 +342,58 @@ export async function pullOrderFromSheets(orders, orderId) {
     nextSheets.push(updated)
   }
   if (changed) await writeCollection('routeSheets', nextSheets)
+}
+
+function assignedMissing(orders, sheet) {
+  const ids = new Set(Array.isArray(sheet.orderIds) ? sheet.orderIds : [])
+  const slot = normalizeTimeWindow(sheet.slot)
+  return orders.some((order) => {
+    if (!order || order.status !== 'asignado') return false
+    if (order.driverId !== sheet.driverId) return false
+    if (order.deliveryDate !== sheet.date) return false
+    if (normalizeTimeWindow(order.timeWindow) !== slot) return false
+    if (!isOwnDelivery(order)) return false
+    return !ids.has(order.id)
+  })
+}
+
+/** Marca desactualizada una hoja planificada a la que le falta un pedido asignado. */
+export async function syncSheetFreshness(orders) {
+  const sheets = await readCollection('routeSheets')
+  let changed = false
+  for (const sheet of sheets) {
+    if (!sheet || sheet.status !== 'planificada') continue
+    const stale = assignedMissing(orders, sheet)
+    if (stale && sheet.stale !== true) {
+      sheet.stale = true
+      changed = true
+    } else if (!stale && sheet.stale === true) {
+      delete sheet.stale
+      changed = true
+    }
+  }
+  if (changed) await writeCollection('routeSheets', sheets)
+}
+
+/** El chofer solo sale si la hoja de esa fecha y franja incluye todos sus asignados. */
+export async function requireFreshSheet(orders, order) {
+  const driverId = typeof order?.driverId === 'string' ? order.driverId : ''
+  const date = typeof order?.deliveryDate === 'string' ? order.deliveryDate : ''
+  const slot = normalizeTimeWindow(order?.timeWindow)
+  const sheets = await readCollection('routeSheets')
+  const sheet = sheets.find(
+    (item) =>
+      item &&
+      item.driverId === driverId &&
+      item.date === date &&
+      normalizeTimeWindow(item.slot) === slot &&
+      item.status !== 'cerrada',
+  )
+  const ids = sheet && Array.isArray(sheet.orderIds) ? sheet.orderIds : []
+  if (!sheet || sheet.stale === true || !ids.includes(order.id) || assignedMissing(orders, sheet)) {
+    return fail('Esperando hoja de ruta del encargado', 409)
+  }
+  return null
 }
 
 export async function blockPlannedDeparture(user, current, next) {

@@ -13,6 +13,7 @@ export type RouteSheet = {
   km: number
   minutes: number
   status: RouteSheetStatus
+  stale?: boolean
   createdBy: string
   createdAt: string
   startedAt?: string
