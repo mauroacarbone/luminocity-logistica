@@ -74,7 +74,7 @@ Entrega y deja constancia. Al entrar ve solo Mis entregas. El server le manda lo
 - Pantalla: Mis entregas (editar).
 - Puede: pasar de `asignado` a `en-viaje` y de `en-viaje` a `entregado`. Desde en viaje avisa al cliente con un link `wa.me`. Con al menos un pedido en viaje, la pantalla pide el GPS y manda la última posición. Si el pedido está en una hoja planificada, tiene que usar Iniciar recorrido (no sale a `en-viaje` solo).
 - No puede: crear ni editar el pedido, preparar, asignar, picking, reclamos, datos maestros, el resto de las pantallas.
-- Con la ubicación activa, Mis entregas ordena por cercanía en línea recta y muestra la distancia. Sin GPS o sin coordenadas del pedido, el orden es por zona y después por dirección.
+- Con la ubicación activa, Mis entregas muestra la distancia en línea recta. El orden es atrasados, después prioridad y después el inicio de la franja.
 
 ### Admin
 

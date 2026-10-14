@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
+import { PriorityChip } from '../components/PriorityChip'
+import { Badge } from '../components/ui'
 import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
@@ -8,6 +10,7 @@ import { mapsLink, onTheWayText, whatsappLink } from '../lib/whatsapp'
 import { placeLine } from '../lib/place'
 import { listRouteSheets, startRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
 import { businessOffset, businessToday, mapsDirections, stopPoint } from '../lib/schedule'
+import { compareDriverQueue, deliveryTimeliness, TIMELINESS_LABEL, timelinessTone } from '../lib/timeliness'
 import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -19,12 +22,6 @@ type Point = { lat: number; lng: number }
 const SEND_EVERY_MS = 30_000
 const RELOAD_AFTER_MS = 4000
 const coordsAsked = new Set<string>()
-
-function byZoneThenAddress(left: Order, right: Order) {
-  const zone = (left.zone ?? '').localeCompare(right.zone ?? '', 'es')
-  if (zone !== 0) return zone
-  return (left.address ?? '').localeCompare(right.address ?? '', 'es')
-}
 
 function pointOf(order: Order): Point | null {
   if (typeof order.lat !== 'number' || typeof order.lng !== 'number') return null
@@ -61,29 +58,8 @@ function formatDistance(meters: number) {
   return `a ${text} km`
 }
 
-function isOverdue(order: Order, today: string) {
-  return Boolean(order.deliveryDate) && order.deliveryDate < today && order.status !== 'entregado'
-}
-
-function sortDeliveries(list: Order[], here: Point | null, today: string) {
-  const ordered = (() => {
-    if (!here) return [...list].sort(byZoneThenAddress)
-    const located = list.filter((order) => pointOf(order))
-    const missing = list.filter((order) => !pointOf(order))
-    located.sort((left, right) => {
-      const leftPoint = pointOf(left)
-      const rightPoint = pointOf(right)
-      if (!leftPoint || !rightPoint) return 0
-      const distance = haversine(here, leftPoint) - haversine(here, rightPoint)
-      if (distance !== 0) return distance
-      return byZoneThenAddress(left, right)
-    })
-    missing.sort(byZoneThenAddress)
-    return [...located, ...missing]
-  })()
-  const late = ordered.filter((order) => isOverdue(order, today))
-  const rest = ordered.filter((order) => !isOverdue(order, today))
-  return [...late, ...rest]
+function sortDeliveries(list: Order[], now = Date.now()) {
+  return [...list].sort((left, right) => compareDriverQueue(left, right, now))
 }
 
 export function MisEntregas() {
@@ -232,14 +208,8 @@ export function MisEntregas() {
   const loose = orders.filter((order) => !onSheet.has(order.id))
   const assigned = sortDeliveries(
     loose.filter((order) => order.status === 'preparado' || order.status === 'asignado'),
-    position,
-    today,
   )
-  const traveling = sortDeliveries(
-    loose.filter((order) => order.status === 'en-viaje'),
-    position,
-    today,
-  )
+  const traveling = sortDeliveries(loose.filter((order) => order.status === 'en-viaje'))
   const assignedCount = orders.filter(
     (order) => order.status === 'preparado' || order.status === 'asignado',
   ).length
@@ -448,6 +418,7 @@ function DeliveryCard({
 }) {
   const maps = mapsLink(order.address ?? '')
   const notice = whatsappLink(order.phone ?? '', onTheWayText(order.client, order.id))
+  const punctuality = deliveryTimeliness(order)
   const waiting = order.status === 'preparado'
   const canLeave = order.status === 'asignado'
   const canDeliver = order.status === 'en-viaje'
@@ -458,11 +429,8 @@ function DeliveryCard({
     <article className="rounded-2xl bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-lg font-bold">{order.id}</p>
-        {isOverdue(order, businessToday()) && (
-          <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-sm font-semibold text-danger">
-            Atrasado
-          </span>
-        )}
+        <PriorityChip order={order} showNormal />
+        <Badge tone={timelinessTone(punctuality)}>{TIMELINESS_LABEL[punctuality]}</Badge>
         <OrderStepper order={order} variant="compact" />
       </div>
       {stopLabel && <p className="mt-1 text-sm font-semibold">{stopLabel}</p>}
