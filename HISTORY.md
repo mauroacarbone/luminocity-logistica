@@ -112,6 +112,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32e.1 | Accesibilidad de la paleta y los menús | Hecho |
 | 32e.2 | Menús de la barra superior visibles | Hecho |
 | 32e.3 | Diálogos sobre la barra superior | Hecho |
+| 33 | Chofer, atrasos, planificador, hoja de ruta y Nuevo pedido | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -300,6 +301,8 @@ El Brief 32e.1 ajusta la accesibilidad de la paleta (aria-expanded y tabIndex) y
 Los menús de la barra superior quedaban recortados o detrás de los mapas; ahora se abren en un portal con posición fija, el contenido queda aislado y las capas usan tokens --z-*.
 
 El Brief 32e.3 saca los diálogos a un portal en `document.body` con `--z-modal` (1350, entre el drawer y la paleta). SweetAlert queda en esa capa, por encima de la barra y por debajo del toast. Los menús de la barra tienen altura máxima y scroll propio.
+
+El Brief 33 muestra al chofer los pedidos atrasados, con prioridad y puntualidad. El planificador entra en una pantalla: selector, lista, acciones y mapa. Solo el chofer pasa a en viaje, y hace falta una hoja calculada que incluya sus asignados. La hoja se ve en Mis entregas, con recorrido en GPS y PDF opcional. En Nuevo pedido el tipo de despacho va primero y un retiro no guarda datos de entrega.
 
 ## Pendientes
 

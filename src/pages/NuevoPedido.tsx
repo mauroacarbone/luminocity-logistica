@@ -1115,6 +1115,21 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     if (next === 'retiro') {
       setTransporter('')
       setTimeWindow('')
+      setAddress('')
+      setLookup('')
+      setSuggestions([])
+      setSuggestOpen(false)
+      setDeliveryZone('')
+      setZoneManual(false)
+      setZoneHint(null)
+      setZonePending(false)
+      setBetweenStreet1('')
+      setBetweenStreet2('')
+      setBetweenNote('')
+      setPropertyType('')
+      setFloor('')
+      setUnit('')
+      setDoorbell('')
       setDeliveryDate((current) => current || toIso(new Date()))
       return
     }
@@ -1156,6 +1171,49 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       )}
 
       <form className="form-stack" onSubmit={onSubmit} noValidate>
+        <section className="form-card">
+          <h2>Tipo de despacho</h2>
+          <div className="dispatch-types" role="radiogroup" aria-label="Tipo de despacho">
+            {(['propia', 'correo', 'retiro'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                role="radio"
+                aria-checked={dispatchType === type}
+                className={dispatchType === type ? 'dispatch-type active' : 'dispatch-type'}
+                onClick={() => chooseDispatch(type)}
+              >
+                {DISPATCH_LABEL[type]}
+              </button>
+            ))}
+          </div>
+          {!pickup && (
+            <label className="field">
+              <span>Transportista</span>
+              <select
+                value={transporter}
+                onChange={(event) => {
+                  markDirty()
+                  setTransporter(event.target.value)
+                }}
+              >
+                <option value="">Seleccioná transportista</option>
+                {transporterOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <small className="hint">
+                {transporterOptions.length === 0
+                  ? 'No hay transportistas de este tipo. Cargalos en Datos maestros.'
+                  : 'El transportista queda asignado para cuando el pedido llegue a Despacho.'}
+              </small>
+            </label>
+          )}
+        </section>
+
+
         <section className="form-card">
           <h2>Vendedor</h2>
           <label className="field" data-field="seller">
@@ -1613,48 +1671,6 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           </div>
           {storedId && user?.role === 'vendedor' && (
             <small className="hint mt-2 block">Solo el encargado cambia la prioridad.</small>
-          )}
-        </section>
-
-        <section className="form-card">
-          <h2>Tipo de despacho</h2>
-          <div className="dispatch-types" role="radiogroup" aria-label="Tipo de despacho">
-            {(['propia', 'correo', 'retiro'] as const).map((type) => (
-              <button
-                key={type}
-                type="button"
-                role="radio"
-                aria-checked={dispatchType === type}
-                className={dispatchType === type ? 'dispatch-type active' : 'dispatch-type'}
-                onClick={() => chooseDispatch(type)}
-              >
-                {DISPATCH_LABEL[type]}
-              </button>
-            ))}
-          </div>
-          {!pickup && (
-            <label className="field">
-              <span>Transportista</span>
-              <select
-                value={transporter}
-                onChange={(event) => {
-                  markDirty()
-                  setTransporter(event.target.value)
-                }}
-              >
-                <option value="">Seleccioná transportista</option>
-                {transporterOptions.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              <small className="hint">
-                {transporterOptions.length === 0
-                  ? 'No hay transportistas de este tipo. Cargalos en Datos maestros.'
-                  : 'El transportista queda asignado para cuando el pedido llegue a Despacho.'}
-              </small>
-            </label>
           )}
         </section>
 

@@ -138,7 +138,7 @@ El server obliga ese orden con `POST /api/orders/:id/transition` (`orderFlow.js`
 
 Cualquier otra transición: 409 `{ message: "No se puede pasar de X a Y", code: "TRANSICION_INVALIDA" }`. Reasignar chofer en `asignado` sigue por `PATCH` y queda en `history`. En otro estado, cambiar `driverId` responde 409.
 
-1. Carga en Nuevo Pedido (`P-` y siete dígitos). Queda en `pendiente`. Pide vendedor, cliente, teléfono, dirección, al menos una entrecalle, tipo de propiedad y fecha. La zona sale de la dirección o se elige a mano.
+1. Carga en Nuevo Pedido (`P-` y siete dígitos). Queda en `pendiente`. El tipo de despacho es el primer campo. En un retiro se ocultan y se vacían transportista, franja, dirección, entrecalles y tipo de inmueble; siguen el teléfono y la fecha de retiro (hoy si está vacía). En una entrega pide vendedor, cliente, teléfono, dirección, al menos una entrecalle, tipo de propiedad y fecha. La zona sale de la dirección o se elige a mano.
 2. Depósito lo marca `preparado` e indica bultos. El encargado asigna transportista y chofer (`driverId`). El chofer ve los pedidos con su `driverId`. Los viejos, sin chofer, siguen por `carrierName`. Puede editar o cancelar antes de que salga. El vendedor, si edita un preparado, deja el cambio en espera.
 3. Despacho lo sigue por día. `asignado` y `en-viaje` van en la solapa de viaje. La carátula lleva QR: buscar el pedido o confirmar `entregado`.
 4. Post venta es un reclamo aparte (`R-`), no un estado del pedido.

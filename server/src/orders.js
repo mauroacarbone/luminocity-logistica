@@ -1066,6 +1066,18 @@ function readOrderFields(body, current) {
     delete order.driverId
     delete order.transporter
     delete order.timeWindow
+    delete order.address
+    delete order.propertyType
+    delete order.betweenStreet1
+    delete order.betweenStreet2
+    delete order.floor
+    delete order.unit
+    delete order.doorbell
+    delete order.zone
+    delete order.lat
+    delete order.lng
+    delete order.geoMiss
+    delete order.geoRetryAt
   }
 
   if (order.status === 'preparado' && order.packages == null) {
@@ -1077,7 +1089,7 @@ function readOrderFields(body, current) {
   if (order.collectOnDelivery && !order.amount) {
     return fail('Ingresá el monto a cobrar.')
   }
-  if (current && order.address === current.address) {
+  if (!storePickup && current && order.address === current.address) {
     if (typeof current.lat === 'number' && Number.isFinite(current.lat)) order.lat = current.lat
     if (typeof current.lng === 'number' && Number.isFinite(current.lng)) order.lng = current.lng
     if (current.geoMiss === true) order.geoMiss = true
