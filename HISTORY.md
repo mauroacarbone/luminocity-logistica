@@ -304,6 +304,8 @@ El Brief 32e.3 saca los diálogos a un portal en `document.body` con `--z-modal`
 
 El Brief 33 muestra al chofer los pedidos atrasados, con prioridad y puntualidad. El planificador entra en una pantalla: selector, lista, acciones y mapa. Solo el chofer pasa a en viaje, y hace falta una hoja calculada que incluya sus asignados. La hoja se ve en Mis entregas, con recorrido en GPS y PDF opcional. En Nuevo pedido el tipo de despacho va primero y un retiro no guarda datos de entrega.
 
+El Brief 33.1 muestra al chofer las hojas planificadas de hoy o anteriores que no estén cerradas, para que pueda iniciar el recorrido. Un pedido entregado no muestra la etiqueta de puntualidad. El GPS del recorrido usa solo las paradas pendientes, en orden, y no aparece si no queda ninguna. Las tarjetas de Mis entregas y del planificador usan el token de superficie, y `--text-muted` llega a contraste AA sobre el fondo y la superficie.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.

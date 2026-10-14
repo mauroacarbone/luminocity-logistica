@@ -645,13 +645,13 @@ export function PlanificadorRutas() {
             </p>
           </div>
           {!driverId || !timeWindow ? (
-            <div className="mt-3 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+            <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
               Elegí chofer y franja.
             </div>
           ) : (
             <>
               {listedView.length === 0 ? (
-                <div className="mt-3 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+                <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
                   {emptySelectableMessage(others.length, preparedWithoutSlot.length, used)}
                 </div>
               ) : (
@@ -659,7 +659,7 @@ export function PlanificadorRutas() {
                   {listedView.map((order) => (
                     <label
                       key={order.id}
-                      className="flex items-start gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm"
+                      className="flex items-start gap-3 rounded-2xl bg-surface px-4 py-3 shadow-sm"
                     >
                       <input
                         type="checkbox"
@@ -710,7 +710,7 @@ export function PlanificadorRutas() {
                     {othersView.map((order) => (
                       <li
                         key={order.id}
-                        className="rounded-2xl bg-white px-4 py-3 text-sm text-lumi-muted shadow-sm"
+                        className="rounded-2xl bg-surface px-4 py-3 text-sm text-lumi-muted shadow-sm"
                       >
                         <p className="flex flex-wrap items-center gap-2">
                           <Link className="order-link font-medium" to={`/pedidos/${order.id}`}>
@@ -732,13 +732,13 @@ export function PlanificadorRutas() {
         <section>
           <h2 className="text-sm font-semibold tracking-wide text-lumi-muted">ORDEN DE ENTREGA</h2>
           {stops.length === 0 ? (
-            <div className="mt-3 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+            <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
               El orden aparece al calcular la ruta.
             </div>
           ) : (
             <ol className="mt-3 flex flex-col gap-2">
               {stops.map((stop, index) => (
-                <li key={stop.key} className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                <li key={stop.key} className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
                   <p className="font-medium">
                     <span className="mr-2 inline-grid h-6 w-6 place-items-center rounded-full bg-lumi-yellow text-xs font-semibold text-lumi-yellow-ink">
                       {index + 1}

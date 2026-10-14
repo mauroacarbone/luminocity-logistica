@@ -259,12 +259,12 @@ export function MisEntregas() {
         {shownGps === 'on' ? 'Ubicación activa' : 'Ubicación apagada'}
       </p>
       {shownGps === 'denied' && (
-        <p className="no-print mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold shadow-sm">
+        <p className="no-print mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold shadow-sm">
           Activá la ubicación para ordenar las entregas
         </p>
       )}
       {sheetsError && (
-        <p className="no-print mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-lumi-danger shadow-sm">
+        <p className="no-print mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-lumi-danger shadow-sm">
           {sheetsError}
         </p>
       )}
@@ -319,27 +319,27 @@ export function MisEntregas() {
               </button>
             </div>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-base sm:grid-cols-3">
-              <div className="rounded-xl bg-white px-3 py-2">
+              <div className="rounded-xl bg-surface px-3 py-2">
                 <dt className="text-sm text-lumi-muted">Paradas</dt>
                 <dd className="text-lg font-semibold">{stops.length}</dd>
               </div>
-              <div className="rounded-xl bg-white px-3 py-2">
+              <div className="rounded-xl bg-surface px-3 py-2">
                 <dt className="text-sm text-lumi-muted">Entregadas</dt>
                 <dd className="text-lg font-semibold">{deliveredCount}</dd>
               </div>
-              <div className="rounded-xl bg-white px-3 py-2">
+              <div className="rounded-xl bg-surface px-3 py-2">
                 <dt className="text-sm text-lumi-muted">Pendientes</dt>
                 <dd className="text-lg font-semibold">{pendingCount}</dd>
               </div>
-              <div className="rounded-xl bg-white px-3 py-2">
+              <div className="rounded-xl bg-surface px-3 py-2">
                 <dt className="text-sm text-lumi-muted">Atrasadas</dt>
                 <dd className="text-lg font-semibold">{lateCount}</dd>
               </div>
-              <div className="rounded-xl bg-white px-3 py-2">
+              <div className="rounded-xl bg-surface px-3 py-2">
                 <dt className="text-sm text-lumi-muted">Bultos</dt>
                 <dd className="text-lg font-semibold">{packageCount}</dd>
               </div>
-              <div className="rounded-xl bg-white px-3 py-2">
+              <div className="rounded-xl bg-surface px-3 py-2">
                 <dt className="text-sm text-lumi-muted">Recorrido</dt>
                 <dd className="text-lg font-semibold">
                   {sheet.km > 0 || sheet.minutes > 0 ? `${sheet.km} km · ${sheet.minutes} min` : '—'}
@@ -350,7 +350,7 @@ export function MisEntregas() {
               {sheet.status === 'planificada' && sheet.date <= today && (
                 <>
                   {!sheetIsReady(sheet, orders) && (
-                    <p className="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm">
+                    <p className="rounded-xl bg-surface px-4 py-3 text-sm font-semibold shadow-sm">
                       {WAITING_SHEET}
                     </p>
                   )}
@@ -365,7 +365,7 @@ export function MisEntregas() {
                 </>
               )}
               {sheet.status === 'planificada' && sheet.date > today && (
-                <p className="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm">
+                <p className="rounded-xl bg-surface px-4 py-3 text-sm font-semibold shadow-sm">
                   Se inicia el {sheetDateLabel}
                 </p>
               )}
@@ -429,7 +429,7 @@ export function MisEntregas() {
         </button>
       </div>
       {visible.length === 0 ? (
-        <p className="no-print mt-6 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+        <p className="no-print mt-6 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
           {(tab === 'asignados' ? assignedCount : travelingCount) > 0
             ? 'Tus entregas están en la hoja de ruta de arriba.'
             : 'No hay entregas.'}
@@ -494,7 +494,7 @@ function DeliveryCard({
   const strike = done ? 'line-through' : ''
 
   return (
-    <article className={`rounded-2xl bg-white p-4 shadow-sm ${highlight ? 'ring-2 ring-lumi-yellow' : ''}`}>
+    <article className={`rounded-2xl bg-surface p-4 shadow-sm ${highlight ? 'ring-2 ring-lumi-yellow' : ''}`}>
       <div className="flex flex-wrap items-center gap-2">
         {stopNumber != null && (
           <span className="inline-grid h-8 w-8 place-items-center rounded-full bg-lumi-yellow text-sm font-semibold text-lumi-yellow-ink">
@@ -557,7 +557,7 @@ function DeliveryCard({
             </p>
           )}
           {canLeave && !routeReady && !inSheet && (
-            <p className="rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow-sm">{WAITING_SHEET}</p>
+            <p className="rounded-xl bg-surface px-3 py-2 text-sm font-semibold shadow-sm">{WAITING_SHEET}</p>
           )}
           {showLeave && (
             <button
