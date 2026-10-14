@@ -4,7 +4,7 @@ import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { Badge, Button, EmptyState, statusTone } from '../components/ui'
+import { Badge, Button, EmptyState, Modal, statusTone } from '../components/ui'
 import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL, isDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
@@ -637,15 +637,6 @@ export function PendientesEntregas() {
   const visibleColumns = dataColumns.filter((column) => visibleColumnIds.includes(column.id))
   const modalLines = filteredLines.slice(0, MODAL_ROW_LIMIT)
   const modalTruncated = filteredLines.length > MODAL_ROW_LIMIT
-
-  useEffect(() => {
-    if (!showAllData) return
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') setShowAllData(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [showAllData])
 
   useEffect(() => {
     if (!canLinkOrders || lines.length === 0 || pedidos.length === 0) return
@@ -1625,11 +1616,10 @@ export function PendientesEntregas() {
       )}
 
       {showAllData && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="picking-all-data-title"
-          className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4"
+        <Modal
+          onClose={() => setShowAllData(false)}
+          labelledBy="picking-all-data-title"
+          className="grid place-items-center bg-black/40 p-4"
         >
           <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-2xl bg-white p-4 shadow-lg sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1717,7 +1707,7 @@ export function PendientesEntregas() {
               )}
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </section>
   )

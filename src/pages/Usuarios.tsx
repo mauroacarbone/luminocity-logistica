@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ServerDown, Spinner } from '../components/LoadState'
+import { Modal } from '../components/ui/Modal'
 import { withCurrent } from '../data/catalog'
 import { confirm, error as showError, success } from '../lib/alerts'
 import { isSession, ROLE_LABEL, ROLES, type Role, type Session } from '../lib/authStore'
@@ -88,17 +89,6 @@ function passwordTooLong(password: string) {
   return new TextEncoder().encode(password).length > 72
 }
 
-function useEscape(onClose: () => void, enabled = true) {
-  useEffect(() => {
-    if (!enabled) return
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, enabled])
-}
-
 type NewUserInput = {
   name: string
   email: string
@@ -135,7 +125,6 @@ function NewUserDialog({
   const [pending, setPending] = useState(false)
   const sellerOptions = withCurrent(sellers, form.sellerName)
   const carrierOptions = withCurrent(transporters, form.carrierName)
-  useEscape(onClose, !pending)
 
   function patch(next: Partial<NewUserInput>) {
     setForm((current) => ({ ...current, ...next }))
@@ -180,11 +169,11 @@ function NewUserDialog({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="new-user-title"
-      className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4"
+    <Modal
+      onClose={onClose}
+      labelledBy="new-user-title"
+      closeOnEscape={!pending}
+      className="grid place-items-center bg-black/40 p-4"
     >
       <form noValidate className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg" onSubmit={(event) => void onSubmit(event)}>
         <h2 id="new-user-title" className="text-xl font-semibold">
@@ -295,7 +284,7 @@ function NewUserDialog({
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   )
 }
 
@@ -315,7 +304,6 @@ function PasswordDialog({
   const [errors, setErrors] = useState<{ password?: string; confirm?: string; form?: string }>({})
   const [pending, setPending] = useState(false)
   const { user, replaceToken } = useAuth()
-  useEscape(onClose, !pending)
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -346,11 +334,11 @@ function PasswordDialog({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="reset-password-title"
-      className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4"
+    <Modal
+      onClose={onClose}
+      labelledBy="reset-password-title"
+      closeOnEscape={!pending}
+      className="grid place-items-center bg-black/40 p-4"
     >
       <form noValidate className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg" onSubmit={(event) => void onSubmit(event)}>
         <h2 id="reset-password-title" className="text-xl font-semibold">
@@ -402,7 +390,7 @@ function PasswordDialog({
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   )
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
+import { Modal } from './ui/Modal'
 
 let cameraTurn: Promise<void> = Promise.resolve()
 
@@ -70,14 +70,6 @@ export function QrScanDialog({
   useEffect(() => {
     onSubmitRef.current = onSubmit
   }, [onSubmit])
-
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
 
   useEffect(() => {
     if (phase === 'error') inputRef.current?.focus()
@@ -154,12 +146,13 @@ export function QrScanDialog({
     }
   }, [])
 
-  return createPortal(
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 p-4">
+  return (
+    <Modal
+      onClose={onClose}
+      labelledBy="scan-title"
+      className="grid place-items-center bg-black/40 p-4"
+    >
       <form
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="scan-title"
         className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-md"
         onSubmit={(event) => {
           event.preventDefault()
@@ -219,7 +212,6 @@ export function QrScanDialog({
           </button>
         </div>
       </form>
-    </div>,
-    document.body,
+    </Modal>
   )
 }

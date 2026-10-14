@@ -49,6 +49,7 @@
   --z-topnav: 1100;
   --z-dropdown: 1200;
   --z-drawer: 1300;
+  --z-modal: 1350;
   --z-palette: 1400;
   --z-toast: 1500;
   --font-base: Inter, "Segoe UI", system-ui, sans-serif;
@@ -107,6 +108,7 @@
   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
   --font-sans: var(--font-base);
+  --z-index-modal: var(--z-modal);
 }
 
 * {
@@ -799,7 +801,7 @@ p {
 }
 
 .swal2-container {
-  z-index: var(--z-toast) !important;
+  z-index: var(--z-modal) !important;
 }
 
 .orders-note {
@@ -2241,6 +2243,14 @@ a.bg-lumi-yellow:focus-visible {
 
   body.printing-cover #root {
     display: none !important;
+  }
+
+  body.printing-cover .modal-root {
+    position: static !important;
+    display: block !important;
+    inset: auto !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   body.printing-cover .cover-print-frame {

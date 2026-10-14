@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Modal } from '../components/ui/Modal'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { PriorityChip } from '../components/PriorityChip'
 import { DISPATCH_LABEL } from '../data/catalog'
@@ -53,13 +54,18 @@ function PackagesDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4">
+    <Modal
+      onClose={onClose}
+      labelledBy="packages-title"
+      closeOnEscape={!saving}
+      className="grid place-items-center bg-black/40 p-4"
+    >
       <form
         noValidate
         className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg"
         onSubmit={onSubmit}
       >
-        <h2 className="text-xl font-semibold">Marcar preparado</h2>
+        <h2 id="packages-title" className="text-xl font-semibold">Marcar preparado</h2>
         <p className="mt-1 text-sm text-lumi-muted">
           Indicá cuántos bultos tiene el pedido {orderId}.
         </p>
@@ -103,7 +109,7 @@ function PackagesDialog({
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   )
 }
 

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { Spinner, ServerDown } from '../components/LoadState'
@@ -835,6 +836,38 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   }
 
   const cardRef = useRef<HTMLElement>(null)
+  const statusBtnRef = useRef<HTMLButtonElement>(null)
+  const statusMenuRef = useRef<HTMLDivElement>(null)
+  const [statusMenuPos, setStatusMenuPos] = useState<{ top: number; left: number } | null>(null)
+
+  useLayoutEffect(() => {
+    if (!openStatus) return
+    function update() {
+      const button = statusBtnRef.current
+      const menu = statusMenuRef.current
+      if (!button || !menu) return
+      const rect = button.getBoundingClientRect()
+      const width = menu.offsetWidth
+      const height = menu.offsetHeight
+      const pad = 8
+      let left = rect.left
+      if (left + width > window.innerWidth - pad) left = Math.max(pad, window.innerWidth - pad - width)
+      let top = rect.bottom + 4
+      if (top + height > window.innerHeight - pad) {
+        const above = rect.top - 4 - height
+        top = above >= pad ? above : Math.max(pad, window.innerHeight - pad - height)
+      }
+      setStatusMenuPos({ top, left })
+    }
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [openStatus])
+
   useEffect(() => {
     if (!highlight) return
     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -843,19 +876,8 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   return (
     <article
       ref={cardRef}
-      className={`rounded-2xl bg-white p-4 shadow-sm ${highlight ? 'ring-2 ring-lumi-yellow' : ''} ${
-        openStatus ? 'relative z-20' : ''
-      }`}
+      className={`rounded-2xl bg-white p-4 shadow-sm ${highlight ? 'ring-2 ring-lumi-yellow' : ''}`}
     >
-      {openStatus && (
-        <button
-          type="button"
-          className="fixed inset-0 z-10 cursor-default"
-          aria-label="Cerrar menú de estado"
-          onClick={() => setOpenStatus(false)}
-        />
-      )}
-
       <div className="w-full">
         <span
           className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${STATUS_BADGE[claim.status]}`}
@@ -896,8 +918,9 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
                 Volver a {CLAIM_STATUS_LABEL[prevStatus]}
               </button>
             )}
-            <div className="relative">
+            <div>
               <button
+                ref={statusBtnRef}
                 type="button"
                 className="text-sm text-lumi-muted hover:text-lumi-ink hover:underline disabled:opacity-50"
                 disabled={busy}
@@ -906,31 +929,49 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
                 onClick={() => {
                   setOpenStatus((current) => !current)
                   setConfirmCancel(false)
+                  setStatusMenuPos(null)
                 }}
               >
                 Cambiar a otro estado
               </button>
-              {openStatus && (
-                <div
-                  role="menu"
-                  className="absolute left-0 z-20 mt-1 w-72 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
-                >
-                  {CLAIM_PROGRESS.map((status) => (
+              {openStatus &&
+                createPortal(
+                  <>
                     <button
-                      key={status}
                       type="button"
-                      role="menuitem"
-                      className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-muted disabled:opacity-50 ${
-                        claim.status === status ? 'font-semibold' : ''
-                      }`}
-                      disabled={busy}
-                      onClick={() => void applyStatus(status)}
+                      className="fixed inset-0 cursor-default"
+                      style={{ zIndex: 'var(--z-dropdown)' }}
+                      aria-label="Cerrar menú de estado"
+                      onClick={() => setOpenStatus(false)}
+                    />
+                    <div
+                      ref={statusMenuRef}
+                      role="menu"
+                      className="fixed w-72 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
+                      style={
+                        statusMenuPos
+                          ? { top: statusMenuPos.top, left: statusMenuPos.left, zIndex: 'var(--z-dropdown)' }
+                          : { top: 0, left: 0, visibility: 'hidden', zIndex: 'var(--z-dropdown)' }
+                      }
                     >
-                      {CLAIM_STATUS_LABEL[status]}
-                    </button>
-                  ))}
-                </div>
-              )}
+                      {CLAIM_PROGRESS.map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          role="menuitem"
+                          className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-muted disabled:opacity-50 ${
+                            claim.status === status ? 'font-semibold' : ''
+                          }`}
+                          disabled={busy}
+                          onClick={() => void applyStatus(status)}
+                        >
+                          {CLAIM_STATUS_LABEL[status]}
+                        </button>
+                      ))}
+                    </div>
+                  </>,
+                  document.body,
+                )}
             </div>
           </div>
         )}

@@ -25,9 +25,8 @@ type MenuPos = { top: number; left: number }
 function placeMenu(button: HTMLElement, menu: HTMLElement): MenuPos {
   const rect = button.getBoundingClientRect()
   const pad = 8
-  const topbar = document.querySelector('.topbar')
-  const topMin =
-    topbar instanceof HTMLElement ? topbar.getBoundingClientRect().bottom + 4 : pad
+  const bar = document.querySelector('.topnav') ?? document.querySelector('.topbar')
+  const topMin = bar instanceof HTMLElement ? bar.getBoundingClientRect().bottom + 4 : pad
   const width = menu.offsetWidth
   const height = menu.offsetHeight
   // Preferir alinear al borde derecho del botón (abre hacia la izquierda).
@@ -272,11 +271,11 @@ export function OrderFlowButtons({
               <div
                 ref={menuRef}
                 role="menu"
-                className="fixed z-30 min-w-max rounded-xl border border-lumi-line bg-surface p-1 shadow-md"
+                className="fixed min-w-max rounded-xl border border-lumi-line bg-surface p-1 shadow-md"
                 style={
                   menuPos
-                    ? { top: menuPos.top, left: menuPos.left }
-                    : { top: 0, left: 0, visibility: 'hidden' }
+                    ? { top: menuPos.top, left: menuPos.left, zIndex: 'var(--z-dropdown)' }
+                    : { top: 0, left: 0, visibility: 'hidden', zIndex: 'var(--z-dropdown)' }
                 }
               >
                 {backs.map((action) => (

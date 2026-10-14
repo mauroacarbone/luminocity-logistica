@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
+import { Modal } from './ui/Modal'
 import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL } from '../data/catalog'
 import type { Order } from '../data/orders'
@@ -12,15 +12,10 @@ function packagesLabel(order: Order) {
 
 export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () => void }) {
   useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
     return () => {
-      window.removeEventListener('keydown', onKey)
       document.body.classList.remove('printing-cover')
     }
-  }, [onClose])
+  }, [])
 
   function printCover() {
     document.body.classList.add('printing-cover')
@@ -58,20 +53,18 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
     { label: 'Transportista', value: order.transporter || '—' },
   ]
 
-  return createPortal(
-    <>
+  return (
+    <Modal onClose={onClose} labelledBy="cover-title" className="pointer-events-none">
       <button
         type="button"
-        className="no-print fixed inset-0 z-40 cursor-default bg-black/40"
+        tabIndex={-1}
+        className="no-print pointer-events-auto fixed inset-0 cursor-default bg-black/40"
         aria-label="Cerrar carátula"
         onClick={onClose}
       />
-      <div className="cover-print-frame pointer-events-none fixed inset-0 z-40 grid place-items-center p-4">
+      <div className="cover-print-frame pointer-events-none fixed inset-0 grid place-items-center p-4">
         <article
           id="cover-print"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="cover-title"
           className="pointer-events-auto w-full max-w-md rounded-2xl bg-surface p-6 shadow-md"
         >
           <p className="text-sm font-semibold tracking-wide text-lumi-muted">{BRAND.name}</p>
@@ -117,7 +110,6 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
           </div>
         </article>
       </div>
-    </>,
-    document.body,
+    </Modal>
   )
 }
