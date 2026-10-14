@@ -275,7 +275,11 @@ export function MisEntregas() {
         const sheetDateLabel = formatIsoDate(sheet.date)
         const nextId = stops.find((order) => order.status !== 'entregado')?.id
         const origin = position ? `${position.lat},${position.lng}` : sheet.origin
-        const legs = mapsRouteLegs(origin, stops.map((order) => stopPoint(order)))
+        const pendingStops = stops.filter((order) => order.status !== 'entregado')
+        const legs = mapsRouteLegs(
+          origin,
+          pendingStops.map((order) => stopPoint(order)),
+        )
         const deliveredCount = stops.filter((order) => order.status === 'entregado').length
         const pendingCount = stops.length - deliveredCount
         const lateCount = stops.filter(
