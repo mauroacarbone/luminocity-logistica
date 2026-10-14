@@ -55,18 +55,43 @@ export function slotEnded(deliveryDate: string, timeWindow: string | undefined, 
   return Number.isFinite(end) && now > end
 }
 
-export function mapsDirections(origin: string, stops: string[]) {
-  const pending = stops.map((stop) => stop.trim()).filter(Boolean)
-  if (!origin.trim() || pending.length === 0) return ''
-  const destination = pending[pending.length - 1]
-  const waypoints = pending.slice(0, -1)
-  const params = [
-    'api=1',
-    `origin=${encodeURIComponent(origin.trim())}`,
-    `destination=${encodeURIComponent(destination)}`,
-  ]
-  if (waypoints.length > 0) params.push(`waypoints=${waypoints.map((stop) => encodeURIComponent(stop)).join('|')}`)
-  return `https://www.google.com/maps/dir/?${params.join('&')}`
+export type MapsLeg = { label: string; href: string }
+
+/** Recorrido en Google Maps. Más de 9 paradas intermedias se parte en tramos. */
+export function mapsRouteLegs(origin: string, stops: string[]): MapsLeg[] {
+  const points = [origin.trim(), ...stops.map((stop) => stop.trim())].filter(Boolean)
+  if (points.length < 2) return []
+  const hrefs: string[] = []
+  let start = 0
+  while (start < points.length - 1) {
+    const end = Math.min(start + 10, points.length - 1)
+    const via = points.slice(start + 1, end)
+    const params = [
+      'api=1',
+      `origin=${encodeURIComponent(points[start])}`,
+      `destination=${encodeURIComponent(points[end])}`,
+      'travelmode=driving',
+    ]
+    if (via.length > 0) params.push(`waypoints=${via.map((stop) => encodeURIComponent(stop)).join('|')}`)
+    hrefs.push(`https://www.google.com/maps/dir/?${params.join('&')}`)
+    if (end >= points.length - 1) break
+    start = end
+  }
+  const many = hrefs.length > 1
+  return hrefs.map((href, index) => ({
+    href,
+    label: many ? `Tramo ${index + 1}` : 'Abrir recorrido en GPS',
+  }))
+}
+
+export function googleNavigate(point: string) {
+  const destination = point.trim()
+  if (!destination) return ''
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`
+}
+
+export function wazeNavigate(lat: number, lng: number) {
+  return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`
 }
 
 export function stopPoint(order: { lat?: number; lng?: number; address?: string }) {

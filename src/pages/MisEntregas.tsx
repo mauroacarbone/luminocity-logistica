@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
+import { StopRouteMap, type MapStop } from '../components/StopRouteMap'
 import { PriorityChip } from '../components/PriorityChip'
 import { Badge } from '../components/ui'
 import { type Order } from '../data/orders'
@@ -10,7 +11,7 @@ import { mapsLink, onTheWayText, whatsappLink } from '../lib/whatsapp'
 import { placeLine } from '../lib/place'
 import { listRouteSheets, startRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
 import { sheetIsReady, WAITING_SHEET } from '../lib/routeReady'
-import { businessOffset, businessToday, mapsDirections, stopPoint } from '../lib/schedule'
+import { businessOffset, businessToday, googleNavigate, mapsRouteLegs, stopPoint, wazeNavigate } from '../lib/schedule'
 import { compareDriverQueue, deliveryTimeliness, TIMELINESS_LABEL, timelinessTone } from '../lib/timeliness'
 import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
@@ -253,20 +254,6 @@ export function MisEntregas() {
     await success('Recorrido iniciado')
   }
 
-  function sheetDirections(sheet: RouteSheet) {
-    const pending = sheet.orderIds
-      .map((id) => orders.find((order) => order.id === id))
-      .filter((order): order is Order => Boolean(order))
-      .filter((order) => order.status !== 'entregado')
-    const origin = position ? `${position.lat},${position.lng}` : sheet.origin
-    const limited = pending.slice(0, 3)
-    return {
-      link: mapsDirections(origin, limited.map((order) => stopPoint(order))),
-      more: pending.length > 3,
-      pendingCount: pending.length,
-    }
-  }
-
   return (
     <section className="page">
       <header className="page-header">
@@ -290,8 +277,25 @@ export function MisEntregas() {
         const stops = sheet.orderIds
           .map((id) => orders.find((order) => order.id === id))
           .filter((order): order is Order => Boolean(order))
-        const directions = sheetDirections(sheet)
         const sheetDateLabel = formatIsoDate(sheet.date)
+        const nextId = stops.find((order) => order.status !== 'entregado')?.id
+        const origin = position ? `${position.lat},${position.lng}` : sheet.origin
+        const legs = mapsRouteLegs(origin, stops.map((order) => stopPoint(order)))
+        const mapStops: MapStop[] = stops.flatMap((order, index) => {
+          const place = pointOf(order)
+          if (!place) return []
+          return [
+            {
+              key: order.id,
+              title: order.client,
+              lat: place.lat,
+              lng: place.lng,
+              done: order.status === 'entregado',
+              next: order.id === nextId,
+              number: index + 1,
+            },
+          ]
+        })
         return (
           <section key={sheet.id} className="mt-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -318,35 +322,37 @@ export function MisEntregas() {
                   </button>
                 </>
               )}
-              {sheet.status === 'planificada' && sheet.date !== today && (
+              {sheet.status === 'planificada' && sheet.date > today && (
                 <p className="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm">
                   Se inicia el {sheetDateLabel}
                 </p>
               )}
-              {directions.link && directions.pendingCount >= 2 ? (
-                <>
-                  <a
-                    className="grid min-h-12 place-items-center rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white"
-                    href={directions.link}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Ver recorrido completo
-                  </a>
-                  {directions.more ? (
-                    <p className="text-sm text-lumi-muted">Abrí de nuevo después de la parada 3</p>
-                  ) : null}
-                </>
-              ) : null}
+              {legs.map((leg) => (
+                <a
+                  key={leg.href}
+                  className="grid min-h-12 place-items-center rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white"
+                  href={leg.href}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {leg.label}
+                </a>
+              ))}
+            </div>
+            <div className="mt-3 h-56 overflow-hidden rounded-2xl bg-border-strong">
+              <StopRouteMap stops={mapStops} />
             </div>
             <ul className="mt-3 flex flex-col gap-3">
-              {stops.map((order) => (
+              {stops.map((order, index) => (
                 <li key={order.id}>
                   <DeliveryCard
                     order={order}
                     distance=""
                     busy={busy === order.id}
-                    stopLabel={`Parada ${order.routeSeq} de ${sheet.orderIds.length}`}
+                    stopNumber={index + 1}
+                    inSheet
+                    done={order.status === 'entregado'}
+                    highlight={order.id === nextId}
                     allowLeave={sheet.status === 'en_curso'}
                     routeReady={sheetIsReady(sheet, orders)}
                     onLeave={() => void changeStatus(order, 'en-viaje')}
@@ -412,7 +418,10 @@ function DeliveryCard({
   order,
   distance,
   busy,
-  stopLabel,
+  stopNumber,
+  inSheet = false,
+  done = false,
+  highlight = false,
   allowLeave = false,
   routeReady = false,
   onLeave,
@@ -421,32 +430,42 @@ function DeliveryCard({
   order: Order
   distance: string
   busy: boolean
-  stopLabel?: string
+  stopNumber?: number
+  inSheet?: boolean
+  done?: boolean
+  highlight?: boolean
   allowLeave?: boolean
   routeReady?: boolean
   onLeave: () => void
   onDelivered: () => void
 }) {
-  const maps = mapsLink(order.address ?? '')
+  const place = pointOf(order)
+  const maps = inSheet ? googleNavigate(stopPoint(order)) : mapsLink(order.address ?? '')
+  const waze = place ? wazeNavigate(place.lat, place.lng) : ''
   const notice = whatsappLink(order.phone ?? '', onTheWayText(order.client, order.id))
   const punctuality = deliveryTimeliness(order)
   const waiting = order.status === 'preparado'
   const canLeave = order.status === 'asignado'
   const canDeliver = order.status === 'en-viaje'
-  const showLeave = canLeave && !order.sheetPlanned && (!stopLabel || allowLeave)
+  const showLeave = canLeave && !order.sheetPlanned && (!inSheet || allowLeave)
   const plannedNotice = canLeave && Boolean(order.sheetPlanned)
+  const strike = done ? 'line-through' : ''
 
   return (
-    <article className="rounded-2xl bg-white p-4 shadow-sm">
+    <article className={`rounded-2xl bg-white p-4 shadow-sm ${highlight ? 'ring-2 ring-lumi-yellow' : ''}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-lg font-bold">{order.id}</p>
+        {stopNumber != null && (
+          <span className="inline-grid h-8 w-8 place-items-center rounded-full bg-lumi-yellow text-sm font-semibold text-lumi-yellow-ink">
+            {stopNumber}
+          </span>
+        )}
+        <p className={`text-lg font-bold ${strike}`}>{order.id}</p>
         <PriorityChip order={order} showNormal />
         <Badge tone={timelinessTone(punctuality)}>{TIMELINESS_LABEL[punctuality]}</Badge>
         <OrderStepper order={order} variant="compact" />
       </div>
-      {stopLabel && <p className="mt-1 text-sm font-semibold">{stopLabel}</p>}
-      <p className="mt-1 text-base font-semibold">{order.client}</p>
-      <p className="mt-2 text-sm">{order.address || 'Sin dirección'}</p>
+      <p className={`mt-1 text-base font-semibold ${strike}`}>{order.client}</p>
+      <p className={`mt-2 text-sm ${strike}`}>{order.address || 'Sin dirección'}</p>
       {placeLine(order) && <p className="text-sm">{placeLine(order)}</p>}
       <p className="text-sm text-lumi-muted">{order.zone || 'Sin zona'}</p>
       {distance && <p className="mt-1 text-sm font-semibold">{distance}</p>}
@@ -468,12 +487,22 @@ function DeliveryCard({
               target="_blank"
               rel="noreferrer"
             >
-              Cómo llegar
+              {inSheet ? 'Navegar' : 'Cómo llegar'}
             </a>
           ) : (
             <button type="button" className="min-h-12 rounded-xl bg-lumi-line px-4 text-base font-semibold" disabled>
-              Cómo llegar
+              {inSheet ? 'Navegar' : 'Cómo llegar'}
             </button>
+          )}
+          {inSheet && waze && (
+            <a
+              className="grid min-h-12 place-items-center rounded-xl border border-lumi-line px-4 text-base font-semibold"
+              href={waze}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Waze
+            </a>
           )}
           {plannedNotice && routeReady && (
             <p className="rounded-xl bg-surface-muted px-3 py-2 text-sm font-semibold">
@@ -481,7 +510,7 @@ function DeliveryCard({
               «Iniciar recorrido».
             </p>
           )}
-          {canLeave && !routeReady && !stopLabel && (
+          {canLeave && !routeReady && !inSheet && (
             <p className="rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow-sm">{WAITING_SHEET}</p>
           )}
           {showLeave && (
