@@ -41,6 +41,15 @@ function weekBounds(today: string) {
   return { from: isoUtc(start), to: isoUtc(end) }
 }
 
+function formatArs(amount: number) {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
+
 function formatKm(km: number) {
   return `${new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: km < 10 ? 1 : 0,
@@ -66,7 +75,7 @@ function stopCount(trip: DriverTrip) {
 
 function exportFinished(trips: DriverTrip[], from: string, to: string) {
   const rows: Array<Array<string | number>> = [
-    ['chofer', 'fecha', 'franja', 'zonas', 'entregados', 'km'],
+    ['chofer', 'fecha', 'franja', 'zonas', 'entregados', 'km', 'monto'],
     ...trips.map((trip) => [
       trip.driverName,
       trip.date,
@@ -74,6 +83,7 @@ function exportFinished(trips: DriverTrip[], from: string, to: string) {
       (trip.zones.length > 0 ? trip.zones : ['Sin zona']).join(' · '),
       trip.delivered,
       trip.kmEstimated ? `${formatKm(trip.km)} estimado` : formatKm(trip.km),
+      trip.amount == null ? '' : formatArs(trip.amount),
     ]),
   ]
   downloadCsvFile(buildCsv(rows), `viajes-${from}-${to}.csv`)
@@ -139,9 +149,15 @@ export function MisViajes() {
     const byZone = new Map<string, number>()
     let km = 0
     let estimated = false
+    let pay = 0
+    let priced = false
     for (const trip of finished) {
       km += trip.km
       if (trip.kmEstimated) estimated = true
+      if (typeof trip.amount === 'number') {
+        priced = true
+        pay += trip.amount
+      }
       const zones = trip.zones.length > 0 ? trip.zones : ['Sin zona']
       for (const zone of zones) byZone.set(zone, (byZone.get(zone) ?? 0) + 1)
     }
@@ -149,6 +165,8 @@ export function MisViajes() {
       count: finished.length,
       km,
       estimated,
+      pay,
+      priced,
       zones: [...byZone.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], 'es')),
     }
   }, [finished])
@@ -278,7 +296,7 @@ export function MisViajes() {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+      <div className={`mt-4 grid gap-2 ${summary.priced ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
         <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
           <p className="text-sm text-lumi-muted">Viajes realizados</p>
           <p className="text-2xl font-semibold">{summary.count}</p>
@@ -288,6 +306,12 @@ export function MisViajes() {
           <p className="text-2xl font-semibold">{formatKm(summary.km)}</p>
           {summary.estimated && <p className="text-sm text-lumi-muted">Incluye tramos estimados</p>}
         </article>
+        {summary.priced && (
+          <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
+            <p className="text-sm text-lumi-muted">Total a cobrar</p>
+            <p className="text-2xl font-semibold">{formatArs(summary.pay)}</p>
+          </article>
+        )}
         <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
           <p className="text-sm text-lumi-muted">Viajes por lejanía</p>
           {summary.zones.length === 0 ? (
@@ -370,6 +394,7 @@ function TripCard({ trip }: { trip: DriverTrip }) {
         <p className="text-base font-semibold">
           {formatKm(trip.km)}
           {trip.kmEstimated ? ' · estimado' : ''}
+          {trip.amount != null ? ` · ${formatArs(trip.amount)}` : ''}
         </p>
       </div>
       <p className="mt-2 text-base">{stopCount(trip)}</p>

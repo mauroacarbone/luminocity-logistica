@@ -21,6 +21,7 @@ import { PostVenta } from './pages/PostVenta'
 import { Registro } from './pages/Registro'
 import { Retiros } from './pages/Retiros'
 import { Seguimiento } from './pages/Seguimiento'
+import { TarifasViaje } from './pages/TarifasViaje'
 import { Usuarios } from './pages/Usuarios'
 import { useAuth } from './state/AuthContext'
 
@@ -157,6 +158,14 @@ export default function App() {
           element={
             <Gate path="/post-venta">
               <PostVenta />
+            </Gate>
+          }
+        />
+        <Route
+          path="/tarifas"
+          element={
+            <Gate path="/tarifas">
+              <TarifasViaje />
             </Gate>
           }
         />

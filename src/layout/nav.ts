@@ -16,6 +16,7 @@ export const NAV = [
   { to: '/post-venta', label: 'Post Venta', icon: 'refresh' },
   { to: '/usuarios', label: 'Usuarios', icon: 'users' },
   { to: '/datos-maestros', label: 'Datos maestros', icon: 'settings' },
+  { to: '/tarifas', label: 'Tarifas de viaje', icon: 'settings' },
   { to: '/bandeja', label: 'Bandeja', icon: 'inbox' },
 ] as const
 
@@ -42,7 +43,7 @@ export const GROUPS: { id: GroupId; title: string; paths: readonly string[] }[] 
   {
     id: 'admin',
     title: 'Administración',
-    paths: ['/usuarios', '/datos-maestros', '/bandeja'],
+    paths: ['/usuarios', '/datos-maestros', '/tarifas', '/bandeja'],
   },
 ]
 

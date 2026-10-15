@@ -163,6 +163,7 @@ export type DriverTrip = {
   km: number
   kmEstimated: boolean
   stops: TripStop[]
+  amount: number | null
 }
 
 function isTripStop(value: unknown): value is TripStop {
@@ -198,7 +199,8 @@ function isDriverTrip(value: unknown): value is DriverTrip {
     typeof trip.km === 'number' &&
     typeof trip.kmEstimated === 'boolean' &&
     Array.isArray(trip.stops) &&
-    trip.stops.every(isTripStop)
+    trip.stops.every(isTripStop) &&
+    (trip.amount === null || (typeof trip.amount === 'number' && Number.isFinite(trip.amount)))
   )
 }
 
