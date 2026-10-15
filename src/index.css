@@ -29,6 +29,7 @@
   --btn-secondary-hover: #262C36;
   --brand-yellow: #F5C400;
   --ring: #1F6FEB;
+  --tab-indicator: #F78166;
   --sidebar-bg: var(--bg);
   --sidebar-fg: var(--text);
   --sidebar-muted: var(--text-muted);
@@ -175,9 +176,9 @@ p {
   top: 0;
   z-index: var(--z-topnav);
   height: 56px;
-  background: var(--primary);
-  color: var(--text-inverse);
-  border-bottom: 1px solid var(--primary);
+  background: var(--bg);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
   box-shadow: var(--shadow-xs);
 }
 
@@ -197,7 +198,7 @@ p {
   gap: 10px;
   flex: 0 0 auto;
   text-decoration: none;
-  color: var(--text-inverse);
+  color: var(--text);
   min-width: 0;
 }
 
@@ -241,7 +242,7 @@ p {
   border: 0;
   border-radius: var(--r-md);
   background: transparent;
-  color: var(--text-inverse);
+  color: var(--text);
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
@@ -251,16 +252,16 @@ p {
 
 .topnav-link:hover,
 .topnav-trigger:hover {
-  color: var(--text-inverse);
-  background: color-mix(in srgb, var(--text-inverse) 14%, transparent);
+  color: var(--text);
+  background: var(--surface-2);
 }
 
 .topnav-link.is-active,
 .topnav-trigger.is-active {
-  color: var(--text-inverse);
+  color: var(--text);
   font-weight: 600;
-  background: color-mix(in srgb, var(--text-inverse) 16%, transparent);
-  box-shadow: inset 0 -2px 0 var(--accent);
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--tab-indicator);
   border-radius: var(--r-md) var(--r-md) 0 0;
 }
 
@@ -274,7 +275,7 @@ p {
 
 .topnav-link.is-active:focus-visible,
 .topnav-trigger.is-active:focus-visible {
-  box-shadow: inset 0 -2px 0 var(--accent), 0 0 0 2px var(--ring);
+  box-shadow: inset 0 -2px 0 var(--tab-indicator), 0 0 0 2px var(--ring);
 }
 
 .topnav-chevron {
@@ -326,13 +327,13 @@ p {
 }
 
 .topnav-menuitem.is-active {
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--accent-soft);
+  color: var(--text);
   font-weight: 600;
 }
 
 .topnav-menuitem.is-active .nav-icon {
-  color: var(--primary-ink);
+  color: var(--text);
 }
 
 .topnav-menuitem.is-danger {
@@ -360,20 +361,21 @@ p {
   border: 0;
   border-radius: var(--r-md);
   background: transparent;
-  color: var(--text-inverse);
+  color: var(--text);
   cursor: pointer;
 }
 
 .topnav-user-btn:hover {
-  background: color-mix(in srgb, var(--text-inverse) 14%, transparent);
+  background: var(--surface-2);
 }
 
 .topnav-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -404,7 +406,7 @@ p {
 }
 
 .topnav-user-btn .topnav-user-role {
-  color: color-mix(in srgb, var(--text-inverse) 82%, transparent);
+  color: var(--text-muted);
 }
 
 .topnav-user-heading {
@@ -437,18 +439,18 @@ p {
   width: 240px;
   height: 40px;
   padding: 0 10px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--text-inverse) 14%, transparent);
-  color: var(--text-inverse);
+  background: var(--surface);
+  color: var(--text-muted);
   font-size: 14px;
   cursor: pointer;
   text-align: left;
 }
 
 .topnav-search:hover {
-  color: var(--text-inverse);
-  background: color-mix(in srgb, var(--text-inverse) 22%, transparent);
+  color: var(--text);
+  background: var(--surface-2);
 }
 
 .topnav-search:focus-visible {
@@ -562,7 +564,7 @@ p {
 
 .command-palette-option:hover,
 .command-palette-option.is-active {
-  background: var(--primary-soft);
+  background: var(--accent-soft);
 }
 
 .command-palette-option:focus-visible {
@@ -625,9 +627,9 @@ p {
 .mobile-nav {
   width: 100%;
   height: 100%;
-  background: var(--surface);
+  background: var(--sidebar-bg);
   color: var(--text);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
   padding: 14px 12px 12px;
@@ -741,14 +743,14 @@ p {
 }
 
 .mobile-nav-link.is-active {
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-fg);
   font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--primary);
+  box-shadow: inset 3px 0 0 var(--sidebar-indicator);
 }
 
 .mobile-nav-link.is-active .nav-icon {
-  color: var(--primary-ink);
+  color: var(--text);
 }
 
 .mobile-nav-link:focus-visible {
@@ -757,7 +759,7 @@ p {
 }
 
 .mobile-nav-link.is-active:focus-visible {
-  box-shadow: inset 3px 0 0 var(--primary), 0 0 0 2px var(--ring);
+  box-shadow: inset 3px 0 0 var(--sidebar-indicator), 0 0 0 2px var(--ring);
 }
 
 .nav-icon {
@@ -783,8 +785,9 @@ p {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--primary);
-  color: var(--primary-fg);
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -2054,9 +2057,9 @@ p {
     z-index: var(--z-topnav);
     height: 56px;
     padding: 0 12px;
-    background: var(--primary);
-    color: var(--text-inverse);
-    border-bottom: 1px solid var(--primary);
+    background: var(--bg);
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
     box-shadow: var(--shadow-xs);
   }
 
@@ -2068,7 +2071,7 @@ p {
     border: 0;
     border-radius: var(--r-md);
     background: transparent;
-    color: var(--text-inverse);
+    color: var(--text);
     cursor: pointer;
   }
 
@@ -2078,7 +2081,7 @@ p {
   }
 
   .topbar-menu-btn:hover {
-    background: color-mix(in srgb, var(--text-inverse) 14%, transparent);
+    background: var(--surface-2);
   }
 
   .topbar-brand {
@@ -2120,7 +2123,7 @@ p {
     border: 0;
     border-radius: var(--r-md);
     background: transparent;
-    color: var(--text-inverse);
+    color: var(--text);
     cursor: pointer;
   }
 
@@ -2130,7 +2133,7 @@ p {
   }
 
   .topbar-search-btn:hover {
-    background: color-mix(in srgb, var(--text-inverse) 14%, transparent);
+    background: var(--surface-2);
   }
 
   .topbar-search-btn:focus-visible,
