@@ -2,8 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent }
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
-import { Spinner, ServerDown } from '../components/LoadState'
-import { Button } from '../components/ui'
+import { Button, KpiCard, LoadState } from '../components/ui'
 import { withCurrent, withExtras } from '../data/catalog'
 import {
   CLAIM_MOTIVES,
@@ -1130,7 +1129,7 @@ function ClaimList({
       />
 
       {claims.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-lumi-muted shadow-sm">{empty}</div>
+        <LoadState className="mt-4" status="empty" emptyTitle={empty} />
       ) : (
         <div className="mt-4 flex flex-col gap-3">
           {claims.map((claim) => (
@@ -1159,7 +1158,10 @@ function Dashboard({
   onSeller: (value: string) => void
   onPeriod: (value: Period) => void
 }) {
-  const open = claims.filter((claim) => isOpenClaim(claim.status)).length
+  const abiertos = claims.filter((claim) => claim.status === 'nuevo').length
+  const enCurso = claims.filter(
+    (claim) => isOpenClaim(claim.status) && claim.status !== 'nuevo',
+  ).length
   const resolved = claims.filter((claim) => claim.status === 'entregado')
   const rate = claims.length === 0 ? 0 : Math.round((resolved.length / claims.length) * 100)
   const averageDays = (() => {
@@ -1190,18 +1192,6 @@ function Dashboard({
     .sort((a, b) => b.count - a.count)
   const motiveMax = Math.max(1, ...byMotive.map((item) => item.count))
 
-  const stats = [
-    { label: 'Total reclamos', value: String(claims.length), tone: 'text-info' },
-    { label: 'En curso', value: String(open), tone: 'text-orange' },
-    { label: 'Resueltos', value: String(resolved.length), tone: 'text-success' },
-    {
-      label: 'Tiempo prom. resolución',
-      value: averageDays === null ? '—' : `${averageDays.toFixed(1)}d`,
-      tone: 'text-success',
-    },
-    { label: 'Tasa de resolución', value: `${rate}%`, tone: 'text-purple' },
-  ]
-
   return (
     <div className="mt-4 flex flex-col gap-4">
       <FilterBar
@@ -1212,12 +1202,13 @@ function Dashboard({
         claims={claims}
       />
       <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-        {stats.map((stat) => (
-          <article key={stat.label} className="rounded-2xl bg-surface px-4 py-5 text-center shadow-sm">
-            <p className={`text-3xl font-semibold ${stat.tone}`}>{stat.value}</p>
-            <p className="mt-1 text-sm text-lumi-muted">{stat.label}</p>
-          </article>
-        ))}
+        <KpiCard title="Abiertos" value={abiertos} />
+        <KpiCard title="En curso" value={enCurso} />
+        <KpiCard title="Resueltos" value={resolved.length} />
+        {averageDays !== null ? (
+          <KpiCard title="Tiempo prom. resolución" value={`${averageDays.toFixed(1)} d`} />
+        ) : null}
+        <KpiCard title="Tasa de resolución" value={`${rate}%`} />
       </div>
 
       <section className="rounded-2xl bg-surface p-5 shadow-sm">
@@ -1361,7 +1352,7 @@ export function PostVenta() {
   if (loading && claims.length === 0) {
     return (
       <section className="page">
-        <Spinner label="Cargando reclamos…" />
+        <LoadState status="loading" />
       </section>
     )
   }
@@ -1369,7 +1360,7 @@ export function PostVenta() {
   if (loadError && claims.length === 0) {
     return (
       <section className="page">
-        <ServerDown message={loadError} onRetry={() => void refresh()} />
+        <LoadState status="error" error={loadError} onRetry={() => void refresh()} />
       </section>
     )
   }
