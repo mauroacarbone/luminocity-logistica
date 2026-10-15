@@ -17,3 +17,10 @@ alwaysApply: true
 # Negocio
 - Solo el chofer inicia el viaje (En viaje) y necesita una hoja de ruta vigente.
 - Retiro por el local no lleva transportista, chofer, franja ni dirección.
+# Diseño
+- Usar solo los tokens de src/index.css y los componentes de src/components/ui; no colores sueltos ni bg-white.
+- Un solo botón primario por pantalla.
+- Botones grandes (lg) en pantallas de chofer y depósito.
+- Contraste AA como mínimo.
+- Mobile-first: todo usable en 360px.
+- Fechas y horas en hora de Buenos Aires.
