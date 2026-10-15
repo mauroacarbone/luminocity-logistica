@@ -2401,6 +2401,44 @@ p {
   display: none;
 }
 
+@keyframes drawer-enter-y {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes drawer-enter-x {
+  from {
+    transform: translateX(12px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.drawer-panel {
+  animation: drawer-enter-y 150ms ease-out;
+}
+
+@media (min-width: 640px) {
+  .drawer-panel {
+    animation: drawer-enter-x 150ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-panel {
+    animation: none;
+  }
+}
+
 
 button.bg-accent:hover:not(:disabled),
 a.bg-accent:hover {
