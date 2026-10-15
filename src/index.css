@@ -1575,21 +1575,25 @@ p {
 }
 
 .dispatch-types {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  display: flex;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
 .dispatch-type {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   border-radius: var(--r-lg);
-  padding: 18px 16px;
-  font-size: 16px;
+  padding: 8px 6px;
+  font-size: clamp(12px, 2.6vw, 16px);
   font-weight: 700;
-  text-align: left;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -2181,8 +2185,7 @@ p {
     margin-top: 4px;
   }
 
-  .field-grid,
-  .dispatch-types {
+  .field-grid {
     display: grid;
     grid-template-columns: 1fr;
   }

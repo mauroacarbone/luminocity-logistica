@@ -1187,6 +1187,29 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               </button>
             ))}
           </div>
+          <h2 className="mt-4">Prioridad</h2>
+          <div className="dispatch-types" role="radiogroup" aria-label="Prioridad">
+            {PRIORITIES.map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={priority === value}
+                className={priority === value ? 'dispatch-type active' : 'dispatch-type'}
+                disabled={Boolean(storedId && user?.role === 'vendedor')}
+                onClick={() => {
+                  if (storedId && user?.role === 'vendedor') return
+                  markDirty()
+                  setPriority(value)
+                }}
+              >
+                {PRIORITY_LABEL[value]}
+              </button>
+            ))}
+          </div>
+          {storedId && user?.role === 'vendedor' && (
+            <small className="hint">Solo el encargado cambia la prioridad.</small>
+          )}
           {!pickup && (
             <label className="field">
               <span>Transportista</span>
@@ -1646,32 +1669,6 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               }}
             />
           </div>
-        </section>
-
-        <section className="form-card">
-          <h2>Prioridad</h2>
-          <div className="dispatch-types" role="radiogroup" aria-label="Prioridad">
-            {PRIORITIES.map((value) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={priority === value}
-                className={priority === value ? 'dispatch-type active' : 'dispatch-type'}
-                disabled={Boolean(storedId && user?.role === 'vendedor')}
-                onClick={() => {
-                  if (storedId && user?.role === 'vendedor') return
-                  markDirty()
-                  setPriority(value)
-                }}
-              >
-                {PRIORITY_LABEL[value]}
-              </button>
-            ))}
-          </div>
-          {storedId && user?.role === 'vendedor' && (
-            <small className="hint mt-2 block">Solo el encargado cambia la prioridad.</small>
-          )}
         </section>
 
         <section className="form-card">

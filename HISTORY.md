@@ -310,6 +310,8 @@ El Brief 33.2 guarda al cerrar la hoja la hora, los pedidos entregados y sin ent
 
 Las tarifas de viaje las cargan el encargado y el admin en Tarifas de viaje: un monto por viaje y, si hace falta, uno por km, con fecha de vigencia. Un viaje cobra la tarifa de esa fecha; si pasa por varias zonas, la que da el monto más alto. Sin tarifa se ven solo las cantidades. El CSV del encargado y del admin incluye el monto.
 
+El Brief 33.3 guarda en la hoja en curso las paradas que se reprograman o se borran, con zona y sin entregar. Un pedido que ya no existe no cuenta como entregado, y el viaje se cobra si hubo al menos una entrega. El chofer, el encargado o el admin pueden finalizar el viaje a mano: las paradas pendientes quedan no entregadas y el pedido no cambia de estado. Al cerrar se congela el monto y la tarifa. El CSV manda km y monto como números con coma decimal, más estimado y no entregados. En Nuevo pedido, tipo de despacho y prioridad van en dos filas, cada una en un solo renglón.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
