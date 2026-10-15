@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Page, PageHeader } from '../components/ui'
+import { Button, Page, PageHeader } from '../components/ui'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { PriorityChip } from '../components/PriorityChip'
@@ -122,6 +122,25 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
   return null
 }
 
+function MapSize() {
+  const map = useMap()
+  useEffect(() => {
+    const container = map.getContainer()
+    const update = () => {
+      map.invalidateSize()
+    }
+    update()
+    const observer = new ResizeObserver(() => update())
+    observer.observe(container)
+    window.addEventListener('resize', update)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [map])
+  return null
+}
+
 function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) {
   const origin = stops[0]?.point ?? { lat: -34.6, lng: -58.44 }
   return (
@@ -131,6 +150,7 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
       style={{ height: '100%', width: '100%' }}
       scrollWheelZoom
     >
+      <MapSize />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -526,6 +546,7 @@ export function PlanificadorRutas() {
         subtitle="Armá la hoja de un chofer para una fecha y una franja"
       />
 
+      <div className="planner-toolbar">
       <div className="planner-week no-print grid grid-cols-3 items-center gap-2">
         <button
           type="button"
@@ -636,8 +657,12 @@ export function PlanificadorRutas() {
           <span className="mb-1 rounded-full bg-surface px-3 py-1 text-xs font-semibold">{SHEET_LABEL[sheet.status]}</span>
         )}
       </div>
+      </div>
 
-      <div className="planner-list no-print grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+      <div className="planner-body">
+      <div className="planner-side">
+      <div className="planner-side-scroll">
+      <div className="planner-list no-print flex flex-col gap-4">
         <section>
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-sm font-semibold tracking-wide text-lumi-muted">PEDIDOS DE LA FRANJA</h2>
@@ -754,74 +779,67 @@ export function PlanificadorRutas() {
         </section>
       </div>
 
-      <div className="planner-actions no-print flex flex-wrap items-center gap-2">
-        <input
-          value={origin}
-          onChange={(event) => {
-            setOrigin(event.target.value)
-            setStops([])
-            setRoute(null)
-          }}
-          disabled={readOnly}
-          aria-label="Origen de la ruta"
-          className="w-full min-w-0 rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm disabled:opacity-60 sm:w-auto sm:min-w-48 sm:flex-1"
-        />
-        <button
-          type="button"
-          className="shrink-0 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-60"
-          disabled={loading || readOnly || !driverId || !timeWindow}
-          onClick={() => void confirmSheet()}
-        >
-          Confirmar hoja de ruta
-        </button>
-        <button
-          type="button"
-          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-60"
-          disabled={loading || readOnly}
-          onClick={() => void draw(origin, selectedIds, false)}
-        >
-          {loading ? 'Calculando…' : 'Calcular ruta'}
-        </button>
-        <button
-          type="button"
-          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-60"
-          disabled={loading || readOnly}
-          onClick={() => void draw(origin, selectedIds, true)}
-        >
-          Optimizar orden
-        </button>
-        <button type="button" className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-surface-muted" onClick={() => window.print()}>
-          Imprimir
-        </button>
-        {sheet?.status === 'planificada' && (
-          <button
-            type="button"
-            className="shrink-0 rounded-xl bg-danger-deep px-3 py-2 text-sm font-semibold text-inverse hover:bg-danger disabled:opacity-60"
-            disabled={loading}
-            onClick={() => void removeSheet()}
-          >
-            Borrar hoja
-          </button>
-        )}
-        <button
-          type="button"
-          className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted disabled:opacity-60"
-          disabled={readOnly}
-          onClick={clearPlan}
-        >
-          Limpiar
-        </button>
-      </div>
+      <input
+        value={origin}
+        onChange={(event) => {
+          setOrigin(event.target.value)
+          setStops([])
+          setRoute(null)
+        }}
+        disabled={readOnly}
+        aria-label="Origen de la ruta"
+        className="mt-3 w-full min-w-0 rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm disabled:opacity-60"
+      />
 
-      {error && <p className="no-print text-sm text-lumi-danger">{error}</p>}
+      {error && <p className="no-print mt-3 text-sm text-lumi-danger">{error}</p>}
 
-      <p className="planner-stats no-print text-sm text-lumi-muted">
+      <p className="planner-stats no-print mt-3 text-sm text-lumi-muted">
         {deliveryStops} parada{deliveryStops === 1 ? '' : 's'}
         {' · '}
         {route && route.line.length > 0 ? formatKm(route.kilometers) : sheet ? formatKm(sheet.km) : '— km'}
         {' · '}
         {route && route.line.length > 0 ? `${route.minutes} min` : sheet ? `${sheet.minutes} min` : '—'}
       </p>
+      </div>
+
+      <div className="planner-actions no-print sticky bottom-0 z-10 flex flex-wrap items-center gap-2 border-t border-border bg-surface py-3">
+        <Button
+          variant="primary"
+          size="lg"
+          disabled={loading || readOnly || !driverId || !timeWindow}
+          onClick={() => void confirmSheet()}
+        >
+          Confirmar hoja de ruta
+        </Button>
+        <Button
+          variant="secondary"
+          size="lg"
+          disabled={loading || readOnly}
+          onClick={() => void draw(origin, selectedIds, false)}
+        >
+          {loading ? 'Calculando…' : 'Calcular ruta'}
+        </Button>
+        <Button
+          variant="secondary"
+          size="lg"
+          disabled={loading || readOnly}
+          onClick={() => void draw(origin, selectedIds, true)}
+        >
+          Optimizar orden
+        </Button>
+        <Button variant="secondary" size="lg" onClick={() => window.print()}>
+          Imprimir
+        </Button>
+        {sheet?.status === 'planificada' && (
+          <Button variant="secondary" size="lg" disabled={loading} onClick={() => void removeSheet()}>
+            Borrar hoja
+          </Button>
+        )}
+        <Button variant="ghost" size="lg" disabled={readOnly} onClick={clearPlan}>
+          Limpiar
+        </Button>
+      </div>
+      </div>
 
       <div className="planner-map no-print overflow-hidden rounded-2xl bg-border-strong">
         {route && stops.length > 0 && route.line.length > 0 ? (
@@ -831,6 +849,7 @@ export function PlanificadorRutas() {
             El mapa aparecerá aquí al calcular la ruta
           </div>
         )}
+      </div>
       </div>
 
       <section className="route-print">

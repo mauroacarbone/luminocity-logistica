@@ -2281,9 +2281,38 @@ p {
 .planner-week,
 .planner-days,
 .planner-filters,
-.planner-actions,
 .planner-stats {
   flex: 0 0 auto;
+}
+
+.planner-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.planner-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(380px, 40%) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.planner-side {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.planner-side-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
 }
 
 .planner-days > button {
@@ -2293,16 +2322,33 @@ p {
 }
 
 .planner-list {
-  flex: 1 1 0;
-  min-height: 7.5rem;
-  overflow: auto;
-  align-content: start;
+  min-height: 0;
+}
+
+.planner-actions {
+  flex: 0 0 auto;
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
 }
 
 .planner-map {
-  flex: 1 1 0;
-  min-height: 9rem;
+  position: sticky;
+  top: 0;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+}
+
+.planner-map > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
 .planner-map .leaflet-container {
@@ -2310,22 +2356,33 @@ p {
   width: 100%;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .planner-screen {
     height: auto;
     overflow: visible;
   }
 
-  .planner-list {
+  .planner-body {
+    display: flex;
+    flex-direction: column;
     flex: none;
-    min-height: 0;
+  }
+
+  .planner-side,
+  .planner-side-scroll {
     overflow: visible;
+    flex: none;
+  }
+
+  .planner-actions {
+    position: static;
   }
 
   .planner-map {
+    position: static;
     flex: none;
-    height: 320px;
-    min-height: 320px;
+    height: 60vh;
+    min-height: 60vh;
   }
 }
 

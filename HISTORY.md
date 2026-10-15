@@ -112,6 +112,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32e.1 | Accesibilidad de la paleta y los menús | Hecho |
 | 32e.2 | Menús de la barra superior visibles | Hecho |
 | 32e.3 | Diálogos sobre la barra superior | Hecho |
+| 32f.1 | Ajustes del contenedor, búsqueda, migas y planificador | Hecho |
 | 33 | Chofer, atrasos, planificador, hoja de ruta y Nuevo pedido | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
@@ -325,6 +326,8 @@ El Brief 32d.1 fija el encabezado de la tabla: con `maxHeight` queda dentro del 
 El Brief 32d.2 deja la tabla en un solo elemento: `caption`, `thead` y `tbody`, con alto máximo `70vh` y encabezado fijo adentro. Cada columna puede pedir su ancho; si ninguna lo hace, el ancho es automático. Sin filas y sin `empty`, se muestra «Sin datos».
 
 El Brief 32f sube la tipografía base a 16px. Las pantallas van en un contenedor de 1280px (768 en formularios, ancho completo en el planificador y el mapa) y el encabezado muestra migas: Inicio, grupo y página. Los filtros de Pendientes, Despacho, Post Venta, Retiros, Seguimiento, el Panel, Mis viajes y Choferes en ruta usan la misma barra; en el celular la búsqueda queda afuera y el resto se abre en una hoja.
+
+El Brief 32f.1 deja 16px arriba en el celular y 24px desde escritorio, sin sumarlos al alto de la barra fija. Los títulos pasan a 24px y 28px; el del planificador sigue en 22px. En Pendientes la búsqueda se aplica con Enter o con Buscar. La pantalla de inicio del rol no muestra migas. Desde y Hasta de Retiros y Seguimiento entran en la barra, en grande en Mis viajes, Despacho y Retiros. En Post Venta, la pestaña Nuevo solo busca. El planificador, desde 1024px, deja la semana y los filtros arriba y el mapa a la derecha; en 1366×768 solo scrollea la columna de pedidos.
 
 ## Pendientes
 
