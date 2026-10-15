@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge, Button, Drawer, EmptyState, Modal, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { OrderDetail } from '../components/OrderDetail'
 import { PriorityChip } from '../components/PriorityChip'
@@ -108,8 +108,13 @@ function isOpenPrep(order: Order) {
   return order.status === 'pendiente' || order.status === 'preparado'
 }
 
+function openedFromList(state: unknown) {
+  return Boolean(state && typeof state === 'object' && (state as { fromList?: boolean }).fromList)
+}
+
 export function PedidosPreparacion() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { orders, loading, removeOrder, transitionOrder } = useOrders()
@@ -138,6 +143,10 @@ export function PedidosPreparacion() {
 
   function closePedido() {
     setAlignedId(null)
+    if (openedFromList(location.state)) {
+      navigate(-1)
+      return
+    }
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current)
@@ -149,11 +158,14 @@ export function PedidosPreparacion() {
   }
 
   function openPedido(id: string) {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current)
-      next.set('pedido', id)
-      return next
-    })
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.set('pedido', id)
+        return next
+      },
+      { state: { fromList: true } },
+    )
   }
 
   if (!loading && openId && alignedId !== openId) {

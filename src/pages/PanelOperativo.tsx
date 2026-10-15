@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Badge, Button, Drawer, FilterBar, KpiCard, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderDetail } from '../components/OrderDetail'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -91,6 +91,10 @@ function hasDeliveryDate(order: Order) {
 
 function isOverdue(order: Order, today: string) {
   return hasDeliveryDate(order) && order.deliveryDate < today && order.status !== 'entregado'
+}
+
+function openedFromList(state: unknown) {
+  return Boolean(state && typeof state === 'object' && (state as { fromList?: boolean }).fromList)
 }
 
 function matchesFecha(
@@ -334,6 +338,8 @@ function DetailActions({
 export function PanelOperativo() {
   const { user } = useAuth()
   const { orders } = useOrders()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [view, setView] = useState<View>(loadView)
   const [statusFilter, setStatusFilter] = useState<OrderStatus | null>(null)
@@ -450,14 +456,21 @@ export function PanelOperativo() {
   }
 
   function openPedido(id: string) {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current)
-      next.set('pedido', id)
-      return next
-    })
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.set('pedido', id)
+        return next
+      },
+      { state: { fromList: true } },
+    )
   }
 
   function closePedido() {
+    if (openedFromList(location.state)) {
+      navigate(-1)
+      return
+    }
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current)
