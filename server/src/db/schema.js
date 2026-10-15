@@ -6,6 +6,7 @@ export const COLLECTION_NAMES = [
   'authorizations',
   'locations',
   'routeSheets',
+  'tripRates',
   'picking',
   'claims',
 ]

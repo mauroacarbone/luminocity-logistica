@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { businessToday } from './access.js'
+import { quoteTrip } from './tripRates.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
@@ -512,6 +513,7 @@ function listTrips(user, query) {
     if (!driver) return fail('No existe ese chofer.', 404)
     const sheets = await readCollection('routeSheets')
     const orders = await readCollection('orders')
+    const rates = await readCollection('tripRates')
     const byId = new Map(orders.map((order) => [order.id, order]))
     const name = typeof driver.name === 'string' && driver.name.trim() ? driver.name.trim() : driverId
     const trips = sheets
@@ -524,7 +526,7 @@ function listTrips(user, query) {
           sheet.date <= to.value &&
           (sheet.status === 'planificada' || sheet.status === 'en_curso' || sheet.status === 'cerrada'),
       )
-      .map((sheet) => toTrip(sheet, byId, name))
+      .map((sheet) => toTrip(sheet, byId, name, rates))
       .sort((left, right) => {
         if (left.date !== right.date) return right.date.localeCompare(left.date)
         if (left.slot !== right.slot) return right.slot.localeCompare(left.slot)
@@ -534,7 +536,7 @@ function listTrips(user, query) {
   })
 }
 
-function toTrip(sheet, byId, driverName) {
+function toTrip(sheet, byId, driverName, rates) {
   const trip = readStoredTrip(sheet) ?? buildTrip(sheet, byId)
   return {
     id: sheet.id,
@@ -551,6 +553,7 @@ function toTrip(sheet, byId, driverName) {
     km: trip.km,
     kmEstimated: trip.kmEstimated,
     stops: trip.stops,
+    amount: quoteTrip(rates, { zones: trip.zones, date: sheet.date, km: trip.km }),
   }
 }
 
