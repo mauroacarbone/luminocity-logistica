@@ -92,7 +92,7 @@ function exportFinished(trips: DriverTrip[], from: string, to: string) {
       trip.undelivered,
       csvNumber(trip.km),
       trip.kmEstimated ? 'sí' : 'no',
-      trip.amount == null ? '' : csvNumber(trip.amount),
+      trip.delivered < 1 || trip.amount == null ? '' : csvNumber(trip.amount),
     ]),
   ]
   downloadCsvFile(buildCsv(rows), `viajes-${from}-${to}.csv`)
@@ -156,11 +156,14 @@ export function MisViajes() {
 
   const summary = useMemo(() => {
     const byZone = new Map<string, number>()
+    let count = 0
     let km = 0
     let estimated = false
     let pay = 0
     let priced = false
     for (const trip of finished) {
+      if (trip.delivered < 1) continue
+      count += 1
       km += trip.km
       if (trip.kmEstimated) estimated = true
       if (typeof trip.amount === 'number') {
@@ -171,7 +174,7 @@ export function MisViajes() {
       for (const zone of zones) byZone.set(zone, (byZone.get(zone) ?? 0) + 1)
     }
     return {
-      count: finished.length,
+      count,
       km,
       estimated,
       pay,
@@ -400,6 +403,7 @@ function TripCard({ trip }: { trip: DriverTrip }) {
         <h2 className="text-lg font-semibold">
           {formatIsoDate(trip.date)} · {trip.slot}
         </h2>
+        {trip.status === 'cerrada' && trip.delivered < 1 && <Badge tone="neutral">Sin entregas</Badge>}
         <p className="text-base font-semibold">
           {formatKm(trip.km)}
           {trip.kmEstimated ? ' · estimado' : ''}
