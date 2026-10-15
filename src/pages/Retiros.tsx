@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Page, PageHeader } from '../components/ui'
+import { FilterBar, Page, PageHeader } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -169,31 +169,36 @@ export function Retiros() {
     <Page>
       <PageHeader title="Retiros" subtitle="Pedidos para retirar por el local." />
 
-      <div className="mt-6 flex flex-col gap-3">
-        <label className="block text-sm">
-          <span className="sr-only">Buscar retiro</span>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cliente, teléfono, pedido o factura"
-            className="w-full rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
-          />
-        </label>
-
-        <div className="flex flex-wrap gap-2">
-          {CHIPS.map((chip) => (
-            <button
-              key={chip.value}
-              type="button"
-              className={selected.has(chip.value) ? 'zone-chip active' : 'zone-chip'}
-              onClick={() => setSelected((prev) => toggleChip(prev, chip.value))}
-            >
-              {chip.label} ({counts[chip.value]})
-            </button>
-          ))}
-        </div>
-
+      <FilterBar
+        className="mt-6"
+        search={{
+          value: query,
+          onChange: setQuery,
+          label: 'Buscar retiro',
+          srOnly: true,
+          placeholder: 'Cliente, teléfono, pedido o factura',
+        }}
+        chips={[
+          {
+            id: 'estado',
+            label: 'Estado',
+            multiple: true,
+            values: [...selected],
+            options: CHIPS.map((chip) => ({
+              value: chip.value,
+              label: chip.label,
+              count: counts[chip.value],
+            })),
+            onChange: (value) => setSelected((prev) => toggleChip(prev, value as ChipStatus)),
+          },
+        ]}
+        activeCount={(query.trim() ? 1 : 0) + (selected.size === 2 && selected.has('pendiente') && selected.has('preparado') ? 0 : 1)}
+        onClear={() => {
+          setQuery('')
+          setSelected(new Set<ChipStatus>(['pendiente', 'preparado']))
+        }}
+      />
+      <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-sm">
             Desde

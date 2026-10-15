@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Page, PageHeader } from '../components/ui'
+import { FilterBar, Page, PageHeader } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
@@ -152,31 +152,31 @@ export function Seguimiento() {
     <Page>
       <PageHeader title="Seguimiento" subtitle="Buscá un pedido y mirá en qué estado está." />
 
-      <div className="mt-6 flex flex-col gap-3">
-        <label className="block text-sm">
-          <span className="sr-only">Buscar pedido</span>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Número, cliente o factura"
-            className="w-full rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
-          />
-        </label>
-
-        <div className="flex flex-wrap gap-2">
-          {chips.map((chip) => (
-            <button
-              key={chip.value}
-              type="button"
-              className={statusFilter === chip.value ? 'zone-chip active' : 'zone-chip'}
-              onClick={() => setStatusFilter(chip.value)}
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-
+      <FilterBar
+        className="mt-6"
+        search={{
+          value: query,
+          onChange: setQuery,
+          label: 'Buscar pedido',
+          srOnly: true,
+          placeholder: 'Número, cliente o factura',
+        }}
+        chips={[
+          {
+            id: 'estado',
+            label: 'Estado',
+            value: statusFilter,
+            options: chips,
+            onChange: (value) => setStatusFilter(value as StatusFilter),
+          },
+        ]}
+        activeCount={(query.trim() ? 1 : 0) + (statusFilter !== 'todos' ? 1 : 0)}
+        onClear={() => {
+          setQuery('')
+          setStatusFilter('todos')
+        }}
+      />
+      <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-sm">
             Desde

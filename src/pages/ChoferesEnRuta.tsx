@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { Button, Modal, Page, PageHeader } from '../components/ui'
+import { Button, FilterBar, Modal, Page, PageHeader } from '../components/ui'
 import { isOwnDelivery } from '../data/catalog'
 import { error, success } from '../lib/alerts'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
@@ -306,28 +306,34 @@ export function ChoferesEnRuta() {
               </ul>
             )}
           </section>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por nombre o transportista"
-              className="min-w-0 flex-1 rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
-            />
-            <select
-              value={driverFilter}
-              aria-label="Chofer"
-              className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
-              onChange={(event) => setDriverFilter(event.target.value)}
-            >
-              <option value="">Todos los choferes</option>
-              {drivers.map((driver) => (
-                <option key={driver.id} value={driver.id}>
-                  {driver.name}
-                </option>
-              ))}
-              {filterMissing && <option value={driverFilter}>Ese chofer no está en ruta</option>}
-            </select>
-          </div>
+          <FilterBar
+            className="mt-4"
+            search={{
+              value: query,
+              onChange: setQuery,
+              label: 'Buscar chofer',
+              srOnly: true,
+              placeholder: 'Buscar por nombre o transportista',
+            }}
+            selects={[
+              {
+                id: 'chofer',
+                label: 'Chofer',
+                value: driverFilter,
+                onChange: setDriverFilter,
+                options: [
+                  { value: '', label: 'Todos los choferes' },
+                  ...drivers.map((driver) => ({ value: driver.id, label: driver.name })),
+                  ...(filterMissing ? [{ value: driverFilter, label: 'Ese chofer no está en ruta' }] : []),
+                ],
+              },
+            ]}
+            activeCount={(query.trim() ? 1 : 0) + (driverFilter ? 1 : 0)}
+            onClear={() => {
+              setQuery('')
+              setDriverFilter('')
+            }}
+          />
 
           <div className="mt-4 overflow-hidden rounded-2xl bg-border-strong" style={{ height: 480 }}>
             {visible.length > 0 ? (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Page, PageHeader } from '../components/ui'
+import { FilterBar, Page, PageHeader } from '../components/ui'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -506,19 +506,20 @@ export function PanelOperativo() {
         }
       />
 
-      <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Fecha de entrega">
-        {FECHA_CHIPS.map((chip) => (
-          <button
-            key={chip.value}
-            type="button"
-            className={dateFilter === chip.value ? 'zone-chip active' : 'zone-chip'}
-            aria-pressed={dateFilter === chip.value}
-            onClick={() => selectFecha(chip.value)}
-          >
-            {chip.label}
-          </button>
-        ))}
-      </div>
+      <FilterBar
+        className="mt-4"
+        chips={[
+          {
+            id: 'fecha',
+            label: 'Fecha de entrega',
+            value: dateFilter,
+            options: FECHA_CHIPS,
+            onChange: (value) => selectFecha(value as FechaFilter),
+          },
+        ]}
+        activeCount={dateFilter === 'semana' ? 0 : 1}
+        onClear={() => selectFecha('semana')}
+      />
 
       {sheetsError && (
         <p className="mt-3 text-sm text-lumi-muted">No se pudieron cargar las hojas de ruta</p>

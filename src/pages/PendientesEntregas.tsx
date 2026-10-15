@@ -4,7 +4,7 @@ import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { Badge, Button, EmptyState, Modal, Page, PageHeader, statusTone } from '../components/ui'
+import { Badge, Button, EmptyState, FilterBar, Modal, Page, PageHeader, statusTone } from '../components/ui'
 import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL, isDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
@@ -667,15 +667,6 @@ export function PendientesEntregas() {
     }
   }, [canLinkOrders, lines, patchLine, pedidos])
 
-  function applySearch() {
-    patchParams({ q: searchDraft.trim() })
-  }
-
-  function clearSearch() {
-    setSearchDraft('')
-    patchParams({ q: null })
-  }
-
   function openAllData() {
     setVisibleColumnIds(dataColumns.map((column) => column.id))
     setShowAllData(true)
@@ -1161,101 +1152,70 @@ export function PendientesEntregas() {
         </div>
       )}
 
-      <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="min-w-0 flex-1 text-sm">
-            <span className="sr-only">Buscar</span>
-            <input
-              value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  applySearch()
-                }
-              }}
-              placeholder="Número, cliente, comprobante o teléfono"
-              className="w-full rounded-xl border border-lumi-line px-3 py-2"
-            />
-          </label>
-          <button
-            type="button"
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg"
-            onClick={applySearch}
-          >
-            Buscar
-          </button>
-          {(searchDraft || searchApplied) && (
-            <button
-              type="button"
-              className="rounded-xl border border-lumi-line px-3 py-2 text-sm"
-              aria-label="Limpiar búsqueda"
-              onClick={clearSearch}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {STATUS_CHIPS.map((chip) => (
-            <button
-              key={chip.value}
-              type="button"
-              className={statusFilter === chip.value ? 'zone-chip active' : 'zone-chip'}
-              aria-pressed={statusFilter === chip.value}
-              onClick={() => patchParams({ estado: chip.value })}
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {FECHA_CHIPS.map((chip) => (
-            <button
-              key={chip.value}
-              type="button"
-              className={fechaFilter === chip.value ? 'zone-chip active' : 'zone-chip'}
-              aria-pressed={fechaFilter === chip.value}
-              onClick={() => patchParams({ fecha: chip.value })}
-            >
-              {chip.label}
-            </button>
-          ))}
-          <p className="ml-auto text-sm text-lumi-muted">
-            {mode === 'lista'
-              ? `${filteredOpenOrders.length} pedidos · ${filteredOrphans.length} sin pedido`
-              : `${filteredLines.length} de ${lines.length} filas`}
-          </p>
-          <button
-            type="button"
-            className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm"
-            onClick={openAllData}
-          >
-            Ver todos los datos
-          </button>
-        </div>
-        <label className="mt-3 block text-sm">
-          Vendedor
-          <select
-            value={isVendedor ? lockedSeller : seller || 'todos'}
-            disabled={isVendedor}
-            onChange={(event) => patchParams({ vendedor: event.target.value })}
-            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:opacity-60"
-          >
-            {!isVendedor && <option value="todos">Todos</option>}
-            {isVendedor && (
-              <option value={lockedSeller}>
-                {lockedSeller || 'Sin vendedor asignado'}
-              </option>
-            )}
-            {!isVendedor &&
-              sellers.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-          </select>
-        </label>
+      <FilterBar
+        className="mt-4"
+        search={{
+          value: searchDraft,
+          label: 'Buscar',
+          srOnly: true,
+          placeholder: 'Número, cliente, comprobante o teléfono',
+          onChange: (value) => {
+            setSearchDraft(value)
+            patchParams({ q: value.trim() || null })
+          },
+        }}
+        chips={[
+          {
+            id: 'estado',
+            label: 'Estado',
+            value: statusFilter,
+            options: STATUS_CHIPS,
+            onChange: (value) => patchParams({ estado: value }),
+          },
+          {
+            id: 'fecha',
+            label: 'Fecha',
+            value: fechaFilter,
+            options: FECHA_CHIPS,
+            onChange: (value) => patchParams({ fecha: value }),
+          },
+        ]}
+        selects={[
+          {
+            id: 'vendedor',
+            label: 'Vendedor',
+            value: isVendedor ? lockedSeller : seller || 'todos',
+            disabled: isVendedor,
+            onChange: (value) => patchParams({ vendedor: value }),
+            options: isVendedor
+              ? [{ value: lockedSeller, label: lockedSeller || 'Sin vendedor asignado' }]
+              : [{ value: 'todos', label: 'Todos' }, ...sellers.map((name) => ({ value: name, label: name }))],
+          },
+        ]}
+        activeCount={
+          (searchApplied.trim() || searchDraft.trim() ? 1 : 0) +
+          (statusFilter !== 'todos' ? 1 : 0) +
+          (fechaFilter !== 'semana' ? 1 : 0) +
+          (!isVendedor && seller !== 'todos' ? 1 : 0)
+        }
+        onClear={() => {
+          setSearchDraft('')
+          patchParams({ q: null, estado: null, fecha: null, vendedor: null })
+        }}
+      />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <p className="text-sm text-lumi-muted">
+          {mode === 'lista'
+            ? `${filteredOpenOrders.length} pedidos · ${filteredOrphans.length} sin pedido`
+            : `${filteredLines.length} de ${lines.length} filas`}
+        </p>
+        <button
+          type="button"
+          className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm"
+          onClick={openAllData}
+        >
+          Ver todos los datos
+        </button>
       </div>
 
       {mode === 'lista' ? (

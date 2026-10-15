@@ -324,6 +324,8 @@ El Brief 32d.1 fija el encabezado de la tabla: con `maxHeight` queda dentro del 
 
 El Brief 32d.2 deja la tabla en un solo elemento: `caption`, `thead` y `tbody`, con alto máximo `70vh` y encabezado fijo adentro. Cada columna puede pedir su ancho; si ninguna lo hace, el ancho es automático. Sin filas y sin `empty`, se muestra «Sin datos».
 
+El Brief 32f sube la tipografía base a 16px. Las pantallas van en un contenedor de 1280px (768 en formularios, ancho completo en el planificador y el mapa) y el encabezado muestra migas: Inicio, grupo y página. Los filtros de Pendientes, Despacho, Post Venta, Retiros, Seguimiento, el Panel, Mis viajes y Choferes en ruta usan la misma barra; en el celular la búsqueda queda afuera y el resto se abre en una hoja.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.

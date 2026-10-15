@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent }
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
-import { Button, KpiCard, LoadState, Page, PageHeader } from '../components/ui'
+import { Button, FilterBar, KpiCard, LoadState, Page, PageHeader } from '../components/ui'
 import { withCurrent, withExtras } from '../data/catalog'
 import {
   CLAIM_MOTIVES,
@@ -1048,85 +1048,20 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   )
 }
 
-function FilterBar({
-  seller,
-  period,
-  onSeller,
-  onPeriod,
-  claims,
-}: {
-  seller: string
-  period: Period
-  onSeller: (value: string) => void
-  onPeriod: (value: Period) => void
-  claims: Claim[]
-}) {
-  const { sellers } = useCatalog()
-  const sellerOptions = withExtras(
-    sellers,
-    claims.map((claim) => claim.seller),
-  )
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <select
-        value={seller}
-        aria-label="Vendedor"
-        onChange={(event) => onSeller(event.target.value)}
-        className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
-      >
-        <option value="todos">Todos los vendedores</option>
-        {sellerOptions.map((name) => (
-          <option key={name} value={name}>
-            {name}
-          </option>
-        ))}
-      </select>
-      <select
-        value={period}
-        aria-label="Período"
-        onChange={(event) => onPeriod(event.target.value as Period)}
-        className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
-      >
-        {PERIODS.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.label}
-          </option>
-        ))}
-      </select>
-      <Button variant="secondary" disabled={claims.length === 0} onClick={() => downloadClaims(claims)}>
-        Descargar Excel
-      </Button>
-    </div>
-  )
-}
-
 function ClaimList({
   claims,
   empty,
   highlightId,
-  seller,
-  period,
-  onSeller,
-  onPeriod,
 }: {
   claims: Claim[]
   empty: string
   highlightId: string | null
-  seller: string
-  period: Period
-  onSeller: (value: string) => void
-  onPeriod: (value: Period) => void
 }) {
   return (
     <div className="mt-4">
-      <FilterBar
-        seller={seller}
-        period={period}
-        onSeller={onSeller}
-        onPeriod={onPeriod}
-        claims={claims}
-      />
+      <Button variant="secondary" disabled={claims.length === 0} onClick={() => downloadClaims(claims)}>
+        Descargar Excel
+      </Button>
 
       {claims.length === 0 ? (
         <LoadState className="mt-4" status="empty" emptyTitle={empty} />
@@ -1145,19 +1080,7 @@ function ClaimList({
   )
 }
 
-function Dashboard({
-  claims,
-  seller,
-  period,
-  onSeller,
-  onPeriod,
-}: {
-  claims: Claim[]
-  seller: string
-  period: Period
-  onSeller: (value: string) => void
-  onPeriod: (value: Period) => void
-}) {
+function Dashboard({ claims }: { claims: Claim[] }) {
   const abiertos = claims.filter((claim) => claim.status === 'nuevo').length
   const enCurso = claims.filter(
     (claim) => isOpenClaim(claim.status) && claim.status !== 'nuevo',
@@ -1194,13 +1117,9 @@ function Dashboard({
 
   return (
     <div className="mt-4 flex flex-col gap-4">
-      <FilterBar
-        seller={seller}
-        period={period}
-        onSeller={onSeller}
-        onPeriod={onPeriod}
-        claims={claims}
-      />
+      <Button variant="secondary" disabled={claims.length === 0} onClick={() => downloadClaims(claims)}>
+        Descargar Excel
+      </Button>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         <KpiCard title="Abiertos" value={abiertos} />
         <KpiCard title="En curso" value={enCurso} />
@@ -1274,6 +1193,7 @@ export function PostVenta() {
     uploadLegacy,
     dismissLegacy,
   } = useClaims()
+  const { sellers } = useCatalog()
   const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>('nuevo')
   const [query, setQuery] = useState('')
@@ -1411,13 +1331,44 @@ export function PostVenta() {
         </div>
       )}
 
-      <div className="mt-5">
-        <SearchField
-          value={query}
-          placeholder="Buscar por cliente, factura o producto..."
-          onChange={setQuery}
-        />
-      </div>
+      <FilterBar
+        className="mt-5"
+        search={{
+          value: query,
+          onChange: setQuery,
+          label: 'Buscar reclamo',
+          srOnly: true,
+          placeholder: 'Buscar por cliente, factura o producto...',
+        }}
+        selects={[
+          {
+            id: 'vendedor',
+            label: 'Vendedor',
+            value: seller,
+            onChange: setSeller,
+            options: [
+              { value: 'todos', label: 'Todos los vendedores' },
+              ...withExtras(
+                sellers,
+                claims.map((claim) => claim.seller),
+              ).map((name) => ({ value: name, label: name })),
+            ],
+          },
+          {
+            id: 'periodo',
+            label: 'Período',
+            value: period,
+            onChange: (value) => setPeriod(value as Period),
+            options: PERIODS.map((item) => ({ value: item.id, label: item.label })),
+          },
+        ]}
+        activeCount={(query.trim() ? 1 : 0) + (seller !== 'todos' ? 1 : 0) + (period !== '30' ? 1 : 0)}
+        onClear={() => {
+          setQuery('')
+          setSeller('todos')
+          setPeriod('30')
+        }}
+      />
 
       <div className="mt-4 flex flex-wrap gap-1 border-b border-lumi-line">
         {TABS.map((item) => {
@@ -1450,10 +1401,6 @@ export function PostVenta() {
               : 'No hay reclamos en curso para esos filtros.'
           }
           highlightId={highlightId}
-          seller={seller}
-          period={period}
-          onSeller={setSeller}
-          onPeriod={setPeriod}
         />
       )}
       {tab === 'finalizados' && (
@@ -1465,10 +1412,6 @@ export function PostVenta() {
               : 'No hay reclamos finalizados para esos filtros.'
           }
           highlightId={highlightId}
-          seller={seller}
-          period={period}
-          onSeller={setSeller}
-          onPeriod={setPeriod}
         />
       )}
       {tab === 'cancelados' && (
@@ -1480,20 +1423,10 @@ export function PostVenta() {
               : 'No hay reclamos cancelados para esos filtros.'
           }
           highlightId={highlightId}
-          seller={seller}
-          period={period}
-          onSeller={setSeller}
-          onPeriod={setPeriod}
         />
       )}
       {tab === 'dashboard' && (
-        <Dashboard
-          claims={listed}
-          seller={seller}
-          period={period}
-          onSeller={setSeller}
-          onPeriod={setPeriod}
-        />
+        <Dashboard claims={listed} />
       )}
     </Page>
   )

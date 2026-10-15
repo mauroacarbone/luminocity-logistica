@@ -4,7 +4,7 @@ import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
-import { Button, Page, PageHeader } from '../components/ui'
+import { Button, FilterBar, Page, PageHeader } from '../components/ui'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
 import {
@@ -541,11 +541,11 @@ export function Despacho() {
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex flex-col gap-3">
         <Button
           variant="secondary"
           size="lg"
-          className="shrink-0"
+          className="shrink-0 self-start"
           onClick={() => {
             setDialogError('')
             setDialog('caratula')
@@ -553,25 +553,32 @@ export function Despacho() {
         >
           Escanear QR carátula
         </Button>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar en todos los días — cliente, factura o N° pedido..."
-          className="min-w-0 flex-1 rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
+        <FilterBar
+          search={{
+            value: query,
+            onChange: setQuery,
+            label: 'Buscar pedido',
+            srOnly: true,
+            placeholder: 'Buscar en todos los días — cliente, factura o N° pedido...',
+          }}
+          selects={[
+            {
+              id: 'transportista',
+              label: 'Transportista',
+              value: transporter,
+              onChange: setTransporter,
+              options: [
+                { value: 'todos', label: 'Todos los transportistas' },
+                ...transporters.map((name) => ({ value: name, label: name })),
+              ],
+            },
+          ]}
+          activeCount={(query.trim() ? 1 : 0) + (transporter !== 'todos' ? 1 : 0)}
+          onClear={() => {
+            setQuery('')
+            setTransporter('todos')
+          }}
         />
-        <select
-          value={transporter}
-          onChange={(event) => setTransporter(event.target.value)}
-          aria-label="Transportista"
-          className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
-        >
-          <option value="todos">Todos los transportistas</option>
-          {transporters.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
       </div>
 
       <div className="mt-6 flex items-baseline justify-between">

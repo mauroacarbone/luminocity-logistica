@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Badge, Page, PageHeader } from '../components/ui'
+import { Badge, Button, FilterBar, Page, PageHeader } from '../components/ui'
 import { isSession, type Session } from '../lib/authStore'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
 import { listDriverTrips, type DriverTrip } from '../lib/routeSheetsApi'
@@ -10,35 +10,11 @@ import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 
 type TripTab = 'pendientes' | 'finalizados'
-type Shortcut = 'hoy' | 'semana' | 'mes' | 'custom'
-
-function isoUtc(date: Date) {
-  const year = date.getUTCFullYear()
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(date.getUTCDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function parseBusiness(iso: string) {
-  const [year, month, day] = iso.split('-').map(Number)
-  return new Date(Date.UTC(year, month - 1, day))
-}
 
 function monthBounds(today: string) {
   const [year, month] = today.split('-')
   const last = new Date(Date.UTC(Number(year), Number(month), 0)).getUTCDate()
   return { from: `${year}-${month}-01`, to: `${year}-${month}-${String(last).padStart(2, '0')}` }
-}
-
-function weekBounds(today: string) {
-  const date = parseBusiness(today)
-  const weekday = date.getUTCDay()
-  const mondayOffset = weekday === 0 ? -6 : 1 - weekday
-  const start = new Date(date)
-  start.setUTCDate(date.getUTCDate() + mondayOffset)
-  const end = new Date(start)
-  end.setUTCDate(start.getUTCDate() + 6)
-  return { from: isoUtc(start), to: isoUtc(end) }
 }
 
 function formatArs(amount: number) {
@@ -107,7 +83,6 @@ export function MisViajes() {
   const initial = monthBounds(today)
   const [from, setFrom] = useState(initial.from)
   const [to, setTo] = useState(initial.to)
-  const [shortcut, setShortcut] = useState<Shortcut>('mes')
   const [tab, setTab] = useState<TripTab>('pendientes')
   const [trips, setTrips] = useState<DriverTrip[]>([])
   const [drivers, setDrivers] = useState<Session[]>([])
@@ -183,16 +158,13 @@ export function MisViajes() {
     }
   }, [finished])
 
-  function applyShortcut(next: Exclude<Shortcut, 'custom'>) {
-    const range = next === 'hoy' ? { from: today, to: today } : next === 'semana' ? weekBounds(today) : monthBounds(today)
-    if (range.from === from && range.to === to) {
-      setShortcut(next)
-      return
-    }
+  const month = monthBounds(today)
+
+  function changeRange(nextFrom: string, nextTo: string) {
+    if (nextFrom === from && nextTo === to) return
     setLoading(true)
-    setShortcut(next)
-    setFrom(range.from)
-    setTo(range.to)
+    setFrom(nextFrom)
+    setTo(nextTo)
   }
 
   return (
@@ -200,113 +172,74 @@ export function MisViajes() {
       <PageHeader
         title={manager ? 'Viajes del chofer' : 'Mis viajes'}
         subtitle="Pendientes, finalizados y kilómetros del período"
+        actions={
+          manager ? (
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={finished.length === 0}
+              onClick={() => exportFinished(finished, from, to)}
+            >
+              Exportar CSV
+            </Button>
+          ) : undefined
+        }
       />
 
-      {manager && (
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
-          <label className="min-w-0 flex-1 text-sm">
-            Chofer
-            <select
-              value={driverId}
-              className="mt-1 block min-h-12 w-full rounded-xl border border-lumi-line bg-surface px-3 text-base"
-              onChange={(event) => {
-                const next = event.target.value
-                if (!next) {
-                  setParams({})
-                  setTrips([])
-                  setError('')
-                  setLoading(false)
-                  return
-                }
-                setLoading(true)
-                setParams({ chofer: next })
-              }}
-            >
-              <option value="">Elegí un chofer</option>
-              {drivers.map((driver) => (
-                <option key={driver.id} value={driver.id}>
-                  {driver.name}
-                </option>
-              ))}
-              {driverId && !drivers.some((driver) => driver.id === driverId) && (
-                <option value={driverId}>Chofer seleccionado</option>
-              )}
-            </select>
-          </label>
-          <button
-            type="button"
-            className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
-            disabled={finished.length === 0}
-            onClick={() => exportFinished(finished, from, to)}
-          >
-            Exportar CSV
-          </button>
-        </div>
-      )}
-
-      <div className="no-print mt-4 flex flex-col gap-2">
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            className={`min-h-12 rounded-xl px-3 text-sm font-semibold ${
-              shortcut === 'hoy' ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-ink shadow-sm'
-            }`}
-            onClick={() => applyShortcut('hoy')}
-          >
-            Hoy
-          </button>
-          <button
-            type="button"
-            className={`min-h-12 rounded-xl px-3 text-sm font-semibold ${
-              shortcut === 'semana' ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-ink shadow-sm'
-            }`}
-            onClick={() => applyShortcut('semana')}
-          >
-            Esta semana
-          </button>
-          <button
-            type="button"
-            className={`min-h-12 rounded-xl px-3 text-sm font-semibold ${
-              shortcut === 'mes' ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-ink shadow-sm'
-            }`}
-            onClick={() => applyShortcut('mes')}
-          >
-            Este mes
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <label className="text-sm">
-            Desde
-            <input
-              type="date"
-              value={from}
-              className="mt-1 block min-h-12 w-full rounded-xl border border-lumi-line bg-surface px-3 text-base"
-              onChange={(event) => {
-                const value = event.target.value
-                if (value === from) return
-                setLoading(true)
-                setShortcut('custom')
-                setFrom(value)
-              }}
-            />
-          </label>
-          <label className="text-sm">
-            Hasta
-            <input
-              type="date"
-              value={to}
-              className="mt-1 block min-h-12 w-full rounded-xl border border-lumi-line bg-surface px-3 text-base"
-              onChange={(event) => {
-                const value = event.target.value
-                if (value === to) return
-                setLoading(true)
-                setShortcut('custom')
-                setTo(value)
-              }}
-            />
-          </label>
-        </div>
-      </div>
+      <FilterBar
+        className="no-print"
+        selects={
+          manager
+            ? [
+                {
+                  id: 'chofer',
+                  label: 'Chofer',
+                  value: driverId,
+                  onChange: (next) => {
+                    if (!next) {
+                      setParams({})
+                      setTrips([])
+                      setError('')
+                      setLoading(false)
+                      return
+                    }
+                    setLoading(true)
+                    setParams({ chofer: next })
+                  },
+                  options: [
+                    { value: '', label: 'Elegí un chofer' },
+                    ...drivers.map((driver) => ({ value: driver.id, label: driver.name })),
+                    ...(driverId && !drivers.some((driver) => driver.id === driverId)
+                      ? [{ value: driverId, label: 'Chofer seleccionado' }]
+                      : []),
+                  ],
+                },
+              ]
+            : undefined
+        }
+        dateRange={{
+          from,
+          to,
+          shortcuts: ['hoy', 'semana', 'mes'],
+          onChange: ({ from: nextFrom, to: nextTo }) => changeRange(nextFrom, nextTo),
+        }}
+        activeCount={(from !== month.from || to !== month.to ? 1 : 0) + (manager && driverId ? 1 : 0)}
+        onClear={() => {
+          const datesChanged = from !== month.from || to !== month.to
+          if (datesChanged) {
+            setFrom(month.from)
+            setTo(month.to)
+          }
+          if (manager && driverId) {
+            setParams({})
+            setTrips([])
+            setError('')
+            setLoading(false)
+          } else if (datesChanged) {
+            setLoading(true)
+          }
+        }}
+      />
 
       <div className={`mt-4 grid gap-2 ${summary.priced ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
         <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
