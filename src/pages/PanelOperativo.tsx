@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Page } from '../components/ui'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -470,7 +471,7 @@ export function PanelOperativo() {
   }
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header row">
         <div>
           <h1>Panel Operativo</h1>
@@ -690,6 +691,6 @@ export function PanelOperativo() {
           </table>
         </div>
       )}
-    </section>
+    </Page>
   )
 }

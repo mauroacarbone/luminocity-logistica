@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Page } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -156,16 +157,16 @@ export function Retiros() {
 
   if (loading) {
     return (
-      <section className="page">
+      <Page>
         <Spinner label="Cargando retiros…" />
-      </section>
+      </Page>
     )
   }
 
   if (!user) return null
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header">
         <h1>Retiros</h1>
         <p>Pedidos para retirar por el local.</p>
@@ -294,7 +295,7 @@ export function Retiros() {
           ))}
         </ul>
       )}
-    </section>
+    </Page>
   )
 }
 

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { EditReasonDialog } from '../components/EditReasonDialog'
-import { Button } from '../components/ui'
+import { Button, Page } from '../components/ui'
 import { NoAccess } from '../components/NoAccess'
 import {
   DISPATCH_LABEL,
@@ -1142,7 +1142,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const pickup = dispatchType === 'retiro'
 
   return (
-    <section className="page">
+    <Page width="narrow">
       <header className="page-header">
         <h1>{storedId ? 'Editar Pedido' : 'Nuevo Pedido'}</h1>
         <p>
@@ -1813,7 +1813,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           onConfirm={(reason) => void confirmReason(reason)}
         />
       )}
-    </section>
+    </Page>
   )
 }
 
@@ -1831,7 +1831,7 @@ export function NuevoPedido() {
           ? 'No se puede editar un pedido entregado.'
           : 'No podés editar este pedido.'
       return (
-        <section className="page">
+        <Page width="narrow">
           <header className="page-header">
             <h1>Editar Pedido</h1>
             <p>{message}</p>
@@ -1841,7 +1841,7 @@ export function NuevoPedido() {
               </Link>
             </p>
           </header>
-        </section>
+        </Page>
       )
     }
   }

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Page } from '../components/ui'
 import { normalizeTimeWindow } from '../lib/slot'
 import { useCatalog } from '../state/CatalogContext'
 
@@ -426,7 +427,7 @@ export function DatosMaestros() {
     useCatalog()
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header">
         <h1>Datos maestros</h1>
         <p>Listas que usan los formularios de pedidos, despacho y post venta.</p>
@@ -475,6 +476,6 @@ export function DatosMaestros() {
           onSave={(next) => save({ timeWindows: next.map((item) => normalizeTimeWindow(item)).filter(Boolean) })}
         />
       </div>
-    </section>
+    </Page>
   )
 }

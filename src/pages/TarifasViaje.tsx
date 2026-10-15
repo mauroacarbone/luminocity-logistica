@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Page } from '../components/ui'
 import { listTripRates, saveTripRate, type TripRate } from '../lib/tripRatesApi'
 import { businessToday } from '../lib/schedule'
 import { formatIsoDate } from '../lib/week'
@@ -70,7 +71,7 @@ export function TarifasViaje() {
   const names = [...new Set([...catalogNames, ...extra])]
 
   return (
-    <section className="page">
+    <Page width="narrow">
       <header className="page-header">
         <h1>Tarifas de viaje</h1>
         <p>Monto por zona, con la fecha desde la que rige. Los viajes anteriores no cambian.</p>
@@ -113,7 +114,7 @@ export function TarifasViaje() {
           ))}
         </div>
       )}
-    </section>
+    </Page>
   )
 }
 

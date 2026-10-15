@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Page } from '../components/ui'
 import { Link, useParams } from 'react-router-dom'
 import { NoAccess } from '../components/NoAccess'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
@@ -107,26 +108,26 @@ function PedidoDetalleView({ id }: { id: string }) {
   if (forbidden) return <NoAccess />
   if (missing) {
     return (
-      <section className="page">
+      <Page>
         <header className="page-header">
           <h1>No existe ese pedido</h1>
           <p>
             <Link to="/pedidos">Volver a pedidos</Link>
           </p>
         </header>
-      </section>
+      </Page>
     )
   }
   if (loading) {
     return (
-      <section className="page">
+      <Page>
         <Spinner label="Cargando pedido…" />
-      </section>
+      </Page>
     )
   }
   if (error) {
     return (
-      <section className="page">
+      <Page>
         <ServerDown
           message={error}
           onRetry={() => {
@@ -135,7 +136,7 @@ function PedidoDetalleView({ id }: { id: string }) {
             setReloadKey((key) => key + 1)
           }}
         />
-      </section>
+      </Page>
     )
   }
   if (!order || !user) return <NoAccess />
@@ -164,7 +165,7 @@ function PedidoDetalleView({ id }: { id: string }) {
   }
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header">
         <p className="text-sm text-lumi-muted">
           <Link to={user.role === 'chofer' ? '/mis-entregas' : '/pedidos'}>
@@ -304,7 +305,7 @@ function PedidoDetalleView({ id }: { id: string }) {
           </ol>
         )}
       </div>
-    </section>
+    </Page>
   )
 }
 

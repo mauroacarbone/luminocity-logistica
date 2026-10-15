@@ -4,7 +4,7 @@ import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { Badge, Button, EmptyState, Modal, statusTone } from '../components/ui'
+import { Badge, Button, EmptyState, Modal, Page, statusTone } from '../components/ui'
 import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL, isDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
@@ -980,22 +980,22 @@ export function PendientesEntregas() {
 
   if (loading && lines.length === 0) {
     return (
-      <section className="page">
+      <Page>
         <Spinner label="Cargando picking…" />
-      </section>
+      </Page>
     )
   }
 
   if (loadError && lines.length === 0) {
     return (
-      <section className="page">
+      <Page>
         <ServerDown message={loadError} onRetry={() => void refresh()} />
-      </section>
+      </Page>
     )
   }
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header row">
         <div>
           <h1>Pendientes de Entregas</h1>
@@ -1710,6 +1710,6 @@ export function PendientesEntregas() {
           </div>
         </Modal>
       )}
-    </section>
+    </Page>
   )
 }

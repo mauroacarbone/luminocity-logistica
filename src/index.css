@@ -828,9 +828,7 @@ p {
   flex: 1;
   min-width: 0;
   width: 100%;
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 24px 32px 40px;
+  padding-bottom: 40px;
   isolation: isolate;
 }
 
@@ -2218,7 +2216,8 @@ p {
   }
 
   .main {
-    padding: calc(56px + 16px) 24px 32px;
+    padding-top: calc(56px + 16px);
+    padding-bottom: 32px;
   }
 
   .topbar .relative > button:hover {
@@ -2232,7 +2231,8 @@ p {
   }
 
   .main {
-    padding: calc(56px + 12px) 16px 32px;
+    padding-top: calc(56px + 12px);
+    padding-bottom: 32px;
   }
 
   .view-toggle {
@@ -2280,7 +2280,7 @@ p {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: calc(100dvh - 56px - 24px - 40px);
+  height: calc(100dvh - 56px - 40px);
   min-height: 0;
   overflow: hidden;
 }

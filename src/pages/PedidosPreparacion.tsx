@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button, Modal } from '../components/ui'
+import { Button, Modal, Page } from '../components/ui'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { PriorityChip } from '../components/PriorityChip'
 import { DISPATCH_LABEL } from '../data/catalog'
@@ -190,7 +190,7 @@ export function PedidosPreparacion() {
       : `${days[0].getDate()} ${MONTH_SHORT[days[0].getMonth()]} – ${days[6].getDate()} ${MONTH_SHORT[days[6].getMonth()]}`
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header">
         <h1>Pedidos y Preparación</h1>
         <p>Pedidos de la semana, por preparar y preparados.</p>
@@ -361,6 +361,6 @@ export function PedidosPreparacion() {
           onConfirm={(packages) => void markPrepared(packages)}
         />
       )}
-    </section>
+    </Page>
   )
 }

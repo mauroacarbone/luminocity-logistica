@@ -4,7 +4,7 @@ import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
-import { Button } from '../components/ui'
+import { Button, Page } from '../components/ui'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
 import {
@@ -451,7 +451,7 @@ export function Despacho() {
       : `${days[0].getDate()} ${MONTH_SHORT[days[0].getMonth()]} – ${days[6].getDate()} ${MONTH_SHORT[days[6].getMonth()]}`
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header row">
         <div>
           <h1>Despacho</h1>
@@ -843,6 +843,6 @@ export function Despacho() {
         />
       )}
       {coverOrder && <QrCoverDialog order={coverOrder} onClose={() => setCoverId(null)} />}
-    </section>
+    </Page>
   )
 }

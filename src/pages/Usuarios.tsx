@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Page } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { Modal } from '../components/ui/Modal'
@@ -577,7 +578,7 @@ export function Usuarios() {
   const ordered = [...accounts].sort((left, right) => Number(!left.active) - Number(!right.active))
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header row">
         <div>
           <h1>Usuarios</h1>
@@ -764,6 +765,6 @@ export function Usuarios() {
         })}
       </div>
       )}
-    </section>
+    </Page>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Badge } from '../components/ui'
+import { Badge, Page } from '../components/ui'
 import { isSession, type Session } from '../lib/authStore'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
 import { listDriverTrips, type DriverTrip } from '../lib/routeSheetsApi'
@@ -196,7 +196,7 @@ export function MisViajes() {
   }
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header">
         <h1>{manager ? 'Viajes del chofer' : 'Mis viajes'}</h1>
         <p>Pendientes, finalizados y kilómetros del período</p>
@@ -391,7 +391,7 @@ export function MisViajes() {
           ))}
         </ul>
       )}
-    </section>
+    </Page>
   )
 }
 

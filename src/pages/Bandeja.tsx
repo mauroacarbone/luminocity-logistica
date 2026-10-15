@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Page } from '../components/ui'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { pendingEdit, type Order, type OrderEdit } from '../data/orders'
 import { confirm, error as showError, success } from '../lib/alerts'
@@ -164,7 +165,7 @@ export function Bandeja() {
   }
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header">
         <h1>Bandeja</h1>
         <p>Autorizaciones y ediciones que esperan confirmación.</p>
@@ -254,6 +255,6 @@ export function Bandeja() {
       )}
       </>
       )}
-    </section>
+    </Page>
   )
 }

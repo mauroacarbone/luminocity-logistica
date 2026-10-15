@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Page } from '../components/ui'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { PriorityChip } from '../components/PriorityChip'
@@ -519,7 +520,7 @@ export function PlanificadorRutas() {
   )
 
   return (
-    <section className="page planner-screen">
+    <Page width="full" className="planner-screen">
       <header className="page-header">
         <h1>Planificador de Rutas</h1>
         <p>Armá la hoja de un chofer para una fecha y una franja</p>
@@ -852,6 +853,6 @@ export function PlanificadorRutas() {
         </ol>
       </section>
 
-    </section>
+    </Page>
   )
 }

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent }
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
-import { Button, KpiCard, LoadState } from '../components/ui'
+import { Button, KpiCard, LoadState, Page } from '../components/ui'
 import { withCurrent, withExtras } from '../data/catalog'
 import {
   CLAIM_MOTIVES,
@@ -1351,22 +1351,22 @@ export function PostVenta() {
 
   if (loading && claims.length === 0) {
     return (
-      <section className="page">
+      <Page>
         <LoadState status="loading" />
-      </section>
+      </Page>
     )
   }
 
   if (loadError && claims.length === 0) {
     return (
-      <section className="page">
+      <Page>
         <LoadState status="error" error={loadError} onRetry={() => void refresh()} />
-      </section>
+      </Page>
     )
   }
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header">
         <h1>Post Venta</h1>
         <p>Cargá y seguí los reclamos de clientes</p>
@@ -1498,6 +1498,6 @@ export function PostVenta() {
           onPeriod={setPeriod}
         />
       )}
-    </section>
+    </Page>
   )
 }

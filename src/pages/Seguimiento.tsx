@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Page } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
@@ -141,14 +142,14 @@ export function Seguimiento() {
 
   if (loading) {
     return (
-      <section className="page">
+      <Page>
         <Spinner label="Cargando pedidos…" />
-      </section>
+      </Page>
     )
   }
 
   return (
-    <section className="page">
+    <Page>
       <header className="page-header">
         <h1>Seguimiento</h1>
         <p>Buscá un pedido y mirá en qué estado está.</p>
@@ -300,6 +301,6 @@ export function Seguimiento() {
           })}
         </ul>
       )}
-    </section>
+    </Page>
   )
 }
