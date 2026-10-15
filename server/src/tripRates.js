@@ -29,21 +29,30 @@ tripRatesRouter.put('/', async (req, res) => {
   })
 })
 
-/** Monto del viaje según la tarifa vigente ese día. Sin tarifa, null. */
-export function quoteTrip(rates, trip) {
+/** Monto y tarifa vigentes ese día. Sin tarifa, amount y rateId quedan en null. */
+export function quoteTripDetail(rates, trip) {
   const list = Array.isArray(rates) ? rates.filter(isRate) : []
   const zones = Array.isArray(trip?.zones) ? trip.zones : []
   const date = typeof trip?.date === 'string' ? trip.date : ''
   const km = typeof trip?.km === 'number' && Number.isFinite(trip.km) ? trip.km : 0
   let best = null
+  let rateId = null
   for (const zone of zones) {
     const rate = rateOn(list, zone, date)
     if (!rate) continue
     const perKm = rate.perKm == null ? 0 : rate.perKm
     const amount = roundMoney(rate.perTrip + perKm * km)
-    if (best == null || amount > best) best = amount
+    if (best == null || amount > best) {
+      best = amount
+      rateId = rate.id
+    }
   }
-  return best
+  return { amount: best, rateId }
+}
+
+/** Monto del viaje según la tarifa vigente ese día. Sin tarifa, null. */
+export function quoteTrip(rates, trip) {
+  return quoteTripDetail(rates, trip).amount
 }
 
 function rateOn(rates, zone, date) {

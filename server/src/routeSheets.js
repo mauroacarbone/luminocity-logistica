@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { businessToday } from './access.js'
-import { quoteTrip } from './tripRates.js'
+import { quoteTrip, quoteTripDetail } from './tripRates.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
@@ -292,7 +292,7 @@ function finishSheet(id, user) {
       ...sheet,
       status: 'cerrada',
       closedAt: new Date().toISOString(),
-      trip: buildTrip(sheet, byId),
+      trip: await sealTrip(sheet, byId),
     }
     sheets[index] = next
     await writeCollection('routeSheets', sheets)
@@ -312,7 +312,7 @@ export async function closeFinishedSheets(orders) {
       return !order || order.status === 'entregado'
     })
     if (!done) continue
-    if (!sheet.trip) sheet.trip = buildTrip(sheet, byId)
+    sheet.trip = await sealTrip(sheet, byId)
     sheet.status = 'cerrada'
     sheet.closedAt = now
     changed = true
@@ -392,7 +392,9 @@ export async function pullOrderFromSheets(orders, removed) {
     if (sheet.status === 'en_curso' && orderIds.length === 0) {
       updated.status = 'cerrada'
       updated.closedAt = new Date().toISOString()
-      if (!updated.trip) updated.trip = buildTrip(updated, new Map(orders.map((item) => [item.id, item])))
+      if (!updated.trip) {
+        updated.trip = await sealTrip(updated, new Map(orders.map((item) => [item.id, item])))
+      }
     } else {
       renumberSheet(orders, updated)
     }
@@ -579,8 +581,26 @@ function listTrips(user, query) {
   })
 }
 
+function storedAmount(sheet) {
+  if (sheet.status !== 'cerrada' || !sheet.trip || typeof sheet.trip !== 'object') return undefined
+  if (!Object.prototype.hasOwnProperty.call(sheet.trip, 'amount')) return undefined
+  const amount = sheet.trip.amount
+  if (amount == null) return null
+  if (typeof amount === 'number' && Number.isFinite(amount) && amount >= 0) return Math.round(amount * 100) / 100
+  return undefined
+}
+
+async function sealTrip(sheet, byId) {
+  const trip = buildTrip(sheet, byId)
+  if (trip.delivered < 1) return { ...trip, amount: null, rateId: null }
+  const rates = await readCollection('tripRates')
+  const quote = quoteTripDetail(rates, { zones: trip.zones, date: sheet.date, km: trip.km })
+  return { ...trip, amount: quote.amount, rateId: quote.rateId }
+}
+
 function toTrip(sheet, byId, driverName, rates) {
   const trip = readStoredTrip(sheet) ?? buildTrip(sheet, byId)
+  const frozen = storedAmount(sheet)
   return {
     id: sheet.id,
     driverId: sheet.driverId,
@@ -597,7 +617,11 @@ function toTrip(sheet, byId, driverName, rates) {
     kmEstimated: trip.kmEstimated,
     stops: trip.stops,
     amount:
-      trip.delivered > 0 ? quoteTrip(rates, { zones: trip.zones, date: sheet.date, km: trip.km }) : null,
+      frozen !== undefined
+        ? frozen
+        : trip.delivered > 0
+          ? quoteTrip(rates, { zones: trip.zones, date: sheet.date, km: trip.km })
+          : null,
   }
 }
 

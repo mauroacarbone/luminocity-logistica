@@ -77,7 +77,8 @@ export function TarifasViaje() {
       </header>
       <p className="mt-3 text-sm text-lumi-muted">
         Si un viaje pasa por más de una zona, cobra la tarifa vigente que da el monto más alto. El monto por km es
-        opcional y se multiplica por los km del viaje.
+        opcional y se multiplica por los km del viaje. Una vigencia anterior a hoy solo afecta a los viajes que todavía
+        no se cerraron.
       </p>
       {error && (
         <p className="mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-lumi-danger shadow-sm">{error}</p>
