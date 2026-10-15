@@ -433,7 +433,7 @@ export function MisEntregas() {
         <Modal
           labelledBy="finish-trip-title"
           closeOnEscape={!finishing}
-          className="grid place-items-center bg-black/40 p-4"
+          className="grid place-items-center bg-overlay p-4"
           onClose={() => {
             if (!finishing) setFinishTarget(null)
           }}

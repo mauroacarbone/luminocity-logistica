@@ -34,7 +34,6 @@ import { askPlanRoute, askReason, confirm, error, success } from '../lib/alerts'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder } from '../lib/access'
 import { placeLine } from '../lib/place'
 import { compareOpenPriority } from '../lib/priority'
-import { cssVar } from '../lib/theme'
 import { driverSlotCount, normalizeTimeWindow, SLOT_LIMIT, slotQuestion } from '../lib/slot'
 import { isSession } from '../lib/authStore'
 import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
@@ -87,7 +86,6 @@ function DriverChoice({
     <option
       value={driverId}
       className={full ? 'text-lumi-danger' : undefined}
-      style={full ? { color: cssVar('--danger', '#991B1B') } : undefined}
     >
       {order.timeWindow ? `${name} (${count}/${SLOT_LIMIT})` : name}
     </option>

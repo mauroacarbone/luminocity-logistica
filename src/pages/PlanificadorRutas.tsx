@@ -157,7 +157,7 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
       />
       <Polyline
         positions={line}
-        pathOptions={{ color: cssVar('--text', '#111827'), weight: 4 }}
+        pathOptions={{ color: cssVar('--map-ink', '#1F2328'), weight: 4 }}
       />
       {stops.map((stop, index) => (
         <CircleMarker
@@ -165,10 +165,9 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
           center={[stop.point.lat, stop.point.lng]}
           radius={index === 0 ? 9 : 7}
           pathOptions={{
-            color: cssVar('--accent-fg', '#FFFFFF'),
+            color: cssVar('--accent-fg', '#0D1117'),
             weight: 2,
-            fillColor:
-              index === 0 ? cssVar('--accent', '#2563EB') : cssVar('--surface', '#F9FAFB'),
+            fillColor: index === 0 ? cssVar('--accent', '#4493F8') : '#FFFFFF',
             fillOpacity: 1,
           }}
         >
@@ -693,7 +692,7 @@ export function PlanificadorRutas() {
                         checked={selectedIds.includes(order.id)}
                         disabled={readOnly}
                         onChange={() => toggle(order.id)}
-                        style={{ accentColor: cssVar('--accent', '#2563EB') }}
+                        style={{ accentColor: cssVar('--accent', '#4493F8') }}
                       />
                       <span className="flex min-w-0 flex-1 items-start justify-between gap-3">
                         <span className="min-w-0">

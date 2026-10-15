@@ -30,6 +30,7 @@
   --brand-yellow: #F5C400;
   --ring: #1F6FEB;
   --tab-indicator: #F78166;
+  --map-ink: #1F2328;
   --sidebar-bg: var(--bg);
   --sidebar-fg: var(--text);
   --sidebar-muted: var(--text-muted);
@@ -2380,6 +2381,20 @@ p {
   height: 100%;
 }
 
+.leaflet-container {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.leaflet-bar a,
+.leaflet-control-attribution,
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
 .planner-map .leaflet-container {
   height: 100%;
   width: 100%;
@@ -2416,6 +2431,18 @@ p {
 }
 
 @media print {
+  :root {
+    color-scheme: light;
+    --bg: #FFFFFF;
+    --surface: #FFFFFF;
+    --surface-2: #F6F8FA;
+    --text: #1F2328;
+    --primary: #1F2328;
+    --text-muted: #59636E;
+    --border: #D0D7DE;
+    --accent: #0969DA;
+  }
+
   .planner-screen {
     height: auto;
     overflow: visible;
@@ -2476,6 +2503,18 @@ a.bg-accent:focus-visible {
 }
 
 @media print {
+  :root {
+    color-scheme: light;
+    --bg: #FFFFFF;
+    --surface: #FFFFFF;
+    --surface-2: #F6F8FA;
+    --text: #1F2328;
+    --primary: #1F2328;
+    --text-muted: #59636E;
+    --border: #D0D7DE;
+    --accent: #0969DA;
+  }
+
   .mobile-nav,
   .mobile-nav-shell,
   .mobile-nav-backdrop,

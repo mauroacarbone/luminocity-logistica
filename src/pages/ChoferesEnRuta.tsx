@@ -97,11 +97,11 @@ function DriversMap({
             center={[driver.lat, driver.lng]}
             radius={11}
             pathOptions={{
-              color: cssVar('--accent-fg', '#FFFFFF'),
+              color: cssVar('--accent-fg', '#0D1117'),
               weight: 2,
               fillColor: stale
-                ? cssVar('--text-muted', '#5B6472')
-                : cssVar('--accent', '#2563EB'),
+                ? cssVar('--text-muted', '#9198A1')
+                : cssVar('--accent', '#4493F8'),
               fillOpacity: 1,
             }}
           >
@@ -380,7 +380,7 @@ export function ChoferesEnRuta() {
         <Modal
           labelledBy="finish-trip-title"
           closeOnEscape={!finishing}
-          className="grid place-items-center bg-black/40 p-4"
+          className="grid place-items-center bg-overlay p-4"
           onClose={() => {
             if (!finishing) setFinishTarget(null)
           }}

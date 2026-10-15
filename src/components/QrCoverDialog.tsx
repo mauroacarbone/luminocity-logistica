@@ -58,7 +58,7 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
       <button
         type="button"
         tabIndex={-1}
-        className="no-print pointer-events-auto fixed inset-0 cursor-default bg-black/40"
+        className="no-print pointer-events-auto fixed inset-0 cursor-default bg-overlay"
         aria-label="Cerrar carátula"
         onClick={onClose}
       />
@@ -72,15 +72,18 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
             Carátula
           </h2>
           <div className="mt-4 flex justify-center">
-            <QRCodeSVG
-              value={order.id}
-              size={240}
-              level="M"
-              marginSize={4}
-              bgColor="white"
-              fgColor="#111827"
-              title={`QR del pedido ${order.id}`}
-            />
+            {/* Fondo blanco fijo: el QR tiene que escanearse sobre el tema oscuro. */}
+            <div className="rounded-lg bg-[#FFFFFF] p-3">
+              <QRCodeSVG
+                value={order.id}
+                size={240}
+                level="M"
+                marginSize={4}
+                bgColor="#FFFFFF"
+                fgColor="#111827"
+                title={`QR del pedido ${order.id}`}
+              />
+            </div>
           </div>
           <p className="mt-3 text-center text-sm text-lumi-muted">Pedido</p>
           <p className="text-center text-2xl font-semibold tracking-wide">{order.id}</p>
