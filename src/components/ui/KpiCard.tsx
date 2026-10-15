@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom'
 import { cx } from './cx'
 
 type Trend = 'up' | 'down'
+type TrendTone = 'success' | 'danger' | 'neutral'
 
 type KpiCardProps = {
   title: ReactNode
   value: ReactNode
-  trend?: { direction: Trend; label: ReactNode }
+  trend?: { direction: Trend; label: ReactNode; tone?: TrendTone }
   icon?: ReactNode
   href?: string
   onClick?: () => void
@@ -19,9 +20,23 @@ const TREND = {
   down: 'text-danger',
 } as const
 
-function TrendMark({ direction, label }: { direction: Trend; label: ReactNode }) {
+const TONE = {
+  success: 'text-success',
+  danger: 'text-danger',
+  neutral: 'text-muted',
+} as const
+
+function TrendMark({
+  direction,
+  label,
+  tone,
+}: {
+  direction: Trend
+  label: ReactNode
+  tone?: TrendTone
+}) {
   return (
-    <p className={cx('mt-2 inline-flex items-center gap-1 text-sm font-semibold', TREND[direction])}>
+    <p className={cx('mt-2 inline-flex items-center gap-1 text-sm font-semibold', tone ? TONE[tone] : TREND[direction])}>
       <span aria-hidden="true">{direction === 'up' ? '↑' : '↓'}</span>
       {label}
     </p>
@@ -36,7 +51,7 @@ function Body({ title, value, trend, icon }: KpiCardProps) {
         {icon ? <span className="text-primary">{icon}</span> : null}
       </div>
       <p className="mt-2 text-3xl font-semibold tabular-nums text-text">{value}</p>
-      {trend ? <TrendMark direction={trend.direction} label={trend.label} /> : null}
+      {trend ? <TrendMark direction={trend.direction} label={trend.label} tone={trend.tone} /> : null}
     </>
   )
 }
