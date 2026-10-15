@@ -181,14 +181,14 @@ function NewUserDialog({
         <h2 id="new-user-title" className="text-xl font-semibold">
           Nuevo usuario
         </h2>
-        <p className="mt-1 text-sm text-lumi-muted">Nombre, email, contraseña inicial y rol.</p>
+        <p className="mt-1 text-sm text-muted">Nombre, email, contraseña inicial y rol.</p>
         <label className="mt-4 block text-sm font-medium">
           Nombre
           <input
             autoFocus
             autoComplete="name"
             value={form.name}
-            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => patch({ name: event.target.value })}
           />
           {errors.name && <small className="field-error">{errors.name}</small>}
@@ -200,7 +200,7 @@ function NewUserDialog({
             inputMode="email"
             autoComplete="off"
             value={form.email}
-            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => patch({ email: event.target.value })}
           />
           {errors.email && <small className="field-error">{errors.email}</small>}
@@ -211,7 +211,7 @@ function NewUserDialog({
             type="password"
             autoComplete="new-password"
             value={form.password}
-            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => patch({ password: event.target.value })}
           />
           {errors.password && <small className="field-error">{errors.password}</small>}
@@ -220,7 +220,7 @@ function NewUserDialog({
           Rol
           <select
             value={form.role}
-            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => patch({ role: event.target.value as Role })}
           >
             {roles.map((role) => (
@@ -235,7 +235,7 @@ function NewUserDialog({
             Vendedor
             <select
               value={form.sellerName}
-              className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+              className="mt-1 w-full rounded-xl border border-border px-3 py-2"
               onChange={(event) => patch({ sellerName: event.target.value })}
             >
               <option value="">Sin vincular</option>
@@ -252,7 +252,7 @@ function NewUserDialog({
             Transportista
             <select
               value={form.carrierName}
-              className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+              className="mt-1 w-full rounded-xl border border-border px-3 py-2"
               onChange={(event) => patch({ carrierName: event.target.value })}
             >
               <option value="">Sin vincular</option>
@@ -272,7 +272,7 @@ function NewUserDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted"
+            className="rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-muted"
             onClick={onClose}
           >
             Volver
@@ -346,7 +346,7 @@ function PasswordDialog({
         <h2 id="reset-password-title" className="text-xl font-semibold">
           Resetear contraseña
         </h2>
-        <p className="mt-1 text-sm text-lumi-muted">Nueva contraseña para {account.name}.</p>
+        <p className="mt-1 text-sm text-muted">Nueva contraseña para {account.name}.</p>
         <label className="mt-4 block text-sm font-medium">
           Nueva contraseña
           <input
@@ -354,7 +354,7 @@ function PasswordDialog({
             type="password"
             autoComplete="new-password"
             value={password}
-            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => setPassword(event.target.value)}
           />
           {errors.password && <small className="field-error">{errors.password}</small>}
@@ -365,7 +365,7 @@ function PasswordDialog({
             type="password"
             autoComplete="new-password"
             value={confirmPassword}
-            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => setConfirmPassword(event.target.value)}
           />
           {errors.confirm && <small className="field-error">{errors.confirm}</small>}
@@ -378,7 +378,7 @@ function PasswordDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted"
+            className="rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-muted"
             onClick={onClose}
           >
             Volver
@@ -632,15 +632,15 @@ export function Usuarios() {
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    account.active ? 'bg-success-soft text-success' : 'bg-surface-muted text-lumi-muted'
+                    account.active ? 'bg-success-soft text-success' : 'bg-surface-muted text-muted'
                   }`}
                 >
                   {account.active ? 'Activo' : 'Inactivo'}
                 </span>
-                <span className="text-sm text-lumi-muted">{formatCreatedAt(account.createdAt)}</span>
+                <span className="text-sm text-muted">{formatCreatedAt(account.createdAt)}</span>
               </div>
               {locked && (
-                <p className="mt-2 text-xs text-lumi-muted">Solo el admin puede modificar esta cuenta</p>
+                <p className="mt-2 text-xs text-muted">Solo el admin puede modificar esta cuenta</p>
               )}
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <label className="text-sm">
@@ -648,7 +648,7 @@ export function Usuarios() {
                   <input
                     value={draft.name}
                     disabled={locked}
-                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
+                    className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { name: event.target.value })}
                   />
                 </label>
@@ -658,7 +658,7 @@ export function Usuarios() {
                     type="email"
                     value={draft.email}
                     disabled={locked}
-                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
+                    className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { email: event.target.value })}
                   />
                 </label>
@@ -667,7 +667,7 @@ export function Usuarios() {
                   <select
                     value={draft.role}
                     disabled={locked}
-                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
+                    className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { role: event.target.value as Role })}
                   >
                     {choices.map((role) => (
@@ -683,7 +683,7 @@ export function Usuarios() {
                     <select
                       value={draft.sellerName}
                       disabled={locked}
-                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
+                      className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                       onChange={(event) => setDraft(account.id, { sellerName: event.target.value })}
                     >
                       <option value="">Sin vincular</option>
@@ -701,7 +701,7 @@ export function Usuarios() {
                     <select
                       value={draft.carrierName}
                       disabled={locked}
-                      className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
+                      className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                       onChange={(event) => setDraft(account.id, { carrierName: event.target.value })}
                     >
                       <option value="">Sin vincular</option>
@@ -719,7 +719,7 @@ export function Usuarios() {
                     value={draft.phone}
                     disabled={locked}
                     placeholder="11 5555 0101"
-                    className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2 disabled:bg-surface-muted"
+                    className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { phone: event.target.value })}
                   />
                 </label>

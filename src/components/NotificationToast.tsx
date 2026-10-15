@@ -21,20 +21,20 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
 
   return createPortal(
     <div
-      className="fixed inset-x-4 top-16 rounded-2xl border border-lumi-line bg-surface p-4 shadow-md sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
+      className="fixed inset-x-4 top-16 rounded-2xl border border-border bg-surface p-4 shadow-md sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
       style={{ zIndex: 'var(--z-toast)' }}
       aria-live="polite"
     >
       <div className="relative">
         <button type="button" className="w-full text-left" onClick={activate}>
-          <p className="pr-10 text-sm font-medium text-lumi-ink">{text}</p>
+          <p className="pr-10 text-sm font-medium text-text">{text}</p>
           <span className="mt-3 block w-full rounded-xl bg-accent px-3 py-2 text-center text-sm font-semibold text-accent-fg">
             {actionLabel}
           </span>
         </button>
         <button
           type="button"
-          className="absolute right-0 top-0 grid h-7 w-7 place-items-center rounded-full text-lumi-muted hover:bg-surface-muted hover:text-lumi-ink"
+          className="absolute right-0 top-0 grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-surface-muted hover:text-text"
           aria-label="Cerrar"
           onClick={onClose}
         >

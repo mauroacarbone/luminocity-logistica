@@ -162,7 +162,7 @@ export function QrScanDialog({
         <h2 id="scan-title" className="text-xl font-semibold">
           {title}
         </h2>
-        <p className="mt-1 text-sm text-lumi-muted">{hint}</p>
+        <p className="mt-1 text-sm text-muted">{hint}</p>
         <div className="relative mt-4 overflow-hidden rounded-xl bg-black">
           <video
             ref={videoRef}
@@ -178,7 +178,7 @@ export function QrScanDialog({
             </p>
           )}
           {phase === 'error' && (
-            <p role="status" className="bg-surface px-3 py-8 text-center text-sm text-lumi-danger">
+            <p role="status" className="bg-surface px-3 py-8 text-center text-sm text-danger">
               {cameraNote}
             </p>
           )}
@@ -190,14 +190,14 @@ export function QrScanDialog({
             value={code}
             onChange={(event) => setCode(event.target.value)}
             placeholder="P-1234567"
-            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
           />
         </label>
-        {error && <p className="mt-2 text-sm text-lumi-danger">{error}</p>}
+        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted disabled:opacity-50"
+            className="rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
             disabled={pending}
             onClick={onClose}
           >

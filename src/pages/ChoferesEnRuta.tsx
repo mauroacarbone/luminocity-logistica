@@ -97,11 +97,9 @@ function DriversMap({
             center={[driver.lat, driver.lng]}
             radius={11}
             pathOptions={{
-              color: cssVar('--accent-fg', '#0D1117'),
+              color: cssVar('--accent-fg'),
               weight: 2,
-              fillColor: stale
-                ? cssVar('--text-muted', '#9198A1')
-                : cssVar('--accent', '#4493F8'),
+              fillColor: stale ? cssVar('--text-muted') : cssVar('--accent'),
               fillOpacity: 1,
             }}
           >
@@ -277,7 +275,7 @@ export function ChoferesEnRuta() {
           <section className="mt-4">
             <h2 className="text-xl font-semibold">Viajes en curso</h2>
             {openTrips.length === 0 ? (
-              <p className="mt-3 rounded-2xl bg-surface px-4 py-6 text-sm text-lumi-muted shadow-sm">
+              <p className="mt-3 rounded-2xl bg-surface px-4 py-6 text-sm text-muted shadow-sm">
                 No hay viajes en curso.
               </p>
             ) : (
@@ -339,7 +337,7 @@ export function ChoferesEnRuta() {
             {visible.length > 0 ? (
               <DriversMap drivers={visible} now={now} sheets={sheets} orders={deliveryOrders} />
             ) : (
-              <div className="grid h-full place-items-center px-6 text-center text-sm text-lumi-muted">
+              <div className="grid h-full place-items-center px-6 text-center text-sm text-muted">
                 {drivers.length === 0
                   ? 'No hay choferes en ruta.'
                   : filterMissing

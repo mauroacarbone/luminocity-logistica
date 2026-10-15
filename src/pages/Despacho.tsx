@@ -63,7 +63,7 @@ function SlotUsage({ orders, order }: { orders: Order[]; order: Order }) {
   const count = driverSlotCount(orders, order.driverId, order.deliveryDate, order.timeWindow)
   const full = count >= SLOT_LIMIT
   return (
-    <p className={`text-xs ${full ? 'text-lumi-danger' : 'text-lumi-muted'}`}>
+    <p className={`text-xs ${full ? 'text-danger' : 'text-muted'}`}>
       Cupo en la franja: {count}/{SLOT_LIMIT}
     </p>
   )
@@ -85,7 +85,7 @@ function DriverChoice({
   return (
     <option
       value={driverId}
-      className={full ? 'text-lumi-danger' : undefined}
+      className={full ? 'text-danger' : undefined}
     >
       {order.timeWindow ? `${name} (${count}/${SLOT_LIMIT})` : name}
     </option>
@@ -474,7 +474,7 @@ export function Despacho() {
         <p className="mt-4 rounded-xl bg-success-soft px-4 py-2 text-sm text-success">{notice}</p>
       )}
 
-      <div className="mt-6 flex gap-1 overflow-x-auto border-b border-lumi-line">
+      <div className="mt-6 flex gap-1 overflow-x-auto border-b border-border">
         {TABS.map((item) => {
           const active = tab === item.id
           return (
@@ -483,8 +483,8 @@ export function Despacho() {
               type="button"
               className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm ${
                 active
-                  ? 'border-accent font-semibold text-lumi-ink'
-                  : 'border-transparent text-lumi-muted'
+                  ? 'border-accent font-semibold text-text'
+                  : 'border-transparent text-muted'
               }`}
               onClick={() => setTab(item.id)}
             >
@@ -517,8 +517,8 @@ export function Despacho() {
               type="button"
               className={`flex min-w-0 flex-col items-center gap-1 border-b-2 px-0.5 py-2 text-xs sm:text-sm ${
                 selected
-                  ? 'border-accent font-semibold text-lumi-ink'
-                  : 'border-transparent text-lumi-muted'
+                  ? 'border-accent font-semibold text-text'
+                  : 'border-transparent text-muted'
               }`}
               onClick={() => {
                 setSelectedIso(iso)
@@ -529,7 +529,7 @@ export function Despacho() {
               <span className="hidden truncate sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-muted'
+                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-muted'
                 }`}
               >
                 {count}
@@ -584,13 +584,13 @@ export function Despacho() {
         <h2 className="text-2xl font-semibold">
           {searching ? 'Resultados' : DAY_LONG[selectedDate.getDay()]}
         </h2>
-        <p className="text-sm text-lumi-muted">
+        <p className="text-sm text-muted">
           {dayOrders.length} pedido{dayOrders.length === 1 ? '' : 's'}
         </p>
       </div>
 
       {dayOrders.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-lumi-muted shadow-sm">
+        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-muted shadow-sm">
           {searching ? 'Ningún pedido coincide con la búsqueda.' : 'No hay pedidos.'}
         </div>
       ) : (
@@ -620,10 +620,10 @@ export function Despacho() {
                     </Link>
                   </p>
                   {addressLine(order) && (
-                    <p className="mt-1 text-sm text-lumi-muted">{addressLine(order)}</p>
+                    <p className="mt-1 text-sm text-muted">{addressLine(order)}</p>
                   )}
                   {placeLine(order) && (
-                    <p className="mt-1 text-sm text-lumi-muted">{placeLine(order)}</p>
+                    <p className="mt-1 text-sm text-muted">{placeLine(order)}</p>
                   )}
                   <div className="mt-3 flex flex-col gap-1 text-sm text-subtle">
                     {order.zone && <p>Zona: {order.zone}</p>}
@@ -653,7 +653,7 @@ export function Despacho() {
                     {isOwnDelivery(order) &&
                       (order.status === 'asignado' || order.status === 'en-viaje') &&
                       slotEnded(order.deliveryDate, order.timeWindow, now) && (
-                      <p className="font-semibold text-lumi-danger">Atrasado</p>
+                      <p className="font-semibold text-danger">Atrasado</p>
                     )}
                     {order.status === 'entregado' && order.deliveredAt && (
                       <p>
@@ -674,12 +674,12 @@ export function Despacho() {
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-56 sm:shrink-0 sm:items-end">
                   {assign && !isPickup(order) && (
                     <>
-                      <label className="text-xs text-lumi-muted">
+                      <label className="text-xs text-muted">
                         Transportista
                         <select
                           value={order.transporter ?? ''}
                           disabled={busyId === order.id}
-                          className="mt-1 block w-full rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                          className="mt-1 block w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text disabled:opacity-50 sm:max-w-44"
                           onChange={(event) => {
                             const select = event.target
                             const next = select.value
@@ -704,7 +704,7 @@ export function Despacho() {
                         </select>
                       </label>
                       {isOwnDelivery(order) && (
-                      <div className="text-xs text-lumi-muted">
+                      <div className="text-xs text-muted">
                         <label htmlFor={`chofer-${order.id}`}>Chofer</label>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           {order.status === 'pendiente' ? (
@@ -712,7 +712,7 @@ export function Despacho() {
                               id={`chofer-${order.id}`}
                               value=""
                               disabled
-                              className="block w-full rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                              className="block w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text disabled:opacity-50 sm:max-w-44"
                             >
                               <option value="">Primero marcá preparado</option>
                             </select>
@@ -721,7 +721,7 @@ export function Despacho() {
                               id={`chofer-${order.id}`}
                               value={order.driverId ?? ''}
                               disabled
-                              className="block w-full rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                              className="block w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text disabled:opacity-50 sm:max-w-44"
                             >
                               <option value={order.driverId ?? ''}>
                                 {order.driverId
@@ -735,7 +735,7 @@ export function Despacho() {
                               id={`chofer-${order.id}`}
                               value=""
                               disabled
-                              className="block w-full rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                              className="block w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text disabled:opacity-50 sm:max-w-44"
                             >
                               <option value="">Asigná una franja primero</option>
                             </select>
@@ -749,7 +749,7 @@ export function Despacho() {
                                   ? `franja-${order.id}`
                                   : undefined
                               }
-                              className="block min-w-0 flex-1 rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                              className="block min-w-0 flex-1 rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text disabled:opacity-50 sm:max-w-44"
                               onChange={(event) => {
                                 const select = event.target
                                 const driverId = select.value

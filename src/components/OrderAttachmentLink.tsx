@@ -7,7 +7,7 @@ export function OrderAttachmentLink({ name, dataUrl }: { name?: string; dataUrl?
   return (
     <button
       type="button"
-      className="self-start text-left text-sm font-medium text-lumi-ink hover:underline"
+      className="self-start text-left text-sm font-medium text-text hover:underline"
       title={name ? `${label} ${name}` : label}
       onClick={() => openAttachment(name || 'adjunto', dataUrl)}
     >

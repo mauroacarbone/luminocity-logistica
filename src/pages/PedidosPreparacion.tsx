@@ -66,7 +66,7 @@ function PackagesDialog({
         onSubmit={onSubmit}
       >
         <h2 id="packages-title" className="text-xl font-semibold">Marcar preparado</h2>
-        <p className="mt-1 text-sm text-lumi-muted">
+        <p className="mt-1 text-sm text-muted">
           Indicá cuántos bultos tiene el pedido {orderId}.
         </p>
         <label className="mt-4 block text-sm font-medium">
@@ -82,12 +82,12 @@ function PackagesDialog({
               setValue(event.target.value)
               setError('')
             }}
-            className="mt-1 w-full rounded-xl border border-lumi-line px-3 py-2"
+            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
           />
         </label>
-        {error && <p className="mt-2 text-sm text-lumi-danger">{error}</p>}
+        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
         {saveError && (
-          <p className="mt-2 text-sm text-lumi-danger" role="alert">
+          <p className="mt-2 text-sm text-danger" role="alert">
             {saveError}
           </p>
         )}
@@ -330,8 +330,8 @@ export function PedidosPreparacion() {
               type="button"
               className={`flex min-w-0 flex-col items-center gap-1 border-b-2 px-0.5 py-2 text-xs sm:text-sm ${
                 selected
-                  ? 'border-accent font-semibold text-lumi-ink'
-                  : 'border-transparent text-lumi-muted'
+                  ? 'border-accent font-semibold text-text'
+                  : 'border-transparent text-muted'
               }`}
               onClick={() => {
                 if (iso !== toIso(selectedDate) && openId) closePedido()
@@ -342,7 +342,7 @@ export function PedidosPreparacion() {
               <span className="hidden truncate sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-muted'
+                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-muted'
                 }`}
               >
                 {count}
@@ -354,7 +354,7 @@ export function PedidosPreparacion() {
 
       <div className="mt-6 flex items-baseline justify-between">
         <h2 className="text-2xl font-semibold">{DAY_LONG[selectedDate.getDay()]}</h2>
-        <p className="text-sm text-lumi-muted">
+        <p className="text-sm text-muted">
           {dayOrders.length} pedido{dayOrders.length === 1 ? '' : 's'}
         </p>
       </div>

@@ -76,20 +76,20 @@ export function TarifasViaje() {
         title="Tarifas de viaje"
         subtitle="Monto por zona, con la fecha desde la que rige. Los viajes anteriores no cambian."
       />
-      <p className="mt-3 text-sm text-lumi-muted">
+      <p className="mt-3 text-sm text-muted">
         Si un viaje pasa por más de una zona, cobra la tarifa vigente que da el monto más alto. El monto por km es
         opcional y se multiplica por los km del viaje. Una vigencia anterior a hoy solo afecta a los viajes que todavía
         no se cerraron.
       </p>
       {error && (
-        <p className="mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-lumi-danger shadow-sm">{error}</p>
+        <p className="mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-danger shadow-sm">{error}</p>
       )}
       {loading ? (
-        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
           Cargando tarifas…
         </p>
       ) : names.length === 0 ? (
-        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
           Todavía no hay zonas de entrega.
         </p>
       ) : (
@@ -178,7 +178,7 @@ function ZoneRate({
   return (
     <article className="rounded-2xl bg-surface p-4 shadow-sm">
       <h2 className="text-lg font-semibold">{zone}</h2>
-      <p className="mt-1 text-sm text-lumi-muted">
+      <p className="mt-1 text-sm text-muted">
         {active
           ? `Hoy rige ${formatArs(active.perTrip)} por viaje${
               active.perKm == null ? '' : ` y ${formatArs(active.perKm)} por km`
@@ -191,7 +191,7 @@ function ZoneRate({
           <input
             type="date"
             value={effectiveFrom}
-            className="mt-1 block min-h-12 w-full rounded-xl border border-lumi-line bg-surface px-3 text-base"
+            className="mt-1 block min-h-12 w-full rounded-xl border border-border bg-surface px-3 text-base"
             onChange={(event) => setEffectiveFrom(event.target.value)}
           />
         </label>
@@ -201,7 +201,7 @@ function ZoneRate({
             inputMode="decimal"
             value={perTrip}
             placeholder="0"
-            className="mt-1 block min-h-12 w-full rounded-xl border border-lumi-line bg-surface px-3 text-base"
+            className="mt-1 block min-h-12 w-full rounded-xl border border-border bg-surface px-3 text-base"
             onChange={(event) => setPerTrip(event.target.value)}
           />
         </label>
@@ -211,7 +211,7 @@ function ZoneRate({
             inputMode="decimal"
             value={perKm}
             placeholder="Vacío si no se usa"
-            className="mt-1 block min-h-12 w-full rounded-xl border border-lumi-line bg-surface px-3 text-base"
+            className="mt-1 block min-h-12 w-full rounded-xl border border-border bg-surface px-3 text-base"
             onChange={(event) => setPerKm(event.target.value)}
           />
         </label>
@@ -223,10 +223,10 @@ function ZoneRate({
           {busy ? 'Guardando…' : 'Guardar tarifa'}
         </button>
       </form>
-      {error && <p className="mt-2 text-sm font-semibold text-lumi-danger">{error}</p>}
+      {error && <p className="mt-2 text-sm font-semibold text-danger">{error}</p>}
       {notice && <p className="mt-2 text-sm font-semibold text-success">{notice}</p>}
       {rates.length > 0 && (
-        <ul className="mt-3 flex flex-col gap-1 text-sm text-lumi-muted">
+        <ul className="mt-3 flex flex-col gap-1 text-sm text-muted">
           {rates
             .slice()
             .sort((left, right) => right.effectiveFrom.localeCompare(left.effectiveFrom))

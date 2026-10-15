@@ -165,9 +165,9 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
           center={[stop.point.lat, stop.point.lng]}
           radius={index === 0 ? 9 : 7}
           pathOptions={{
-            color: cssVar('--accent-fg', '#0D1117'),
+            color: cssVar('--accent-fg'),
             weight: 2,
-            fillColor: index === 0 ? cssVar('--accent', '#4493F8') : '#FFFFFF',
+            fillColor: index === 0 ? cssVar('--accent') : '#FFFFFF',
             fillOpacity: 1,
           }}
         >
@@ -549,7 +549,7 @@ export function PlanificadorRutas() {
       <div className="planner-week no-print grid grid-cols-3 items-center gap-2">
         <button
           type="button"
-          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
+          className="justify-self-start rounded-xl px-2 py-2 text-sm text-text hover:bg-surface-muted sm:px-3"
           onClick={() => showWeek(weekOffset - 1)}
         >
           <span className="sm:hidden">‹</span>
@@ -561,7 +561,7 @@ export function PlanificadorRutas() {
         </p>
         <button
           type="button"
-          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
+          className="justify-self-end rounded-xl px-2 py-2 text-sm text-text hover:bg-surface-muted sm:px-3"
           onClick={() => showWeek(weekOffset + 1)}
         >
           <span className="sm:hidden">›</span>
@@ -579,7 +579,7 @@ export function PlanificadorRutas() {
               key={dayIso}
               type="button"
               className={`flex w-full min-w-0 flex-col items-center gap-1 overflow-hidden border-b-2 px-0.5 py-2 text-xs sm:text-sm ${
-                selected ? 'border-accent font-semibold text-lumi-ink' : 'border-transparent text-lumi-muted'
+                selected ? 'border-accent font-semibold text-text' : 'border-transparent text-muted'
               }`}
               onClick={() => pickDay(dayIso)}
             >
@@ -588,7 +588,7 @@ export function PlanificadorRutas() {
               <span className="hidden w-full truncate text-center sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-muted'
+                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-muted'
                 }`}
               >
                 {count}
@@ -604,14 +604,14 @@ export function PlanificadorRutas() {
           <input
             readOnly
             value={iso}
-            className="mt-1 block w-full rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
           />
         </label>
         <label className="min-w-40 flex-1 text-sm">
           Chofer
           <select
             value={driverId}
-            className="mt-1 block w-full rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
             onChange={(event) => {
               setDriverId(event.target.value)
               setSheet(null)
@@ -632,7 +632,7 @@ export function PlanificadorRutas() {
           Franja
           <select
             value={slot}
-            className="mt-1 block w-full rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
             onChange={(event) => {
               setSlot(event.target.value)
               setSheet(null)
@@ -649,7 +649,7 @@ export function PlanificadorRutas() {
             ))}
           </select>
         </label>
-        <p className={`pb-2 text-sm font-semibold ${used >= 3 ? 'text-lumi-danger' : ''}`}>
+        <p className={`pb-2 text-sm font-semibold ${used >= 3 ? 'text-danger' : ''}`}>
           {driverId && timeWindow ? `${used}/3 en la franja` : ''}
         </p>
         {sheet && (
@@ -664,19 +664,19 @@ export function PlanificadorRutas() {
       <div className="planner-list no-print flex flex-col gap-4">
         <section>
           <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-sm font-semibold tracking-wide text-lumi-muted">PEDIDOS DE LA FRANJA</h2>
-            <p className="text-sm text-lumi-muted">
+            <h2 className="text-sm font-semibold tracking-wide text-muted">PEDIDOS DE LA FRANJA</h2>
+            <p className="text-sm text-muted">
               {selectedIds.length} seleccionado{selectedIds.length === 1 ? '' : 's'}
             </p>
           </div>
           {!driverId || !timeWindow ? (
-            <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+            <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
               Elegí chofer y franja.
             </div>
           ) : (
             <>
               {listedView.length === 0 ? (
-                <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+                <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
                   {emptySelectableMessage(others.length, preparedWithoutSlot.length, used)}
                 </div>
               ) : (
@@ -692,7 +692,7 @@ export function PlanificadorRutas() {
                         checked={selectedIds.includes(order.id)}
                         disabled={readOnly}
                         onChange={() => toggle(order.id)}
-                        style={{ accentColor: cssVar('--accent', '#4493F8') }}
+                        style={{ accentColor: cssVar('--accent') }}
                       />
                       <span className="flex min-w-0 flex-1 items-start justify-between gap-3">
                         <span className="min-w-0">
@@ -703,7 +703,7 @@ export function PlanificadorRutas() {
                             <PriorityChip order={order} />
                           </span>
                           {order.address && (
-                            <span className="mt-1 block text-sm text-lumi-muted">{order.address}</span>
+                            <span className="mt-1 block text-sm text-muted">{order.address}</span>
                           )}
                         </span>
                         <span className={`status-pill status-${order.status} shrink-0`}>
@@ -716,7 +716,7 @@ export function PlanificadorRutas() {
               )}
 
               {preparedWithoutSlot.length > 0 && (
-                <p className="mt-3 text-sm text-lumi-muted">
+                <p className="mt-3 text-sm text-muted">
                   {preparedWithoutSlot.length === 1
                     ? '1 pedido preparado de este día sin franja.'
                     : `${preparedWithoutSlot.length} pedidos preparados de este día sin franja.`}{' '}
@@ -728,14 +728,14 @@ export function PlanificadorRutas() {
 
               {othersView.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-sm font-semibold tracking-wide text-lumi-muted">
+                  <h3 className="text-sm font-semibold tracking-wide text-muted">
                     Otros pedidos de la franja
                   </h3>
                   <ul className="mt-2 flex flex-col gap-2">
                     {othersView.map((order) => (
                       <li
                         key={order.id}
-                        className="rounded-2xl bg-surface px-4 py-3 text-sm text-lumi-muted shadow-sm"
+                        className="rounded-2xl bg-surface px-4 py-3 text-sm text-muted shadow-sm"
                       >
                         <p className="flex flex-wrap items-center gap-2">
                           <Link className="order-link font-medium" to={`/pedidos/${order.id}`}>
@@ -755,9 +755,9 @@ export function PlanificadorRutas() {
         </section>
 
         <section>
-          <h2 className="text-sm font-semibold tracking-wide text-lumi-muted">ORDEN DE ENTREGA</h2>
+          <h2 className="text-sm font-semibold tracking-wide text-muted">ORDEN DE ENTREGA</h2>
           {stops.length === 0 ? (
-            <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+            <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
               El orden aparece al calcular la ruta.
             </div>
           ) : (
@@ -770,7 +770,7 @@ export function PlanificadorRutas() {
                     </span>
                     {stop.title}
                   </p>
-                  <p className="mt-1 pl-8 text-sm text-lumi-muted">{stop.detail}</p>
+                  <p className="mt-1 pl-8 text-sm text-muted">{stop.detail}</p>
                 </li>
               ))}
             </ol>
@@ -787,12 +787,12 @@ export function PlanificadorRutas() {
         }}
         disabled={readOnly}
         aria-label="Origen de la ruta"
-        className="mt-3 w-full min-w-0 rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm disabled:opacity-60"
+        className="mt-3 w-full min-w-0 rounded-xl border border-border bg-surface px-3 py-2 text-sm disabled:opacity-60"
       />
 
-      {error && <p className="no-print mt-3 text-sm text-lumi-danger">{error}</p>}
+      {error && <p className="no-print mt-3 text-sm text-danger">{error}</p>}
 
-      <p className="planner-stats no-print mt-3 text-sm text-lumi-muted">
+      <p className="planner-stats no-print mt-3 text-sm text-muted">
         {deliveryStops} parada{deliveryStops === 1 ? '' : 's'}
         {' · '}
         {route && route.line.length > 0 ? formatKm(route.kilometers) : sheet ? formatKm(sheet.km) : '— km'}
@@ -844,7 +844,7 @@ export function PlanificadorRutas() {
         {route && stops.length > 0 && route.line.length > 0 ? (
           <RouteMap stops={stops} line={route.line} />
         ) : (
-          <div className="grid h-full place-items-center px-6 text-center text-sm text-lumi-muted">
+          <div className="grid h-full place-items-center px-6 text-center text-sm text-muted">
             El mapa aparecerá aquí al calcular la ruta
           </div>
         )}

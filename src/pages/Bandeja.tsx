@@ -174,7 +174,7 @@ export function Bandeja() {
       <>
       <h2 className="mt-6 text-xl font-semibold">Autorizaciones</h2>
       {pendingAuth.length === 0 ? (
-        <div className="mt-3 rounded-2xl bg-surface px-5 py-6 text-sm text-lumi-muted shadow-sm">
+        <div className="mt-3 rounded-2xl bg-surface px-5 py-6 text-sm text-muted shadow-sm">
           No hay autorizaciones pendientes.
         </div>
       ) : (
@@ -182,7 +182,7 @@ export function Bandeja() {
           {pendingAuth.map((item) => (
             <article key={item.id} className="rounded-2xl bg-surface p-4 shadow-sm">
               <p className="font-semibold">{names[item.requestedBy] ?? 'Vendedor'}</p>
-              <p className="mt-1 text-sm text-lumi-muted">Quiere cargar a nombre de {item.seller}.</p>
+              <p className="mt-1 text-sm text-muted">Quiere cargar a nombre de {item.seller}.</p>
               <div className="mt-3 flex gap-2">
                 <button
                   type="button"
@@ -208,7 +208,7 @@ export function Bandeja() {
 
       <h2 className="mt-8 text-xl font-semibold">Ediciones</h2>
       {pendingEdits.length === 0 ? (
-        <div className="mt-3 rounded-2xl bg-surface px-5 py-6 text-sm text-lumi-muted shadow-sm">
+        <div className="mt-3 rounded-2xl bg-surface px-5 py-6 text-sm text-muted shadow-sm">
           No hay ediciones pendientes.
         </div>
       ) : (
@@ -218,7 +218,7 @@ export function Bandeja() {
               <p className="font-semibold">
                 {order.id} · {order.client}
               </p>
-              <p className="mt-1 text-sm text-lumi-muted">
+              <p className="mt-1 text-sm text-muted">
                 {names[edit.by] ?? 'Vendedor'} · {edit.reason}
               </p>
               <ul className="mt-2 text-sm">

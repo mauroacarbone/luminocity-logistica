@@ -25,7 +25,7 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
 export function StopRouteMap({ stops }: { stops: MapStop[] }) {
   if (stops.length === 0) {
     return (
-      <div className="grid h-full place-items-center px-4 text-center text-sm text-lumi-muted">
+      <div className="grid h-full place-items-center px-4 text-center text-sm text-muted">
         Sin coordenadas para el mapa
       </div>
     )
@@ -52,12 +52,12 @@ export function StopRouteMap({ stops }: { stops: MapStop[] }) {
           center={[stop.lat, stop.lng]}
           radius={stop.next ? 10 : 7}
           pathOptions={{
-            color: stop.next ? cssVar('--accent', '#4493F8') : cssVar('--map-ink', '#1F2328'),
+            color: stop.next ? cssVar('--accent') : cssVar('--map-ink', '#1F2328'),
             weight: 2,
             fillColor: stop.done
-              ? cssVar('--surface-2', '#212830')
+              ? cssVar('--surface-2')
               : stop.next
-                ? cssVar('--accent', '#4493F8')
+                ? cssVar('--accent')
                 : '#FFFFFF',
             fillOpacity: 1,
           }}

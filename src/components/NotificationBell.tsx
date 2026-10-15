@@ -325,13 +325,13 @@ export function NotificationBell() {
           />
         </svg>
         {unread > 0 && (
-          <span className="absolute right-0.5 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-lumi-danger px-1 text-[10px] font-semibold text-inverse">
+          <span className="absolute right-0.5 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-danger px-1 text-[10px] font-semibold text-inverse">
             {unread}
           </span>
         )}
         {pendingWhatsapp > 0 && (
           <span
-            className="absolute bottom-0.5 right-0.5 h-2 w-2 rounded-full bg-lumi-muted"
+            className="absolute bottom-0.5 right-0.5 h-2 w-2 rounded-full bg-muted"
             aria-hidden="true"
           />
         )}
@@ -340,8 +340,8 @@ export function NotificationBell() {
         <div
           className={
             narrow
-              ? 'fixed inset-x-4 flex max-h-[70vh] w-auto flex-col rounded-2xl border border-lumi-line bg-surface p-3 shadow-md'
-              : 'absolute right-0 top-full mt-2 flex w-80 flex-col rounded-2xl border border-lumi-line bg-surface p-3 shadow-md'
+              ? 'fixed inset-x-4 flex max-h-[70vh] w-auto flex-col rounded-2xl border border-border bg-surface p-3 shadow-md'
+              : 'absolute right-0 top-full mt-2 flex w-80 flex-col rounded-2xl border border-border bg-surface p-3 shadow-md'
           }
           style={{
             zIndex: 'var(--z-dropdown)',
@@ -353,7 +353,7 @@ export function NotificationBell() {
             {unread > 0 && (
               <button
                 type="button"
-                className="text-xs text-lumi-muted underline hover:text-lumi-ink"
+                className="text-xs text-muted underline hover:text-text"
                 onClick={() => void markAllRead()}
               >
                 Marcar todos leídos
@@ -367,7 +367,7 @@ export function NotificationBell() {
             setAttempt((current) => current + 1)
           }} />}
           {!loading && !error && !hasPanelContent ? (
-            <p className="mt-3 text-sm text-lumi-muted">No hay avisos.</p>
+            <p className="mt-3 text-sm text-muted">No hay avisos.</p>
           ) : hasPanelContent ? (
             <div className="mt-2 flex min-h-0 flex-1 flex-col gap-3 overflow-auto sm:max-h-80">
               {appItems.length > 0 && (
@@ -379,14 +379,14 @@ export function NotificationBell() {
                         className="w-full text-left"
                         onClick={() => void openAppNotification(item)}
                       >
-                        <p className={item.read ? 'text-lumi-muted' : 'font-medium'}>{item.text}</p>
-                        <p className="mt-1 text-xs text-lumi-muted">{formatWhen(item.createdAt)}</p>
+                        <p className={item.read ? 'text-muted' : 'font-medium'}>{item.text}</p>
+                        <p className="mt-1 text-xs text-muted">{formatWhen(item.createdAt)}</p>
                       </button>
                       {!item.read && (
                         <div className="mt-1 flex justify-end">
                           <button
                             type="button"
-                            className="text-xs text-lumi-muted underline"
+                            className="text-xs text-muted underline"
                             onClick={() => void markRead(item.id)}
                           >
                             Marcar leído
@@ -399,7 +399,7 @@ export function NotificationBell() {
               )}
               {pendingWhatsapp > 0 && (
                 <div>
-                  <p className="mb-2 text-xs font-semibold text-lumi-muted">
+                  <p className="mb-2 text-xs font-semibold text-muted">
                     Por enviar por WhatsApp ({pendingWhatsapp})
                   </p>
                   <ul className="flex flex-col gap-2">
@@ -409,7 +409,7 @@ export function NotificationBell() {
                       return (
                         <li key={item.id} className="rounded-xl bg-surface-muted px-3 py-2 text-sm">
                           <p className="font-medium">{item.text}</p>
-                          <div className="mt-1 flex items-center justify-between gap-2 text-xs text-lumi-muted">
+                          <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted">
                             <span>{formatWhen(item.createdAt)}</span>
                           </div>
                           {canOpenWa ? (
@@ -422,10 +422,10 @@ export function NotificationBell() {
                               Enviar por WhatsApp
                             </button>
                           ) : (
-                            <p className="mt-2 text-xs text-lumi-muted">
+                            <p className="mt-2 text-xs text-muted">
                               <button
                                 type="button"
-                                className="w-full rounded-lg bg-lumi-line px-3 py-2 font-semibold"
+                                className="w-full rounded-lg bg-border px-3 py-2 font-semibold"
                                 disabled
                               >
                                 Enviar por WhatsApp

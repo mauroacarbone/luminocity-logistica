@@ -237,16 +237,16 @@ export function Retiros() {
         </Button>
       </div>
 
-      <p className="mt-6 text-sm text-lumi-muted">
+      <p className="mt-6 text-sm text-muted">
         {filtered.length} retiro{filtered.length === 1 ? '' : 's'}
       </p>
 
       {ordersError ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm font-semibold text-lumi-danger shadow-sm">
+        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm font-semibold text-danger shadow-sm">
           {ordersError}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-lumi-muted shadow-sm">
+        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-muted shadow-sm">
           {pickups.length === 0
             ? 'No hay retiros para mostrar.'
             : 'No hay retiros que coincidan con la búsqueda o los filtros.'}
@@ -333,7 +333,7 @@ function PickupCard({
             <PriorityChip order={order} />
             <span className={`status-pill status-${status}`}>{statusPillFor(order, status)}</span>
             {overdue && (
-              <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
+              <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-danger">
                 Atrasado
               </span>
             )}
@@ -375,7 +375,7 @@ function PickupCard({
           {order.status === 'preparado' && noticeUrl ? (
             <button
               type="button"
-              className="min-h-11 w-full rounded-xl border border-lumi-line bg-surface px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
+              className="min-h-11 w-full rounded-xl border border-border bg-surface px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
               disabled={busy}
               onClick={() => void onNotice(noticeUrl)}
             >
@@ -383,7 +383,7 @@ function PickupCard({
             </button>
           ) : null}
           {order.status === 'preparado' && !noticeUrl ? (
-            <p className="min-h-11 grid place-items-center rounded-xl bg-lumi-line/40 px-3 py-1.5 text-sm font-semibold text-lumi-muted">
+            <p className="min-h-11 grid place-items-center rounded-xl bg-border/40 px-3 py-1.5 text-sm font-semibold text-muted">
               Sin teléfono
             </p>
           ) : null}

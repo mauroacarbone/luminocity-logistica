@@ -275,7 +275,7 @@ export function MisEntregas() {
         subtitle={user?.carrierName?.trim() || undefined}
       />
       {user?.role === 'chofer' && (
-        <p className={`no-print mt-3 text-sm font-semibold ${shownGps === 'on' ? 'text-lumi-ink' : 'text-lumi-muted'}`}>
+        <p className={`no-print mt-3 text-sm font-semibold ${shownGps === 'on' ? 'text-text' : 'text-muted'}`}>
           {shownGps === 'on' ? 'Ubicación activa' : 'Ubicación apagada'}
         </p>
       )}
@@ -285,7 +285,7 @@ export function MisEntregas() {
         </p>
       )}
       {sheetsError && (
-        <p className="no-print mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-lumi-danger shadow-sm">
+        <p className="no-print mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-danger shadow-sm">
           {sheetsError}
         </p>
       )}
@@ -337,27 +337,27 @@ export function MisEntregas() {
             </div>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-base sm:grid-cols-3">
               <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-lumi-muted">Paradas</dt>
+                <dt className="text-sm text-muted">Paradas</dt>
                 <dd className="text-lg font-semibold">{stops.length}</dd>
               </div>
               <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-lumi-muted">Entregadas</dt>
+                <dt className="text-sm text-muted">Entregadas</dt>
                 <dd className="text-lg font-semibold">{deliveredCount}</dd>
               </div>
               <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-lumi-muted">Pendientes</dt>
+                <dt className="text-sm text-muted">Pendientes</dt>
                 <dd className="text-lg font-semibold">{pendingCount}</dd>
               </div>
               <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-lumi-muted">Atrasadas</dt>
+                <dt className="text-sm text-muted">Atrasadas</dt>
                 <dd className="text-lg font-semibold">{lateCount}</dd>
               </div>
               <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-lumi-muted">Bultos</dt>
+                <dt className="text-sm text-muted">Bultos</dt>
                 <dd className="text-lg font-semibold">{packageCount}</dd>
               </div>
               <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-lumi-muted">Recorrido</dt>
+                <dt className="text-sm text-muted">Recorrido</dt>
                 <dd className="text-lg font-semibold">
                   {sheet.km > 0 || sheet.minutes > 0 ? `${sheet.km} km · ${sheet.minutes} min` : '—'}
                 </dd>
@@ -479,7 +479,7 @@ export function MisEntregas() {
         </button>
       </div>
       {visible.length === 0 ? (
-        <p className="no-print mt-6 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+        <p className="no-print mt-6 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
           {(tab === 'asignados' ? assignedCount : travelingCount) > 0
             ? 'Tus entregas están en la hoja de ruta de arriba.'
             : 'No hay entregas.'}
@@ -561,7 +561,7 @@ function DeliveryCard({
       <p className={`mt-1 text-lg font-semibold ${strike}`}>{order.client}</p>
       <p className={`mt-2 text-base ${strike}`}>{order.address || 'Sin dirección'}</p>
       {placeLine(order) && <p className="text-base">{placeLine(order)}</p>}
-      <p className="text-base text-lumi-muted">{order.zone || 'Sin zona'}</p>
+      <p className="text-base text-muted">{order.zone || 'Sin zona'}</p>
       {distance && <p className="mt-1 text-base font-semibold">{distance}</p>}
       {inSheet && <p className="mt-2 text-base">Franja: {order.timeWindow || '—'}</p>}
       <p className="text-base">Teléfono: {order.phone || '—'}</p>

@@ -135,7 +135,7 @@ function withSheetFlag(order: Order, sheets: RouteSheet[], canPlan: boolean): Or
 function OverdueChip({ order, today }: { order: Order; today: string }) {
   if (!isOverdue(order, today)) return null
   return (
-    <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
+    <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-danger">
       Atrasado
     </span>
   )
@@ -156,10 +156,10 @@ function SheetLinks({
     const slot = sheet.slot || order.timeWindow || 'sin franja'
     return (
       <p className="order-zone mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="inline-flex rounded-full bg-surface-muted px-2.5 py-0.5 text-xs font-medium text-lumi-ink">
+        <span className="inline-flex rounded-full bg-surface-muted px-2.5 py-0.5 text-xs font-medium text-text">
           En hoja de {driver} · {slot}
         </span>
-        <Link className="text-xs text-lumi-ink underline" to="/rutas">
+        <Link className="text-xs text-text underline" to="/rutas">
           Ver hoja
         </Link>
       </p>
@@ -168,7 +168,7 @@ function SheetLinks({
   if (canPlan && order.status === 'asignado' && isOwnDelivery(order) && !order.routeId) {
     return (
       <p className="order-zone mt-2">
-        <Link className="text-xs text-lumi-muted underline hover:text-lumi-ink" to="/rutas">
+        <Link className="text-xs text-muted underline hover:text-text" to="/rutas">
           Armar hoja en el Planificador
         </Link>
       </p>
@@ -284,7 +284,7 @@ function OrderCard({
         {user && canEditOrder(user, order) && (
           <button
             type="button"
-            className="text-lumi-ink hover:underline"
+            className="text-text hover:underline"
             onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
           >
             Editar
@@ -635,7 +635,7 @@ export function PanelOperativo() {
       />
 
       {sheetsError && (
-        <p className="mt-3 text-sm text-lumi-muted">No se pudieron cargar las hojas de ruta</p>
+        <p className="mt-3 text-sm text-muted">No se pudieron cargar las hojas de ruta</p>
       )}
 
       <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-7">
@@ -658,14 +658,14 @@ export function PanelOperativo() {
           onClick={() => selectFecha('atrasados')}
         />
       </div>
-      <p className="mt-2 text-sm text-lumi-muted">
+      <p className="mt-2 text-sm text-muted">
         {fechaLabel}
         {undatedCount > 0 ? ` · ${undatedCount} sin fecha` : ''}
       </p>
 
       {view === 'kanban' && useAdvanceList ? (
         <div className="mt-4 flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-lumi-ink">Para avanzar</h2>
+          <h2 className="text-base font-semibold text-text">Para avanzar</h2>
           {advanceOrders.length === 0 ? (
             <p className="empty">No hay pedidos.</p>
           ) : (
@@ -683,7 +683,7 @@ export function PanelOperativo() {
           <div className="mt-2">
             <button
               type="button"
-              className="text-sm font-medium text-lumi-ink underline"
+              className="text-sm font-medium text-text underline"
               aria-expanded={showDone}
               onClick={() => setShowDone((current) => !current)}
             >

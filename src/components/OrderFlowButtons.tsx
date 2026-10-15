@@ -247,10 +247,10 @@ export function OrderFlowButtons({
       ? 'min-h-9 rounded-xl bg-accent px-2.5 py-1 text-xs font-semibold text-accent-fg disabled:opacity-50'
       : 'min-h-11 rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50'
   const moreClass = stretch
-    ? 'grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-lumi-line text-lg leading-none hover:bg-surface-muted disabled:opacity-50'
+    ? 'grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border text-lg leading-none hover:bg-surface-muted disabled:opacity-50'
     : compact
-      ? 'grid h-9 w-9 place-items-center rounded-xl border border-lumi-line text-base leading-none hover:bg-surface-muted disabled:opacity-50'
-      : 'grid h-11 w-11 place-items-center rounded-xl border border-lumi-line text-lg leading-none hover:bg-surface-muted disabled:opacity-50'
+      ? 'grid h-9 w-9 place-items-center rounded-xl border border-border text-base leading-none hover:bg-surface-muted disabled:opacity-50'
+      : 'grid h-11 w-11 place-items-center rounded-xl border border-border text-lg leading-none hover:bg-surface-muted disabled:opacity-50'
 
   return (
     <div
@@ -286,7 +286,7 @@ export function OrderFlowButtons({
               <div
                 ref={menuRef}
                 role="menu"
-                className="fixed min-w-max rounded-xl border border-lumi-line bg-surface p-1 shadow-md"
+                className="fixed min-w-max rounded-xl border border-border bg-surface p-1 shadow-md"
                 style={
                   menuPos
                     ? { top: menuPos.top, left: menuPos.left, zIndex: 'var(--z-dropdown)' }

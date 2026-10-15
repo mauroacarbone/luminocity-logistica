@@ -82,13 +82,6 @@
 }
 
 @theme inline {
-  --color-lumi-bg: var(--bg);
-  --color-lumi-ink: var(--text);
-  --color-lumi-muted: var(--text-muted);
-  --color-lumi-line: var(--border);
-  --color-lumi-card: var(--surface);
-  --color-lumi-sidebar: var(--sidebar-bg);
-  --color-lumi-danger: var(--danger);
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);

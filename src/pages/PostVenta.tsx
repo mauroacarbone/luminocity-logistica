@@ -52,11 +52,11 @@ const PERIODS: { id: Period; label: string }[] = [
 const MAX_PHOTOS = 5
 
 const STATUS_BADGE: Record<ClaimStatus, string> = {
-  nuevo: 'bg-surface-muted text-lumi-ink',
+  nuevo: 'bg-surface-muted text-text',
   recepcion: 'bg-info-soft text-info',
   'pendiente-retiro': 'bg-orange-soft text-orange',
   'enviado-proveedor': 'bg-purple-soft text-purple',
-  reparacion: 'bg-accent-soft text-lumi-ink',
+  reparacion: 'bg-accent-soft text-text',
   entregado: 'bg-success-soft text-success',
   cancelado: 'bg-danger-soft text-danger-deep',
 }
@@ -137,8 +137,8 @@ function SearchField({
   onChange: (value: string) => void
 }) {
   return (
-    <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-lumi-line bg-surface px-3 py-2">
-      <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-lumi-muted" aria-hidden="true">
+    <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2">
+      <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" aria-hidden="true">
         <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
         <path d="M16 16l4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       </svg>
@@ -468,9 +468,9 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
           onChange={setLookup}
         />
         {needle.length >= 2 && (
-          <div className="mt-2 overflow-hidden rounded-xl border border-lumi-line bg-surface shadow-sm">
+          <div className="mt-2 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
             {matches.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-lumi-muted">
+              <p className="px-3 py-2 text-sm text-muted">
                 No hay pedidos que coincidan. Podés cargar el reclamo a mano.
               </p>
             ) : (
@@ -478,7 +478,7 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
                 <button
                   key={order.id}
                   type="button"
-                  className="block w-full border-b border-lumi-line px-3 py-2 text-left text-sm last:border-b-0 hover:bg-surface-muted"
+                  className="block w-full border-b border-border px-3 py-2 text-left text-sm last:border-b-0 hover:bg-surface-muted"
                   onClick={() => applyOrder(order)}
                 >
                   <strong>{order.id}</strong> — {order.client}
@@ -892,7 +892,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
         {claim.status === 'cancelado' ? null : <ClaimStepper status={claim.status} />}
 
         {latest && (
-          <p className="mt-2 text-sm text-lumi-muted">
+          <p className="mt-2 text-sm text-muted">
             {previous ? `${CLAIM_STATUS_LABEL[previous.status]} → ` : ''}
             {CLAIM_STATUS_LABEL[latest.status]} · {formatWhen(latest.at)}
             {latest.by?.userName ? ` · por ${latest.by.userName}` : ''}
@@ -947,7 +947,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
                     <div
                       ref={statusMenuRef}
                       role="menu"
-                      className="fixed w-72 rounded-xl border border-lumi-line bg-surface p-1 shadow-lg"
+                      className="fixed w-72 rounded-xl border border-border bg-surface p-1 shadow-lg"
                       style={
                         statusMenuPos
                           ? { top: statusMenuPos.top, left: statusMenuPos.left, zIndex: 'var(--z-dropdown)' }
@@ -977,7 +977,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
         )}
       </div>
 
-      <div className="mt-4 flex items-start justify-between gap-3 border-t border-lumi-line pt-4">
+      <div className="mt-4 flex items-start justify-between gap-3 border-t border-border pt-4">
         <div className="min-w-0">
           <p className="font-semibold">
             {claim.id} — {claim.client}
@@ -1037,7 +1037,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
             placeholder="Agregar una nota..."
             disabled={busy}
             onChange={(event) => setNote(event.target.value)}
-            className="min-w-0 flex-1 rounded-xl border border-lumi-line px-3 py-2 text-sm"
+            className="min-w-0 flex-1 rounded-xl border border-border px-3 py-2 text-sm"
           />
           <Button variant="secondary" disabled={busy} onClick={() => void saveNote()}>
             Guardar
@@ -1133,7 +1133,7 @@ function Dashboard({ claims }: { claims: Claim[] }) {
       <section className="rounded-2xl bg-surface p-5 shadow-sm">
         <h2 className="text-base font-semibold">Reclamos por estado</h2>
         {byStatus.length === 0 ? (
-          <p className="mt-4 text-sm text-lumi-muted">Cuando cargues reclamos, vas a ver cómo se reparten.</p>
+          <p className="mt-4 text-sm text-muted">Cuando cargues reclamos, vas a ver cómo se reparten.</p>
         ) : (
           <ul className="mt-4 flex flex-col gap-3">
             {byStatus.map((item) => (
@@ -1157,7 +1157,7 @@ function Dashboard({ claims }: { claims: Claim[] }) {
       <section className="rounded-2xl bg-surface p-5 shadow-sm">
         <h2 className="text-base font-semibold">Top motivos de reclamo</h2>
         {byMotive.length === 0 ? (
-          <p className="mt-4 text-sm text-lumi-muted">Todavía no hay motivos para mostrar.</p>
+          <p className="mt-4 text-sm text-muted">Todavía no hay motivos para mostrar.</p>
         ) : (
           <ul className="mt-4 flex flex-col gap-3">
             {byMotive.map((item) => (
@@ -1290,7 +1290,7 @@ export function PostVenta() {
       <PageHeader title="Post Venta" subtitle="Cargá y seguí los reclamos de clientes" />
 
       {linkNotice && (
-        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2 text-sm text-lumi-ink">
+        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2 text-sm text-text">
           <span>{linkNotice}</span>
           <button type="button" className="shrink-0 font-medium" onClick={() => setLinkNotice(null)}>
             Cerrar
@@ -1299,7 +1299,7 @@ export function PostVenta() {
       )}
 
       {notice && (
-        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2 text-sm text-lumi-ink">
+        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2 text-sm text-text">
           <span>{notice}</span>
           <button type="button" className="shrink-0 font-medium" onClick={dismissNotice}>
             Cerrar
@@ -1321,7 +1321,7 @@ export function PostVenta() {
             </button>
             <button
               type="button"
-              className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm disabled:opacity-50"
+              className="rounded-xl border border-border px-3 py-1.5 text-sm disabled:opacity-50"
               disabled={legacyBusy}
               onClick={() => void onDismissLegacy()}
             >
@@ -1380,7 +1380,7 @@ export function PostVenta() {
         }}
       />
 
-      <div className="mt-4 flex flex-wrap gap-1 border-b border-lumi-line">
+      <div className="mt-4 flex flex-wrap gap-1 border-b border-border">
         {TABS.map((item) => {
           const active = tab === item.id
           return (
@@ -1389,8 +1389,8 @@ export function PostVenta() {
               type="button"
               className={`border-b-2 px-3 py-2 text-sm ${
                 active
-                  ? 'border-accent font-semibold text-lumi-ink'
-                  : 'border-transparent text-lumi-muted'
+                  ? 'border-accent font-semibold text-text'
+                  : 'border-transparent text-muted'
               }`}
               onClick={() => setTab(item.id)}
             >

@@ -347,7 +347,7 @@ export function success(texto: string) {
     showConfirmButton: false,
     timer: 2000,
     timerProgressBar: true,
-    iconColor: cssVar('--success', '#3FB950'),
+    iconColor: cssVar('--success'),
   })
 }
 
@@ -364,7 +364,7 @@ export function error(titulo: string, detalle?: string) {
     ...(listHtml ? { html: listHtml } : { text: detalle }),
     confirmButtonText: 'Entendido',
     buttonsStyling: false,
-    iconColor: cssVar('--danger', '#F85149'),
+    iconColor: cssVar('--danger'),
     customClass: {
       popup: 'lumi-swal',
       title: 'lumi-swal-title',

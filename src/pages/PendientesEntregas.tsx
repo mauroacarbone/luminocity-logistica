@@ -320,9 +320,9 @@ function OrderLinkBlock({ link }: { link: InvoiceMatch }) {
     )
   }
   if (link.kind === 'many') {
-    return <p className="mt-2 text-sm text-lumi-muted">Comprobante en varios pedidos</p>
+    return <p className="mt-2 text-sm text-muted">Comprobante en varios pedidos</p>
   }
-  return <p className="mt-2 text-sm text-lumi-muted">Sin pedido</p>
+  return <p className="mt-2 text-sm text-muted">Sin pedido</p>
 }
 
 function GroupPickingSummary({ group }: { group: PickingGroup }) {
@@ -335,7 +335,7 @@ function GroupPickingSummary({ group }: { group: PickingGroup }) {
       {progress.readyToPrepare ? (
         <p className="mt-1 font-medium text-success">Listo para preparar</p>
       ) : progress.missing.length > 0 ? (
-        <ul className="mt-1 list-disc pl-5 text-lumi-muted">
+        <ul className="mt-1 list-disc pl-5 text-muted">
           {progress.missing.map((item) => (
             <li key={item.id}>
               {item.product}: faltan {item.missing}
@@ -846,7 +846,7 @@ export function PendientesEntregas() {
       order.status === 'entregado'
     ) {
       return (
-        <p className="mt-2 text-sm text-lumi-muted">
+        <p className="mt-2 text-sm text-muted">
           Pedido {STATUS_PILL[order.status]}
         </p>
       )
@@ -868,7 +868,7 @@ export function PendientesEntregas() {
     if (!allComplete) {
       if (groupComplete && missingOther) {
         return (
-          <p className="mt-2 text-sm text-lumi-muted">
+          <p className="mt-2 text-sm text-muted">
             Faltan filas de otro comprobante del pedido
           </p>
         )
@@ -1017,15 +1017,15 @@ export function PendientesEntregas() {
         />
       )}
 
-      <div className="mt-6 flex gap-1 border-b border-lumi-line">
+      <div className="mt-6 flex gap-1 border-b border-border">
         {(['lista', 'picking'] as const).map((item) => (
           <button
             key={item}
             type="button"
             className={`border-b-2 px-3 py-2 text-sm ${
               mode === item
-                ? 'border-accent font-semibold text-lumi-ink'
-                : 'border-transparent text-lumi-muted'
+                ? 'border-accent font-semibold text-text'
+                : 'border-transparent text-muted'
             }`}
             onClick={() => setMode(item)}
           >
@@ -1048,7 +1048,7 @@ export function PendientesEntregas() {
             </button>
             <button
               type="button"
-              className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm"
+              className="rounded-xl border border-border px-3 py-1.5 text-sm"
               disabled={busy}
               onClick={dismissLegacy}
             >
@@ -1061,14 +1061,14 @@ export function PendientesEntregas() {
       {message && (
         <p className="mt-4 rounded-xl bg-success-soft px-4 py-2 text-sm text-success">{message}</p>
       )}
-      {error && <p className="mt-4 text-sm text-lumi-danger">{error}</p>}
+      {error && <p className="mt-4 text-sm text-danger">{error}</p>}
 
       {preview && (
         <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold">Vista previa de importación</h2>
-              <p className="mt-1 text-sm text-lumi-muted">
+              <p className="mt-1 text-sm text-muted">
                 {preview.valid.length} válidas · {preview.discarded.length} descartadas ·{' '}
                 {preview.valid.filter((row) => row.combinedFrom > 1).length} combinadas
               </p>
@@ -1079,7 +1079,7 @@ export function PendientesEntregas() {
                 <select
                   value={importMode}
                   onChange={(event) => setImportMode(event.target.value as ImportMode)}
-                  className="ml-2 rounded-xl border border-lumi-line px-3 py-1.5"
+                  className="ml-2 rounded-xl border border-border px-3 py-1.5"
                 >
                   <option value="merge">Combinar</option>
                   <option value="replace">Reemplazar todo</option>
@@ -1087,7 +1087,7 @@ export function PendientesEntregas() {
               </label>
               <button
                 type="button"
-                className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm"
+                className="rounded-xl border border-border px-3 py-1.5 text-sm"
                 disabled={busy}
                 onClick={() => setPreview(null)}
               >
@@ -1108,7 +1108,7 @@ export function PendientesEntregas() {
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-lumi-line text-lumi-muted">
+                  <tr className="border-b border-border text-muted">
                     <th className="px-2 py-2 font-medium">Fila</th>
                     <th className="px-2 py-2 font-medium">Cliente</th>
                     <th className="px-2 py-2 font-medium">Comprobante</th>
@@ -1120,14 +1120,14 @@ export function PendientesEntregas() {
                 </thead>
                 <tbody>
                   {preview.valid.map((row) => (
-                    <tr key={`${row.comprobante}-${row.articulo}-${row.excelRows.join('-')}`} className="border-b border-lumi-line/70">
+                    <tr key={`${row.comprobante}-${row.articulo}-${row.excelRows.join('-')}`} className="border-b border-border/70">
                       <td className="px-2 py-2">{row.excelRows.join(', ')}</td>
                       <td className="px-2 py-2">{row.cliente}</td>
                       <td className="px-2 py-2">{row.comprobante}</td>
                       <td className="px-2 py-2">{row.articulo}</td>
                       <td className="px-2 py-2">{row.cantidad}</td>
                       <td className="px-2 py-2">{row.vendedor || '—'}</td>
-                      <td className="px-2 py-2 text-lumi-muted">
+                      <td className="px-2 py-2 text-muted">
                         {row.combinedFrom > 1 ? `${row.combinedFrom} filas combinadas` : '—'}
                       </td>
                     </tr>
@@ -1140,7 +1140,7 @@ export function PendientesEntregas() {
           {preview.discarded.length > 0 && (
             <div className="mt-4">
               <h3 className="text-sm font-semibold">Filas descartadas</h3>
-              <ul className="mt-2 flex flex-col gap-1 text-sm text-lumi-danger">
+              <ul className="mt-2 flex flex-col gap-1 text-sm text-danger">
                 {preview.discarded.map((row) => (
                   <li key={`${row.excelRow}-${row.message}`}>
                     Fila {row.excelRow}: {row.message}
@@ -1205,14 +1205,14 @@ export function PendientesEntregas() {
         }}
       />
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <p className="text-sm text-lumi-muted">
+        <p className="text-sm text-muted">
           {mode === 'lista'
             ? `${filteredOpenOrders.length} pedidos · ${filteredOrphans.length} sin pedido`
             : `${filteredLines.length} de ${lines.length} filas`}
         </p>
         <button
           type="button"
-          className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm"
+          className="rounded-xl border border-border px-3 py-1.5 text-sm"
           onClick={openAllData}
         >
           Ver todos los datos
@@ -1240,7 +1240,7 @@ export function PendientesEntregas() {
             </button>
             <button
               type="button"
-              className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm shadow-sm disabled:opacity-50"
+              className="rounded-xl border border-border bg-surface px-3 py-2 text-sm shadow-sm disabled:opacity-50"
               disabled={filteredOpenOrders.length === 0 && orphanGroups.length === 0}
               onClick={exportFilteredCsv}
             >
@@ -1254,7 +1254,7 @@ export function PendientesEntregas() {
                 <EmptyState title="No hay pedidos pendientes" />
               </div>
             ) : (
-              <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+              <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
                 Ningún pedido coincide con el filtro.
               </div>
             )
@@ -1305,7 +1305,7 @@ export function PendientesEntregas() {
                         <p className="mt-1 text-sm">
                           {order.client}
                           {order.seller ? (
-                            <span className="text-lumi-muted"> · {order.seller}</span>
+                            <span className="text-muted"> · {order.seller}</span>
                           ) : null}
                         </p>
                         <div className="mt-2">
@@ -1315,10 +1315,10 @@ export function PendientesEntregas() {
                           {order.deliveryDate ? (
                             <span>Entrega: {formatIsoDate(order.deliveryDate)}</span>
                           ) : (
-                            <span className="text-lumi-muted">Sin fecha de entrega</span>
+                            <span className="text-muted">Sin fecha de entrega</span>
                           )}
                           {days > 0 && (
-                            <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-lumi-danger">
+                            <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-danger">
                               Atrasado {days} día{days === 1 ? '' : 's'}
                             </span>
                           )}
@@ -1330,7 +1330,7 @@ export function PendientesEntregas() {
                           </>
                         ) : (
                           <div className="mt-2">
-                            <p className="text-sm text-lumi-muted">Sin picking</p>
+                            <p className="text-sm text-muted">Sin picking</p>
                             {user && canWrite && (
                               <div className="mt-2">
                                 <OrderFlowButtons
@@ -1363,7 +1363,7 @@ export function PendientesEntregas() {
                               Listo
                             </span>
                           ) : (
-                            <span className="text-xs text-lumi-muted">{progress.pct}%</span>
+                            <span className="text-xs text-muted">{progress.pct}%</span>
                           )}
                           <button
                             type="button"
@@ -1386,7 +1386,7 @@ export function PendientesEntregas() {
 
               {orphanGroups.length > 0 && (
                 <div className="mt-2">
-                  <h2 className="mb-2 text-sm font-semibold text-lumi-muted">Filas sin pedido</h2>
+                  <h2 className="mb-2 text-sm font-semibold text-muted">Filas sin pedido</h2>
                   <div className="flex flex-col gap-3">
                     {orphanGroups.map((group) => {
                       const progress = progressOf(group)
@@ -1401,7 +1401,7 @@ export function PendientesEntregas() {
                                 {group.invoice} — {group.client}
                               </p>
                               {subtitle(group) && (
-                                <p className="mt-1 text-sm text-lumi-muted">{subtitle(group)}</p>
+                                <p className="mt-1 text-sm text-muted">{subtitle(group)}</p>
                               )}
                               <OrderLinkBlock link={group.link} />
                               <GroupPickingSummary group={group} />
@@ -1422,7 +1422,7 @@ export function PendientesEntregas() {
                                   Listo
                                 </span>
                               ) : (
-                                <span className="text-xs text-lumi-muted">{progress.pct}%</span>
+                                <span className="text-xs text-muted">{progress.pct}%</span>
                               )}
                               <button
                                 type="button"
@@ -1444,12 +1444,12 @@ export function PendientesEntregas() {
         </>
       ) : (
         <>
-          <p className="mt-4 text-sm text-lumi-muted">
+          <p className="mt-4 text-sm text-muted">
             Sin URL de Clanbox configurada — configurala en Configuración para ver stock real.
           </p>
 
           {groups.length === 0 ? (
-            <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+            <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
               {lines.length === 0
                 ? 'No hay productos para preparar.'
                 : 'Ningún pedido coincide con la búsqueda.'}
@@ -1461,7 +1461,7 @@ export function PendientesEntregas() {
                 const open = expanded === group.key
                 return (
                   <article key={group.key} className="overflow-hidden rounded-2xl bg-surface shadow-sm">
-                    <div className="border-b border-lumi-line px-4 py-3">
+                    <div className="border-b border-border px-4 py-3">
                       <button
                         type="button"
                         className="flex w-full items-center justify-between gap-4 text-left"
@@ -1473,7 +1473,7 @@ export function PendientesEntregas() {
                             {group.invoice} — {group.client}
                           </span>
                           {subtitle(group) && (
-                            <span className="mt-1 block text-sm text-lumi-muted">{subtitle(group)}</span>
+                            <span className="mt-1 block text-sm text-muted">{subtitle(group)}</span>
                           )}
                         </span>
                         <span className="flex shrink-0 items-center gap-3">
@@ -1486,7 +1486,7 @@ export function PendientesEntregas() {
                               style={{ width: `${progress.pct}%` }}
                             />
                           </span>
-                          <span className="text-xs text-lumi-muted">
+                          <span className="text-xs text-muted">
                             {progress.readyToPrepare ? 'Listo' : `${progress.pct}%`}
                           </span>
                           <span aria-hidden="true">{open ? '▴' : '▾'}</span>
@@ -1511,7 +1511,7 @@ export function PendientesEntregas() {
                             >
                               <div className="min-w-0">
                                 <p className="font-medium">{line.product}</p>
-                                <p className="text-sm text-lumi-muted">
+                                <p className="text-sm text-muted">
                                   Cantidad pedida: {line.quantity}
                                 </p>
                               </div>
@@ -1527,7 +1527,7 @@ export function PendientesEntregas() {
                                         step={1}
                                         value={qtyDraftFor(line)}
                                         disabled={prepared || saving}
-                                        className="w-20 rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm disabled:opacity-60"
+                                        className="w-20 rounded-xl border border-border bg-surface px-2 py-1.5 text-sm disabled:opacity-60"
                                         onChange={(event) =>
                                           setQtyDraft(line.id, event.target.value)
                                         }
@@ -1542,7 +1542,7 @@ export function PendientesEntregas() {
                                     </label>
                                     <button
                                       type="button"
-                                      className="rounded-xl border border-lumi-line bg-surface px-3 py-1.5 text-sm disabled:opacity-50"
+                                      className="rounded-xl border border-border bg-surface px-3 py-1.5 text-sm disabled:opacity-50"
                                       disabled={prepared || complete || saving}
                                       onClick={() => void markComplete(line)}
                                     >
@@ -1550,7 +1550,7 @@ export function PendientesEntregas() {
                                     </button>
                                   </>
                                 ) : (
-                                  <p className="text-sm text-lumi-muted">
+                                  <p className="text-sm text-muted">
                                     {pickedOf(line)} / {line.quantity}
                                   </p>
                                 )}
@@ -1580,11 +1580,11 @@ export function PendientesEntregas() {
                 <h2 id="picking-all-data-title" className="text-xl font-semibold">
                   Todos los datos
                 </h2>
-                <p className="mt-1 text-sm text-lumi-muted">
+                <p className="mt-1 text-sm text-muted">
                   {filteredLines.length} filas filtradas · columnas de raw y campos del picking
                 </p>
                 {modalTruncated && (
-                  <p className="mt-1 text-sm text-lumi-muted">
+                  <p className="mt-1 text-sm text-muted">
                     Mostrando {MODAL_ROW_LIMIT} de {filteredLines.length}; el CSV exporta todas
                   </p>
                 )}
@@ -1600,7 +1600,7 @@ export function PendientesEntregas() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm"
+                  className="rounded-xl border border-border px-3 py-1.5 text-sm"
                   onClick={() => setShowAllData(false)}
                 >
                   Cerrar
@@ -1627,17 +1627,17 @@ export function PendientesEntregas() {
 
             <div className="mt-4 min-h-0 flex-1 overflow-auto">
               {filteredLines.length === 0 ? (
-                <p className="py-8 text-center text-sm text-lumi-muted">
+                <p className="py-8 text-center text-sm text-muted">
                   Ninguna fila coincide con el filtro.
                 </p>
               ) : visibleColumns.length === 0 ? (
-                <p className="py-8 text-center text-sm text-lumi-muted">
+                <p className="py-8 text-center text-sm text-muted">
                   Elegí al menos una columna para ver la tabla.
                 </p>
               ) : (
                 <table className="min-w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-lumi-line text-lumi-muted">
+                    <tr className="border-b border-border text-muted">
                       {visibleColumns.map((column) => (
                         <th key={column.id} className="whitespace-nowrap px-2 py-2 font-medium">
                           {column.label}
@@ -1647,7 +1647,7 @@ export function PendientesEntregas() {
                   </thead>
                   <tbody>
                     {modalLines.map((line) => (
-                      <tr key={line.id} className="border-b border-lumi-line/70">
+                      <tr key={line.id} className="border-b border-border/70">
                         {visibleColumns.map((column) => (
                           <td key={column.id} className="whitespace-nowrap px-2 py-2">
                             {cellValue(line, column.id) || '—'}

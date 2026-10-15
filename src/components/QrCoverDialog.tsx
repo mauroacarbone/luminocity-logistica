@@ -67,7 +67,7 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
           id="cover-print"
           className="pointer-events-auto w-full max-w-md rounded-2xl bg-surface p-6 shadow-md"
         >
-          <p className="text-sm font-semibold tracking-wide text-lumi-muted">{BRAND.name}</p>
+          <p className="text-sm font-semibold tracking-wide text-muted">{BRAND.name}</p>
           <h2 id="cover-title" className="mt-1 text-2xl font-semibold">
             Carátula
           </h2>
@@ -85,12 +85,12 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
               />
             </div>
           </div>
-          <p className="mt-3 text-center text-sm text-lumi-muted">Pedido</p>
+          <p className="mt-3 text-center text-sm text-muted">Pedido</p>
           <p className="text-center text-2xl font-semibold tracking-wide">{order.id}</p>
           <dl className="mt-4 flex flex-col gap-1 text-sm">
             {rows.map((row) => (
               <div key={row.label} className="flex gap-2">
-                <dt className="w-28 shrink-0 text-lumi-muted">{row.label}</dt>
+                <dt className="w-28 shrink-0 text-muted">{row.label}</dt>
                 <dd className="min-w-0 font-medium break-words">{row.value}</dd>
               </div>
             ))}
@@ -98,7 +98,7 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
           <div className="no-print mt-5 flex justify-end gap-2">
             <button
               type="button"
-              className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted"
+              className="rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-muted"
               onClick={onClose}
             >
               Cerrar

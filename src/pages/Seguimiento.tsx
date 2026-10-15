@@ -213,16 +213,16 @@ export function Seguimiento() {
         </Button>
       </div>
 
-      <p className="mt-6 text-sm text-lumi-muted">
+      <p className="mt-6 text-sm text-muted">
         {filtered.length} de {orders.length} pedido{orders.length === 1 ? '' : 's'}
       </p>
 
       {ordersError ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm font-semibold text-lumi-danger shadow-sm">
+        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm font-semibold text-danger shadow-sm">
           {ordersError}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-lumi-muted shadow-sm">
+        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-muted shadow-sm">
           {orders.length === 0
             ? 'No hay pedidos para mostrar.'
             : 'No hay pedidos que coincidan con la búsqueda o los filtros.'}

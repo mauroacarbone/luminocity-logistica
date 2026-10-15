@@ -244,24 +244,24 @@ export function MisViajes() {
 
       <div className={`mt-4 grid gap-2 ${summary.priced ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
         <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
-          <p className="text-sm text-lumi-muted">Viajes realizados</p>
+          <p className="text-sm text-muted">Viajes realizados</p>
           <p className="text-2xl font-semibold">{summary.count}</p>
         </article>
         <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
-          <p className="text-sm text-lumi-muted">Km del período</p>
+          <p className="text-sm text-muted">Km del período</p>
           <p className="text-2xl font-semibold">{formatKm(summary.km)}</p>
-          {summary.estimated && <p className="text-sm text-lumi-muted">Incluye tramos estimados</p>}
+          {summary.estimated && <p className="text-sm text-muted">Incluye tramos estimados</p>}
         </article>
         {summary.priced && (
           <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
-            <p className="text-sm text-lumi-muted">Total a cobrar</p>
+            <p className="text-sm text-muted">Total a cobrar</p>
             <p className="text-2xl font-semibold">{formatArs(summary.pay)}</p>
           </article>
         )}
         <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
-          <p className="text-sm text-lumi-muted">Viajes por lejanía</p>
+          <p className="text-sm text-muted">Viajes por lejanía</p>
           {summary.zones.length === 0 ? (
-            <p className="mt-1 text-sm text-lumi-muted">Sin viajes finalizados</p>
+            <p className="mt-1 text-sm text-muted">Sin viajes finalizados</p>
           ) : (
             <ul className="mt-2 flex flex-wrap gap-2">
               {summary.zones.map(([zone, count]) => (
@@ -300,20 +300,20 @@ export function MisViajes() {
       </div>
 
       {error && (
-        <p className="mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-lumi-danger shadow-sm">
+        <p className="mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-danger shadow-sm">
           {error}
         </p>
       )}
       {manager && !driverId ? (
-        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
           Elegí un chofer para ver sus viajes.
         </p>
       ) : loading ? (
-        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
           Cargando viajes…
         </p>
       ) : visible.length === 0 ? (
-        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
           {tab === 'pendientes' ? 'No hay viajes pendientes en este período.' : 'No hay viajes finalizados en este período.'}
         </p>
       ) : (
@@ -345,7 +345,7 @@ function TripCard({ trip }: { trip: DriverTrip }) {
         </p>
       </div>
       <p className="mt-2 text-base">{stopCount(trip)}</p>
-      <p className="mt-1 text-base text-lumi-muted">{scheduleLabel(trip)}</p>
+      <p className="mt-1 text-base text-muted">{scheduleLabel(trip)}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {zones.map((zone) => (
           <Badge key={zone} tone="neutral">
