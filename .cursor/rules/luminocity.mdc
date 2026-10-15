@@ -1,0 +1,19 @@
+---
+description: Reglas fijas de trabajo y diseño de Luminocity
+alwaysApply: true
+---
+
+# Trabajo
+- Trabajar siempre local en este repo, rama main. Antes de empezar: git pull.
+- No usar agentes en la nube, Computer Use ni navegador automatizado.
+- Verificar solo con npm run lint y npm run build (y en server si se tocó). Deben pasar antes de cada commit.
+- Un commit local por punto del brief.
+- Mensaje: una línea, español, infinitivo, ~60 caracteres, con tildes, sin punto final, sin emojis ni prefijos.
+- Sin cuerpo ni trailers. Nunca Co-authored-by ni menciones a IA o Cursor.
+- Autor y committer: Mauro Carbone <mauroacarbone@gmail.com>.
+- Antes de mostrar el log, revisar con git log --format=%B -n N que ningún commit tenga Co-authored-by u otra línea extra; si la tiene, reword local (solo commits sin push).
+- No hacer push salvo que Mauro lo pida. Al terminar: mostrar git log --format=%B -n N, explicar cómo probar con npm run dev y esperar.
+- No cambiar nada fuera del alcance del brief.
+# Negocio
+- Solo el chofer inicia el viaje (En viaje) y necesita una hoja de ruta vigente.
+- Retiro por el local no lleva transportista, chofer, franja ni dirección.
