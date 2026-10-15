@@ -200,7 +200,7 @@ function Dates({ dateRange }: { dateRange: FilterDateRange }) {
   )
 }
 
-function SearchField({ search }: { search: FilterSearch }) {
+function SearchField({ search, size }: { search: FilterSearch; size: FilterSize }) {
   return (
     <div className="flex min-w-0 flex-1 items-end gap-2">
       <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium text-text">
@@ -218,7 +218,7 @@ function SearchField({ search }: { search: FilterSearch }) {
         />
       </label>
       {search.onSubmit ? (
-        <Button variant="secondary" onClick={() => search.onSubmit?.(search.value)}>
+        <Button variant="secondary" size={size} onClick={() => search.onSubmit?.(search.value)}>
           Buscar
         </Button>
       ) : null}
@@ -297,7 +297,7 @@ export function FilterBar({
   return (
     <div className={className}>
       <div className="flex flex-wrap items-end gap-3 rounded-[10px] border border-border bg-surface p-3">
-        {search ? <SearchField search={search} /> : null}
+        {search ? <SearchField search={search} size={size} /> : null}
         {hasExtra ? (
           <Button variant="secondary" size={size} className="sm:hidden" onClick={() => setOpen(true)}>
             Filtros ({activeCount})

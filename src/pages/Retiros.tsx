@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { FilterBar, Page, PageHeader } from '../components/ui'
+import { Button, FilterBar, Page, PageHeader } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -203,16 +203,25 @@ export function Retiros() {
             setAllDates(false)
           },
         }}
-        activeCount={(query.trim() ? 1 : 0) + (selected.size === 2 && selected.has('pendiente') && selected.has('preparado') ? 0 : 1)}
+        activeCount={
+          (query.trim() ? 1 : 0) +
+          (selected.size === 2 && selected.has('pendiente') && selected.has('preparado') ? 0 : 1) +
+          (allDates || from !== defaults.from || to !== defaults.to ? 1 : 0)
+        }
         onClear={() => {
+          const range = weekRange()
           setQuery('')
           setSelected(new Set<ChipStatus>(['pendiente', 'preparado']))
+          setFrom(range.from)
+          setTo(range.to)
+          setAllDates(false)
         }}
       />
       <div className="flex flex-col gap-3">
-        <button
-          type="button"
-          className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm shadow-sm"
+        <Button
+          variant="secondary"
+          size="lg"
+          className="self-start"
           onClick={() => {
             if (allDates) {
               const range = weekRange()
@@ -225,7 +234,7 @@ export function Retiros() {
           }}
         >
           {allDates ? 'Esta semana' : 'Ver todas las fechas'}
-        </button>
+        </Button>
       </div>
 
       <p className="mt-6 text-sm text-lumi-muted">
