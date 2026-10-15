@@ -18,6 +18,17 @@ const OPEN_ORDER = new Set(['preparado', 'asignado'])
 export const routeSheetsRouter = Router()
 routeSheetsRouter.use(requireAuth)
 
+routeSheetsRouter.get('/trips', async (req, res) => {
+  await send(res, async () => {
+    const result = await listTrips(req.user, req.query ?? {})
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(result.trips)
+  })
+})
+
 routeSheetsRouter.get('/', async (req, res) => {
   await send(res, async () => {
     if (!canRead(req.user)) {
@@ -261,6 +272,7 @@ export async function closeFinishedSheets(orders) {
       return !order || order.status === 'entregado'
     })
     if (!done) continue
+    if (!sheet.trip) sheet.trip = buildTrip(sheet, byId)
     sheet.status = 'cerrada'
     sheet.closedAt = now
     changed = true
@@ -336,6 +348,7 @@ export async function pullOrderFromSheets(orders, orderId) {
     if (sheet.status === 'en_curso' && orderIds.length === 0) {
       updated.status = 'cerrada'
       updated.closedAt = new Date().toISOString()
+      if (!updated.trip) updated.trip = buildTrip(updated, new Map(orders.map((order) => [order.id, order])))
     } else {
       renumberSheet(orders, updated)
     }
@@ -472,6 +485,187 @@ function nextSheetId(sheets) {
     id = `H-${Math.floor(1000000 + Math.random() * 9000000)}`
   } while (used.has(id))
   return id
+}
+
+const STREET_FACTOR = 1.3
+const DEPOT = { lat: -34.5986, lng: -58.4493 }
+
+function listTrips(user, query) {
+  return locked(async () => {
+    if (user.role !== 'chofer' && user.role !== 'encargado_deposito' && user.role !== 'admin') {
+      return fail('No tenés permiso para ver los viajes.', 403)
+    }
+    const from = readDate(query.from)
+    if (from.error) return from
+    const to = readDate(query.to)
+    if (to.error) return to
+    if (from.value > to.value) return fail('La fecha desde no puede ser posterior a la fecha hasta.')
+    let driverId = typeof query.driverId === 'string' ? query.driverId.trim() : ''
+    if (user.role === 'chofer') {
+      if (driverId && driverId !== user.id) return fail('Solo podés ver tus viajes.', 403)
+      driverId = user.id
+    } else if (!driverId) {
+      return fail('Elegí un chofer.')
+    }
+    const users = await readCollection('users')
+    const driver = users.find((item) => item && item.id === driverId && item.role === 'chofer')
+    if (!driver) return fail('No existe ese chofer.', 404)
+    const sheets = await readCollection('routeSheets')
+    const orders = await readCollection('orders')
+    const byId = new Map(orders.map((order) => [order.id, order]))
+    const name = typeof driver.name === 'string' && driver.name.trim() ? driver.name.trim() : driverId
+    const trips = sheets
+      .filter(
+        (sheet) =>
+          sheet &&
+          sheet.driverId === driverId &&
+          typeof sheet.date === 'string' &&
+          sheet.date >= from.value &&
+          sheet.date <= to.value &&
+          (sheet.status === 'planificada' || sheet.status === 'en_curso' || sheet.status === 'cerrada'),
+      )
+      .map((sheet) => toTrip(sheet, byId, name))
+      .sort((left, right) => {
+        if (left.date !== right.date) return right.date.localeCompare(left.date)
+        if (left.slot !== right.slot) return right.slot.localeCompare(left.slot)
+        return left.id.localeCompare(right.id, 'es')
+      })
+    return { trips }
+  })
+}
+
+function toTrip(sheet, byId, driverName) {
+  const trip = readStoredTrip(sheet) ?? buildTrip(sheet, byId)
+  return {
+    id: sheet.id,
+    driverId: sheet.driverId,
+    driverName,
+    date: sheet.date,
+    slot: sheet.slot,
+    status: sheet.status,
+    startedAt: typeof sheet.startedAt === 'string' ? sheet.startedAt : null,
+    closedAt: typeof sheet.closedAt === 'string' ? sheet.closedAt : null,
+    delivered: trip.delivered,
+    undelivered: trip.undelivered,
+    zones: trip.zones,
+    km: trip.km,
+    kmEstimated: trip.kmEstimated,
+    stops: trip.stops,
+  }
+}
+
+function readStoredTrip(sheet) {
+  const trip = sheet.trip
+  if (!trip || typeof trip !== 'object' || Array.isArray(trip)) return null
+  if (typeof trip.km !== 'number' || !Number.isFinite(trip.km) || trip.km < 0) return null
+  if (typeof trip.kmEstimated !== 'boolean') return null
+  if (!Array.isArray(trip.stops)) return null
+  const stops = []
+  for (const stop of trip.stops) {
+    if (!stop || typeof stop !== 'object') return null
+    if (typeof stop.orderId !== 'string' || !stop.orderId) return null
+    if (typeof stop.zone !== 'string' || !stop.zone.trim()) return null
+    if (typeof stop.delivered !== 'boolean') return null
+    stops.push({ orderId: stop.orderId, zone: stop.zone.trim(), delivered: stop.delivered })
+  }
+  const zones = []
+  for (const stop of stops) {
+    if (!zones.includes(stop.zone)) zones.push(stop.zone)
+  }
+  const delivered = stops.filter((stop) => stop.delivered).length
+  return {
+    delivered,
+    undelivered: stops.length - delivered,
+    zones,
+    stops,
+    km: Math.round(trip.km * 10) / 10,
+    kmEstimated: trip.kmEstimated,
+  }
+}
+
+function buildTrip(sheet, byId) {
+  const ids = Array.isArray(sheet.orderIds) ? sheet.orderIds : []
+  const stops = ids.map((orderId) => {
+    const order = byId.get(orderId)
+    return {
+      orderId,
+      zone: zoneOf(order),
+      delivered: Boolean(order && order.status === 'entregado'),
+    }
+  })
+  const zones = []
+  for (const stop of stops) {
+    if (!zones.includes(stop.zone)) zones.push(stop.zone)
+  }
+  const delivered = stops.filter((stop) => stop.delivered).length
+  const distance = tripDistance(sheet, byId)
+  return {
+    delivered,
+    undelivered: stops.length - delivered,
+    zones,
+    stops,
+    km: distance.km,
+    kmEstimated: distance.estimated,
+  }
+}
+
+function zoneOf(order) {
+  if (!order || typeof order.zone !== 'string') return 'Sin zona'
+  const zone = order.zone.trim()
+  return zone || 'Sin zona'
+}
+
+function tripDistance(sheet, byId) {
+  if (typeof sheet.km === 'number' && Number.isFinite(sheet.km) && sheet.km > 0) {
+    return { km: Math.round(sheet.km * 10) / 10, estimated: false }
+  }
+  const points = []
+  const depot = depotPoint(sheet.origin)
+  if (depot) points.push(depot)
+  const ids = Array.isArray(sheet.orderIds) ? sheet.orderIds : []
+  for (const id of ids) {
+    const point = orderPoint(byId.get(id))
+    if (point) points.push(point)
+  }
+  if (points.length < 2) return { km: 0, estimated: true }
+  let km = 0
+  for (let index = 1; index < points.length; index += 1) {
+    km += haversineKm(points[index - 1], points[index])
+  }
+  return { km: Math.round(km * STREET_FACTOR * 10) / 10, estimated: true }
+}
+
+function depotPoint(origin) {
+  const text = typeof origin === 'string' ? origin.trim() : ''
+  const coords = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(text)
+  if (coords) {
+    const lat = Number(coords[1])
+    const lng = Number(coords[2])
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng }
+  }
+  if (/warnes\s*986/i.test(text)) return DEPOT
+  return null
+}
+
+function orderPoint(order) {
+  if (!order) return null
+  const lat = Number(order.lat)
+  const lng = Number(order.lng)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
+  return { lat, lng }
+}
+
+function haversineKm(from, to) {
+  const earth = 6371
+  const rad = (degrees) => (degrees * Math.PI) / 180
+  const dLat = rad(to.lat - from.lat)
+  const dLng = rad(to.lng - from.lng)
+  const lat1 = rad(from.lat)
+  const lat2 = rad(to.lat)
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+  return 2 * earth * Math.asin(Math.min(1, Math.sqrt(h)))
 }
 
 function fail(error, status = 400, code) {
