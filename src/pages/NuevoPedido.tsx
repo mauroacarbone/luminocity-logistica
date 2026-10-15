@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { EditReasonDialog } from '../components/EditReasonDialog'
+import { Button } from '../components/ui'
 import { NoAccess } from '../components/NoAccess'
 import {
   DISPATCH_LABEL,
@@ -1160,12 +1161,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             Tenés un pedido sin terminar · guardado {formatDraftAgo(draftOffer.savedAt)}
           </span>
           <span className="flex flex-wrap gap-2">
-            <button type="button" className="btn-primary" onClick={recoverDraft}>
+            <Button variant="secondary" onClick={recoverDraft}>
               Recuperar
-            </button>
-            <button type="button" className="btn-ghost" onClick={discardDraft}>
+            </Button>
+            <Button variant="ghost" onClick={discardDraft}>
               Descartar
-            </button>
+            </Button>
           </span>
         </p>
       )}
@@ -1271,14 +1272,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               )}
               {openAuth?.status === 'pendiente' && <p>Autorización pendiente de un encargado.</p>}
               {!openAuth && (
-                <button
-                  type="button"
-                  className="text-sm font-semibold underline"
-                  disabled={askingAuth}
-                  onClick={() => void askAuthorization()}
-                >
+                <Button variant="ghost" disabled={askingAuth} onClick={() => void askAuthorization()}>
                   Pedir autorización al encargado
-                </button>
+                </Button>
               )}
               {authError && (
                 <p className="field-error" role="alert">
@@ -1329,29 +1325,30 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                     onChange={(event) => updateInvoice(index, event.target.value)}
                   />
                   {invoices.length > 1 && (
-                    <button
-                      type="button"
-                      className="text-button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => {
                         markDirty()
                         setInvoices((current) => current.filter((_, itemIndex) => itemIndex !== index))
                       }}
                     >
                       Quitar
-                    </button>
+                    </Button>
                   )}
                 </div>
               ))}
-              <button
-                type="button"
-                className="text-button center"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="self-center"
                 onClick={() => {
                   markDirty()
                   setInvoices((current) => [...current, ''])
                 }}
               >
                 + Agregar otra factura
-              </button>
+              </Button>
             </div>
           </div>
           <div className="toggle-row">
@@ -1441,19 +1438,16 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                       </ul>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    className="detect-btn"
+                  <Button
+                    variant="secondary"
                     onClick={() => void onLocate()}
                     disabled={locating || address.trim().length < 3}
-                    aria-busy={locating}
+                    loading={locating}
                   >
-                    {locating
-                      ? locateAttempt > 0
-                        ? `Buscando… (intento ${locateAttempt} de 3)`
-                        : 'Ubicando...'
+                    {locating && locateAttempt > 0
+                      ? `Buscando… (intento ${locateAttempt} de 3)`
                       : 'Ubicar'}
-                  </button>
+                  </Button>
                 </div>
                 <small className="hint">
                   Ingresá la dirección del cliente y tocá Ubicar para completar zona y, si se puede,
@@ -1712,17 +1706,17 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               <div className="attachment-actions">
                 <strong>{attachmentName || 'Adjunto'}</strong>
                 {attachmentDataUrl && (
-                  <button
-                    type="button"
-                    className="text-button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => openAttachment(attachmentName || 'adjunto', attachmentDataUrl)}
                   >
                     {attachmentKind(attachmentName, attachmentDataUrl) === 'word' ? 'Descargar' : 'Abrir'}
-                  </button>
+                  </Button>
                 )}
-                <button type="button" className="text-button" onClick={clearAttachment}>
+                <Button variant="ghost" size="sm" onClick={clearAttachment}>
                   Quitar
-                </button>
+                </Button>
               </div>
               {reattachName ? (
                 <small className="field-warn" role="status">
@@ -1785,9 +1779,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         )}
 
         <div className="form-actions">
-          <button
-            type="button"
-            className="btn-ghost"
+          <Button
+            variant="ghost"
             onClick={() => {
               void (async () => {
                 if (dirty) {
@@ -1803,10 +1796,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             }}
           >
             Cancelar
-          </button>
-          <button type="submit" className="btn-primary" disabled={readingFile || saving}>
-            {saving ? 'Guardando…' : storedId ? 'Guardar cambios' : 'Crear Pedido'}
-          </button>
+          </Button>
+          <Button type="submit" variant="primary" disabled={readingFile || saving} loading={saving}>
+            {storedId ? 'Guardar cambios' : 'Crear Pedido'}
+          </Button>
         </div>
       </form>
       {reasonOpen && (

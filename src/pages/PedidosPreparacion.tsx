@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Modal } from '../components/ui/Modal'
+import { Button, Modal } from '../components/ui'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { PriorityChip } from '../components/PriorityChip'
 import { DISPATCH_LABEL } from '../data/catalog'
@@ -92,21 +92,12 @@ function PackagesDialog({
           </p>
         )}
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted disabled:opacity-50"
-            disabled={saving}
-            onClick={onClose}
-          >
+          <Button variant="ghost" size="lg" disabled={saving} onClick={onClose}>
             Cancelar
-          </button>
-          <button
-            type="submit"
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50"
-            disabled={saving}
-          >
+          </Button>
+          <Button type="submit" variant="primary" size="lg" disabled={saving}>
             Confirmar
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
@@ -206,23 +197,25 @@ export function PedidosPreparacion() {
       </header>
 
       <div className="mt-6 grid grid-cols-3 items-center gap-2">
-        <button
-          type="button"
-          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
+        <Button
+          variant="ghost"
+          size="lg"
+          className="justify-self-start"
           onClick={() => showWeek(weekOffset - 1)}
         >
           <span className="sm:hidden">‹</span>
           <span className="hidden sm:inline">‹ Sem. anterior</span>
-        </button>
+        </Button>
         <p className="text-center text-sm font-semibold sm:text-base">{weekTitle}</p>
-        <button
-          type="button"
-          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
+        <Button
+          variant="ghost"
+          size="lg"
+          className="justify-self-end"
           onClick={() => showWeek(weekOffset + 1)}
         >
           <span className="sm:hidden">›</span>
           <span className="hidden sm:inline">Sem. siguiente ›</span>
-        </button>
+        </Button>
       </div>
 
       <div className="mt-4 grid min-w-0 grid-cols-7 gap-1">
@@ -314,35 +307,39 @@ export function PedidosPreparacion() {
                 </div>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:items-end">
                   {user && canPrepare(user.role) && order.status === 'pendiente' && (
-                    <button
-                      type="button"
-                      className="min-h-11 rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      fullWidth
+                      className="sm:w-auto"
                       disabled={busyId === order.id}
                       onClick={() => setPreparing(order)}
                     >
                       Marcar preparado
-                    </button>
+                    </Button>
                   )}
                   {user && canEditOrder(user, order) && (
-                    <button
-                      type="button"
-                      className="text-sm text-lumi-ink hover:underline"
-                      onClick={() =>
-                        navigate('/nuevo-pedido', { state: { orderId: order.id } })
-                      }
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      fullWidth
+                      className="sm:w-auto"
+                      onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
                     >
                       Editar
-                    </button>
+                    </Button>
                   )}
                   {user && canCancelOrder(user.role) && (
-                    <button
-                      type="button"
-                      className="min-h-11 rounded-xl bg-danger-deep px-3 text-sm font-semibold text-inverse hover:bg-danger disabled:opacity-50"
+                    <Button
+                      variant="danger"
+                      size="lg"
+                      fullWidth
+                      className="sm:w-auto"
                       disabled={busyId === order.id}
                       onClick={() => void cancelOrder(order)}
                     >
                       {user.role === 'admin' ? 'Borrar' : 'Cancelar'}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

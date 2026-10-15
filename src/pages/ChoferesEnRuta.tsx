@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { Modal } from '../components/ui/Modal'
+import { Button, Modal } from '../components/ui'
 import { isOwnDelivery } from '../data/catalog'
 import { error, success } from '../lib/alerts'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
@@ -281,14 +281,16 @@ export function ChoferesEnRuta() {
                     <p>
                       {pending === 1 ? '1 parada pendiente' : `${pending} paradas pendientes`}
                     </p>
-                    <button
-                      type="button"
-                      className="mt-3 min-h-12 w-full rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary disabled:opacity-50"
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      fullWidth
+                      className="mt-3"
                       disabled={finishing}
                       onClick={() => setFinishTarget(sheet)}
                     >
                       Finalizar viaje
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -375,22 +377,12 @@ export function ChoferesEnRuta() {
               Las paradas pendientes quedan sin entregar y vuelven a asignado para reprogramarlas.
             </p>
             <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
-                disabled={finishing}
-                onClick={() => void finishSheet()}
-              >
-                {finishing ? 'Cerrando…' : 'Finalizar viaje'}
-              </button>
-              <button
-                type="button"
-                className="min-h-12 rounded-xl border border-lumi-line px-4 text-base font-semibold disabled:opacity-50"
-                disabled={finishing}
-                onClick={() => setFinishTarget(null)}
-              >
+              <Button variant="primary" size="lg" fullWidth loading={finishing} onClick={() => void finishSheet()}>
+                Finalizar viaje
+              </Button>
+              <Button variant="secondary" size="lg" fullWidth disabled={finishing} onClick={() => setFinishTarget(null)}>
                 Cancelar
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>

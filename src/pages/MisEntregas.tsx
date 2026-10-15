@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { StopRouteMap, type MapStop } from '../components/StopRouteMap'
 import { PriorityChip } from '../components/PriorityChip'
-import { Badge } from '../components/ui'
-import { Modal } from '../components/ui/Modal'
+import { Badge, Button, Modal } from '../components/ui'
 import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
@@ -331,13 +330,9 @@ export function MisEntregas() {
               <h2 className="text-xl font-semibold">
                 Hoja de ruta · {sheetDateLabel} · Franja {sheet.slot}
               </h2>
-              <button
-                type="button"
-                className="no-print min-h-12 rounded-xl border border-lumi-line bg-surface px-4 text-base font-semibold"
-                onClick={() => window.print()}
-              >
+              <Button variant="secondary" size="lg" className="no-print" onClick={() => window.print()}>
                 Descargar PDF
-              </button>
+              </Button>
             </div>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-base sm:grid-cols-3">
               <div className="rounded-xl bg-surface px-3 py-2">
@@ -369,14 +364,9 @@ export function MisEntregas() {
             </dl>
             <div className="no-print mt-3 flex flex-col gap-2">
               {sheet.status === 'en_curso' && canFinish && (
-                <button
-                  type="button"
-                  className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
-                  disabled={finishing}
-                  onClick={() => setFinishTarget(sheet)}
-                >
+                <Button variant="primary" size="lg" fullWidth disabled={finishing} onClick={() => setFinishTarget(sheet)}>
                   Finalizar viaje
-                </button>
+                </Button>
               )}
               {user?.role === 'chofer' && sheet.status === 'planificada' && sheet.date <= today && (
                 <>
@@ -385,14 +375,15 @@ export function MisEntregas() {
                       {WAITING_SHEET}
                     </p>
                   )}
-                  <button
-                    type="button"
-                    className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    fullWidth
                     disabled={starting === sheet.id || !sheetIsReady(sheet, orders)}
                     onClick={() => void startSheet(sheet)}
                   >
                     Iniciar recorrido
-                  </button>
+                  </Button>
                 </>
               )}
               {sheet.status === 'planificada' && sheet.date > today && (
@@ -454,22 +445,12 @@ export function MisEntregas() {
               Las paradas pendientes quedan sin entregar y vuelven a asignado para reprogramarlas.
             </p>
             <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
-                disabled={finishing}
-                onClick={() => void finishSheet()}
-              >
-                {finishing ? 'Cerrando…' : 'Finalizar viaje'}
-              </button>
-              <button
-                type="button"
-                className="min-h-12 rounded-xl border border-lumi-line px-4 text-base font-semibold disabled:opacity-50"
-                disabled={finishing}
-                onClick={() => setFinishTarget(null)}
-              >
+              <Button variant="primary" size="lg" fullWidth loading={finishing} onClick={() => void finishSheet()}>
+                Finalizar viaje
+              </Button>
+              <Button variant="secondary" size="lg" fullWidth disabled={finishing} onClick={() => setFinishTarget(null)}>
                 Cancelar
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
@@ -604,9 +585,9 @@ function DeliveryCard({
               {inSheet ? 'Navegar' : 'Cómo llegar'}
             </a>
           ) : (
-            <button type="button" className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary" disabled>
+            <Button variant="secondary" size="lg" fullWidth disabled>
               {inSheet ? 'Navegar' : 'Cómo llegar'}
-            </button>
+            </Button>
           )}
           {inSheet && waze && (
             <a
@@ -628,14 +609,15 @@ function DeliveryCard({
             <p className="rounded-xl bg-surface px-3 py-2 text-sm font-semibold shadow-sm">{WAITING_SHEET}</p>
           )}
           {showLeave && (
-            <button
-              type="button"
-              className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary disabled:opacity-50"
+            <Button
+              variant="secondary"
+              size="lg"
+              fullWidth
               disabled={busy || !routeReady}
               onClick={onLeave}
             >
               Salir a reparto
-            </button>
+            </Button>
           )}
           {order.status === 'en-viaje' &&
             (notice ? (
@@ -648,19 +630,21 @@ function DeliveryCard({
                 Avisar al cliente
               </a>
             ) : (
-              <button type="button" className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary" disabled>
+              <Button variant="secondary" size="lg" fullWidth disabled>
                 Avisar al cliente
-              </button>
+              </Button>
             ))}
           {canDeliver && (
-            <button
-              type="button"
-              className="min-h-12 rounded-xl bg-success px-4 text-base font-semibold text-inverse disabled:opacity-50"
+            <Button
+              variant="secondary"
+              size="lg"
+              fullWidth
+              className="!border-transparent !bg-success !text-inverse hover:!bg-success"
               disabled={busy}
               onClick={onDelivered}
             >
               Entregado
-            </button>
+            </Button>
           )}
         </div>
       )}

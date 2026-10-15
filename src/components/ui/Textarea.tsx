@@ -6,7 +6,7 @@ type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 }
 
 const CONTROL =
-  'w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text min-h-24 placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary disabled:bg-surface-muted disabled:cursor-not-allowed'
+  'w-full min-h-24 rounded-[10px] border border-border bg-surface px-3 py-2 text-[15px] text-text placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:border-primary disabled:bg-surface-muted disabled:cursor-not-allowed'
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
   { className, invalid, disabled, ...rest },

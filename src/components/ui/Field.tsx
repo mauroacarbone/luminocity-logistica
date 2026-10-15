@@ -35,7 +35,7 @@ export function Field({ label, hint, error, required, className, children }: Fie
     id: controlId,
     'aria-describedby': describedBy,
     'aria-invalid': error ? true : undefined,
-    'aria-required': required || undefined,
+    'aria-required': required ? true : undefined,
   }
 
   // Usamos cloneElement cuando el hijo es un elemento; si no, render-prop.

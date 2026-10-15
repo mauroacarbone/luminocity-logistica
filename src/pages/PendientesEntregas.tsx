@@ -1315,6 +1315,7 @@ export function PendientesEntregas() {
                     canWrite ? (
                       <Button
                         variant="primary"
+                        size="lg"
                         disabled={busy}
                         onClick={() => fileRef.current?.click()}
                       >

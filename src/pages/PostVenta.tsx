@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { Spinner, ServerDown } from '../components/LoadState'
+import { Button } from '../components/ui'
 import { withCurrent, withExtras } from '../data/catalog'
 import {
   CLAIM_MOTIVES,
@@ -231,23 +232,25 @@ function ClaimAttachments({ claim }: { claim: Claim }) {
             ? fileLabel('photo', photo.name, photo.dataUrl)
             : 'Ver foto'
         return (
-          <button
+          <Button
             key={key}
-            type="button"
-            className="self-start text-left text-sm font-medium text-lumi-ink hover:underline disabled:opacity-50"
+            variant="ghost"
+            size="sm"
+            className="self-start"
             title={`${label} ${photo.name}`}
             disabled={busy || Boolean(loadingKey)}
             onClick={() => void openPhoto(photo.index, photo.name, photo.dataUrl)}
           >
             {label}
             {photo.name && photo.name !== 'Foto' ? ` · ${photo.name}` : ''}
-          </button>
+          </Button>
         )
       })}
       {showAttachment && (
-        <button
-          type="button"
-          className="self-start text-left text-sm font-medium text-lumi-ink hover:underline disabled:opacity-50"
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
           title={
             loadingKey === 'file'
               ? 'Cargando…'
@@ -263,7 +266,7 @@ function ClaimAttachments({ claim }: { claim: Claim }) {
             : claim.attachment?.dataUrl
               ? fileLabel('file', claim.attachment.name, claim.attachment.dataUrl)
               : 'Ver adjunto'}
-        </button>
+        </Button>
       )}
     </div>
   )
@@ -518,25 +521,26 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
                   }
                 />
                 {invoices.length > 1 && (
-                  <button
-                    type="button"
-                    className="text-button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() =>
                       setInvoices((current) => current.filter((_, itemIndex) => itemIndex !== index))
                     }
                   >
                     Quitar
-                  </button>
+                  </Button>
                 )}
               </div>
             ))}
-            <button
-              type="button"
-              className="text-button center"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="self-center"
               onClick={() => setInvoices((current) => [...current, ''])}
             >
               + Agregar otra factura
-            </button>
+            </Button>
           </div>
           <label className="field">
             <span>Teléfono</span>
@@ -629,26 +633,27 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
                   }
                 />
                 {products.length > 1 && (
-                  <button
-                    type="button"
-                    className="text-button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() =>
                       setProducts((current) => current.filter((_, itemIndex) => itemIndex !== index))
                     }
                   >
                     Quitar
-                  </button>
+                  </Button>
                 )}
               </div>
             ))}
             {errors.products && <small className="field-error">{errors.products}</small>}
-            <button
-              type="button"
-              className="text-button center"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="self-center"
               onClick={() => setProducts((current) => [...current, { name: '', quantity: '1' }])}
             >
               + Agregar otro producto
-            </button>
+            </Button>
           </div>
           <div className="field full">
             <span>Foto (hasta 5, opcional)</span>
@@ -674,15 +679,15 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
                 {photos.map((photo, index) => (
                   <li key={`${photo.name}-${index}`} className="flex items-center justify-between text-sm">
                     <span className="truncate">{photo.name}</span>
-                    <button
-                      type="button"
-                      className="text-button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() =>
                         setPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index))
                       }
                     >
                       Quitar
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -703,12 +708,12 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
           </label>
         </div>
         <div className="form-actions mt-4">
-          <button type="button" className="btn-ghost" disabled={saving} onClick={reset}>
+          <Button variant="ghost" disabled={saving} onClick={reset}>
             Cancelar
-          </button>
-          <button type="submit" className="btn-primary" disabled={saving}>
-            {saving ? 'Guardando…' : 'Guardar reclamo'}
-          </button>
+          </Button>
+          <Button type="submit" variant="primary" disabled={saving} loading={saving}>
+            Guardar reclamo
+          </Button>
         </div>
       </section>
     </form>
@@ -896,33 +901,29 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
         )}
 
         {!terminal && nextStatus && (
-          <button
-            type="button"
-            className="btn-primary mt-3 w-full sm:w-auto disabled:opacity-50"
+          <Button
+            variant="primary"
+            fullWidth
+            className="mt-3 sm:w-auto"
             disabled={busy}
             onClick={() => void applyStatus(nextStatus)}
           >
             Pasar a {CLAIM_STATUS_LABEL[nextStatus]}
-          </button>
+          </Button>
         )}
 
         {claim.status !== 'cancelado' && (
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
             {prevStatus && (
-              <button
-                type="button"
-                className="text-sm text-lumi-muted hover:text-lumi-ink hover:underline disabled:opacity-50"
-                disabled={busy}
-                onClick={() => void applyStatus(prevStatus)}
-              >
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => void applyStatus(prevStatus)}>
                 Volver a {CLAIM_STATUS_LABEL[prevStatus]}
-              </button>
+              </Button>
             )}
             <div>
-              <button
+              <Button
                 ref={statusBtnRef}
-                type="button"
-                className="text-sm text-lumi-muted hover:text-lumi-ink hover:underline disabled:opacity-50"
+                variant="ghost"
+                size="sm"
                 disabled={busy}
                 aria-expanded={openStatus}
                 aria-haspopup="menu"
@@ -933,7 +934,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
                 }}
               >
                 Cambiar a otro estado
-              </button>
+              </Button>
               {openStatus &&
                 createPortal(
                   <>
@@ -1002,9 +1003,9 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           ))}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <button
-            type="button"
-            className="text-sm text-lumi-muted hover:text-lumi-ink disabled:opacity-50"
+          <Button
+            variant="ghost"
+            size="sm"
             disabled={busy}
             onClick={() => {
               setNoting((current) => !current)
@@ -1012,36 +1013,21 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
             }}
           >
             Nota
-          </button>
+          </Button>
           {isOpenClaim(claim.status) &&
             (confirmCancel ? (
               <div className="flex items-center gap-2 text-sm">
-                <button
-                  type="button"
-                  className="text-danger-deep disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => void cancelClaim()}
-                >
+                <Button variant="danger" size="sm" disabled={busy} onClick={() => void cancelClaim()}>
                   Confirmar
-                </button>
-                <button
-                  type="button"
-                  className="text-lumi-muted disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => setConfirmCancel(false)}
-                >
+                </Button>
+                <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirmCancel(false)}>
                   Volver
-                </button>
+                </Button>
               </div>
             ) : (
-              <button
-                type="button"
-                className="text-sm text-danger-deep disabled:opacity-50"
-                disabled={busy}
-                onClick={() => setConfirmCancel(true)}
-              >
+              <Button variant="danger-outline" size="sm" disabled={busy} onClick={() => setConfirmCancel(true)}>
                 Cancelar
-              </button>
+              </Button>
             ))}
         </div>
       </div>
@@ -1054,9 +1040,9 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
             onChange={(event) => setNote(event.target.value)}
             className="min-w-0 flex-1 rounded-xl border border-lumi-line px-3 py-2 text-sm"
           />
-          <button type="button" className="btn-primary disabled:opacity-50" disabled={busy} onClick={() => void saveNote()}>
+          <Button variant="secondary" disabled={busy} onClick={() => void saveNote()}>
             Guardar
-          </button>
+          </Button>
         </div>
       )}
     </article>
@@ -1109,14 +1095,9 @@ function FilterBar({
           </option>
         ))}
       </select>
-      <button
-        type="button"
-        className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm disabled:text-lumi-muted"
-        disabled={claims.length === 0}
-        onClick={() => downloadClaims(claims)}
-      >
+      <Button variant="secondary" disabled={claims.length === 0} onClick={() => downloadClaims(claims)}>
         Descargar Excel
-      </button>
+      </Button>
     </div>
   )
 }

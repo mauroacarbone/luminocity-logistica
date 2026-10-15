@@ -4,6 +4,7 @@ import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
+import { Button } from '../components/ui'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
 import {
@@ -457,16 +458,16 @@ export function Despacho() {
           <p>Seguimiento de pedidos en viaje y entregados</p>
         </div>
         {confirmDelivery && (
-          <button
-            type="button"
-            className="shrink-0 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg"
+          <Button
+            variant="primary"
+            className="shrink-0"
             onClick={() => {
               setDialogError('')
               setDialog('entrega')
             }}
           >
             Escanear QR y confirmar entrega
-          </button>
+          </Button>
         )}
       </header>
 
@@ -495,23 +496,15 @@ export function Despacho() {
       </div>
 
       <div className="mt-4 grid grid-cols-3 items-center gap-2">
-        <button
-          type="button"
-          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
-          onClick={() => showWeek(weekOffset - 1)}
-        >
+        <Button variant="ghost" className="justify-self-start" onClick={() => showWeek(weekOffset - 1)}>
           <span className="sm:hidden">‹</span>
           <span className="hidden sm:inline">‹ Sem. anterior</span>
-        </button>
+        </Button>
         <p className="text-center text-sm font-semibold sm:text-base">{weekTitle}</p>
-        <button
-          type="button"
-          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
-          onClick={() => showWeek(weekOffset + 1)}
-        >
+        <Button variant="ghost" className="justify-self-end" onClick={() => showWeek(weekOffset + 1)}>
           <span className="sm:hidden">›</span>
           <span className="hidden sm:inline">Sem. siguiente ›</span>
-        </button>
+        </Button>
       </div>
 
       <div className="mt-4 grid min-w-0 grid-cols-7 gap-1">
@@ -548,16 +541,16 @@ export function Despacho() {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="shrink-0 rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
+        <Button
+          variant="secondary"
+          className="shrink-0"
           onClick={() => {
             setDialogError('')
             setDialog('caratula')
           }}
         >
           Escanear QR carátula
-        </button>
+        </Button>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -812,22 +805,17 @@ export function Despacho() {
                     />
                   )}
                   {user && canEditOrder(user, order) && (
-                    <button
-                      type="button"
-                      className="text-sm text-lumi-ink hover:underline"
+                    <Button
+                      variant="ghost"
                       onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
                     >
                       Editar
-                    </button>
+                    </Button>
                   )}
                   {(assign || confirmDelivery) && (
-                    <button
-                      type="button"
-                      className="rounded-xl border border-lumi-line px-3 py-1.5 text-sm hover:bg-surface-muted"
-                      onClick={() => setCoverId(order.id)}
-                    >
+                    <Button variant="secondary" onClick={() => setCoverId(order.id)}>
                       Carátula
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
