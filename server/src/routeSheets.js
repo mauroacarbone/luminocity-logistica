@@ -332,7 +332,10 @@ export async function syncSheetOnEdit(orders, current, next) {
   return { ok: true }
 }
 
-export async function pullOrderFromSheets(orders, orderId) {
+export async function pullOrderFromSheets(orders, removed) {
+  const orderId = typeof removed === 'string' ? removed : removed?.id
+  const order = typeof removed === 'string' ? null : removed
+  if (!orderId) return
   const sheets = await readCollection('routeSheets')
   let changed = false
   const nextSheets = []
@@ -346,10 +349,11 @@ export async function pullOrderFromSheets(orders, orderId) {
     const orderIds = ids.filter((id) => id !== orderId)
     if (sheet.status === 'planificada' && orderIds.length === 0) continue
     const updated = { ...sheet, orderIds }
+    if (sheet.status === 'en_curso') updated.dropped = rememberDropped(sheet.dropped, orderId, order)
     if (sheet.status === 'en_curso' && orderIds.length === 0) {
       updated.status = 'cerrada'
       updated.closedAt = new Date().toISOString()
-      if (!updated.trip) updated.trip = buildTrip(updated, new Map(orders.map((order) => [order.id, order])))
+      if (!updated.trip) updated.trip = buildTrip(updated, new Map(orders.map((item) => [item.id, item])))
     } else {
       renumberSheet(orders, updated)
     }
@@ -553,7 +557,8 @@ function toTrip(sheet, byId, driverName, rates) {
     km: trip.km,
     kmEstimated: trip.kmEstimated,
     stops: trip.stops,
-    amount: quoteTrip(rates, { zones: trip.zones, date: sheet.date, km: trip.km }),
+    amount:
+      trip.delivered > 0 ? quoteTrip(rates, { zones: trip.zones, date: sheet.date, km: trip.km }) : null,
   }
 }
 
@@ -586,16 +591,48 @@ function readStoredTrip(sheet) {
   }
 }
 
+function rememberDropped(current, orderId, order) {
+  const dropped = Array.isArray(current) ? current.filter(isDroppedStop) : []
+  if (dropped.some((stop) => stop.orderId === orderId)) return dropped
+  return [...dropped, { orderId, zone: zoneOf(order), delivered: false }]
+}
+
+function isDroppedStop(value) {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      typeof value.orderId === 'string' &&
+      value.orderId &&
+      value.delivered === false,
+  )
+}
+
+function droppedStops(sheet) {
+  if (!Array.isArray(sheet.dropped)) return []
+  return sheet.dropped.filter(isDroppedStop).map((stop) => ({
+    orderId: stop.orderId,
+    zone: zoneOf(stop.zone ? { zone: stop.zone } : null),
+    delivered: false,
+  }))
+}
+
 function buildTrip(sheet, byId) {
   const ids = Array.isArray(sheet.orderIds) ? sheet.orderIds : []
-  const stops = ids.map((orderId) => {
-    const order = byId.get(orderId)
-    return {
-      orderId,
-      zone: zoneOf(order),
-      delivered: Boolean(order && order.status === 'entregado'),
-    }
-  })
+  const dropped = droppedStops(sheet)
+  const droppedIds = new Set(dropped.map((stop) => stop.orderId))
+  const stops = [
+    ...ids
+      .filter((orderId) => !droppedIds.has(orderId))
+      .map((orderId) => {
+        const order = byId.get(orderId)
+        return {
+          orderId,
+          zone: zoneOf(order),
+          delivered: Boolean(order && order.status === 'entregado'),
+        }
+      }),
+    ...dropped,
+  ]
   const zones = []
   for (const stop of stops) {
     if (!zones.includes(stop.zone)) zones.push(stop.zone)

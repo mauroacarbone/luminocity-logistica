@@ -713,7 +713,7 @@ function deleteOrder(id, user) {
       return fail('No podés cancelar un pedido que ya salió.', 403)
     }
     const remaining = orders.filter((item) => item.id !== id)
-    await pullOrderFromSheets(remaining, id)
+    await pullOrderFromSheets(remaining, current)
     await syncSheetFreshness(remaining)
     await writeOrders(remaining)
     await closeFinishedSheets(remaining)
