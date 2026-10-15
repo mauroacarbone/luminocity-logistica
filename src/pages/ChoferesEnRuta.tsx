@@ -6,8 +6,9 @@ import { Modal } from '../components/ui/Modal'
 import { isOwnDelivery } from '../data/catalog'
 import { error, success } from '../lib/alerts'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
-import { finishRouteSheet, listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
+import { finishRouteSheet, listOpenRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
 import { businessToday } from '../lib/schedule'
+import { formatIsoDate } from '../lib/week'
 import { cssVar } from '../lib/theme'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -125,10 +126,6 @@ function DriversMap({
   )
 }
 
-function courseSheets(driverId: string, sheets: RouteSheet[]) {
-  return sheets.filter((sheet) => sheet.driverId === driverId && sheet.status === 'en_curso')
-}
-
 export function ChoferesEnRuta() {
   const { logout } = useAuth()
   const { orders, refresh } = useOrders()
@@ -143,13 +140,13 @@ export function ChoferesEnRuta() {
   const [finishTarget, setFinishTarget] = useState<RouteSheet | null>(null)
   const [finishing, setFinishing] = useState(false)
 
-  const sheetDates = useMemo(() => {
+  const sheetKey = useMemo(() => {
     const dates = new Set<string>([businessToday()])
     for (const order of orders) {
       if (order.status !== 'en-viaje') continue
       if (typeof order.deliveryDate === 'string' && order.deliveryDate.trim()) dates.add(order.deliveryDate)
     }
-    return [...dates].sort()
+    return [...dates].sort().join('|')
   }, [orders])
 
   useEffect(() => {
@@ -167,10 +164,10 @@ export function ChoferesEnRuta() {
         setStatus('error')
         return
       }
-      const sheetResults = await Promise.all(sheetDates.map((date) => listRouteSheets(date)))
+      const sheetsResult = await listOpenRouteSheets()
       if (cancelled) return
       setDrivers(result.data)
-      setSheets(sheetResults.flatMap((item) => (item.ok ? item.data : [])))
+      setSheets(sheetsResult.ok ? sheetsResult.data : [])
       setNow(Date.now())
       setStatus('ready')
     }
@@ -181,7 +178,7 @@ export function ChoferesEnRuta() {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [logout, attempt, sheetDates])
+  }, [logout, attempt, sheetKey])
 
   const filterMissing =
     driverFilter !== '' && !drivers.some((driver) => driver.id === driverFilter)
@@ -209,6 +206,33 @@ export function ChoferesEnRuta() {
     setAttempt((current) => current + 1)
     await success('Viaje finalizado')
   }
+
+  const openTrips = useMemo(() => {
+    const names = new Map(drivers.map((driver) => [driver.id, driver.name]))
+    for (const order of orders) {
+      if (!order.driverId || names.has(order.driverId)) continue
+      if (order.driverName?.trim()) names.set(order.driverId, order.driverName.trim())
+    }
+    return sheets
+      .filter((sheet) => sheet.status === 'en_curso')
+      .map((sheet) => {
+        const pending = sheet.orderIds.filter((id) => {
+          const order = orders.find((item) => item.id === id)
+          return !order || order.status !== 'entregado'
+        }).length
+        return {
+          sheet,
+          driverName: names.get(sheet.driverId) || 'Chofer',
+          pending,
+        }
+      })
+      .sort(
+        (left, right) =>
+          left.sheet.date.localeCompare(right.sheet.date) ||
+          left.sheet.slot.localeCompare(right.sheet.slot) ||
+          left.driverName.localeCompare(right.driverName, 'es'),
+      )
+  }, [drivers, orders, sheets])
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -240,6 +264,36 @@ export function ChoferesEnRuta() {
       )}
       {status === 'ready' && (
         <>
+          <section className="mt-4">
+            <h2 className="text-xl font-semibold">Viajes en curso</h2>
+            {openTrips.length === 0 ? (
+              <p className="mt-3 rounded-2xl bg-surface px-4 py-6 text-sm text-lumi-muted shadow-sm">
+                No hay viajes en curso.
+              </p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-2">
+                {openTrips.map(({ sheet, driverName, pending }) => (
+                  <li key={sheet.id} className="rounded-2xl bg-surface px-4 py-3 text-sm shadow-sm">
+                    <p className="font-semibold">{driverName}</p>
+                    <p>
+                      {formatIsoDate(sheet.date)} · {sheet.slot}
+                    </p>
+                    <p>
+                      {pending === 1 ? '1 parada pendiente' : `${pending} paradas pendientes`}
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-3 min-h-12 w-full rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
+                      disabled={finishing}
+                      onClick={() => setFinishTarget(sheet)}
+                    >
+                      Finalizar viaje
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <input
               value={query}
@@ -280,7 +334,6 @@ export function ChoferesEnRuta() {
             <ul className="mt-4 flex flex-col gap-2">
               {visible.map((driver) => {
                 const line = sheetLine(driver.id, sheets, deliveryOrders)
-                const openSheets = courseSheets(driver.id, sheets)
                 return (
                   <li key={driver.id} className="rounded-2xl bg-surface px-4 py-3 text-sm shadow-sm">
                     <p className="font-semibold">{driver.name}</p>
@@ -298,17 +351,6 @@ export function ChoferesEnRuta() {
                         Ver viajes
                       </Link>
                     </p>
-                    {openSheets.map((sheet) => (
-                      <button
-                        key={sheet.id}
-                        type="button"
-                        className="mt-3 min-h-12 w-full rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
-                        disabled={finishing}
-                        onClick={() => setFinishTarget(sheet)}
-                      >
-                        Finalizar viaje
-                      </button>
-                    ))}
                   </li>
                 )
               })}

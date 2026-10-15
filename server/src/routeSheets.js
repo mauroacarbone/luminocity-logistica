@@ -37,13 +37,21 @@ routeSheetsRouter.get('/', async (req, res) => {
       res.status(403).json({ message: 'No tenés permiso para ver las hojas de ruta.' })
       return
     }
-    const date = readDate(req.query?.date)
-    if (date.error) {
+    const rawDate = req.query?.date
+    const status = typeof req.query?.status === 'string' ? req.query.status : ''
+    const openOnly = status === 'en_curso' && (rawDate === undefined || rawDate === '')
+    if (openOnly && req.user.role !== 'admin' && req.user.role !== 'encargado_deposito') {
+      res.status(403).json({ message: 'No tenés permiso para ver las hojas de ruta.' })
+      return
+    }
+    const date = openOnly ? null : readDate(rawDate)
+    if (date?.error) {
       res.status(400).json({ message: date.error })
       return
     }
     const sheets = await locked(() => readCollection('routeSheets'))
     const visible = sheets.filter((sheet) => {
+      if (openOnly) return sheet.status === 'en_curso'
       if (sheet.date !== date.value) return false
       if (req.user.role === 'chofer') return sheet.driverId === req.user.id
       return true

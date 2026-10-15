@@ -103,6 +103,20 @@ async function request(path: string, method: string, body: unknown, fallback: st
   return { ok: true, data }
 }
 
+export async function listOpenRouteSheets(): Promise<SheetResult<RouteSheet[]>> {
+  const result = await request(
+    '/api/route-sheets?status=en_curso',
+    'GET',
+    undefined,
+    'No se pudieron cargar las hojas de ruta.',
+  )
+  if (!result.ok) return result
+  if (!Array.isArray(result.data) || !result.data.every(isRouteSheet)) {
+    return { ok: false, status: 500, message: 'No se pudieron leer las hojas de ruta.' }
+  }
+  return { ok: true, data: result.data }
+}
+
 export async function listRouteSheets(date: string): Promise<SheetResult<RouteSheet[]>> {
   const result = await request(
     `/api/route-sheets?date=${encodeURIComponent(date)}`,
