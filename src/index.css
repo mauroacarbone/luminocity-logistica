@@ -63,7 +63,7 @@
   --z-palette: 1400;
   --z-toast: 1500;
   --font-base: Inter, "Segoe UI", system-ui, sans-serif;
-  font: 14px/1.5 var(--font-base);
+  font: 16px/1.5 var(--font-base);
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
