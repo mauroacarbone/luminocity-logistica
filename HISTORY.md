@@ -322,6 +322,8 @@ El Brief 32d deja los botones con jerarquía: primario azul, secundario con bord
 
 El Brief 32d.1 fija el encabezado de la tabla: con `maxHeight` queda dentro del recuadro, y sin ese alto queda fijo respecto de la página. La sombra del scroll horizontal se mantiene. En Despacho las acciones pasan a tamaño grande y el único primario es escanear el QR de entrega. La variación del KPI puede pedir tono éxito, error o neutro, aparte de la flecha. La carga de usuarios en Choferes en ruta no actualiza el estado si la pantalla ya se cerró.
 
+El Brief 32d.2 deja la tabla en un solo elemento: `caption`, `thead` y `tbody`, con alto máximo `70vh` y encabezado fijo adentro. Cada columna puede pedir su ancho; si ninguna lo hace, el ancho es automático. Sin filas y sin `empty`, se muestra «Sin datos».
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.

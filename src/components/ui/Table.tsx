@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { cx } from './cx'
+import { EmptyState } from './EmptyState'
 
 export type TableColumn<T> = {
   key: string
   header: ReactNode
   cell: (row: T) => ReactNode
   align?: 'left' | 'right'
+  width?: string
 }
 
 type TableProps<T> = {
@@ -25,13 +27,13 @@ const CELL = {
   compact: 'px-3 py-1.5 text-sm',
 } as const
 
-const TABLE = 'w-full min-w-[36rem] table-fixed border-separate border-spacing-0 text-left'
+const TABLE = 'w-full min-w-[36rem] border-separate border-spacing-0 text-left'
 
-function columnsOf(count: number) {
+function columnsOf<T>(columns: TableColumn<T>[]) {
   return (
     <colgroup>
-      {Array.from({ length: count }, (_, index) => (
-        <col key={index} />
+      {columns.map((column) => (
+        <col key={column.key} style={column.width ? { width: column.width } : undefined} />
       ))}
     </colgroup>
   )
@@ -130,16 +132,18 @@ export function Table<T>({
     }
   }, [rows, columns, density, maxHeight])
 
-  if (rows.length === 0 && empty) {
-    return <div className={className}>{empty}</div>
+  if (rows.length === 0) {
+    return <div className={className}>{empty ?? <EmptyState title="Sin datos" />}</div>
   }
+
+  const fixed = columns.some((column) => column.width)
 
   return (
     <div className={cx('relative', className)}>
       <div ref={scrollerRef} className="overflow-auto" style={{ maxHeight }}>
-        <table className={TABLE}>
+        <table className={cx(TABLE, fixed && 'table-fixed')}>
           {caption ? <caption className="mb-2 text-left text-sm text-muted">{caption}</caption> : null}
-          {columnsOf(columns.length)}
+          {columnsOf(columns)}
           <thead>
             <tr>{headerCells(columns, density)}</tr>
           </thead>
