@@ -795,7 +795,7 @@ export function PlanificadorRutas() {
         {sheet?.status === 'planificada' && (
           <button
             type="button"
-            className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-danger hover:bg-surface-muted disabled:opacity-60"
+            className="shrink-0 rounded-xl bg-danger-deep px-3 py-2 text-sm font-semibold text-inverse hover:bg-danger disabled:opacity-60"
             disabled={loading}
             onClick={() => void removeSheet()}
           >

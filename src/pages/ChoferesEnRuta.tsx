@@ -283,7 +283,7 @@ export function ChoferesEnRuta() {
                     </p>
                     <button
                       type="button"
-                      className="mt-3 min-h-12 w-full rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
+                      className="mt-3 min-h-12 w-full rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary disabled:opacity-50"
                       disabled={finishing}
                       onClick={() => setFinishTarget(sheet)}
                     >

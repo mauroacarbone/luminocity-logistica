@@ -403,7 +403,7 @@ export function MisEntregas() {
               {legs.map((leg) => (
                 <a
                   key={leg.href}
-                  className="grid min-h-12 place-items-center rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg"
+                  className="grid min-h-12 place-items-center rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary"
                   href={leg.href}
                   target="_blank"
                   rel="noreferrer"
@@ -596,7 +596,7 @@ function DeliveryCard({
         <div className="mt-4 flex flex-col gap-2">
           {maps ? (
             <a
-              className="grid min-h-12 place-items-center rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg"
+              className="grid min-h-12 place-items-center rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary"
               href={maps}
               target="_blank"
               rel="noreferrer"
@@ -604,13 +604,13 @@ function DeliveryCard({
               {inSheet ? 'Navegar' : 'Cómo llegar'}
             </a>
           ) : (
-            <button type="button" className="min-h-12 rounded-xl bg-lumi-line px-4 text-base font-semibold" disabled>
+            <button type="button" className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary" disabled>
               {inSheet ? 'Navegar' : 'Cómo llegar'}
             </button>
           )}
           {inSheet && waze && (
             <a
-              className="grid min-h-12 place-items-center rounded-xl border border-lumi-line px-4 text-base font-semibold"
+              className="grid min-h-12 place-items-center rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary"
               href={waze}
               target="_blank"
               rel="noreferrer"
@@ -630,7 +630,7 @@ function DeliveryCard({
           {showLeave && (
             <button
               type="button"
-              className="min-h-12 rounded-xl bg-lumi-yellow px-4 text-base font-semibold text-lumi-yellow-ink disabled:opacity-50"
+              className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary disabled:opacity-50"
               disabled={busy || !routeReady}
               onClick={onLeave}
             >
@@ -640,7 +640,7 @@ function DeliveryCard({
           {order.status === 'en-viaje' &&
             (notice ? (
               <a
-                className="grid min-h-12 place-items-center rounded-xl border border-lumi-line px-4 text-base font-semibold"
+                className="grid min-h-12 place-items-center rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary"
                 href={notice}
                 target="_blank"
                 rel="noreferrer"
@@ -648,7 +648,7 @@ function DeliveryCard({
                 Avisar al cliente
               </a>
             ) : (
-              <button type="button" className="min-h-12 rounded-xl border border-lumi-line px-4 text-base font-semibold" disabled>
+              <button type="button" className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary" disabled>
                 Avisar al cliente
               </button>
             ))}

@@ -147,14 +147,14 @@ function StringList({
                   {confirming === index ? (
                     <span className="master-confirm">
                       <span>¿Eliminar?</span>
-                      <button type="button" className="text-button" onClick={() => remove(index)}>
-                        Sí
-                      </button>
                       <button
                         type="button"
-                        className="text-button"
-                        onClick={() => setConfirming(null)}
+                        className="rounded-xl bg-danger-deep px-3 py-2 text-sm font-semibold text-inverse hover:bg-danger"
+                        onClick={() => remove(index)}
                       >
+                        Sí
+                      </button>
+                      <button type="button" className="text-button" onClick={() => setConfirming(null)}>
                         No
                       </button>
                     </span>
@@ -165,7 +165,7 @@ function StringList({
                       </button>
                       <button
                         type="button"
-                        className="text-button"
+                        className="rounded-xl bg-danger-deep px-3 py-2 text-sm font-semibold text-inverse hover:bg-danger"
                         onClick={() => {
                           setConfirming(index)
                           setEditing(null)
@@ -354,14 +354,14 @@ function ZoneList({
                   {confirming === index ? (
                     <span className="master-confirm">
                       <span>¿Eliminar?</span>
-                      <button type="button" className="text-button" onClick={() => remove(index)}>
-                        Sí
-                      </button>
                       <button
                         type="button"
-                        className="text-button"
-                        onClick={() => setConfirming(null)}
+                        className="rounded-xl bg-danger-deep px-3 py-2 text-sm font-semibold text-inverse hover:bg-danger"
+                        onClick={() => remove(index)}
                       >
+                        Sí
+                      </button>
+                      <button type="button" className="text-button" onClick={() => setConfirming(null)}>
                         No
                       </button>
                     </span>
@@ -372,7 +372,7 @@ function ZoneList({
                       </button>
                       <button
                         type="button"
-                        className="text-button"
+                        className="rounded-xl bg-danger-deep px-3 py-2 text-sm font-semibold text-inverse hover:bg-danger"
                         onClick={() => {
                           setConfirming(index)
                           setEditing(null)

@@ -337,7 +337,7 @@ export function PedidosPreparacion() {
                   {user && canCancelOrder(user.role) && (
                     <button
                       type="button"
-                      className="min-h-11 text-sm text-lumi-danger hover:underline disabled:opacity-50"
+                      className="min-h-11 rounded-xl bg-danger-deep px-3 text-sm font-semibold text-inverse hover:bg-danger disabled:opacity-50"
                       disabled={busyId === order.id}
                       onClick={() => void cancelOrder(order)}
                     >
