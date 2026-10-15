@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { Modal } from '../components/ui/Modal'
 import { withCurrent } from '../data/catalog'
@@ -748,6 +749,14 @@ export function Usuarios() {
                   >
                     {account.active ? 'Desactivar' : 'Activar'}
                   </button>
+                )}
+                {account.role === 'chofer' && (
+                  <Link
+                    className="inline-flex min-h-11 items-center rounded-xl px-4 py-2 text-sm font-semibold hover:bg-surface-muted"
+                    to={`/mis-viajes?chofer=${account.id}`}
+                  >
+                    Ver viajes
+                  </Link>
                 )}
               </div>
             </article>

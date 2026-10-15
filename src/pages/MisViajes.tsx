@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Badge } from '../components/ui'
+import { isSession, type Session } from '../lib/authStore'
+import { buildCsv, downloadCsvFile } from '../lib/csv'
 import { listDriverTrips, type DriverTrip } from '../lib/routeSheetsApi'
 import { businessToday, clockTime } from '../lib/schedule'
+import { listUsers } from '../lib/usersApi'
 import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 
@@ -60,8 +64,26 @@ function stopCount(trip: DriverTrip) {
   return `${delivered} · ${pending}`
 }
 
+function exportFinished(trips: DriverTrip[], from: string, to: string) {
+  const rows: Array<Array<string | number>> = [
+    ['chofer', 'fecha', 'franja', 'zonas', 'entregados', 'km'],
+    ...trips.map((trip) => [
+      trip.driverName,
+      trip.date,
+      trip.slot,
+      (trip.zones.length > 0 ? trip.zones : ['Sin zona']).join(' · '),
+      trip.delivered,
+      trip.kmEstimated ? `${formatKm(trip.km)} estimado` : formatKm(trip.km),
+    ]),
+  ]
+  downloadCsvFile(buildCsv(rows), `viajes-${from}-${to}.csv`)
+}
+
 export function MisViajes() {
   const { user } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const manager = user?.role === 'encargado_deposito' || user?.role === 'admin'
+  const driverId = manager ? (params.get('chofer')?.trim() ?? '') : ''
   const today = businessToday()
   const initial = monthBounds(today)
   const [from, setFrom] = useState(initial.from)
@@ -69,13 +91,31 @@ export function MisViajes() {
   const [shortcut, setShortcut] = useState<Shortcut>('mes')
   const [tab, setTab] = useState<TripTab>('pendientes')
   const [trips, setTrips] = useState<DriverTrip[]>([])
-  const [loading, setLoading] = useState(true)
+  const [drivers, setDrivers] = useState<Session[]>([])
+  const [loading, setLoading] = useState(!manager || driverId.length > 0)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!user) return
+    if (!manager) return
     let cancelled = false
-    void listDriverTrips(from, to).then((result) => {
+    void listUsers().then((result) => {
+      if (cancelled || !result.ok || !Array.isArray(result.data)) return
+      setDrivers(
+        result.data
+          .filter((item) => isSession(item) && item.role === 'chofer')
+          .sort((left, right) => left.name.localeCompare(right.name, 'es')),
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [manager])
+
+  useEffect(() => {
+    if (!user) return
+    if (manager && !driverId) return
+    let cancelled = false
+    void listDriverTrips(from, to, manager ? driverId : undefined).then((result) => {
       if (cancelled) return
       setLoading(false)
       if (!result.ok) {
@@ -89,7 +129,7 @@ export function MisViajes() {
     return () => {
       cancelled = true
     }
-  }, [from, to, user])
+  }, [driverId, from, manager, to, user])
 
   const pending = trips.filter((trip) => trip.status !== 'cerrada')
   const finished = trips.filter((trip) => trip.status === 'cerrada')
@@ -128,9 +168,51 @@ export function MisViajes() {
   return (
     <section className="page">
       <header className="page-header">
-        <h1>Mis viajes</h1>
+        <h1>{manager ? 'Viajes del chofer' : 'Mis viajes'}</h1>
         <p>Pendientes, finalizados y kilómetros del período</p>
       </header>
+
+      {manager && (
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <label className="min-w-0 flex-1 text-sm">
+            Chofer
+            <select
+              value={driverId}
+              className="mt-1 block min-h-12 w-full rounded-xl border border-lumi-line bg-surface px-3 text-base"
+              onChange={(event) => {
+                const next = event.target.value
+                if (!next) {
+                  setParams({})
+                  setTrips([])
+                  setError('')
+                  setLoading(false)
+                  return
+                }
+                setLoading(true)
+                setParams({ chofer: next })
+              }}
+            >
+              <option value="">Elegí un chofer</option>
+              {drivers.map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  {driver.name}
+                </option>
+              ))}
+              {driverId && !drivers.some((driver) => driver.id === driverId) && (
+                <option value={driverId}>Chofer seleccionado</option>
+              )}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="min-h-12 rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white disabled:opacity-50"
+            disabled={finished.length === 0}
+            onClick={() => exportFinished(finished, from, to)}
+          >
+            Exportar CSV
+          </button>
+        </div>
+      )}
 
       <div className="no-print mt-4 flex flex-col gap-2">
         <div className="grid grid-cols-3 gap-2">
@@ -252,7 +334,11 @@ export function MisViajes() {
           {error}
         </p>
       )}
-      {loading ? (
+      {manager && !driverId ? (
+        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+          Elegí un chofer para ver sus viajes.
+        </p>
+      ) : loading ? (
         <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
           Cargando viajes…
         </p>

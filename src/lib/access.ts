@@ -51,6 +51,7 @@ export function menuPaths(role: Role) {
 
 export function canOpen(role: Role, path: string) {
   if (path === '/nuevo-pedido' && role === 'encargado_deposito') return true
+  if (path === '/mis-viajes' && (role === 'encargado_deposito' || role === 'admin')) return true
   return MENU[role].includes(path)
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { isOwnDelivery } from '../data/catalog'
@@ -259,6 +260,11 @@ export function ChoferesEnRuta() {
                         <p>{line.progress}</p>
                       </>
                     )}
+                    <p className="mt-2">
+                      <Link className="order-link text-sm font-semibold" to={`/mis-viajes?chofer=${driver.id}`}>
+                        Ver viajes
+                      </Link>
+                    </p>
                   </li>
                 )
               })}

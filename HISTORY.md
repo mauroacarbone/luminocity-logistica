@@ -306,6 +306,8 @@ El Brief 33 muestra al chofer los pedidos atrasados, con prioridad y puntualidad
 
 El Brief 33.1 muestra al chofer las hojas planificadas de hoy o anteriores que no estén cerradas, para que pueda iniciar el recorrido. Un pedido entregado no muestra la etiqueta de puntualidad. El GPS del recorrido usa solo las paradas pendientes, en orden, y no aparece si no queda ninguna. Las tarjetas de Mis entregas y del planificador usan el token de superficie, y `--text-muted` llega a contraste AA sobre el fondo y la superficie.
 
+El Brief 33.2 guarda al cerrar la hoja la hora, los pedidos entregados y sin entregar, la zona de cada parada y los km (los de la ruta calculada, o una estimación haversine × 1,3 marcada como estimada). `GET /api/route-sheets/trips` lista los viajes del chofer logueado, o de cualquier chofer si entra el encargado o el admin, con filtro de fechas. Mis viajes separa pendientes y finalizados, resume el período y, desde Choferes o Usuarios, se exporta el CSV.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
