@@ -350,7 +350,22 @@ export async function syncSheetOnEdit(orders, current, next) {
   }
   if (sheet.status === 'en_curso') {
     if (next.status === 'entregado') return { ok: true }
-    return fail('Ese pedido está en una hoja de ruta en curso', 409)
+    delete next.routeId
+    delete next.routeSeq
+    const orderIds = (Array.isArray(sheet.orderIds) ? sheet.orderIds : []).filter((id) => id !== current.id)
+    const updated = { ...sheet, orderIds, dropped: rememberDropped(sheet.dropped, current.id, current) }
+    if (orderIds.length === 0) {
+      updated.status = 'cerrada'
+      updated.closedAt = new Date().toISOString()
+      updated.trip = await sealTrip(updated, new Map(orders.map((item) => [item.id, item])))
+    } else {
+      renumberSheet(orders, updated)
+    }
+    await writeCollection(
+      'routeSheets',
+      sheets.map((item) => (item.id === sheet.id ? updated : item)),
+    )
+    return { ok: true }
   }
   delete next.routeId
   delete next.routeSeq
