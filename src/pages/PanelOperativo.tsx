@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FilterBar, Page, PageHeader } from '../components/ui'
+import { FilterBar, KpiCard, Page, PageHeader } from '../components/ui'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -385,6 +385,7 @@ export function PanelOperativo() {
   }, [datedOrders, statusFilter])
   const columns = statusFilter ? [statusFilter] : STATUS_ORDER
   const undatedCount = datedOrders.filter((order) => !hasDeliveryDate(order)).length
+  const overdueCount = datedOrders.filter((order) => isOverdue(order, today)).length
   const useAdvanceList = narrow && view === 'kanban' && !statusFilter
 
   const advanceOrders = useMemo(
@@ -525,22 +526,25 @@ export function PanelOperativo() {
         <p className="mt-3 text-sm text-lumi-muted">No se pudieron cargar las hojas de ruta</p>
       )}
 
-      <div className="stats">
+      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-7">
         {SUMMARY.map((item) => {
-          const active = item.key === 'total' ? statusFilter === null : statusFilter === item.key
+          const pressed = item.key === 'total' ? statusFilter === null : statusFilter === item.key
           return (
-            <button
+            <KpiCard
               key={item.key}
-              type="button"
-              className={active ? 'stat-card active' : 'stat-card'}
-              aria-pressed={active}
+              title={item.label}
+              value={countFor(datedOrders, item.key)}
+              pressed={pressed}
               onClick={() => selectSummary(item.key)}
-            >
-              <strong>{countFor(datedOrders, item.key)}</strong>
-              <span>{item.label}</span>
-            </button>
+            />
           )
         })}
+        <KpiCard
+          title="Atrasados"
+          value={overdueCount > 0 ? <span className="text-danger">{overdueCount}</span> : overdueCount}
+          pressed={dateFilter === 'atrasados'}
+          onClick={() => selectFecha('atrasados')}
+        />
       </div>
       <p className="mt-2 text-sm text-lumi-muted">
         {fechaLabel}

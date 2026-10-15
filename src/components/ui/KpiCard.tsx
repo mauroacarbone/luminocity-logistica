@@ -12,6 +12,7 @@ type KpiCardProps = {
   icon?: ReactNode
   href?: string
   onClick?: () => void
+  pressed?: boolean
   className?: string
 }
 
@@ -56,17 +57,19 @@ function Body({ title, value, trend, icon }: KpiCardProps) {
   )
 }
 
-const SHELL =
-  'block w-full rounded-2xl border border-border bg-surface p-4 text-left shadow-sm'
+const SHELL = 'block w-full rounded-2xl bg-surface p-4 text-left shadow-sm'
+const IDLE = 'border-border'
+const PRESSED = 'border-2 border-accent bg-surface-2'
 
 export function KpiCard(props: KpiCardProps) {
-  const { href, onClick, className } = props
+  const { href, onClick, pressed = false, className } = props
+  const frame = cx(SHELL, pressed ? PRESSED : IDLE)
   if (href) {
     return (
       <Link
         to={href}
         className={cx(
-          SHELL,
+          frame,
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
           className,
         )}
@@ -80,8 +83,9 @@ export function KpiCard(props: KpiCardProps) {
       <button
         type="button"
         onClick={onClick}
+        aria-pressed={pressed}
         className={cx(
-          SHELL,
+          frame,
           'cursor-pointer transition duration-150 hover:bg-surface-2',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
           className,
@@ -92,7 +96,7 @@ export function KpiCard(props: KpiCardProps) {
     )
   }
   return (
-    <article className={cx(SHELL, className)}>
+    <article className={cx(frame, className)}>
       <Body {...props} />
     </article>
   )
