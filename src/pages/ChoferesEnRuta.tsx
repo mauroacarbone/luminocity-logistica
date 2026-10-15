@@ -7,7 +7,8 @@ import { isOwnDelivery } from '../data/catalog'
 import { error, success } from '../lib/alerts'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
 import { finishRouteSheet, listOpenRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
-import { businessToday } from '../lib/schedule'
+import { isSession } from '../lib/authStore'
+import { listUsers } from '../lib/usersApi'
 import { formatIsoDate } from '../lib/week'
 import { cssVar } from '../lib/theme'
 import { useAuth } from '../state/AuthContext'
@@ -139,15 +140,22 @@ export function ChoferesEnRuta() {
   const [driverFilter, setDriverFilter] = useState('')
   const [finishTarget, setFinishTarget] = useState<RouteSheet | null>(null)
   const [finishing, setFinishing] = useState(false)
+  const [accountNames, setAccountNames] = useState<Map<string, string>>(() => new Map())
 
-  const sheetKey = useMemo(() => {
-    const dates = new Set<string>([businessToday()])
-    for (const order of orders) {
-      if (order.status !== 'en-viaje') continue
-      if (typeof order.deliveryDate === 'string' && order.deliveryDate.trim()) dates.add(order.deliveryDate)
-    }
-    return [...dates].sort().join('|')
-  }, [orders])
+  useEffect(() => {
+    void listUsers().then((result) => {
+      if (!result.ok) {
+        if (result.status === 401) logout()
+        return
+      }
+      if (!Array.isArray(result.data)) return
+      const names = new Map<string, string>()
+      for (const item of result.data) {
+        if (isSession(item) && item.role === 'chofer' && item.name.trim()) names.set(item.id, item.name.trim())
+      }
+      setAccountNames(names)
+    })
+  }, [logout])
 
   useEffect(() => {
     let cancelled = false
@@ -178,7 +186,7 @@ export function ChoferesEnRuta() {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [logout, attempt, sheetKey])
+  }, [logout, attempt])
 
   const filterMissing =
     driverFilter !== '' && !drivers.some((driver) => driver.id === driverFilter)
@@ -218,11 +226,11 @@ export function ChoferesEnRuta() {
       .map((sheet) => {
         const pending = sheet.orderIds.filter((id) => {
           const order = orders.find((item) => item.id === id)
-          return !order || order.status !== 'entregado'
+          return Boolean(order) && order?.status !== 'entregado'
         }).length
         return {
           sheet,
-          driverName: names.get(sheet.driverId) || 'Chofer',
+          driverName: names.get(sheet.driverId) || accountNames.get(sheet.driverId) || 'Sin nombre',
           pending,
         }
       })
@@ -232,7 +240,7 @@ export function ChoferesEnRuta() {
           left.sheet.slot.localeCompare(right.sheet.slot) ||
           left.driverName.localeCompare(right.driverName, 'es'),
       )
-  }, [drivers, orders, sheets])
+  }, [accountNames, drivers, orders, sheets])
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
