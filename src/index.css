@@ -930,12 +930,12 @@ p {
 }
 
 .lumi-swal-confirm {
-  background: var(--accent);
-  color: var(--accent-fg);
+  background: var(--btn-primary);
+  color: var(--btn-primary-fg);
 }
 
 .lumi-swal-confirm:hover {
-  background: var(--accent-hover);
+  background: var(--btn-primary-hover);
 }
 
 .lumi-swal-confirm:focus-visible,
@@ -955,8 +955,8 @@ p {
 }
 
 .lumi-swal-cancel {
-  background: var(--surface);
-  color: var(--primary);
+  background: var(--btn-secondary);
+  color: var(--text);
   border: 1px solid var(--border);
 }
 
@@ -1102,8 +1102,8 @@ p {
   width: 100%;
   margin-top: 6px;
   padding: 12px 16px;
-  background: var(--accent);
-  color: var(--accent-fg);
+  background: var(--btn-primary);
+  color: var(--btn-primary-fg);
   font-weight: 700;
   border: 0;
   border-radius: var(--r-md);
@@ -1111,7 +1111,7 @@ p {
 }
 
 .auth-submit:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--btn-primary-hover);
 }
 
 .auth-submit:focus-visible {
@@ -2019,19 +2019,23 @@ p {
 }
 
 .btn-ghost {
-  background: var(--surface);
-  color: var(--primary);
+  background: var(--btn-secondary);
+  color: var(--text);
   border: 1px solid var(--border);
 }
 
+.btn-ghost:hover:not(:disabled) {
+  background: var(--btn-secondary-hover);
+}
+
 .btn-primary {
-  background: var(--accent);
-  color: var(--accent-fg);
+  background: var(--btn-primary);
+  color: var(--btn-primary-fg);
   font-weight: 700;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--btn-primary-hover);
 }
 
 .btn-primary:focus-visible {

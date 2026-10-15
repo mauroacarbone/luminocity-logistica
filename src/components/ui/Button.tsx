@@ -21,11 +21,11 @@ type ButtonProps =
   | (ButtonBase & { iconOnly: true; 'aria-label': string })
 
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-accent text-accent-fg shadow-xs hover:bg-accent-hover',
-  secondary: 'border border-border bg-surface text-primary hover:bg-surface-2',
-  ghost: 'bg-transparent text-primary hover:bg-surface-2',
-  danger: 'bg-danger-deep text-inverse hover:bg-danger',
-  'danger-outline': 'border border-danger-deep bg-transparent text-danger-deep hover:bg-danger-soft',
+  primary: 'bg-btn-primary text-btn-primary-fg shadow-xs hover:bg-btn-primary-hover',
+  secondary: 'border border-border bg-btn-secondary text-text hover:bg-btn-secondary-hover',
+  ghost: 'bg-transparent text-text hover:bg-surface-2',
+  danger: 'bg-danger-deep text-inverse hover:brightness-110',
+  'danger-outline': 'border border-border bg-btn-secondary text-danger hover:bg-danger-deep hover:text-inverse',
 }
 
 const SIZE: Record<Size, string> = {
