@@ -12,10 +12,22 @@ export function PriorityChip({
   const priority = priorityOf(order)
   if (priority === 'normal') {
     if (!showNormal) return null
-    return <Badge tone="neutral">Normal</Badge>
+    return (
+      <Badge tone="neutral" size="lg">
+        Normal
+      </Badge>
+    )
   }
   if (priority === 'alta') {
-    return <Badge tone="warning">Alta</Badge>
+    return (
+      <Badge tone="warning" size="lg">
+        Alta
+      </Badge>
+    )
   }
-  return <Badge tone="danger">Inmediata</Badge>
+  return (
+    <Badge tone="danger" size="lg">
+      Inmediata
+    </Badge>
+  )
 }

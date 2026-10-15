@@ -21,7 +21,7 @@ type ButtonProps =
 const VARIANT: Record<Variant, string> = {
   primary: 'bg-accent text-accent-fg hover:bg-accent-hover',
   secondary: 'bg-surface border border-border text-primary hover:bg-surface-2',
-  ghost: 'border border-border bg-surface text-primary hover:bg-surface-2',
+  ghost: 'bg-transparent text-primary hover:bg-surface-2',
   danger: 'bg-danger-deep text-inverse hover:bg-danger',
 }
 

@@ -34,13 +34,15 @@ const DOT_CLASS: Record<BadgeTone, string> = {
 }
 
 const SIZE_CLASS = {
-  sm: 'px-2 py-0.5',
-  md: 'px-2.5 py-0.5',
+  sm: 'px-2 py-0.5 text-xs',
+  md: 'px-2.5 py-0.5 text-xs',
+  lg: 'px-3 py-1.5 text-sm',
 } as const
 
 type BadgeProps = {
   tone?: BadgeTone
   size?: keyof typeof SIZE_CLASS
+  outlined?: boolean
   dot?: boolean
   icon?: ReactNode
   children: ReactNode
@@ -50,6 +52,7 @@ type BadgeProps = {
 export function Badge({
   tone = 'neutral',
   size = 'md',
+  outlined = false,
   dot = false,
   icon,
   children,
@@ -58,7 +61,8 @@ export function Badge({
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1 rounded-full border border-current text-xs font-medium',
+        'inline-flex items-center gap-1 rounded-full font-medium',
+        outlined && 'border border-current',
         SIZE_CLASS[size],
         TONE_CLASS[tone],
         className,

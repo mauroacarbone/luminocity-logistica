@@ -316,6 +316,8 @@ El Brief 33.4, si un pedido sale de una hoja en curso y estaba en viaje, vuelve 
 
 La paleta pasa a azul y grises suaves. El fondo, las tarjetas y el texto salen de tokens; el botón principal es el azul de acento y el amarillo queda en el logo. Los estados de pedido y de puntualidad usan fondo suave con texto y borde oscuros. El texto secundario da más de 4,5:1 sobre el fondo y las tarjetas. Mis entregas vuelve a ser solo del chofer: el encargado y el admin entran al Panel y, si abren esa ruta, vuelven ahí. Finalizan el viaje desde la tarjeta del chofer en Choferes en ruta.
 
+El Brief 33.5 lista arriba en Choferes en ruta los viajes en curso, de cualquier fecha, aunque el chofer no tenga ubicación. Cada fila muestra chofer, fecha, franja y paradas pendientes, y Finalizar viaje abre el mismo modal. El botón sale de la tarjeta de ubicación. `GET /api/route-sheets` acepta `status=en_curso` sin fecha, solo para encargado y admin. La carga depende de las fechas unidas, así el intervalo no se reinicia en cada refresco. En cada pantalla queda un solo botón primario: en Choferes es el de confirmar el modal, y en Mis entregas es Iniciar recorrido o Finalizar viaje. Maps, los tramos del GPS y el resto van con borde; las acciones destructivas usan `#B91C1C`. El amarillo queda en el logo, el nombre de la marca y el auth-logo. El chip de prioridad usa el badge grande, el borde del badge es opcional y el botón ghost vuelve a ser transparente.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
