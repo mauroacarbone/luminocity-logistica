@@ -115,6 +115,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32f.1 | Ajustes del contenedor, búsqueda, migas y planificador | Hecho |
 | 32f.2 | Ajustes del planificador y de los filtros de fecha | Hecho |
 | 32g | Tabla de Pedidos con detalle lateral y Panel con KPIs | Hecho |
+| 32g.1 | Ajustes del panel lateral y del KPI Atrasados | Hecho |
 | 33 | Chofer, atrasos, planificador, hoja de ruta y Nuevo pedido | Hecho |
 | 33.6 | Paleta estilo GitHub, Primer claro | Hecho |
 
@@ -335,6 +336,8 @@ El Brief 32f sube la tipografía base a 16px. Las pantallas van en un contenedor
 El Brief 32f.1 deja 16px arriba en el celular y 24px desde escritorio, sin sumarlos al alto de la barra fija. Los títulos pasan a 24px y 28px; el del planificador sigue en 22px. En Pendientes la búsqueda se aplica con Enter o con Buscar. La pantalla de inicio del rol no muestra migas. Desde y Hasta de Retiros y Seguimiento entran en la barra, en grande en Mis viajes, Despacho y Retiros. En Post Venta, la pestaña Nuevo solo busca. El planificador, desde 1024px, deja la semana y los filtros arriba y el mapa a la derecha; en 1366×768 solo scrollea la columna de pedidos.
 
 El Brief 32f.2 deja Borrar hoja con borde de peligro y el planificador entra en la ventana de escritorio: sin padding inferior del main y descontando los 24px de arriba. En Retiros y Seguimiento, ver todas las fechas es un botón secundario y Limpiar filtros vuelve a la semana actual. El botón Buscar usa el tamaño de la barra.
+
+El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pedido se abrió desde la lista. En el celular, el número del pedido es un botón con foco. En el Panel, el detalle se cierra si el pedido deja de verse, y Atrasados cuenta todos los pedidos abiertos, sin el filtro de fecha.
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
 

@@ -386,7 +386,7 @@ export function PanelOperativo() {
   }, [datedOrders, statusFilter])
   const columns = statusFilter ? [statusFilter] : STATUS_ORDER
   const undatedCount = datedOrders.filter((order) => !hasDeliveryDate(order)).length
-  const overdueCount = datedOrders.filter((order) => isOverdue(order, today)).length
+  const overdueCount = orders.filter((order) => isOverdue(order, today)).length
   const useAdvanceList = narrow && view === 'kanban' && !statusFilter
 
   const advanceOrders = useMemo(
