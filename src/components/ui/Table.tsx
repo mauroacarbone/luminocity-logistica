@@ -15,6 +15,12 @@ type TableProps<T> = {
   density?: 'comfortable' | 'compact'
   caption?: ReactNode
   empty?: ReactNode
+  /**
+   * Alto máximo del recuadro, por ejemplo `60vh`. Con este valor el encabezado
+   * queda fijo dentro del scroll. Sin él, el encabezado queda fijo respecto de
+   * la página y no vive dentro del contenedor que se desplaza.
+   */
+  maxHeight?: string
   className?: string
 }
 
@@ -23,6 +29,78 @@ const CELL = {
   compact: 'px-3 py-1.5 text-sm',
 } as const
 
+const TABLE = 'w-full min-w-[36rem] table-fixed border-separate border-spacing-0 text-left'
+
+function columnsOf(count: number) {
+  return (
+    <colgroup>
+      {Array.from({ length: count }, (_, index) => (
+        <col key={index} />
+      ))}
+    </colgroup>
+  )
+}
+
+function headerCells<T>(columns: TableColumn<T>[], density: keyof typeof CELL, sticky: boolean) {
+  return columns.map((column) => (
+    <th
+      key={column.key}
+      scope="col"
+      className={cx(
+        'border-b border-border bg-surface font-semibold text-muted',
+        sticky && 'sticky top-0 z-10',
+        CELL[density],
+        column.align === 'right' && 'text-right tabular-nums',
+      )}
+    >
+      {column.header}
+    </th>
+  ))
+}
+
+function bodyRows<T>(
+  columns: TableColumn<T>[],
+  rows: T[],
+  rowKey: (row: T) => string,
+  density: keyof typeof CELL,
+) {
+  return rows.map((row) => (
+    <tr key={rowKey(row)} className="hover:bg-surface-2">
+      {columns.map((column) => (
+        <td
+          key={column.key}
+          className={cx(
+            'border-b border-border text-text',
+            CELL[density],
+            column.align === 'right' && 'text-right tabular-nums',
+          )}
+        >
+          {column.cell(row)}
+        </td>
+      ))}
+    </tr>
+  ))
+}
+
+function EdgeShadows({ left, right }: { left: boolean; right: boolean }) {
+  return (
+    <>
+      {left ? (
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 z-20 w-4 bg-gradient-to-r from-surface to-transparent"
+          aria-hidden="true"
+        />
+      ) : null}
+      {right ? (
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 z-20 w-4 bg-gradient-to-l from-surface to-transparent"
+          aria-hidden="true"
+        />
+      ) : null}
+    </>
+  )
+}
+
 export function Table<T>({
   columns,
   rows,
@@ -30,9 +108,11 @@ export function Table<T>({
   density = 'comfortable',
   caption,
   empty,
+  maxHeight,
   className,
 }: TableProps<T>) {
   const scrollerRef = useRef<HTMLDivElement>(null)
+  const headRef = useRef<HTMLDivElement>(null)
   const [edges, setEdges] = useState({ left: false, right: false })
 
   useEffect(() => {
@@ -54,66 +134,66 @@ export function Table<T>({
       scroller.removeEventListener('scroll', measure)
       observer.disconnect()
     }
-  }, [rows, columns, density])
+  }, [rows, columns, density, maxHeight])
+
+  useEffect(() => {
+    if (maxHeight) return
+    const body = scrollerRef.current
+    const head = headRef.current
+    if (!body || !head) return
+    function sync() {
+      if (!body || !head) return
+      head.scrollLeft = body.scrollLeft
+    }
+    body.addEventListener('scroll', sync, { passive: true })
+    return () => body.removeEventListener('scroll', sync)
+  }, [maxHeight, rows, columns])
 
   if (rows.length === 0 && empty) {
     return <div className={className}>{empty}</div>
   }
 
+  if (maxHeight) {
+    return (
+      <div className={cx('relative', className)}>
+        <div ref={scrollerRef} className="overflow-auto" style={{ maxHeight }}>
+          <table className={TABLE}>
+            {caption ? <caption className="mb-2 text-left text-sm text-muted">{caption}</caption> : null}
+            {columnsOf(columns.length)}
+            <thead>
+              <tr>{headerCells(columns, density, true)}</tr>
+            </thead>
+            <tbody>{bodyRows(columns, rows, rowKey, density)}</tbody>
+          </table>
+        </div>
+        <EdgeShadows left={edges.left} right={edges.right} />
+      </div>
+    )
+  }
+
   return (
     <div className={cx('relative', className)}>
-      <div ref={scrollerRef} className="overflow-x-auto">
-        <table className="w-full min-w-[36rem] border-collapse text-left">
-          {caption ? <caption className="mb-2 text-left text-sm text-muted">{caption}</caption> : null}
-          <thead className="sticky top-0 z-10 bg-surface">
-            <tr className="border-b border-border">
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  scope="col"
-                  className={cx(
-                    'font-semibold text-muted',
-                    CELL[density],
-                    column.align === 'right' && 'text-right tabular-nums',
-                  )}
-                >
-                  {column.header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={rowKey(row)} className="border-b border-border last:border-b-0 hover:bg-surface-2">
-                {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    className={cx(
-                      'text-text',
-                      CELL[density],
-                      column.align === 'right' && 'text-right tabular-nums',
-                    )}
-                  >
-                    {column.cell(row)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {caption ? <p className="mb-2 text-sm text-muted">{caption}</p> : null}
+      <div className="sticky top-0 z-10 bg-surface">
+        <div ref={headRef} className="relative overflow-hidden">
+          <table className={TABLE}>
+            {columnsOf(columns.length)}
+            <thead>
+              <tr>{headerCells(columns, density, false)}</tr>
+            </thead>
+          </table>
+          <EdgeShadows left={edges.left} right={edges.right} />
+        </div>
       </div>
-      {edges.left ? (
-        <div
-          className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-surface to-transparent"
-          aria-hidden="true"
-        />
-      ) : null}
-      {edges.right ? (
-        <div
-          className="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-surface to-transparent"
-          aria-hidden="true"
-        />
-      ) : null}
+      <div className="relative">
+        <div ref={scrollerRef} className="overflow-x-auto">
+          <table className={TABLE}>
+            {columnsOf(columns.length)}
+            <tbody>{bodyRows(columns, rows, rowKey, density)}</tbody>
+          </table>
+        </div>
+        <EdgeShadows left={edges.left} right={edges.right} />
+      </div>
     </div>
   )
 }
