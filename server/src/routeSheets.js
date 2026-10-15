@@ -289,14 +289,24 @@ function finishSheet(id, user) {
     if (sheet.status !== 'en_curso') return fail('Solo podés finalizar una hoja en curso', 409)
     const orders = await readCollection('orders')
     const byId = new Map(orders.map((order) => [order.id, order]))
+    const closedAt = new Date().toISOString()
     const next = {
       ...sheet,
       status: 'cerrada',
-      closedAt: new Date().toISOString(),
+      closedAt,
       trip: await sealTrip(sheet, byId),
+    }
+    const ids = Array.isArray(sheet.orderIds) ? sheet.orderIds : []
+    let returned = false
+    for (const id of ids) {
+      const order = byId.get(id)
+      if (!order) continue
+      if (assignBack(order, user, 'Viaje finalizado sin entregar', closedAt)) returned = true
     }
     sheets[index] = next
     await writeCollection('routeSheets', sheets)
+    if (returned) await writeCollection('orders', orders)
+    await releaseIdleDrivers(orders, sheet.driverId)
     return { sheet: next }
   })
 }
@@ -340,27 +350,31 @@ function renumberSheet(orders, sheet) {
   })
 }
 
-function reprogramFromSheet(next, user, sheetId) {
-  if (next.status !== 'en-viaje') return false
-  const at = typeof next.updatedAt === 'string' ? next.updatedAt : new Date().toISOString()
-  next.status = 'asignado'
-  next.updatedAt = at
-  const history = Array.isArray(next.history)
-    ? next.history.map((entry) => ({ ...entry, by: entry.by ? { ...entry.by } : entry.by }))
+function assignBack(order, user, reason, at) {
+  if (order.status !== 'en-viaje') return false
+  const when = at || (typeof order.updatedAt === 'string' ? order.updatedAt : new Date().toISOString())
+  order.status = 'asignado'
+  order.updatedAt = when
+  const history = Array.isArray(order.history)
+    ? order.history.map((entry) => ({ ...entry, by: entry.by ? { ...entry.by } : entry.by }))
     : []
   history.push({
-    at,
+    at: when,
     by: {
       id: typeof user?.id === 'string' ? user.id : '',
       name: typeof user?.name === 'string' ? user.name : '',
     },
     from: 'en-viaje',
     to: 'asignado',
-    reason: `Reprogramado desde la hoja ${sheetId}`,
+    reason,
     via: 'hoja',
   })
-  next.history = history
+  order.history = history
   return true
+}
+
+function reprogramFromSheet(next, user, sheetId) {
+  return assignBack(next, user, `Reprogramado desde la hoja ${sheetId}`)
 }
 
 export async function syncSheetOnEdit(orders, current, next, user) {

@@ -452,8 +452,7 @@ export function MisEntregas() {
               Finalizar viaje
             </h2>
             <p className="mt-2 text-sm">
-              La franja {finishTarget.slot} se cierra. Las paradas que no estén entregadas quedan en el viaje como no
-              entregadas, y los pedidos no cambian de estado.
+              Las paradas pendientes quedan sin entregar y vuelven a asignado para reprogramarlas.
             </p>
             <div className="mt-4 flex flex-col gap-2">
               <button
