@@ -19,6 +19,7 @@ type TableProps<T> = {
   empty?: ReactNode
   /** Alto máximo del recuadro. El encabezado queda fijo dentro de ese scroll. */
   maxHeight?: string
+  onRowClick?: (row: T) => void
   className?: string
 }
 
@@ -60,9 +61,25 @@ function bodyRows<T>(
   rows: T[],
   rowKey: (row: T) => string,
   density: keyof typeof CELL,
+  onRowClick?: (row: T) => void,
 ) {
   return rows.map((row) => (
-    <tr key={rowKey(row)} className="hover:bg-surface-2">
+    <tr
+      key={rowKey(row)}
+      className={cx('hover:bg-surface-2', onRowClick && 'cursor-pointer')}
+      onClick={onRowClick ? () => onRowClick(row) : undefined}
+      onKeyDown={
+        onRowClick
+          ? (event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return
+              if (event.target !== event.currentTarget) return
+              event.preventDefault()
+              onRowClick(row)
+            }
+          : undefined
+      }
+      tabIndex={onRowClick ? 0 : undefined}
+    >
       {columns.map((column) => (
         <td
           key={column.key}
@@ -106,6 +123,7 @@ export function Table<T>({
   caption,
   empty,
   maxHeight = '70vh',
+  onRowClick,
   className,
 }: TableProps<T>) {
   const scrollerRef = useRef<HTMLDivElement>(null)
@@ -147,7 +165,7 @@ export function Table<T>({
           <thead>
             <tr>{headerCells(columns, density)}</tr>
           </thead>
-          <tbody>{bodyRows(columns, rows, rowKey, density)}</tbody>
+          <tbody>{bodyRows(columns, rows, rowKey, density, onRowClick)}</tbody>
         </table>
       </div>
       <EdgeShadows left={edges.left} right={edges.right} />

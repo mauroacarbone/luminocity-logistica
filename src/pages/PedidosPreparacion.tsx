@@ -1,15 +1,14 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Button, Modal, Page, PageHeader } from '../components/ui'
-import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Badge, Button, Drawer, EmptyState, Modal, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { OrderDetail } from '../components/OrderDetail'
 import { PriorityChip } from '../components/PriorityChip'
 import { DISPATCH_LABEL } from '../data/catalog'
-import { pendingEdit, type Order } from '../data/orders'
+import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { canCancelOrder, canEditOrder, canPrepare } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
 import { compareOpenPriority } from '../lib/priority'
-import { placeLine } from '../lib/place'
 import {
   DAY_LONG,
   DAY_SHORT,
@@ -17,6 +16,7 @@ import {
   formatDayLabel,
   toIso,
   weekDays,
+  weekOffsetForIso,
 } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -104,27 +104,24 @@ function PackagesDialog({
   )
 }
 
-function addressLine(order: Order) {
-  const between = [order.betweenStreet1, order.betweenStreet2].filter(Boolean)
-  if (!order.address) return between.join(' y ')
-  if (between.length === 0) return order.address
-  return `${order.address} · entre ${between.join(' y ')}`
+function isOpenPrep(order: Order) {
+  return order.status === 'pendiente' || order.status === 'preparado'
 }
 
 export function PedidosPreparacion() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
-  const { orders, removeOrder, transitionOrder } = useOrders()
+  const { orders, loading, removeOrder, transitionOrder } = useOrders()
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
   const [preparing, setPreparing] = useState<Order | null>(null)
   const [prepareError, setPrepareError] = useState('')
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState('')
+  const [alignedId, setAlignedId] = useState<string | null>(null)
   const days = weekDays(weekOffset)
-  const weekOrders = orders.filter(
-    (order) => order.status === 'pendiente' || order.status === 'preparado',
-  )
+  const weekOrders = orders.filter(isOpenPrep)
   const selectedDate = days.find((day) => toIso(day) === selectedIso) ?? days[0]
   const dayOrders = weekOrders
     .filter((order) => order.deliveryDate === toIso(selectedDate))
@@ -136,6 +133,39 @@ export function PedidosPreparacion() {
       }
       return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
     })
+  const openId = searchParams.get('pedido')
+  const openOrder = dayOrders.find((order) => order.id === openId) ?? null
+
+  function closePedido() {
+    setAlignedId(null)
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.delete('pedido')
+        return next
+      },
+      { replace: true },
+    )
+  }
+
+  function openPedido(id: string) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.set('pedido', id)
+      return next
+    })
+  }
+
+  if (!loading && openId && alignedId !== openId) {
+    const found = orders.find((order) => order.id === openId)
+    if (found && isOpenPrep(found)) {
+      setAlignedId(openId)
+      if (!days.some((day) => toIso(day) === found.deliveryDate)) {
+        setWeekOffset(weekOffsetForIso(found.deliveryDate))
+      }
+      if (selectedIso !== found.deliveryDate) setSelectedIso(found.deliveryDate)
+    }
+  }
 
   function showWeek(offset: number) {
     const nextDays = weekDays(offset)
@@ -143,6 +173,7 @@ export function PedidosPreparacion() {
     const match = nextDays.find((day) => toIso(day) === today)
     setWeekOffset(offset)
     setSelectedIso(toIso(match ?? nextDays[0]))
+    if (openId) closePedido()
   }
 
   async function markPrepared(packages: number) {
@@ -181,13 +212,71 @@ export function PedidosPreparacion() {
     const result = await removeOrder(order.id)
     setBusyId('')
     if (result.status === 'not-saved') await error(result.message)
-    else await success(admin ? 'Pedido borrado' : 'Pedido cancelado')
+    else {
+      if (searchParams.get('pedido') === order.id) closePedido()
+      await success(admin ? 'Pedido borrado' : 'Pedido cancelado')
+    }
   }
 
   const weekTitle =
     weekOffset === 0
       ? 'Esta semana'
       : `${days[0].getDate()} ${MONTH_SHORT[days[0].getMonth()]} – ${days[6].getDate()} ${MONTH_SHORT[days[6].getMonth()]}`
+
+  const columns: TableColumn<Order>[] = [
+    {
+      key: 'id',
+      header: 'N°',
+      cell: (order) => (
+        <Link
+          className="font-medium text-primary hover:underline"
+          to={`/pedidos/${order.id}`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {order.id}
+        </Link>
+      ),
+    },
+    { key: 'client', header: 'Cliente', cell: (order) => order.client },
+    { key: 'priority', header: 'Prioridad', cell: (order) => <PriorityChip order={order} /> },
+    {
+      key: 'status',
+      header: 'Estado',
+      cell: (order) => <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>,
+    },
+    { key: 'zone', header: 'Zona', cell: (order) => order.zone || '—' },
+    {
+      key: 'dispatch',
+      header: 'Despacho',
+      cell: (order) => (order.dispatchType ? DISPATCH_LABEL[order.dispatchType] : '—'),
+    },
+    { key: 'slot', header: 'Franja', cell: (order) => order.timeWindow || '—' },
+    {
+      key: 'packages',
+      header: 'Bultos',
+      align: 'right',
+      cell: (order) => (order.packages != null ? order.packages : '—'),
+    },
+    { key: 'loaded', header: 'Cargado', cell: (order) => order.loadedAt },
+    {
+      key: 'prepare',
+      header: '',
+      cell: (order) =>
+        user && canPrepare(user.role) && order.status === 'pendiente' ? (
+          <Button
+            variant="ghost"
+            size="lg"
+            disabled={busyId === order.id}
+            onClick={(event) => {
+              event.stopPropagation()
+              setPreparing(order)
+            }}
+          >
+            Marcar preparado
+          </Button>
+        ) : null,
+    },
+  ]
 
   return (
     <Page>
@@ -232,7 +321,10 @@ export function PedidosPreparacion() {
                   ? 'border-accent font-semibold text-lumi-ink'
                   : 'border-transparent text-lumi-muted'
               }`}
-              onClick={() => setSelectedIso(iso)}
+              onClick={() => {
+                if (iso !== toIso(selectedDate) && openId) closePedido()
+                setSelectedIso(iso)
+              }}
             >
               <span className="truncate sm:hidden">{DAY_SHORT[day.getDay()]}</span>
               <span className="hidden truncate sm:inline">{formatDayLabel(day)}</span>
@@ -256,97 +348,91 @@ export function PedidosPreparacion() {
       </div>
 
       {dayOrders.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-lumi-muted shadow-sm">
-          No hay pedidos.
-        </div>
+        <EmptyState className="mt-4" title="No hay pedidos." />
       ) : (
-        <div className="mt-4 flex flex-col gap-3">
-          {dayOrders.map((order) => (
-            <article key={order.id} className="rounded-2xl bg-surface p-4 shadow-sm">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <strong>
-                      <Link className="order-link" to={`/pedidos/${order.id}`}>
-                        {order.id}
-                      </Link>
-                    </strong>
-                    <PriorityChip order={order} />
-                    <span className={`status-pill status-${order.status}`}>
-                      {statusPillFor(order, order.status)}
-                    </span>
-                  </div>
-                  <p className="mt-2 font-semibold uppercase">
-                    <Link className="order-link" to={`/pedidos/${order.id}`}>
-                      {order.client}
-                    </Link>
-                  </p>
-                  {addressLine(order) && (
-                    <p className="mt-1 text-sm text-lumi-muted">{addressLine(order)}</p>
-                  )}
-                  {placeLine(order) && (
-                    <p className="mt-1 text-sm text-lumi-muted">{placeLine(order)}</p>
-                  )}
-                  <div className="mt-3 flex flex-col gap-1 text-sm text-subtle">
-                    {order.zone && <p>Zona: {order.zone}</p>}
-                    {order.dispatchType && <p>Despacho: {DISPATCH_LABEL[order.dispatchType]}</p>}
-                    {order.transporter && <p>Transportista: {order.transporter}</p>}
-                    {order.timeWindow && <p>{order.timeWindow}</p>}
-                    {order.invoices && order.invoices.length > 0 && (
-                      <p>{order.invoices.join(', ')}</p>
-                    )}
-                    {order.seller && <p>{order.seller}</p>}
-                    {pendingEdit(order) && <p>Esperando confirmación</p>}
-                    <p>Bultos: {order.packages != null ? order.packages : 'a definir'}</p>
-                    <p>Cargado: {order.loadedAt}</p>
-                    <OrderAttachmentLink name={order.attachmentName} dataUrl={order.attachmentDataUrl} />
-                  </div>
-                  {order.notes && (
-                    <p className="mt-3 rounded-xl bg-surface-muted px-3 py-2 text-sm">{order.notes}</p>
-                  )}
+        <>
+          <div className="mt-4 hidden lg:block">
+            <Table columns={columns} rows={dayOrders} rowKey={(order) => order.id} onRowClick={(order) => openPedido(order.id)} />
+          </div>
+          <div className="mt-4 flex flex-col gap-3 lg:hidden">
+            {dayOrders.map((order) => (
+              <article
+                key={order.id}
+                className="cursor-pointer rounded-2xl bg-surface p-4 text-left shadow-sm"
+                onClick={() => openPedido(order.id)}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{order.id}</span>
+                  <PriorityChip order={order} />
+                  <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>
                 </div>
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:items-end">
-                  {user && canPrepare(user.role) && order.status === 'pendiente' && (
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      fullWidth
-                      className="sm:w-auto"
-                      disabled={busyId === order.id}
-                      onClick={() => setPreparing(order)}
-                    >
-                      Marcar preparado
-                    </Button>
-                  )}
-                  {user && canEditOrder(user, order) && (
-                    <Button
-                      variant="ghost"
-                      size="lg"
-                      fullWidth
-                      className="sm:w-auto"
-                      onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
-                    >
-                      Editar
-                    </Button>
-                  )}
-                  {user && canCancelOrder(user.role) && (
-                    <Button
-                      variant="danger"
-                      size="lg"
-                      fullWidth
-                      className="sm:w-auto"
-                      disabled={busyId === order.id}
-                      onClick={() => void cancelOrder(order)}
-                    >
-                      {user.role === 'admin' ? 'Borrar' : 'Cancelar'}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
+                <p className="mt-2 font-semibold uppercase">{order.client}</p>
+                {order.zone ? <p className="mt-1 text-sm text-muted">{order.zone}</p> : null}
+                {order.timeWindow ? <p className="mt-1 text-sm text-muted">{order.timeWindow}</p> : null}
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="mt-3"
+                  disabled={Boolean(user && canPrepare(user.role) && order.status === 'pendiente' && busyId === order.id)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    if (user && canPrepare(user.role) && order.status === 'pendiente') setPreparing(order)
+                    else openPedido(order.id)
+                  }}
+                >
+                  {user && canPrepare(user.role) && order.status === 'pendiente' ? 'Marcar preparado' : 'Ver pedido'}
+                </Button>
+              </article>
+            ))}
+          </div>
+        </>
       )}
+
+      <Drawer
+        open={Boolean(openOrder)}
+        onClose={closePedido}
+        title={openOrder?.id ?? 'Pedido'}
+        subtitle={openOrder ? openOrder.client.toUpperCase() : undefined}
+        footer={
+          openOrder ? (
+            <>
+              {user && canPrepare(user.role) && openOrder.status === 'pendiente' ? (
+                <Button variant="primary" size="lg" disabled={busyId === openOrder.id} onClick={() => setPreparing(openOrder)}>
+                  Marcar preparado
+                </Button>
+              ) : null}
+              {user && canEditOrder(user, openOrder) ? (
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  onClick={() => navigate('/nuevo-pedido', { state: { orderId: openOrder.id } })}
+                >
+                  Editar
+                </Button>
+              ) : null}
+              {user && canCancelOrder(user.role) ? (
+                <Button
+                  variant="danger-outline"
+                  size="lg"
+                  disabled={busyId === openOrder.id}
+                  onClick={() => void cancelOrder(openOrder)}
+                >
+                  {user.role === 'admin' ? 'Borrar' : 'Cancelar'}
+                </Button>
+              ) : null}
+            </>
+          ) : null
+        }
+      >
+        {openOrder ? (
+          <div className="flex flex-col gap-4">
+            <Link className="text-sm font-medium text-primary hover:underline" to={`/pedidos/${openOrder.id}`}>
+              Abrir página completa
+            </Link>
+            <OrderDetail order={openOrder} compact />
+          </div>
+        ) : null}
+      </Drawer>
 
       {preparing && (
         <PackagesDialog
