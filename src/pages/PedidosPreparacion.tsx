@@ -374,7 +374,16 @@ export function PedidosPreparacion() {
                 onClick={() => openPedido(order.id)}
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold">{order.id}</span>
+                  <button
+                    type="button"
+                    className="rounded-md font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openPedido(order.id)
+                    }}
+                  >
+                    N° {order.id}
+                  </button>
                   <PriorityChip order={order} />
                   <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>
                 </div>
