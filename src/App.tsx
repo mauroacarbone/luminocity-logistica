@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { NoAccess } from './components/NoAccess'
 import { canOpen } from './lib/access'
+import { homePathForRole } from './layout/nav'
 import { AppShell } from './layout/AppShell'
 import { AuthBoot } from './layout/AuthScreen'
 import { Bandeja } from './pages/Bandeja'
@@ -44,6 +45,14 @@ function Home() {
   return <PanelOperativo />
 }
 
+function MisEntregasRoute() {
+  const { user } = useAuth()
+  if (!user || user.role !== 'chofer') {
+    return <Navigate to={user ? homePathForRole(user.role) : '/'} replace />
+  }
+  return <MisEntregas />
+}
+
 function ProtectedShell() {
   const { ready, user } = useAuth()
   if (!ready) return <AuthBoot />
@@ -74,11 +83,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route
           path="/mis-entregas"
-          element={
-            <Gate path="/mis-entregas">
-              <MisEntregas />
-            </Gate>
-          }
+          element={<MisEntregasRoute />}
         />
         <Route
           path="/mis-viajes"

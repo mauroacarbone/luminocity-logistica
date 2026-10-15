@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
+import { Modal } from '../components/ui/Modal'
 import { isOwnDelivery } from '../data/catalog'
+import { error, success } from '../lib/alerts'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
-import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
+import { finishRouteSheet, listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
 import { businessToday } from '../lib/schedule'
 import { cssVar } from '../lib/theme'
 import { useAuth } from '../state/AuthContext'
@@ -123,9 +125,13 @@ function DriversMap({
   )
 }
 
+function courseSheets(driverId: string, sheets: RouteSheet[]) {
+  return sheets.filter((sheet) => sheet.driverId === driverId && sheet.status === 'en_curso')
+}
+
 export function ChoferesEnRuta() {
   const { logout } = useAuth()
-  const { orders } = useOrders()
+  const { orders, refresh } = useOrders()
   const [drivers, setDrivers] = useState<LiveDriver[]>([])
   const [sheets, setSheets] = useState<RouteSheet[]>([])
   const [now, setNow] = useState(() => Date.now())
@@ -134,15 +140,23 @@ export function ChoferesEnRuta() {
   const [attempt, setAttempt] = useState(0)
   const [query, setQuery] = useState('')
   const [driverFilter, setDriverFilter] = useState('')
+  const [finishTarget, setFinishTarget] = useState<RouteSheet | null>(null)
+  const [finishing, setFinishing] = useState(false)
+
+  const sheetDates = useMemo(() => {
+    const dates = new Set<string>([businessToday()])
+    for (const order of orders) {
+      if (order.status !== 'en-viaje') continue
+      if (typeof order.deliveryDate === 'string' && order.deliveryDate.trim()) dates.add(order.deliveryDate)
+    }
+    return [...dates].sort()
+  }, [orders])
 
   useEffect(() => {
     let cancelled = false
 
     async function load() {
-      const [result, sheetsResult] = await Promise.all([
-        fetchDriverLocations(),
-        listRouteSheets(businessToday()),
-      ])
+      const result = await fetchDriverLocations()
       if (cancelled) return
       if (!result.ok) {
         if (result.status === 401) {
@@ -153,8 +167,10 @@ export function ChoferesEnRuta() {
         setStatus('error')
         return
       }
+      const sheetResults = await Promise.all(sheetDates.map((date) => listRouteSheets(date)))
+      if (cancelled) return
       setDrivers(result.data)
-      if (sheetsResult.ok) setSheets(sheetsResult.data)
+      setSheets(sheetResults.flatMap((item) => (item.ok ? item.data : [])))
       setNow(Date.now())
       setStatus('ready')
     }
@@ -165,7 +181,7 @@ export function ChoferesEnRuta() {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [logout, attempt])
+  }, [logout, attempt, sheetDates])
 
   const filterMissing =
     driverFilter !== '' && !drivers.some((driver) => driver.id === driverFilter)
@@ -177,6 +193,22 @@ export function ChoferesEnRuta() {
         .map((order) => ({ id: order.id, client: order.client, status: order.status })),
     [orders],
   )
+
+  async function finishSheet() {
+    if (!finishTarget) return
+    setFinishing(true)
+    const result = await finishRouteSheet(finishTarget.id)
+    setFinishing(false)
+    if (!result.ok) {
+      await error(result.message)
+      return
+    }
+    setSheets((current) => current.filter((item) => item.id !== finishTarget.id))
+    setFinishTarget(null)
+    await refresh({ silent: true })
+    setAttempt((current) => current + 1)
+    await success('Viaje finalizado')
+  }
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -248,6 +280,7 @@ export function ChoferesEnRuta() {
             <ul className="mt-4 flex flex-col gap-2">
               {visible.map((driver) => {
                 const line = sheetLine(driver.id, sheets, deliveryOrders)
+                const openSheets = courseSheets(driver.id, sheets)
                 return (
                   <li key={driver.id} className="rounded-2xl bg-surface px-4 py-3 text-sm shadow-sm">
                     <p className="font-semibold">{driver.name}</p>
@@ -265,12 +298,60 @@ export function ChoferesEnRuta() {
                         Ver viajes
                       </Link>
                     </p>
+                    {openSheets.map((sheet) => (
+                      <button
+                        key={sheet.id}
+                        type="button"
+                        className="mt-3 min-h-12 w-full rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
+                        disabled={finishing}
+                        onClick={() => setFinishTarget(sheet)}
+                      >
+                        Finalizar viaje
+                      </button>
+                    ))}
                   </li>
                 )
               })}
             </ul>
           )}
         </>
+      )}
+      {finishTarget && (
+        <Modal
+          labelledBy="finish-trip-title"
+          closeOnEscape={!finishing}
+          className="grid place-items-center bg-black/40 p-4"
+          onClose={() => {
+            if (!finishing) setFinishTarget(null)
+          }}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-lg">
+            <h2 id="finish-trip-title" className="text-xl font-semibold">
+              Finalizar viaje
+            </h2>
+            <p className="mt-2 text-sm">
+              Las paradas pendientes quedan sin entregar y vuelven a asignado para reprogramarlas.
+            </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
+                disabled={finishing}
+                onClick={() => void finishSheet()}
+              >
+                {finishing ? 'Cerrando…' : 'Finalizar viaje'}
+              </button>
+              <button
+                type="button"
+                className="min-h-12 rounded-xl border border-lumi-line px-4 text-base font-semibold disabled:opacity-50"
+                disabled={finishing}
+                onClick={() => setFinishTarget(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </section>
   )

@@ -314,7 +314,7 @@ El Brief 33.3 guarda en la hoja en curso las paradas que se reprograman o se bor
 
 El Brief 33.4, si un pedido sale de una hoja en curso y estaba en viaje, vuelve a asignado con el motivo de la hoja y el chofer deja de figurar en ruta cuando ya no tiene pedidos en viaje. Al finalizar a mano, esos pedidos pasan a asignado con "Viaje finalizado sin entregar"; los entregados no cambian y se apaga el seguimiento. En Mis viajes, realizados, km y lejanía cuentan solo hojas cerradas con alguna entrega. Las cerradas sin entregas siguen en Finalizados con el chip "Sin entregas" y en el CSV con el monto vacío. En Nuevo pedido, los botones de despacho pueden usar dos renglones centrados, en una sola fila y con letra de al menos 14px.
 
-La paleta pasa a azul y grises suaves. El fondo, las tarjetas y el texto salen de tokens; el botón principal es el azul de acento y el amarillo queda en el logo. Los estados de pedido y de puntualidad usan fondo suave con texto y borde oscuros. El texto secundario da más de 4,5:1 sobre el fondo y las tarjetas.
+La paleta pasa a azul y grises suaves. El fondo, las tarjetas y el texto salen de tokens; el botón principal es el azul de acento y el amarillo queda en el logo. Los estados de pedido y de puntualidad usan fondo suave con texto y borde oscuros. El texto secundario da más de 4,5:1 sobre el fondo y las tarjetas. Mis entregas vuelve a ser solo del chofer: el encargado y el admin entran al Panel y, si abren esa ruta, vuelven ahí. Finalizan el viaje desde la tarjeta del chofer en Choferes en ruta.
 
 ## Pendientes
 

@@ -78,8 +78,7 @@ export function MisEntregas() {
   const [finishTarget, setFinishTarget] = useState<RouteSheet | null>(null)
   const [finishing, setFinishing] = useState(false)
   const today = businessToday()
-  const canFinish =
-    user?.role === 'chofer' || user?.role === 'encargado_deposito' || user?.role === 'admin'
+  const canFinish = user?.role === 'chofer'
   const tracking =
     user?.role === 'chofer' && !loading && !ordersError && orders.some((order) => order.status === 'en-viaje')
   const hadTraveling = useRef(false)
