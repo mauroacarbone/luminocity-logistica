@@ -188,6 +188,7 @@ export function MisViajes() {
 
       <FilterBar
         className="no-print"
+        size="lg"
         selects={
           manager
             ? [

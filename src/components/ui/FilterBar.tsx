@@ -41,7 +41,10 @@ export type FilterDateRange = {
   to: string
   onChange: (range: { from: string; to: string }) => void
   shortcuts?: Shortcut[]
+  disabled?: boolean
 }
+
+type FilterSize = 'md' | 'lg'
 
 type FilterBarProps = {
   search?: FilterSearch
@@ -50,6 +53,7 @@ type FilterBarProps = {
   dateRange?: FilterDateRange
   onClear?: () => void
   activeCount?: number
+  size?: FilterSize
   className?: string
 }
 
@@ -91,7 +95,7 @@ function chipPressed(group: FilterChipGroup, value: string) {
   return group.value === value
 }
 
-function ChipButtons({ groups }: { groups: FilterChipGroup[] }) {
+function ChipButtons({ groups, size }: { groups: FilterChipGroup[]; size: FilterSize }) {
   return (
     <>
       {groups.map((group) => (
@@ -105,7 +109,8 @@ function ChipButtons({ groups }: { groups: FilterChipGroup[] }) {
                 type="button"
                 aria-pressed={pressed}
                 className={cx(
-                  'rounded-full border px-3 py-1.5 text-sm font-medium',
+                  'inline-flex items-center rounded-full border px-3 text-sm font-medium',
+                  size === 'lg' ? 'min-h-[44px] py-2' : 'py-1.5',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   pressed
                     ? 'border-transparent bg-accent text-accent-fg'
@@ -178,6 +183,7 @@ function Dates({ dateRange }: { dateRange: FilterDateRange }) {
         <Input
           type="date"
           value={dateRange.from}
+          disabled={dateRange.disabled}
           onChange={(event) => dateRange.onChange({ from: event.target.value, to: dateRange.to })}
         />
       </label>
@@ -186,6 +192,7 @@ function Dates({ dateRange }: { dateRange: FilterDateRange }) {
         <Input
           type="date"
           value={dateRange.to}
+          disabled={dateRange.disabled}
           onChange={(event) => dateRange.onChange({ from: dateRange.from, to: event.target.value })}
         />
       </label>
@@ -223,15 +230,17 @@ function ExtraFilters({
   selects,
   chips,
   dateRange,
+  size,
 }: {
   selects?: FilterSelect[]
   chips?: FilterChipGroup[]
   dateRange?: FilterDateRange
+  size: FilterSize
 }) {
   return (
     <>
       {selects && selects.length > 0 ? <SelectFields selects={selects} /> : null}
-      {chips && chips.length > 0 ? <ChipButtons groups={chips} /> : null}
+      {chips && chips.length > 0 ? <ChipButtons groups={chips} size={size} /> : null}
       {dateRange ? <Dates dateRange={dateRange} /> : null}
     </>
   )
@@ -244,13 +253,14 @@ export function FilterBar({
   dateRange,
   onClear,
   activeCount = 0,
+  size = 'md',
   className,
 }: FilterBarProps) {
   const [open, setOpen] = useState(false)
   const hasExtra = Boolean((selects && selects.length > 0) || (chips && chips.length > 0) || dateRange)
   const clearButton =
     onClear && activeCount > 0 ? (
-      <Button variant="ghost" onClick={onClear}>
+      <Button variant="ghost" size={size} onClick={onClear}>
         Limpiar filtros
       </Button>
     ) : null
@@ -261,12 +271,20 @@ export function FilterBar({
       <Modal label="Filtros" onClose={() => setOpen(false)} className="flex items-end bg-overlay">
         <div className="max-h-[85vh] w-full overflow-auto rounded-t-[10px] border border-border bg-surface p-4">
           <div className="flex flex-col gap-4">
-            <ExtraFilters selects={selects} chips={chips} dateRange={dateRange} />
+            <ExtraFilters selects={selects} chips={chips} dateRange={dateRange} size={size} />
             <Button variant="primary" size="lg" fullWidth onClick={() => setOpen(false)}>
               Ver resultados
             </Button>
             {onClear ? (
-              <Button variant="ghost" size="lg" fullWidth onClick={onClear}>
+              <Button
+                variant="ghost"
+                size="lg"
+                fullWidth
+                onClick={() => {
+                  onClear()
+                  setOpen(false)
+                }}
+              >
                 Limpiar
               </Button>
             ) : null}
@@ -281,12 +299,12 @@ export function FilterBar({
       <div className="flex flex-wrap items-end gap-3 rounded-[10px] border border-border bg-surface p-3">
         {search ? <SearchField search={search} /> : null}
         {hasExtra ? (
-          <Button variant="secondary" className="sm:hidden" onClick={() => setOpen(true)}>
+          <Button variant="secondary" size={size} className="sm:hidden" onClick={() => setOpen(true)}>
             Filtros ({activeCount})
           </Button>
         ) : null}
         <div className="hidden min-w-0 flex-wrap items-end gap-3 sm:flex">
-          <ExtraFilters selects={selects} chips={chips} dateRange={dateRange} />
+          <ExtraFilters selects={selects} chips={chips} dateRange={dateRange} size={size} />
           {clearButton}
         </div>
       </div>

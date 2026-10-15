@@ -554,6 +554,7 @@ export function Despacho() {
           Escanear QR carátula
         </Button>
         <FilterBar
+          size="lg"
           search={{
             value: query,
             onChange: setQuery,

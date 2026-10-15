@@ -1340,29 +1340,39 @@ export function PostVenta() {
           srOnly: true,
           placeholder: 'Buscar por cliente, factura o producto...',
         }}
-        selects={[
-          {
-            id: 'vendedor',
-            label: 'Vendedor',
-            value: seller,
-            onChange: setSeller,
-            options: [
-              { value: 'todos', label: 'Todos los vendedores' },
-              ...withExtras(
-                sellers,
-                claims.map((claim) => claim.seller),
-              ).map((name) => ({ value: name, label: name })),
-            ],
-          },
-          {
-            id: 'periodo',
-            label: 'Período',
-            value: period,
-            onChange: (value) => setPeriod(value as Period),
-            options: PERIODS.map((item) => ({ value: item.id, label: item.label })),
-          },
-        ]}
-        activeCount={(query.trim() ? 1 : 0) + (seller !== 'todos' ? 1 : 0) + (period !== '30' ? 1 : 0)}
+        selects={
+          tab === 'nuevo'
+            ? undefined
+            : [
+                {
+                  id: 'vendedor',
+                  label: 'Vendedor',
+                  value: seller,
+                  onChange: setSeller,
+                  options: [
+                    { value: 'todos', label: 'Todos los vendedores' },
+                    ...withExtras(
+                      sellers,
+                      claims.map((claim) => claim.seller),
+                    ).map((name) => ({ value: name, label: name })),
+                  ],
+                },
+                {
+                  id: 'periodo',
+                  label: 'Período',
+                  value: period,
+                  onChange: (value) => setPeriod(value as Period),
+                  options: PERIODS.map((item) => ({ value: item.id, label: item.label })),
+                },
+              ]
+        }
+        activeCount={
+          tab === 'nuevo'
+            ? query.trim()
+              ? 1
+              : 0
+            : (query.trim() ? 1 : 0) + (seller !== 'todos' ? 1 : 0) + (period !== '30' ? 1 : 0)
+        }
         onClear={() => {
           setQuery('')
           setSeller('todos')

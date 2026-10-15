@@ -171,6 +171,7 @@ export function Retiros() {
 
       <FilterBar
         className="mt-6"
+        size="lg"
         search={{
           value: query,
           onChange: setQuery,
@@ -192,6 +193,16 @@ export function Retiros() {
             onChange: (value) => setSelected((prev) => toggleChip(prev, value as ChipStatus)),
           },
         ]}
+        dateRange={{
+          from,
+          to,
+          disabled: allDates,
+          onChange: ({ from: nextFrom, to: nextTo }) => {
+            setFrom(nextFrom)
+            setTo(nextTo)
+            setAllDates(false)
+          },
+        }}
         activeCount={(query.trim() ? 1 : 0) + (selected.size === 2 && selected.has('pendiente') && selected.has('preparado') ? 0 : 1)}
         onClear={() => {
           setQuery('')
@@ -199,50 +210,22 @@ export function Retiros() {
         }}
       />
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="text-sm">
-            Desde
-            <input
-              type="date"
-              value={from}
-              disabled={allDates}
-              onChange={(event) => {
-                setFrom(event.target.value)
-                setAllDates(false)
-              }}
-              className="mt-1 block rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm disabled:opacity-50"
-            />
-          </label>
-          <label className="text-sm">
-            Hasta
-            <input
-              type="date"
-              value={to}
-              disabled={allDates}
-              onChange={(event) => {
-                setTo(event.target.value)
-                setAllDates(false)
-              }}
-              className="mt-1 block rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm disabled:opacity-50"
-            />
-          </label>
-          <button
-            type="button"
-            className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm shadow-sm"
-            onClick={() => {
-              if (allDates) {
-                const range = weekRange()
-                setFrom(range.from)
-                setTo(range.to)
-                setAllDates(false)
-              } else {
-                setAllDates(true)
-              }
-            }}
-          >
-            {allDates ? 'Esta semana' : 'Ver todas las fechas'}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm shadow-sm"
+          onClick={() => {
+            if (allDates) {
+              const range = weekRange()
+              setFrom(range.from)
+              setTo(range.to)
+              setAllDates(false)
+            } else {
+              setAllDates(true)
+            }
+          }}
+        >
+          {allDates ? 'Esta semana' : 'Ver todas las fechas'}
+        </button>
       </div>
 
       <p className="mt-6 text-sm text-lumi-muted">
