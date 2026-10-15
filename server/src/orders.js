@@ -477,7 +477,7 @@ function patchOrder(id, body, user) {
     }
     const blocked = await blockPlannedDeparture(user, current, order)
     if (blocked) return blocked
-    const synced = await syncSheetOnEdit(orders, current, order)
+    const synced = await syncSheetOnEdit(orders, current, order, user)
     if (synced.error) return synced
     orders[index] = order
     await syncSheetFreshness(orders)
@@ -693,7 +693,7 @@ function reviewEdit(orderId, editId, body, user) {
       updatedAt: new Date().toISOString(),
     }
     if (slot.authorized) rememberOverride(order, user)
-    const synced = await syncSheetOnEdit(orders, current, order)
+    const synced = await syncSheetOnEdit(orders, current, order, user)
     if (synced.error) return synced
     orders[index] = order
     await writeOrders(orders)
@@ -1284,7 +1284,7 @@ async function releaseIfIdle(orders, previous, next) {
   for (const id of ids) await releaseIdleDrivers(orders, id)
 }
 
-async function releaseIdleDrivers(orders, userId) {
+export async function releaseIdleDrivers(orders, userId) {
   if (!userId) return
   const users = await readUsersList()
   const user = users.find((item) => item.id === userId)

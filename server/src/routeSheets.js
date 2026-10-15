@@ -11,6 +11,7 @@ import {
   isOwnDelivery,
   isPickup,
   normalizeTimeWindow,
+  releaseIdleDrivers,
   rememberOverride,
 } from './orders.js'
 
@@ -339,7 +340,30 @@ function renumberSheet(orders, sheet) {
   })
 }
 
-export async function syncSheetOnEdit(orders, current, next) {
+function reprogramFromSheet(next, user, sheetId) {
+  if (next.status !== 'en-viaje') return false
+  const at = typeof next.updatedAt === 'string' ? next.updatedAt : new Date().toISOString()
+  next.status = 'asignado'
+  next.updatedAt = at
+  const history = Array.isArray(next.history)
+    ? next.history.map((entry) => ({ ...entry, by: entry.by ? { ...entry.by } : entry.by }))
+    : []
+  history.push({
+    at,
+    by: {
+      id: typeof user?.id === 'string' ? user.id : '',
+      name: typeof user?.name === 'string' ? user.name : '',
+    },
+    from: 'en-viaje',
+    to: 'asignado',
+    reason: `Reprogramado desde la hoja ${sheetId}`,
+    via: 'hoja',
+  })
+  next.history = history
+  return true
+}
+
+export async function syncSheetOnEdit(orders, current, next, user) {
   if (!leavesSheet(current, next)) return { ok: true }
   const sheets = await readCollection('routeSheets')
   const sheet = sheets.find((item) => item.id === current.routeId)
@@ -365,6 +389,11 @@ export async function syncSheetOnEdit(orders, current, next) {
       'routeSheets',
       sheets.map((item) => (item.id === sheet.id ? updated : item)),
     )
+    if (reprogramFromSheet(next, user, sheet.id)) {
+      const view = orders.map((item) => (item.id === next.id ? next : item))
+      const driverId = typeof current.driverId === 'string' ? current.driverId : ''
+      await releaseIdleDrivers(view, driverId)
+    }
     return { ok: true }
   }
   delete next.routeId

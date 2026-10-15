@@ -266,7 +266,7 @@ export async function applyTransition(orders, current, input, user, via, options
     const blocked = await blockPlannedDeparture(user, current, next)
     if (blocked) return blocked
   }
-  const synced = await syncSheetOnEdit(orders, current, next)
+  const synced = await syncSheetOnEdit(orders, current, next, user)
   if (synced.error) return synced
 
   pushHistory(next, {
