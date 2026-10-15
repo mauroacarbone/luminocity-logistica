@@ -460,6 +460,7 @@ export function Despacho() {
         {confirmDelivery && (
           <Button
             variant="primary"
+            size="lg"
             className="shrink-0"
             onClick={() => {
               setDialogError('')
@@ -496,12 +497,12 @@ export function Despacho() {
       </div>
 
       <div className="mt-4 grid grid-cols-3 items-center gap-2">
-        <Button variant="ghost" className="justify-self-start" onClick={() => showWeek(weekOffset - 1)}>
+        <Button variant="ghost" size="lg" className="justify-self-start" onClick={() => showWeek(weekOffset - 1)}>
           <span className="sm:hidden">‹</span>
           <span className="hidden sm:inline">‹ Sem. anterior</span>
         </Button>
         <p className="text-center text-sm font-semibold sm:text-base">{weekTitle}</p>
-        <Button variant="ghost" className="justify-self-end" onClick={() => showWeek(weekOffset + 1)}>
+        <Button variant="ghost" size="lg" className="justify-self-end" onClick={() => showWeek(weekOffset + 1)}>
           <span className="sm:hidden">›</span>
           <span className="hidden sm:inline">Sem. siguiente ›</span>
         </Button>
@@ -543,6 +544,7 @@ export function Despacho() {
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Button
           variant="secondary"
+          size="lg"
           className="shrink-0"
           onClick={() => {
             setDialogError('')
@@ -807,13 +809,14 @@ export function Despacho() {
                   {user && canEditOrder(user, order) && (
                     <Button
                       variant="ghost"
+                      size="lg"
                       onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
                     >
                       Editar
                     </Button>
                   )}
                   {(assign || confirmDelivery) && (
-                    <Button variant="secondary" onClick={() => setCoverId(order.id)}>
+                    <Button variant="secondary" size="lg" onClick={() => setCoverId(order.id)}>
                       Carátula
                     </Button>
                   )}
