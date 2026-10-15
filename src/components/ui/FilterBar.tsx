@@ -11,6 +11,7 @@ type Shortcut = 'hoy' | 'semana' | 'mes' | 'todos'
 export type FilterSearch = {
   value: string
   onChange: (value: string) => void
+  onSubmit?: (value: string) => void
   placeholder?: string
   label: string
   srOnly?: boolean
@@ -194,15 +195,27 @@ function Dates({ dateRange }: { dateRange: FilterDateRange }) {
 
 function SearchField({ search }: { search: FilterSearch }) {
   return (
-    <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium text-text">
-      <span className={search.srOnly ? 'sr-only' : undefined}>{search.label}</span>
-      <Input
-        type="search"
-        value={search.value}
-        placeholder={search.placeholder}
-        onChange={(event) => search.onChange(event.target.value)}
-      />
-    </label>
+    <div className="flex min-w-0 flex-1 items-end gap-2">
+      <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium text-text">
+        <span className={search.srOnly ? 'sr-only' : undefined}>{search.label}</span>
+        <Input
+          type="search"
+          value={search.value}
+          placeholder={search.placeholder}
+          onChange={(event) => search.onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || !search.onSubmit) return
+            event.preventDefault()
+            search.onSubmit(event.currentTarget.value)
+          }}
+        />
+      </label>
+      {search.onSubmit ? (
+        <Button variant="secondary" onClick={() => search.onSubmit?.(search.value)}>
+          Buscar
+        </Button>
+      ) : null}
+    </div>
   )
 }
 

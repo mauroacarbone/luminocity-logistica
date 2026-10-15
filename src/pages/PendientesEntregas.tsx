@@ -1159,7 +1159,8 @@ export function PendientesEntregas() {
           label: 'Buscar',
           srOnly: true,
           placeholder: 'Número, cliente, comprobante o teléfono',
-          onChange: (value) => {
+          onChange: setSearchDraft,
+          onSubmit: (value) => {
             setSearchDraft(value)
             patchParams({ q: value.trim() || null })
           },
