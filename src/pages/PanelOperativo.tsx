@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FilterBar, KpiCard, Page, PageHeader } from '../components/ui'
+import { Badge, Button, Drawer, FilterBar, KpiCard, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { OrderDetail } from '../components/OrderDetail'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
@@ -177,11 +178,13 @@ function OrderCard({
   sheets,
   canPlan,
   today,
+  onOpen,
 }: {
   order: Order
   sheets: RouteSheet[]
   canPlan: boolean
   today: string
+  onOpen: () => void
 }) {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -283,15 +286,15 @@ function OrderCard({
             Editar
           </button>
         )}
-        <Link className="text-lumi-muted hover:text-lumi-ink hover:underline" to={`/pedidos/${order.id}`}>
+        <button type="button" className="text-muted hover:text-text hover:underline" onClick={onOpen}>
           Ver detalle
-        </Link>
+        </button>
       </div>
     </article>
   )
 }
 
-function TableActions({
+function DetailActions({
   order,
   sheets,
   canPlan,
@@ -307,9 +310,8 @@ function TableActions({
   const flowOrder = withSheetFlag(order, sheets, canPlan)
 
   return (
-    <div className="flex flex-col items-start gap-1.5">
-      <SheetLinks order={order} sheets={sheets} canPlan={canPlan} />
-      {user && (
+    <>
+      {user ? (
         <OrderFlowButtons
           order={flowOrder}
           role={user.role}
@@ -317,24 +319,15 @@ function TableActions({
           busy={busy}
           onBusy={setBusy}
           transition={transitionOrder}
-          layout="compact"
         />
-      )}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-        {user && canEditOrder(user, order) && (
-          <button
-            type="button"
-            className="text-lumi-ink hover:underline"
-            onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}
-          >
-            Editar
-          </button>
-        )}
-        <Link className="text-lumi-muted hover:text-lumi-ink hover:underline" to={`/pedidos/${order.id}`}>
-          Ver detalle
-        </Link>
-      </div>
-    </div>
+      ) : null}
+      {user && canEditOrder(user, order) ? (
+        <Button variant="ghost" onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}>
+          Editar
+        </Button>
+      ) : null}
+      <SheetLinks order={order} sheets={sheets} canPlan={canPlan} />
+    </>
   )
 }
 
@@ -352,6 +345,8 @@ export function PanelOperativo() {
   const [showDone, setShowDone] = useState(false)
 
   const dateFilter = parseFecha(searchParams.get('fecha'))
+  const openId = searchParams.get('pedido')
+  const openOrder = orders.find((order) => order.id === openId) ?? null
   const today = toIso(new Date())
   const tomorrow = toIso(addDays(new Date(), 1))
   const weekStart = startOfWeek(new Date())
@@ -454,6 +449,25 @@ export function PanelOperativo() {
     )
   }
 
+  function openPedido(id: string) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.set('pedido', id)
+      return next
+    })
+  }
+
+  function closePedido() {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.delete('pedido')
+        return next
+      },
+      { replace: true },
+    )
+  }
+
   function selectView(next: View) {
     setView(next)
     try {
@@ -470,6 +484,81 @@ export function PanelOperativo() {
     }
     setStatusFilter((current) => (current === key ? null : key))
   }
+
+  const panelColumns: TableColumn<Order>[] = [
+    {
+      key: 'id',
+      header: 'Pedido',
+      cell: (order) => (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <Link
+            className="font-medium text-primary hover:underline"
+            to={`/pedidos/${order.id}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {order.id}
+          </Link>
+          <PriorityChip order={order} />
+          {isOverdue(order, today) ? <OverdueChip order={order} today={today} /> : null}
+        </span>
+      ),
+    },
+    {
+      key: 'client',
+      header: 'Cliente',
+      cell: (order) => (
+        <>
+          {order.client}
+          {order.zone ? <span className="text-muted"> · {order.zone}</span> : null}
+        </>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Estado',
+      cell: (order) => <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>,
+    },
+    {
+      key: 'carrier',
+      header: 'Transportista',
+      cell: (order) =>
+        isPickup(order) ? (
+          DISPATCH_LABEL.retiro
+        ) : (
+          <>
+            {order.transporter || '—'}
+            {order.dispatchType ? <span className="text-muted"> · {DISPATCH_LABEL[order.dispatchType]}</span> : null}
+          </>
+        ),
+    },
+    {
+      key: 'packages',
+      header: 'Bultos',
+      align: 'right',
+      cell: (order) => (order.packages != null ? order.packages : '—'),
+    },
+    { key: 'loaded', header: 'Cargado', cell: (order) => order.loadedAt },
+    {
+      key: 'delivery',
+      header: 'Entrega',
+      cell: (order) => formatIsoDate(order.deliveryDate),
+    },
+    {
+      key: 'action',
+      header: 'Acción',
+      cell: (order) => (
+        <Button
+          variant="ghost"
+          onClick={(event) => {
+            event.stopPropagation()
+            openPedido(order.id)
+          }}
+        >
+          Ver detalle
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <Page>
@@ -564,6 +653,7 @@ export function PanelOperativo() {
                 sheets={sheets}
                 canPlan={canPlan}
                 today={today}
+                onOpen={() => openPedido(order.id)}
               />
             ))
           )}
@@ -588,6 +678,7 @@ export function PanelOperativo() {
                       sheets={sheets}
                       canPlan={canPlan}
                       today={today}
+                      onOpen={() => openPedido(order.id)}
                     />
                   ))
                 )}
@@ -617,6 +708,7 @@ export function PanelOperativo() {
                           sheets={sheets}
                           canPlan={canPlan}
                           today={today}
+                          onOpen={() => openPedido(order.id)}
                         />
                       ))}
                     </div>
@@ -627,75 +719,37 @@ export function PanelOperativo() {
           </div>
         </div>
       ) : (
-        <div className="table-wrap">
-          <table className="orders-table">
-            <thead>
-              <tr>
-                <th>Pedido</th>
-                <th>Cliente</th>
-                <th>Estado</th>
-                <th>Transportista</th>
-                <th>Bultos</th>
-                <th>Cargado</th>
-                <th>Entrega</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="empty">
-                    {orders.length === 0 ? 'No hay pedidos.' : 'Ningún pedido coincide con el filtro.'}
-                  </td>
-                </tr>
-              ) : (
-                visibleOrders.map((order) => (
-                  <tr key={order.id}>
-                    <td>
-                      <span className="inline-flex flex-wrap items-center gap-2">
-                        <Link className="order-link" to={`/pedidos/${order.id}`}>
-                          {order.id}
-                        </Link>
-                        <PriorityChip order={order} />
-                        {isOverdue(order, today) ? <OverdueChip order={order} today={today} /> : null}
-                      </span>
-                    </td>
-                    <td>
-                      <Link className="order-link" to={`/pedidos/${order.id}`}>
-                        {order.client}
-                      </Link>
-                      {order.zone ? <span className="zone-inline"> · {order.zone}</span> : null}
-                    </td>
-                    <td>
-                      <span className={`status-pill status-${order.status}`}>
-                        {statusPillFor(order, order.status)}
-                      </span>
-                    </td>
-                    <td>
-                      {isPickup(order) ? (
-                        <span className="status-pill">{DISPATCH_LABEL.retiro}</span>
-                      ) : (
-                        <>
-                          {order.transporter || '—'}
-                          {order.dispatchType && (
-                            <span className="zone-inline"> · {DISPATCH_LABEL[order.dispatchType]}</span>
-                          )}
-                        </>
-                      )}
-                    </td>
-                    <td>{order.packages != null ? order.packages : '—'}</td>
-                    <td>{order.loadedAt}</td>
-                    <td>{formatIsoDate(order.deliveryDate)}</td>
-                    <td>
-                      <TableActions order={order} sheets={sheets} canPlan={canPlan} />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="mt-4">
+          <Table
+            columns={panelColumns}
+            rows={visibleOrders}
+            rowKey={(order) => order.id}
+            onRowClick={(order) => openPedido(order.id)}
+            empty={
+              <p className="py-8 text-center text-sm text-muted">
+                {orders.length === 0 ? 'No hay pedidos.' : 'Ningún pedido coincide con el filtro.'}
+              </p>
+            }
+          />
         </div>
       )}
+
+      <Drawer
+        open={Boolean(openOrder)}
+        onClose={closePedido}
+        title={openOrder?.id ?? 'Pedido'}
+        subtitle={openOrder ? openOrder.client.toUpperCase() : undefined}
+        footer={openOrder ? <DetailActions order={openOrder} sheets={sheets} canPlan={canPlan} /> : null}
+      >
+        {openOrder ? (
+          <div className="flex flex-col gap-4">
+            <Link className="text-sm font-medium text-primary hover:underline" to={`/pedidos/${openOrder.id}`}>
+              Abrir página completa
+            </Link>
+            <OrderDetail order={openOrder} compact />
+          </div>
+        ) : null}
+      </Drawer>
     </Page>
   )
 }
