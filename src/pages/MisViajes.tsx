@@ -249,7 +249,7 @@ export function MisViajes() {
           <button
             type="button"
             className={`min-h-12 rounded-xl px-3 text-sm font-semibold ${
-              shortcut === 'hoy' ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-surface text-lumi-ink shadow-sm'
+              shortcut === 'hoy' ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-ink shadow-sm'
             }`}
             onClick={() => applyShortcut('hoy')}
           >
@@ -258,7 +258,7 @@ export function MisViajes() {
           <button
             type="button"
             className={`min-h-12 rounded-xl px-3 text-sm font-semibold ${
-              shortcut === 'semana' ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-surface text-lumi-ink shadow-sm'
+              shortcut === 'semana' ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-ink shadow-sm'
             }`}
             onClick={() => applyShortcut('semana')}
           >
@@ -267,7 +267,7 @@ export function MisViajes() {
           <button
             type="button"
             className={`min-h-12 rounded-xl px-3 text-sm font-semibold ${
-              shortcut === 'mes' ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-surface text-lumi-ink shadow-sm'
+              shortcut === 'mes' ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-ink shadow-sm'
             }`}
             onClick={() => applyShortcut('mes')}
           >

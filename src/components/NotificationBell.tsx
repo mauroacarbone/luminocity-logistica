@@ -415,7 +415,7 @@ export function NotificationBell() {
                           {canOpenWa ? (
                             <button
                               type="button"
-                              className="mt-2 w-full rounded-lg bg-lumi-yellow px-3 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                              className="mt-2 w-full rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50"
                               disabled={sending === item.id}
                               onClick={() => void sendWhatsapp(item)}
                             >

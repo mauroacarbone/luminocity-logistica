@@ -102,7 +102,7 @@ function PackagesDialog({
           </button>
           <button
             type="submit"
-            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50"
             disabled={saving}
           >
             Confirmar
@@ -236,7 +236,7 @@ export function PedidosPreparacion() {
               type="button"
               className={`flex min-w-0 flex-col items-center gap-1 border-b-2 px-0.5 py-2 text-xs sm:text-sm ${
                 selected
-                  ? 'border-lumi-yellow font-semibold text-lumi-ink'
+                  ? 'border-accent font-semibold text-lumi-ink'
                   : 'border-transparent text-lumi-muted'
               }`}
               onClick={() => setSelectedIso(iso)}
@@ -245,7 +245,7 @@ export function PedidosPreparacion() {
               <span className="hidden truncate sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-surface text-lumi-muted'
+                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-muted'
                 }`}
               >
                 {count}
@@ -316,7 +316,7 @@ export function PedidosPreparacion() {
                   {user && canPrepare(user.role) && order.status === 'pendiente' && (
                     <button
                       type="button"
-                      className="min-h-11 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                      className="min-h-11 rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
                       disabled={busyId === order.id}
                       onClick={() => setPreparing(order)}
                     >

@@ -28,7 +28,7 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
       <div className="relative">
         <button type="button" className="w-full text-left" onClick={activate}>
           <p className="pr-10 text-sm font-medium text-lumi-ink">{text}</p>
-          <span className="mt-3 block w-full rounded-xl bg-lumi-yellow px-3 py-2 text-center text-sm font-semibold text-lumi-yellow-ink">
+          <span className="mt-3 block w-full rounded-xl bg-accent px-3 py-2 text-center text-sm font-semibold text-accent-fg">
             {actionLabel}
           </span>
         </button>

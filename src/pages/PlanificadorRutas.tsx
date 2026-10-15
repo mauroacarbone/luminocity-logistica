@@ -558,7 +558,7 @@ export function PlanificadorRutas() {
               key={dayIso}
               type="button"
               className={`flex w-full min-w-0 flex-col items-center gap-1 overflow-hidden border-b-2 px-0.5 py-2 text-xs sm:text-sm ${
-                selected ? 'border-lumi-yellow font-semibold text-lumi-ink' : 'border-transparent text-lumi-muted'
+                selected ? 'border-accent font-semibold text-lumi-ink' : 'border-transparent text-lumi-muted'
               }`}
               onClick={() => pickDay(dayIso)}
             >
@@ -567,7 +567,7 @@ export function PlanificadorRutas() {
               <span className="hidden w-full truncate text-center sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-surface text-lumi-muted'
+                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-muted'
                 }`}
               >
                 {count}
@@ -740,7 +740,7 @@ export function PlanificadorRutas() {
               {stops.map((stop, index) => (
                 <li key={stop.key} className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
                   <p className="font-medium">
-                    <span className="mr-2 inline-grid h-6 w-6 place-items-center rounded-full bg-lumi-yellow text-xs font-semibold text-lumi-yellow-ink">
+                    <span className="mr-2 inline-grid h-6 w-6 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-fg">
                       {index + 1}
                     </span>
                     {stop.title}
@@ -767,7 +767,7 @@ export function PlanificadorRutas() {
         />
         <button
           type="button"
-          className="shrink-0 rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-60"
+          className="shrink-0 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-60"
           disabled={loading || readOnly || !driverId || !timeWindow}
           onClick={() => void confirmSheet()}
         >

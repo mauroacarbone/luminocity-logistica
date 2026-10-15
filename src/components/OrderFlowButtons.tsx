@@ -194,8 +194,8 @@ export function OrderFlowButtons({
         const select = document.getElementById(driverSelectId)
         if (select instanceof HTMLSelectElement) {
           select.focus()
-          select.classList.add('ring-2', 'ring-lumi-yellow')
-          window.setTimeout(() => select.classList.remove('ring-2', 'ring-lumi-yellow'), 1200)
+          select.classList.add('ring-2', 'ring-accent')
+          window.setTimeout(() => select.classList.remove('ring-2', 'ring-accent'), 1200)
         }
         await error('Elegí un chofer para asignar el pedido.')
         return
@@ -242,10 +242,10 @@ export function OrderFlowButtons({
   const stretch = layout === 'stretch'
   const compact = layout === 'compact'
   const nextClass = stretch
-    ? 'min-h-11 flex-1 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50'
+    ? 'min-h-11 flex-1 rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50'
     : compact
-      ? 'min-h-9 rounded-xl bg-lumi-yellow px-2.5 py-1 text-xs font-semibold text-lumi-yellow-ink disabled:opacity-50'
-      : 'min-h-11 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50'
+      ? 'min-h-9 rounded-xl bg-accent px-2.5 py-1 text-xs font-semibold text-accent-fg disabled:opacity-50'
+      : 'min-h-11 rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50'
   const moreClass = stretch
     ? 'grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-lumi-line text-lg leading-none hover:bg-surface-muted disabled:opacity-50'
     : compact

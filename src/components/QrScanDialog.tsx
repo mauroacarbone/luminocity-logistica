@@ -205,7 +205,7 @@ export function QrScanDialog({
           </button>
           <button
             type="submit"
-            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50"
             disabled={pending}
           >
             {confirmLabel}

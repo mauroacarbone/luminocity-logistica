@@ -216,7 +216,7 @@ function ZoneRate({
         </label>
         <button
           type="submit"
-          className="min-h-12 rounded-xl bg-lumi-yellow px-4 text-base font-semibold text-lumi-yellow-ink disabled:opacity-50 sm:col-span-2"
+          className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50 sm:col-span-2"
           disabled={busy}
         >
           {busy ? 'Guardando…' : 'Guardar tarifa'}

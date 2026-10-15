@@ -459,7 +459,7 @@ export function Despacho() {
         {confirmDelivery && (
           <button
             type="button"
-            className="shrink-0 rounded-xl bg-lumi-yellow px-4 py-2.5 text-sm font-semibold text-lumi-yellow-ink"
+            className="shrink-0 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg"
             onClick={() => {
               setDialogError('')
               setDialog('entrega')
@@ -483,7 +483,7 @@ export function Despacho() {
               type="button"
               className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm ${
                 active
-                  ? 'border-lumi-yellow font-semibold text-lumi-ink'
+                  ? 'border-accent font-semibold text-lumi-ink'
                   : 'border-transparent text-lumi-muted'
               }`}
               onClick={() => setTab(item.id)}
@@ -525,7 +525,7 @@ export function Despacho() {
               type="button"
               className={`flex min-w-0 flex-col items-center gap-1 border-b-2 px-0.5 py-2 text-xs sm:text-sm ${
                 selected
-                  ? 'border-lumi-yellow font-semibold text-lumi-ink'
+                  ? 'border-accent font-semibold text-lumi-ink'
                   : 'border-transparent text-lumi-muted'
               }`}
               onClick={() => {
@@ -537,7 +537,7 @@ export function Despacho() {
               <span className="hidden truncate sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-surface text-lumi-muted'
+                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-lumi-muted'
                 }`}
               >
                 {count}
@@ -599,7 +599,7 @@ export function Despacho() {
               key={order.id}
               id={`order-${order.id}`}
               className={`rounded-2xl bg-surface p-4 shadow-sm ${
-                highlightId === order.id ? 'ring-2 ring-lumi-yellow' : ''
+                highlightId === order.id ? 'ring-2 ring-accent' : ''
               }`}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">

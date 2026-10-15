@@ -876,7 +876,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   return (
     <article
       ref={cardRef}
-      className={`rounded-2xl bg-surface p-4 shadow-sm ${highlight ? 'ring-2 ring-lumi-yellow' : ''}`}
+      className={`rounded-2xl bg-surface p-4 shadow-sm ${highlight ? 'ring-2 ring-accent' : ''}`}
     >
       <div className="w-full">
         <span
@@ -1424,7 +1424,7 @@ export function PostVenta() {
           <div className="flex gap-2">
             <button
               type="button"
-              className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+              className="rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
               disabled={legacyBusy}
               onClick={() => void onUploadLegacy()}
             >
@@ -1459,7 +1459,7 @@ export function PostVenta() {
               type="button"
               className={`border-b-2 px-3 py-2 text-sm ${
                 active
-                  ? 'border-lumi-yellow font-semibold text-lumi-ink'
+                  ? 'border-accent font-semibold text-lumi-ink'
                   : 'border-transparent text-lumi-muted'
               }`}
               onClick={() => setTab(item.id)}

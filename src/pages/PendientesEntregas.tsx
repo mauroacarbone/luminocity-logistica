@@ -888,7 +888,7 @@ export function PendientesEntregas() {
     return (
       <button
         type="button"
-        className="mt-2 rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+        className="mt-2 rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
         disabled={preparingKey === group.key || busy}
         onClick={() => void markOrderPrepared(group)}
       >
@@ -1042,7 +1042,7 @@ export function PendientesEntregas() {
             type="button"
             className={`border-b-2 px-3 py-2 text-sm ${
               mode === item
-                ? 'border-lumi-yellow font-semibold text-lumi-ink'
+                ? 'border-accent font-semibold text-lumi-ink'
                 : 'border-transparent text-lumi-muted'
             }`}
             onClick={() => setMode(item)}
@@ -1058,7 +1058,7 @@ export function PendientesEntregas() {
           <div className="flex gap-2">
             <button
               type="button"
-              className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+              className="rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
               disabled={busy}
               onClick={() => void onUploadLegacy()}
             >
@@ -1113,7 +1113,7 @@ export function PendientesEntregas() {
               </button>
               <button
                 type="button"
-                className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                className="rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
                 disabled={busy || preview.valid.length === 0}
                 onClick={() => void confirmImport()}
               >
@@ -1189,7 +1189,7 @@ export function PendientesEntregas() {
           </label>
           <button
             type="button"
-            className="rounded-xl bg-lumi-yellow px-4 py-2 text-sm font-semibold text-lumi-yellow-ink"
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg"
             onClick={applySearch}
           >
             Buscar
@@ -1401,7 +1401,7 @@ export function PendientesEntregas() {
                             style={{ width: 96 }}
                           >
                             <div
-                              className="h-full bg-lumi-yellow"
+                              className="h-full bg-accent"
                               style={{ width: `${progress.pct}%` }}
                             />
                           </div>
@@ -1460,7 +1460,7 @@ export function PendientesEntregas() {
                                 style={{ width: 96 }}
                               >
                                 <div
-                                  className="h-full bg-lumi-yellow"
+                                  className="h-full bg-accent"
                                   style={{ width: `${progress.pct}%` }}
                                 />
                               </div>
@@ -1529,7 +1529,7 @@ export function PendientesEntregas() {
                             style={{ width: 96 }}
                           >
                             <span
-                              className="block h-full bg-lumi-yellow"
+                              className="block h-full bg-accent"
                               style={{ width: `${progress.pct}%` }}
                             />
                           </span>
@@ -1639,7 +1639,7 @@ export function PendientesEntregas() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded-xl bg-lumi-yellow px-3 py-1.5 text-sm font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                  className="rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
                   disabled={visibleColumns.length === 0}
                   onClick={() => downloadCsv(filteredLines, visibleColumns)}
                 >

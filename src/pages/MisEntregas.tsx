@@ -387,7 +387,7 @@ export function MisEntregas() {
                   )}
                   <button
                     type="button"
-                    className="min-h-12 rounded-xl bg-lumi-yellow px-4 text-base font-semibold text-lumi-yellow-ink disabled:opacity-50"
+                    className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
                     disabled={starting === sheet.id || !sheetIsReady(sheet, orders)}
                     onClick={() => void startSheet(sheet)}
                   >
@@ -562,10 +562,10 @@ function DeliveryCard({
   const strike = done ? 'line-through' : ''
 
   return (
-    <article className={`rounded-2xl bg-surface p-4 shadow-sm ${highlight ? 'ring-2 ring-lumi-yellow' : ''}`}>
+    <article className={`rounded-2xl bg-surface p-4 shadow-sm ${highlight ? 'ring-2 ring-accent' : ''}`}>
       <div className="flex flex-wrap items-center gap-2">
         {stopNumber != null && (
-          <span className="inline-grid h-8 w-8 place-items-center rounded-full bg-lumi-yellow text-sm font-semibold text-lumi-yellow-ink">
+          <span className="inline-grid h-8 w-8 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-fg">
             {stopNumber}
           </span>
         )}
