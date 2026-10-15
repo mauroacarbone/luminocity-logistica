@@ -4,6 +4,7 @@ import type { Role } from '../lib/authStore'
 export const NAV = [
   { to: '/', label: 'Panel Operativo', end: true, icon: 'panel' },
   { to: '/mis-entregas', label: 'Mis entregas', icon: 'truck' },
+  { to: '/mis-viajes', label: 'Mis viajes', icon: 'route' },
   { to: '/nuevo-pedido', label: 'Nuevo Pedido', icon: 'plus' },
   { to: '/pedidos', label: 'Pedidos y Preparación', icon: 'box' },
   { to: '/pendientes', label: 'Pendientes de Entregas', icon: 'pin' },
@@ -45,7 +46,7 @@ export const GROUPS: { id: GroupId; title: string; paths: readonly string[] }[] 
   },
 ]
 
-export const STANDALONE = new Set<string>(['/mis-entregas'])
+export const STANDALONE = new Set<string>(['/mis-entregas', '/mis-viajes'])
 
 export function itemByPath(path: string) {
   return NAV.find((item) => item.to === path)
@@ -90,6 +91,6 @@ export function activeItem(pathname: string, items: readonly NavItem[]): NavItem
 export function homePathForRole(role: Role) {
   const { standalone, groups } = visibleNav(role)
   const paths = [...standalone.map((i) => i.to), ...groups.flatMap((g) => g.items.map((i) => i.to))]
-  if (paths.length === 1 && paths[0] === '/mis-entregas') return '/mis-entregas'
+  if (paths.includes('/mis-entregas')) return '/mis-entregas'
   return '/'
 }

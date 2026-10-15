@@ -12,6 +12,7 @@ import { Login } from './pages/Login'
 import { NuevoPedido } from './pages/NuevoPedido'
 import { PlanificadorRutas } from './pages/PlanificadorRutas'
 import { MisEntregas } from './pages/MisEntregas'
+import { MisViajes } from './pages/MisViajes'
 import { PanelOperativo } from './pages/PanelOperativo'
 import { PedidoDetalle } from './pages/PedidoDetalle'
 import { PedidosPreparacion } from './pages/PedidosPreparacion'
@@ -75,6 +76,14 @@ export default function App() {
           element={
             <Gate path="/mis-entregas">
               <MisEntregas />
+            </Gate>
+          }
+        />
+        <Route
+          path="/mis-viajes"
+          element={
+            <Gate path="/mis-viajes">
+              <MisViajes />
             </Gate>
           }
         />

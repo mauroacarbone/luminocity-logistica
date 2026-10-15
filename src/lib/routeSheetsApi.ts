@@ -142,6 +142,86 @@ export function deleteRouteSheet(id: string) {
   )
 }
 
+export type TripStop = {
+  orderId: string
+  zone: string
+  delivered: boolean
+}
+
+export type DriverTrip = {
+  id: string
+  driverId: string
+  driverName: string
+  date: string
+  slot: string
+  status: RouteSheetStatus
+  startedAt: string | null
+  closedAt: string | null
+  delivered: number
+  undelivered: number
+  zones: string[]
+  km: number
+  kmEstimated: boolean
+  stops: TripStop[]
+}
+
+function isTripStop(value: unknown): value is TripStop {
+  if (!value || typeof value !== 'object') return false
+  const stop = value as Record<string, unknown>
+  return (
+    typeof stop.orderId === 'string' &&
+    stop.orderId.length > 0 &&
+    typeof stop.zone === 'string' &&
+    stop.zone.trim().length > 0 &&
+    typeof stop.delivered === 'boolean'
+  )
+}
+
+function isDriverTrip(value: unknown): value is DriverTrip {
+  if (!value || typeof value !== 'object') return false
+  const trip = value as Record<string, unknown>
+  return (
+    typeof trip.id === 'string' &&
+    trip.id.length > 0 &&
+    typeof trip.driverId === 'string' &&
+    typeof trip.driverName === 'string' &&
+    typeof trip.date === 'string' &&
+    typeof trip.slot === 'string' &&
+    typeof trip.status === 'string' &&
+    STATUSES.has(trip.status as RouteSheetStatus) &&
+    (trip.startedAt === null || typeof trip.startedAt === 'string') &&
+    (trip.closedAt === null || typeof trip.closedAt === 'string') &&
+    typeof trip.delivered === 'number' &&
+    typeof trip.undelivered === 'number' &&
+    Array.isArray(trip.zones) &&
+    trip.zones.every((zone) => typeof zone === 'string') &&
+    typeof trip.km === 'number' &&
+    typeof trip.kmEstimated === 'boolean' &&
+    Array.isArray(trip.stops) &&
+    trip.stops.every(isTripStop)
+  )
+}
+
+export async function listDriverTrips(
+  from: string,
+  to: string,
+  driverId?: string,
+): Promise<SheetResult<DriverTrip[]>> {
+  const params = new URLSearchParams({ from, to })
+  if (driverId) params.set('driverId', driverId)
+  const result = await request(
+    `/api/route-sheets/trips?${params.toString()}`,
+    'GET',
+    undefined,
+    'No se pudieron cargar los viajes.',
+  )
+  if (!result.ok) return result
+  if (!Array.isArray(result.data) || !result.data.every(isDriverTrip)) {
+    return { ok: false, status: 500, message: 'No se pudieron leer los viajes.' }
+  }
+  return { ok: true, data: result.data }
+}
+
 export function startRouteSheet(id: string) {
   return request(
     `/api/route-sheets/${encodeURIComponent(id)}/start`,
