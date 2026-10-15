@@ -143,7 +143,9 @@ export function ChoferesEnRuta() {
   const [accountNames, setAccountNames] = useState<Map<string, string>>(() => new Map())
 
   useEffect(() => {
+    let cancelled = false
     void listUsers().then((result) => {
+      if (cancelled) return
       if (!result.ok) {
         if (result.status === 401) logout()
         return
@@ -155,6 +157,9 @@ export function ChoferesEnRuta() {
       }
       setAccountNames(names)
     })
+    return () => {
+      cancelled = true
+    }
   }, [logout])
 
   useEffect(() => {

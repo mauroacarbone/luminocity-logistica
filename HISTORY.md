@@ -320,6 +320,8 @@ El Brief 33.5 lista arriba en Choferes en ruta los viajes en curso, de cualquier
 
 El Brief 32d deja los botones con jerarquía: primario azul, secundario con borde, ghost transparente, peligro relleno y peligro con borde. Los tamaños son 36, 44 y 52 px; en chofer y depósito se usa el grande. Input y Select acompañan esas alturas. La tabla tiene encabezado sticky, hover y scroll con sombra. KpiCard muestra valor, variación e ícono, y puede ser botón o link. Spinner y LoadState unifican cargando, error con Reintentar y vacío. SweetAlert usa la fuente, el radio y la superficie de la app: confirmar en azul, destructivo en rojo y cancelar con borde, en la capa del modal. En Post Venta los reclamos abiertos, en curso, resueltos y el tiempo promedio van en KpiCard, y la página usa LoadState. En viajes en curso no se cuentan pedidos borrados y, si no hay otro nombre, se muestra el del usuario chofer.
 
+El Brief 32d.1 fija el encabezado de la tabla: con `maxHeight` queda dentro del recuadro, y sin ese alto queda fijo respecto de la página. La sombra del scroll horizontal se mantiene. En Despacho las acciones pasan a tamaño grande y el único primario es escanear el QR de entrega. La variación del KPI puede pedir tono éxito, error o neutro, aparte de la flecha. La carga de usuarios en Choferes en ruta no actualiza el estado si la pantalla ya se cerró.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
