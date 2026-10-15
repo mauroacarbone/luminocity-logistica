@@ -1208,7 +1208,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             ))}
           </div>
           {storedId && user?.role === 'vendedor' && (
-            <small className="hint">Solo el encargado cambia la prioridad.</small>
+            <small className="hint mt-2 block">Solo el encargado cambia la prioridad.</small>
           )}
           {!pickup && (
             <label className="field">

@@ -1470,6 +1470,15 @@ p {
 }
 
 @media (max-width: 400px) {
+  .dispatch-types {
+    gap: 4px;
+    margin-inline: -10px;
+  }
+
+  .dispatch-type {
+    padding: 6px 2px;
+  }
+
   .order-stepper-full .order-step-label {
     font-size: 11px;
     max-width: 56px;
@@ -1576,31 +1585,37 @@ p {
 
 .dispatch-types {
   display: flex;
+  flex-wrap: nowrap;
   gap: 8px;
   margin-bottom: 16px;
 }
 
 .dispatch-type {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
   min-height: 48px;
-  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border);
   background: var(--surface);
   color: var(--text);
   border-radius: var(--r-lg);
-  padding: 8px 6px;
-  font-size: clamp(12px, 2.6vw, 16px);
-  font-weight: 700;
-  line-height: 1.2;
+  padding: 6px 4px;
+  font-size: clamp(14px, 2.8vw, 16px);
+  font-weight: 600;
+  line-height: 1.15;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
   cursor: pointer;
 }
 
 .dispatch-type.active {
   background: var(--primary);
-  border-color: transparent;
+  border-color: var(--primary-fg);
   color: var(--primary-fg);
+  font-weight: 800;
 }
 
 .dispatch-type.active:hover {

@@ -312,6 +312,8 @@ Las tarifas de viaje las cargan el encargado y el admin en Tarifas de viaje: un 
 
 El Brief 33.3 guarda en la hoja en curso las paradas que se reprograman o se borran, con zona y sin entregar. Un pedido que ya no existe no cuenta como entregado, y el viaje se cobra si hubo al menos una entrega. El chofer, el encargado o el admin pueden finalizar el viaje a mano: las paradas pendientes quedan no entregadas y el pedido no cambia de estado. Al cerrar se congela el monto y la tarifa. El CSV manda km y monto como números con coma decimal, más estimado y no entregados. En Nuevo pedido, tipo de despacho y prioridad van en dos filas, cada una en un solo renglón.
 
+El Brief 33.4, si un pedido sale de una hoja en curso y estaba en viaje, vuelve a asignado con el motivo de la hoja y el chofer deja de figurar en ruta cuando ya no tiene pedidos en viaje. Al finalizar a mano, esos pedidos pasan a asignado con "Viaje finalizado sin entregar"; los entregados no cambian y se apaga el seguimiento. En Mis viajes, realizados, km y lejanía cuentan solo hojas cerradas con alguna entrega. Las cerradas sin entregas siguen en Finalizados con el chip "Sin entregas" y en el CSV con el monto vacío. En Nuevo pedido, los botones de despacho pueden usar dos renglones centrados, en una sola fila y con letra de al menos 14px.
+
 ## Pendientes
 
 En este orden. No adelantar el siguiente.
