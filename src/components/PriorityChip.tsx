@@ -15,7 +15,7 @@ export function PriorityChip({
     return <Badge tone="neutral">Normal</Badge>
   }
   if (priority === 'alta') {
-    return <Badge tone="orange">Alta</Badge>
+    return <Badge tone="warning">Alta</Badge>
   }
   return <Badge tone="danger">Inmediata</Badge>
 }

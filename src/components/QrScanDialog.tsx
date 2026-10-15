@@ -173,7 +173,7 @@ export function QrScanDialog({
             className={`w-full object-contain ${phase === 'error' ? 'hidden' : 'aspect-[4/3]'}`}
           />
           {phase === 'starting' && (
-            <p className="absolute inset-0 grid place-items-center px-3 text-center text-sm text-white">
+            <p className="absolute inset-0 grid place-items-center px-3 text-center text-sm text-inverse">
               Abriendo cámara…
             </p>
           )}

@@ -6,7 +6,7 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 }
 
 const CONTROL =
-  'w-full rounded-xl border border-border bg-surface px-3 text-sm text-text min-h-11 sm:min-h-9 placeholder:text-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:border-primary disabled:bg-surface-muted disabled:cursor-not-allowed'
+  'w-full rounded-xl border border-border bg-surface px-3 text-sm text-text min-h-11 sm:min-h-9 placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary disabled:bg-surface-muted disabled:cursor-not-allowed'
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { className, invalid, disabled, ...rest },

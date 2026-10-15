@@ -77,8 +77,8 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
               size={240}
               level="M"
               marginSize={4}
-              bgColor="#ffffff"
-              fgColor="#000000"
+              bgColor="white"
+              fgColor="#111827"
               title={`QR del pedido ${order.id}`}
             />
           </div>

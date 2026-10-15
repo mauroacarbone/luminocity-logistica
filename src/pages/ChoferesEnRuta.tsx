@@ -93,11 +93,11 @@ function DriversMap({
             center={[driver.lat, driver.lng]}
             radius={11}
             pathOptions={{
-              color: cssVar('--primary-fg', '#1a1a1a'),
+              color: cssVar('--accent-fg', '#FFFFFF'),
               weight: 2,
               fillColor: stale
-                ? cssVar('--text-muted', '#64748b')
-                : cssVar('--primary', '#f5c400'),
+                ? cssVar('--text-muted', '#5B6472')
+                : cssVar('--accent', '#2563EB'),
               fillOpacity: 1,
             }}
           >
@@ -213,12 +213,12 @@ export function ChoferesEnRuta() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Buscar por nombre o transportista"
-              className="min-w-0 flex-1 rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+              className="min-w-0 flex-1 rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
             />
             <select
               value={driverFilter}
               aria-label="Chofer"
-              className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+              className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
               onChange={(event) => setDriverFilter(event.target.value)}
             >
               <option value="">Todos los choferes</option>
@@ -249,7 +249,7 @@ export function ChoferesEnRuta() {
               {visible.map((driver) => {
                 const line = sheetLine(driver.id, sheets, deliveryOrders)
                 return (
-                  <li key={driver.id} className="rounded-2xl bg-white px-4 py-3 text-sm shadow-sm">
+                  <li key={driver.id} className="rounded-2xl bg-surface px-4 py-3 text-sm shadow-sm">
                     <p className="font-semibold">{driver.name}</p>
                     <p>{driver.carrierName}</p>
                     <p>{travelingLabel(driver.traveling)}</p>

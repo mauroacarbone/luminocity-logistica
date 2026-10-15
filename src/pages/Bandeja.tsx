@@ -176,13 +176,13 @@ export function Bandeja() {
       <>
       <h2 className="mt-6 text-xl font-semibold">Autorizaciones</h2>
       {pendingAuth.length === 0 ? (
-        <div className="mt-3 rounded-2xl bg-white px-5 py-6 text-sm text-lumi-muted shadow-sm">
+        <div className="mt-3 rounded-2xl bg-surface px-5 py-6 text-sm text-lumi-muted shadow-sm">
           No hay autorizaciones pendientes.
         </div>
       ) : (
         <div className="mt-3 flex flex-col gap-3">
           {pendingAuth.map((item) => (
-            <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
+            <article key={item.id} className="rounded-2xl bg-surface p-4 shadow-sm">
               <p className="font-semibold">{names[item.requestedBy] ?? 'Vendedor'}</p>
               <p className="mt-1 text-sm text-lumi-muted">Quiere cargar a nombre de {item.seller}.</p>
               <div className="mt-3 flex gap-2">
@@ -210,13 +210,13 @@ export function Bandeja() {
 
       <h2 className="mt-8 text-xl font-semibold">Ediciones</h2>
       {pendingEdits.length === 0 ? (
-        <div className="mt-3 rounded-2xl bg-white px-5 py-6 text-sm text-lumi-muted shadow-sm">
+        <div className="mt-3 rounded-2xl bg-surface px-5 py-6 text-sm text-lumi-muted shadow-sm">
           No hay ediciones pendientes.
         </div>
       ) : (
         <div className="mt-3 flex flex-col gap-3">
           {pendingEdits.map(({ order, edit }) => (
-            <article key={edit.id} className="rounded-2xl bg-white p-4 shadow-sm">
+            <article key={edit.id} className="rounded-2xl bg-surface p-4 shadow-sm">
               <p className="font-semibold">
                 {order.id} · {order.client}
               </p>

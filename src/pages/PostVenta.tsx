@@ -137,7 +137,7 @@ function SearchField({
   onChange: (value: string) => void
 }) {
   return (
-    <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-lumi-line bg-white px-3 py-2">
+    <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-lumi-line bg-surface px-3 py-2">
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-lumi-muted" aria-hidden="true">
         <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
         <path d="M16 16l4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -466,7 +466,7 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
           onChange={setLookup}
         />
         {needle.length >= 2 && (
-          <div className="mt-2 overflow-hidden rounded-xl border border-lumi-line bg-white shadow-sm">
+          <div className="mt-2 overflow-hidden rounded-xl border border-lumi-line bg-surface shadow-sm">
             {matches.length === 0 ? (
               <p className="px-3 py-2 text-sm text-lumi-muted">
                 No hay pedidos que coincidan. Podés cargar el reclamo a mano.
@@ -876,7 +876,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   return (
     <article
       ref={cardRef}
-      className={`rounded-2xl bg-white p-4 shadow-sm ${highlight ? 'ring-2 ring-lumi-yellow' : ''}`}
+      className={`rounded-2xl bg-surface p-4 shadow-sm ${highlight ? 'ring-2 ring-lumi-yellow' : ''}`}
     >
       <div className="w-full">
         <span
@@ -947,7 +947,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
                     <div
                       ref={statusMenuRef}
                       role="menu"
-                      className="fixed w-72 rounded-xl border border-lumi-line bg-white p-1 shadow-lg"
+                      className="fixed w-72 rounded-xl border border-lumi-line bg-surface p-1 shadow-lg"
                       style={
                         statusMenuPos
                           ? { top: statusMenuPos.top, left: statusMenuPos.left, zIndex: 'var(--z-dropdown)' }
@@ -1088,7 +1088,7 @@ function FilterBar({
         value={seller}
         aria-label="Vendedor"
         onChange={(event) => onSeller(event.target.value)}
-        className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+        className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
       >
         <option value="todos">Todos los vendedores</option>
         {sellerOptions.map((name) => (
@@ -1101,7 +1101,7 @@ function FilterBar({
         value={period}
         aria-label="Período"
         onChange={(event) => onPeriod(event.target.value as Period)}
-        className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+        className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
       >
         {PERIODS.map((item) => (
           <option key={item.id} value={item.id}>
@@ -1111,7 +1111,7 @@ function FilterBar({
       </select>
       <button
         type="button"
-        className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm disabled:text-lumi-muted"
+        className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm disabled:text-lumi-muted"
         disabled={claims.length === 0}
         onClick={() => downloadClaims(claims)}
       >
@@ -1149,7 +1149,7 @@ function ClaimList({
       />
 
       {claims.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-lumi-muted shadow-sm">{empty}</div>
+        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-lumi-muted shadow-sm">{empty}</div>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
           {claims.map((claim) => (
@@ -1232,14 +1232,14 @@ function Dashboard({
       />
       <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         {stats.map((stat) => (
-          <article key={stat.label} className="rounded-2xl bg-white px-4 py-5 text-center shadow-sm">
+          <article key={stat.label} className="rounded-2xl bg-surface px-4 py-5 text-center shadow-sm">
             <p className={`text-3xl font-semibold ${stat.tone}`}>{stat.value}</p>
             <p className="mt-1 text-sm text-lumi-muted">{stat.label}</p>
           </article>
         ))}
       </div>
 
-      <section className="rounded-2xl bg-white p-5 shadow-sm">
+      <section className="rounded-2xl bg-surface p-5 shadow-sm">
         <h2 className="text-base font-semibold">Reclamos por estado</h2>
         {byStatus.length === 0 ? (
           <p className="mt-4 text-sm text-lumi-muted">Cuando cargues reclamos, vas a ver cómo se reparten.</p>
@@ -1263,7 +1263,7 @@ function Dashboard({
         )}
       </section>
 
-      <section className="rounded-2xl bg-white p-5 shadow-sm">
+      <section className="rounded-2xl bg-surface p-5 shadow-sm">
         <h2 className="text-base font-semibold">Top motivos de reclamo</h2>
         {byMotive.length === 0 ? (
           <p className="mt-4 text-sm text-lumi-muted">Todavía no hay motivos para mostrar.</p>
@@ -1419,7 +1419,7 @@ export function PostVenta() {
       )}
 
       {legacyOffer && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-3 shadow-sm">
           <p className="text-sm">Hay reclamos guardados en este navegador</p>
           <div className="flex gap-2">
             <button

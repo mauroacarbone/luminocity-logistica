@@ -179,7 +179,7 @@ export function Retiros() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Cliente, teléfono, pedido o factura"
-            className="w-full rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
           />
         </label>
 
@@ -207,7 +207,7 @@ export function Retiros() {
                 setFrom(event.target.value)
                 setAllDates(false)
               }}
-              className="mt-1 block rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm disabled:opacity-50"
+              className="mt-1 block rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm disabled:opacity-50"
             />
           </label>
           <label className="text-sm">
@@ -220,12 +220,12 @@ export function Retiros() {
                 setTo(event.target.value)
                 setAllDates(false)
               }}
-              className="mt-1 block rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm disabled:opacity-50"
+              className="mt-1 block rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm disabled:opacity-50"
             />
           </label>
           <button
             type="button"
-            className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm shadow-sm"
+            className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm shadow-sm"
             onClick={() => {
               if (allDates) {
                 const range = weekRange()
@@ -247,11 +247,11 @@ export function Retiros() {
       </p>
 
       {ordersError ? (
-        <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm font-semibold text-lumi-danger shadow-sm">
+        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm font-semibold text-lumi-danger shadow-sm">
           {ordersError}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-lumi-muted shadow-sm">
+        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-lumi-muted shadow-sm">
           {pickups.length === 0
             ? 'No hay retiros para mostrar.'
             : 'No hay retiros que coincidan con la búsqueda o los filtros.'}
@@ -326,7 +326,7 @@ function PickupCard({
       : ''
 
   return (
-    <article className="rounded-2xl bg-white p-4 shadow-sm">
+    <article className="rounded-2xl bg-surface p-4 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -380,7 +380,7 @@ function PickupCard({
           {order.status === 'preparado' && noticeUrl ? (
             <button
               type="button"
-              className="min-h-11 w-full rounded-xl border border-lumi-line bg-white px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
+              className="min-h-11 w-full rounded-xl border border-lumi-line bg-surface px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
               disabled={busy}
               onClick={() => void onNotice(noticeUrl)}
             >

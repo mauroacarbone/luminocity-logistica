@@ -44,7 +44,7 @@ export function StopRouteMap({ stops }: { stops: MapStop[] }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {line.length > 1 && (
-        <Polyline positions={line} pathOptions={{ color: cssVar('--text', '#0f172a'), weight: 4 }} />
+        <Polyline positions={line} pathOptions={{ color: cssVar('--text', '#111827'), weight: 4 }} />
       )}
       {stops.map((stop) => (
         <CircleMarker
@@ -52,13 +52,13 @@ export function StopRouteMap({ stops }: { stops: MapStop[] }) {
           center={[stop.lat, stop.lng]}
           radius={stop.next ? 10 : 7}
           pathOptions={{
-            color: stop.next ? cssVar('--primary', '#f5c400') : cssVar('--text', '#0f172a'),
+            color: stop.next ? cssVar('--accent', '#2563EB') : cssVar('--text', '#111827'),
             weight: 2,
             fillColor: stop.done
-              ? cssVar('--surface-muted', '#f0eee9')
+              ? cssVar('--surface-2', '#EEF1F5')
               : stop.next
-                ? cssVar('--primary', '#f5c400')
-                : cssVar('--surface', '#fbfbfa'),
+                ? cssVar('--accent', '#2563EB')
+                : cssVar('--surface', '#F9FAFB'),
             fillOpacity: 1,
           }}
         >

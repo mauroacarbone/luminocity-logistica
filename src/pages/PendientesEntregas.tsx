@@ -1005,14 +1005,14 @@ export function PendientesEntregas() {
           <div className="flex shrink-0 flex-wrap gap-2">
             <button
               type="button"
-              className="rounded-xl border border-lumi-line bg-white px-4 py-2 text-sm shadow-sm"
+              className="rounded-xl border border-lumi-line bg-surface px-4 py-2 text-sm shadow-sm"
               onClick={downloadTemplate}
             >
               Descargar plantilla
             </button>
             <button
               type="button"
-              className="rounded-xl bg-white px-4 py-2 text-sm shadow-sm disabled:opacity-50"
+              className="rounded-xl bg-surface px-4 py-2 text-sm shadow-sm disabled:opacity-50"
               disabled={busy}
               onClick={() => fileRef.current?.click()}
             >
@@ -1053,7 +1053,7 @@ export function PendientesEntregas() {
       </div>
 
       {legacyOffer && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-3 shadow-sm">
           <p className="text-sm">Hay datos guardados en este navegador</p>
           <div className="flex gap-2">
             <button
@@ -1082,7 +1082,7 @@ export function PendientesEntregas() {
       {error && <p className="mt-4 text-sm text-lumi-danger">{error}</p>}
 
       {preview && (
-        <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+        <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold">Vista previa de importación</h2>
@@ -1170,7 +1170,7 @@ export function PendientesEntregas() {
         </div>
       )}
 
-      <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
+      <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <label className="min-w-0 flex-1 text-sm">
             <span className="sr-only">Buscar</span>
@@ -1272,7 +1272,7 @@ export function PendientesEntregas() {
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              className="rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-50"
+              className="rounded-xl px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
               disabled={busy || loading}
               onClick={() => {
                 void refresh().then((count) => {
@@ -1288,7 +1288,7 @@ export function PendientesEntregas() {
             </button>
             <button
               type="button"
-              className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm shadow-sm disabled:opacity-50"
+              className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm shadow-sm disabled:opacity-50"
               disabled={filteredOpenOrders.length === 0 && orphanGroups.length === 0}
               onClick={exportFilteredCsv}
             >
@@ -1302,7 +1302,7 @@ export function PendientesEntregas() {
                 <EmptyState title="No hay pedidos pendientes" />
               </div>
             ) : (
-              <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+              <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
                 Ningún pedido coincide con el filtro.
               </div>
             )
@@ -1334,7 +1334,7 @@ export function PendientesEntregas() {
                   ? groupForOrder(order, linesForOrder(linesByInvoice, order))
                   : null
                 return (
-                  <article key={order.id} className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                  <article key={order.id} className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -1440,7 +1440,7 @@ export function PendientesEntregas() {
                       return (
                         <article
                           key={group.key}
-                          className="rounded-2xl bg-white px-4 py-3 shadow-sm"
+                          className="rounded-2xl bg-surface px-4 py-3 shadow-sm"
                         >
                           <div className="flex items-center justify-between gap-4">
                             <div className="min-w-0">
@@ -1496,7 +1496,7 @@ export function PendientesEntregas() {
           </p>
 
           {groups.length === 0 ? (
-            <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
+            <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-lumi-muted shadow-sm">
               {lines.length === 0
                 ? 'No hay productos para preparar.'
                 : 'Ningún pedido coincide con la búsqueda.'}
@@ -1507,7 +1507,7 @@ export function PendientesEntregas() {
                 const progress = progressOf(group)
                 const open = expanded === group.key
                 return (
-                  <article key={group.key} className="overflow-hidden rounded-2xl bg-white shadow-sm">
+                  <article key={group.key} className="overflow-hidden rounded-2xl bg-surface shadow-sm">
                     <div className="border-b border-lumi-line px-4 py-3">
                       <button
                         type="button"
@@ -1574,7 +1574,7 @@ export function PendientesEntregas() {
                                         step={1}
                                         value={qtyDraftFor(line)}
                                         disabled={prepared || saving}
-                                        className="w-20 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm disabled:opacity-60"
+                                        className="w-20 rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm disabled:opacity-60"
                                         onChange={(event) =>
                                           setQtyDraft(line.id, event.target.value)
                                         }
@@ -1589,7 +1589,7 @@ export function PendientesEntregas() {
                                     </label>
                                     <button
                                       type="button"
-                                      className="rounded-xl border border-lumi-line bg-white px-3 py-1.5 text-sm disabled:opacity-50"
+                                      className="rounded-xl border border-lumi-line bg-surface px-3 py-1.5 text-sm disabled:opacity-50"
                                       disabled={prepared || complete || saving}
                                       onClick={() => void markComplete(line)}
                                     >
@@ -1621,7 +1621,7 @@ export function PendientesEntregas() {
           labelledBy="picking-all-data-title"
           className="grid place-items-center bg-black/40 p-4"
         >
-          <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-2xl bg-white p-4 shadow-lg sm:p-5">
+          <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-2xl bg-surface p-4 shadow-lg sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 id="picking-all-data-title" className="text-xl font-semibold">

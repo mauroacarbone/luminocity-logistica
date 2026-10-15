@@ -12,14 +12,25 @@ export type BadgeTone =
   | 'primary'
 
 const TONE_CLASS: Record<BadgeTone, string> = {
-  neutral: 'bg-surface-muted text-subtle',
+  neutral: 'bg-neutral-soft text-neutral',
   success: 'bg-success-soft text-success',
   warning: 'bg-warning-soft text-warning',
   danger: 'bg-danger-soft text-danger',
   info: 'bg-info-soft text-info',
-  purple: 'bg-purple-soft text-purple',
-  orange: 'bg-orange-soft text-orange',
-  primary: 'bg-primary-soft text-primary-ink',
+  purple: 'bg-info-soft text-info',
+  orange: 'bg-warning-soft text-warning',
+  primary: 'bg-primary-soft text-primary',
+}
+
+const DOT_CLASS: Record<BadgeTone, string> = {
+  neutral: 'bg-neutral',
+  success: 'bg-success-dot',
+  warning: 'bg-warning-dot',
+  danger: 'bg-danger-dot',
+  info: 'bg-info-dot',
+  purple: 'bg-info-dot',
+  orange: 'bg-warning-dot',
+  primary: 'bg-primary',
 }
 
 const SIZE_CLASS = {
@@ -47,14 +58,14 @@ export function Badge({
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1 rounded-full text-xs font-medium',
+        'inline-flex items-center gap-1 rounded-full border border-current text-xs font-medium',
         SIZE_CLASS[size],
         TONE_CLASS[tone],
         className,
       )}
     >
       {dot ? (
-        <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
+        <span className={cx('size-1.5 shrink-0 rounded-full', DOT_CLASS[tone])} aria-hidden="true" />
       ) : null}
       {icon ? <span className="inline-flex shrink-0">{icon}</span> : null}
       {children}

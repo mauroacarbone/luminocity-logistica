@@ -176,7 +176,7 @@ function NewUserDialog({
       closeOnEscape={!pending}
       className="grid place-items-center bg-black/40 p-4"
     >
-      <form noValidate className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg" onSubmit={(event) => void onSubmit(event)}>
+      <form noValidate className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-lg" onSubmit={(event) => void onSubmit(event)}>
         <h2 id="new-user-title" className="text-xl font-semibold">
           Nuevo usuario
         </h2>
@@ -341,7 +341,7 @@ function PasswordDialog({
       closeOnEscape={!pending}
       className="grid place-items-center bg-black/40 p-4"
     >
-      <form noValidate className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg" onSubmit={(event) => void onSubmit(event)}>
+      <form noValidate className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-lg" onSubmit={(event) => void onSubmit(event)}>
         <h2 id="reset-password-title" className="text-xl font-semibold">
           Resetear contraseña
         </h2>
@@ -626,7 +626,7 @@ export function Usuarios() {
           return (
             <article
               key={account.id}
-              className={`rounded-2xl bg-white p-4 shadow-sm ${account.active ? '' : 'opacity-60'}`}
+              className={`rounded-2xl bg-surface p-4 shadow-sm ${account.active ? '' : 'opacity-60'}`}
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span

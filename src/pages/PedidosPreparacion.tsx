@@ -62,7 +62,7 @@ function PackagesDialog({
     >
       <form
         noValidate
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg"
+        className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-lg"
         onSubmit={onSubmit}
       >
         <h2 id="packages-title" className="text-xl font-semibold">Marcar preparado</h2>
@@ -208,7 +208,7 @@ export function PedidosPreparacion() {
       <div className="mt-6 grid grid-cols-3 items-center gap-2">
         <button
           type="button"
-          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
+          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
           onClick={() => showWeek(weekOffset - 1)}
         >
           <span className="sm:hidden">‹</span>
@@ -217,7 +217,7 @@ export function PedidosPreparacion() {
         <p className="text-center text-sm font-semibold sm:text-base">{weekTitle}</p>
         <button
           type="button"
-          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
+          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
           onClick={() => showWeek(weekOffset + 1)}
         >
           <span className="sm:hidden">›</span>
@@ -245,7 +245,7 @@ export function PedidosPreparacion() {
               <span className="hidden truncate sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-white text-lumi-muted'
+                  selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-surface text-lumi-muted'
                 }`}
               >
                 {count}
@@ -263,13 +263,13 @@ export function PedidosPreparacion() {
       </div>
 
       {dayOrders.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-lumi-muted shadow-sm">
+        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-lumi-muted shadow-sm">
           No hay pedidos.
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
           {dayOrders.map((order) => (
-            <article key={order.id} className="rounded-2xl bg-white p-4 shadow-sm">
+            <article key={order.id} className="rounded-2xl bg-surface p-4 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">

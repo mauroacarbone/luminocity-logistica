@@ -10,8 +10,6 @@ export const TIMELINESS_LABEL: Record<Timeliness, string> = {
   atrasado: 'Atrasado',
 }
 
-export type TimelinessTone = 'success' | 'warning' | 'danger'
-
 const ZONE = 'America/Argentina/Buenos_Aires'
 const HOUR_MS = 60 * 60 * 1000
 
@@ -61,11 +59,7 @@ export function deliveryTimeliness(
   return 'en-horario'
 }
 
-export function timelinessTone(value: Timeliness): TimelinessTone {
-  if (value === 'atrasado') return 'danger'
-  if (value === 'por-vencer') return 'warning'
-  return 'success'
-}
+export { timelinessTone } from '../components/ui/tones'
 
 /** Atrasados primero, después prioridad y después el inicio de la franja. */
 export function compareDriverQueue(left: Order, right: Order, now = Date.now()) {

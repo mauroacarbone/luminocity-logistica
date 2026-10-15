@@ -19,10 +19,10 @@ type ButtonProps =
   | (ButtonBase & { iconOnly: true; 'aria-label': string })
 
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-primary text-primary-fg hover:bg-primary-hover',
-  secondary: 'bg-surface border border-border hover:bg-surface-muted',
-  ghost: 'bg-transparent hover:bg-surface-muted',
-  danger: 'bg-danger text-inverse hover:bg-danger-deep',
+  primary: 'bg-accent text-accent-fg hover:bg-accent-hover',
+  secondary: 'bg-surface border border-border text-primary hover:bg-surface-2',
+  ghost: 'border border-border bg-surface text-primary hover:bg-surface-2',
+  danger: 'bg-danger-deep text-inverse hover:bg-danger',
 }
 
 function Spinner() {
@@ -62,7 +62,7 @@ export function Button({
       aria-busy={loading || undefined}
       className={cx(
         'inline-flex items-center justify-center gap-2 rounded-xl font-semibold',
-        'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'disabled:cursor-not-allowed disabled:opacity-50',
         VARIANT[variant],
         sizeClass,

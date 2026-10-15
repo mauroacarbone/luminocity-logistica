@@ -7,12 +7,18 @@ export function statusTone(status: OrderStatus): BadgeTone {
     case 'pendiente':
       return 'warning'
     case 'preparado':
-      return 'orange'
+      return 'neutral'
     case 'asignado':
-      return 'purple'
     case 'en-viaje':
       return 'info'
     case 'entregado':
       return 'success'
   }
+}
+
+/** En horario, por vencer y atrasado usan éxito, pendiente y error. */
+export function timelinessTone(value: 'en-horario' | 'por-vencer' | 'atrasado'): BadgeTone {
+  if (value === 'atrasado') return 'danger'
+  if (value === 'por-vencer') return 'warning'
+  return 'success'
 }

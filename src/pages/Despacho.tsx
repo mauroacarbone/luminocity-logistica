@@ -86,7 +86,7 @@ function DriverChoice({
     <option
       value={driverId}
       className={full ? 'text-lumi-danger' : undefined}
-      style={full ? { color: cssVar('--danger', '#dc2626') } : undefined}
+      style={full ? { color: cssVar('--danger', '#991B1B') } : undefined}
     >
       {order.timeWindow ? `${name} (${count}/${SLOT_LIMIT})` : name}
     </option>
@@ -497,7 +497,7 @@ export function Despacho() {
       <div className="mt-4 grid grid-cols-3 items-center gap-2">
         <button
           type="button"
-          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
+          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
           onClick={() => showWeek(weekOffset - 1)}
         >
           <span className="sm:hidden">‹</span>
@@ -506,7 +506,7 @@ export function Despacho() {
         <p className="text-center text-sm font-semibold sm:text-base">{weekTitle}</p>
         <button
           type="button"
-          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
+          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
           onClick={() => showWeek(weekOffset + 1)}
         >
           <span className="sm:hidden">›</span>
@@ -537,7 +537,7 @@ export function Despacho() {
               <span className="hidden truncate sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-white text-lumi-muted'
+                  selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-surface text-lumi-muted'
                 }`}
               >
                 {count}
@@ -550,7 +550,7 @@ export function Despacho() {
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="shrink-0 rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+          className="shrink-0 rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
           onClick={() => {
             setDialogError('')
             setDialog('caratula')
@@ -562,13 +562,13 @@ export function Despacho() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Buscar en todos los días — cliente, factura o N° pedido..."
-          className="min-w-0 flex-1 rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+          className="min-w-0 flex-1 rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
         />
         <select
           value={transporter}
           onChange={(event) => setTransporter(event.target.value)}
           aria-label="Transportista"
-          className="rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+          className="rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
         >
           <option value="todos">Todos los transportistas</option>
           {transporters.map((name) => (
@@ -589,7 +589,7 @@ export function Despacho() {
       </div>
 
       {dayOrders.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-white px-5 py-8 text-center text-lumi-muted shadow-sm">
+        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-lumi-muted shadow-sm">
           {searching ? 'Ningún pedido coincide con la búsqueda.' : 'No hay pedidos.'}
         </div>
       ) : (
@@ -598,7 +598,7 @@ export function Despacho() {
             <article
               key={order.id}
               id={`order-${order.id}`}
-              className={`rounded-2xl bg-white p-4 shadow-sm ${
+              className={`rounded-2xl bg-surface p-4 shadow-sm ${
                 highlightId === order.id ? 'ring-2 ring-lumi-yellow' : ''
               }`}
             >
@@ -678,7 +678,7 @@ export function Despacho() {
                         <select
                           value={order.transporter ?? ''}
                           disabled={busyId === order.id}
-                          className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                          className="mt-1 block w-full rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
                           onChange={(event) => {
                             const select = event.target
                             const next = select.value
@@ -711,7 +711,7 @@ export function Despacho() {
                               id={`chofer-${order.id}`}
                               value=""
                               disabled
-                              className="block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                              className="block w-full rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
                             >
                               <option value="">Primero marcá preparado</option>
                             </select>
@@ -720,7 +720,7 @@ export function Despacho() {
                               id={`chofer-${order.id}`}
                               value={order.driverId ?? ''}
                               disabled
-                              className="block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                              className="block w-full rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
                             >
                               <option value={order.driverId ?? ''}>
                                 {order.driverId
@@ -734,7 +734,7 @@ export function Despacho() {
                               id={`chofer-${order.id}`}
                               value=""
                               disabled
-                              className="block w-full rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                              className="block w-full rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
                             >
                               <option value="">Asigná una franja primero</option>
                             </select>
@@ -748,7 +748,7 @@ export function Despacho() {
                                   ? `franja-${order.id}`
                                   : undefined
                               }
-                              className="block min-w-0 flex-1 rounded-xl border border-lumi-line bg-white px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
+                              className="block min-w-0 flex-1 rounded-xl border border-lumi-line bg-surface px-2 py-1.5 text-sm text-lumi-ink disabled:opacity-50 sm:max-w-44"
                               onChange={(event) => {
                                 const select = event.target
                                 const driverId = select.value

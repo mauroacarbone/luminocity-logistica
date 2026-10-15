@@ -136,7 +136,7 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
       />
       <Polyline
         positions={line}
-        pathOptions={{ color: cssVar('--text', '#0f172a'), weight: 4 }}
+        pathOptions={{ color: cssVar('--text', '#111827'), weight: 4 }}
       />
       {stops.map((stop, index) => (
         <CircleMarker
@@ -144,10 +144,10 @@ function RouteMap({ stops, line }: { stops: Stop[]; line: [number, number][] }) 
           center={[stop.point.lat, stop.point.lng]}
           radius={index === 0 ? 9 : 7}
           pathOptions={{
-            color: cssVar('--primary-fg', '#1a1a1a'),
+            color: cssVar('--accent-fg', '#FFFFFF'),
             weight: 2,
             fillColor:
-              index === 0 ? cssVar('--primary', '#f5c400') : cssVar('--surface', '#fff'),
+              index === 0 ? cssVar('--accent', '#2563EB') : cssVar('--surface', '#F9FAFB'),
             fillOpacity: 1,
           }}
         >
@@ -528,7 +528,7 @@ export function PlanificadorRutas() {
       <div className="planner-week no-print grid grid-cols-3 items-center gap-2">
         <button
           type="button"
-          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
+          className="justify-self-start rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
           onClick={() => showWeek(weekOffset - 1)}
         >
           <span className="sm:hidden">‹</span>
@@ -540,7 +540,7 @@ export function PlanificadorRutas() {
         </p>
         <button
           type="button"
-          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-white sm:px-3"
+          className="justify-self-end rounded-xl px-2 py-2 text-sm text-lumi-ink hover:bg-surface-muted sm:px-3"
           onClick={() => showWeek(weekOffset + 1)}
         >
           <span className="sm:hidden">›</span>
@@ -567,7 +567,7 @@ export function PlanificadorRutas() {
               <span className="hidden w-full truncate text-center sm:inline">{formatDayLabel(day)}</span>
               <span
                 className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-white text-lumi-muted'
+                  selected ? 'bg-lumi-yellow text-lumi-yellow-ink' : 'bg-surface text-lumi-muted'
                 }`}
               >
                 {count}
@@ -583,14 +583,14 @@ export function PlanificadorRutas() {
           <input
             readOnly
             value={iso}
-            className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
           />
         </label>
         <label className="min-w-40 flex-1 text-sm">
           Chofer
           <select
             value={driverId}
-            className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
             onChange={(event) => {
               setDriverId(event.target.value)
               setSheet(null)
@@ -611,7 +611,7 @@ export function PlanificadorRutas() {
           Franja
           <select
             value={slot}
-            className="mt-1 block w-full rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm"
             onChange={(event) => {
               setSlot(event.target.value)
               setSheet(null)
@@ -632,7 +632,7 @@ export function PlanificadorRutas() {
           {driverId && timeWindow ? `${used}/3 en la franja` : ''}
         </p>
         {sheet && (
-          <span className="mb-1 rounded-full bg-white px-3 py-1 text-xs font-semibold">{SHEET_LABEL[sheet.status]}</span>
+          <span className="mb-1 rounded-full bg-surface px-3 py-1 text-xs font-semibold">{SHEET_LABEL[sheet.status]}</span>
         )}
       </div>
 
@@ -667,7 +667,7 @@ export function PlanificadorRutas() {
                         checked={selectedIds.includes(order.id)}
                         disabled={readOnly}
                         onChange={() => toggle(order.id)}
-                        style={{ accentColor: cssVar('--primary', '#f5c400') }}
+                        style={{ accentColor: cssVar('--accent', '#2563EB') }}
                       />
                       <span className="flex min-w-0 flex-1 items-start justify-between gap-3">
                         <span className="min-w-0">
@@ -763,7 +763,7 @@ export function PlanificadorRutas() {
           }}
           disabled={readOnly}
           aria-label="Origen de la ruta"
-          className="w-full min-w-0 rounded-xl border border-lumi-line bg-white px-3 py-2 text-sm disabled:opacity-60 sm:w-auto sm:min-w-48 sm:flex-1"
+          className="w-full min-w-0 rounded-xl border border-lumi-line bg-surface px-3 py-2 text-sm disabled:opacity-60 sm:w-auto sm:min-w-48 sm:flex-1"
         />
         <button
           type="button"
@@ -775,7 +775,7 @@ export function PlanificadorRutas() {
         </button>
         <button
           type="button"
-          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-60"
+          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-60"
           disabled={loading || readOnly}
           onClick={() => void draw(origin, selectedIds, false)}
         >
@@ -783,19 +783,19 @@ export function PlanificadorRutas() {
         </button>
         <button
           type="button"
-          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white disabled:opacity-60"
+          className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-60"
           disabled={loading || readOnly}
           onClick={() => void draw(origin, selectedIds, true)}
         >
           Optimizar orden
         </button>
-        <button type="button" className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-white" onClick={() => window.print()}>
+        <button type="button" className="shrink-0 rounded-xl px-3 py-2 text-sm hover:bg-surface-muted" onClick={() => window.print()}>
           Imprimir
         </button>
         {sheet?.status === 'planificada' && (
           <button
             type="button"
-            className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-danger hover:bg-white disabled:opacity-60"
+            className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-danger hover:bg-surface-muted disabled:opacity-60"
             disabled={loading}
             onClick={() => void removeSheet()}
           >
@@ -804,7 +804,7 @@ export function PlanificadorRutas() {
         )}
         <button
           type="button"
-          className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-white disabled:opacity-60"
+          className="shrink-0 rounded-xl px-3 py-2 text-sm text-lumi-muted hover:bg-surface-muted disabled:opacity-60"
           disabled={readOnly}
           onClick={clearPlan}
         >

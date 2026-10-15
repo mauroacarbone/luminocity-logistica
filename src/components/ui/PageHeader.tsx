@@ -22,7 +22,7 @@ export function PageHeader({ title, subtitle, actions, back, className }: PageHe
         {back ? (
           <Link
             to={back.to}
-            className="mb-2 inline-flex items-center gap-1 text-sm text-muted hover:text-text focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring rounded-lg"
+            className="mb-2 inline-flex items-center gap-1 text-sm text-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
           >
             <span aria-hidden="true">←</span>
             {back.label}

@@ -334,7 +334,7 @@ export function MisEntregas() {
               </h2>
               <button
                 type="button"
-                className="no-print min-h-12 rounded-xl border border-lumi-line bg-white px-4 text-base font-semibold"
+                className="no-print min-h-12 rounded-xl border border-lumi-line bg-surface px-4 text-base font-semibold"
                 onClick={() => window.print()}
               >
                 Descargar PDF
@@ -372,7 +372,7 @@ export function MisEntregas() {
               {sheet.status === 'en_curso' && canFinish && (
                 <button
                   type="button"
-                  className="min-h-12 rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white disabled:opacity-50"
+                  className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
                   disabled={finishing}
                   onClick={() => setFinishTarget(sheet)}
                 >
@@ -404,7 +404,7 @@ export function MisEntregas() {
               {legs.map((leg) => (
                 <a
                   key={leg.href}
-                  className="grid min-h-12 place-items-center rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white"
+                  className="grid min-h-12 place-items-center rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg"
                   href={leg.href}
                   target="_blank"
                   rel="noreferrer"
@@ -457,7 +457,7 @@ export function MisEntregas() {
             <div className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
-                className="min-h-12 rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white disabled:opacity-50"
+                className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
                 disabled={finishing}
                 onClick={() => void finishSheet()}
               >
@@ -597,7 +597,7 @@ function DeliveryCard({
         <div className="mt-4 flex flex-col gap-2">
           {maps ? (
             <a
-              className="grid min-h-12 place-items-center rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white"
+              className="grid min-h-12 place-items-center rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg"
               href={maps}
               target="_blank"
               rel="noreferrer"

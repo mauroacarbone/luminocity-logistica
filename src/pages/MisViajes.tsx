@@ -235,7 +235,7 @@ export function MisViajes() {
           </label>
           <button
             type="button"
-            className="min-h-12 rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white disabled:opacity-50"
+            className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50"
             disabled={finished.length === 0}
             onClick={() => exportFinished(finished, from, to)}
           >

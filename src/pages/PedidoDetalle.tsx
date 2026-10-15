@@ -193,11 +193,11 @@ function PedidoDetalleView({ id }: { id: string }) {
         </div>
       </header>
 
-      <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+      <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm sm:p-5">
         <OrderStepper order={order} variant="full" />
       </div>
 
-      <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+      <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm sm:p-5">
         <h2 className="text-base font-semibold">Datos del pedido</h2>
         <dl className="order-detail-grid mt-3">
           <div>
@@ -282,7 +282,7 @@ function PedidoDetalleView({ id }: { id: string }) {
         </dl>
       </div>
 
-      <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+      <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm sm:p-5">
         <h2 className="text-base font-semibold">Historial</h2>
         {history.length === 0 ? (
           <p className="mt-3 text-sm text-lumi-muted">Sin movimientos registrados.</p>
