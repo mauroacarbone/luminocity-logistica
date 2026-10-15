@@ -99,7 +99,9 @@ export function homePathForRole(role: Role) {
 export type Breadcrumb = { label: string; to?: string }
 
 export function breadcrumbsFor(pathname: string, role: Role, crumb?: string): Breadcrumb[] {
-  const crumbs: Breadcrumb[] = [{ label: 'Inicio', to: homePathForRole(role) }]
+  const home = homePathForRole(role)
+  if (pathname === home) return []
+  const crumbs: Breadcrumb[] = [{ label: 'Inicio', to: home }]
   const item = NAV.filter((entry) => pathMatches(pathname, entry.to, 'end' in entry ? entry.end : false)).sort(
     (left, right) => right.to.length - left.to.length,
   )[0]
