@@ -832,6 +832,10 @@ p {
   isolation: isolate;
 }
 
+.main:has(.planner-screen) {
+  padding-bottom: 0;
+}
+
 .swal2-container {
   z-index: var(--z-modal) !important;
 }
@@ -2259,7 +2263,7 @@ p {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: calc(100dvh - 56px - 40px);
+  height: calc(100dvh - 56px - 24px);
   min-height: 0;
   overflow: hidden;
 }

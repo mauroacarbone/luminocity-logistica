@@ -831,7 +831,7 @@ export function PlanificadorRutas() {
           Imprimir
         </Button>
         {sheet?.status === 'planificada' && (
-          <Button variant="secondary" size="lg" disabled={loading} onClick={() => void removeSheet()}>
+          <Button variant="danger-outline" size="lg" disabled={loading} onClick={() => void removeSheet()}>
             Borrar hoja
           </Button>
         )}
