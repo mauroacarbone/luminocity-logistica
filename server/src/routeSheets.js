@@ -746,8 +746,7 @@ function depotPoint(origin) {
     const lng = Number(coords[2])
     if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng }
   }
-  if (/warnes\s*986/i.test(text)) return DEPOT
-  return null
+  return DEPOT
 }
 
 function orderPoint(order) {

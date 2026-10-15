@@ -73,17 +73,26 @@ function stopCount(trip: DriverTrip) {
   return `${delivered} · ${pending}`
 }
 
+function csvNumber(value: number) {
+  return new Intl.NumberFormat('es-AR', {
+    useGrouping: false,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
 function exportFinished(trips: DriverTrip[], from: string, to: string) {
   const rows: Array<Array<string | number>> = [
-    ['chofer', 'fecha', 'franja', 'zonas', 'entregados', 'km', 'monto'],
+    ['chofer', 'fecha', 'franja', 'zonas', 'entregados', 'no_entregados', 'km', 'estimado', 'monto'],
     ...trips.map((trip) => [
       trip.driverName,
       trip.date,
       trip.slot,
       (trip.zones.length > 0 ? trip.zones : ['Sin zona']).join(' · '),
       trip.delivered,
-      trip.kmEstimated ? `${formatKm(trip.km)} estimado` : formatKm(trip.km),
-      trip.amount == null ? '' : formatArs(trip.amount),
+      trip.undelivered,
+      csvNumber(trip.km),
+      trip.kmEstimated ? 'sí' : 'no',
+      trip.amount == null ? '' : csvNumber(trip.amount),
     ]),
   ]
   downloadCsvFile(buildCsv(rows), `viajes-${from}-${to}.csv`)
