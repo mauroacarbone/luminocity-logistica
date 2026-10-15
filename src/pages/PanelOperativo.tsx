@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Badge, Button, Drawer, FilterBar, KpiCard, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderDetail } from '../components/OrderDetail'
@@ -337,7 +337,7 @@ function DetailActions({
 
 export function PanelOperativo() {
   const { user } = useAuth()
-  const { orders } = useOrders()
+  const { orders, loading } = useOrders()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -466,7 +466,7 @@ export function PanelOperativo() {
     )
   }
 
-  function closePedido() {
+  const closePedido = useCallback(() => {
     if (openedFromList(location.state)) {
       navigate(-1)
       return
@@ -479,7 +479,17 @@ export function PanelOperativo() {
       },
       { replace: true },
     )
-  }
+  }, [location.state, navigate, setSearchParams])
+
+  useEffect(() => {
+    if (loading || !openId) return
+    const pool = useAdvanceList
+      ? showDone
+        ? advanceOrders.concat(doneOrders)
+        : advanceOrders
+      : visibleOrders
+    if (!pool.some((order) => order.id === openId)) closePedido()
+  }, [loading, openId, useAdvanceList, showDone, advanceOrders, doneOrders, visibleOrders, closePedido])
 
   function selectView(next: View) {
     setView(next)
