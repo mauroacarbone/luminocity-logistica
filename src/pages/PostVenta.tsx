@@ -56,7 +56,7 @@ const STATUS_BADGE: Record<ClaimStatus, string> = {
   recepcion: 'bg-info-soft text-info',
   'pendiente-retiro': 'bg-orange-soft text-orange',
   'enviado-proveedor': 'bg-purple-soft text-purple',
-  reparacion: 'bg-primary-soft text-lumi-ink',
+  reparacion: 'bg-accent-soft text-lumi-ink',
   entregado: 'bg-success-soft text-success',
   cancelado: 'bg-danger-soft text-danger-deep',
 }
@@ -1290,7 +1290,7 @@ export function PostVenta() {
       <PageHeader title="Post Venta" subtitle="Cargá y seguí los reclamos de clientes" />
 
       {linkNotice && (
-        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-primary-soft px-4 py-2 text-sm text-lumi-ink">
+        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2 text-sm text-lumi-ink">
           <span>{linkNotice}</span>
           <button type="button" className="shrink-0 font-medium" onClick={() => setLinkNotice(null)}>
             Cerrar
@@ -1299,7 +1299,7 @@ export function PostVenta() {
       )}
 
       {notice && (
-        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-primary-soft px-4 py-2 text-sm text-lumi-ink">
+        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2 text-sm text-lumi-ink">
           <span>{notice}</span>
           <button type="button" className="shrink-0 font-medium" onClick={dismissNotice}>
             Cerrar

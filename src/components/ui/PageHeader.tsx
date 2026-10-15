@@ -14,7 +14,7 @@ type PageHeaderProps = {
 }
 
 const CRUMB_LINK =
-  'rounded-md text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+  'rounded-md text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 function Crumbs({ items }: { items: Breadcrumb[] }) {
   const collapsed = items.length > 2

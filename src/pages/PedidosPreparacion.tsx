@@ -241,7 +241,7 @@ export function PedidosPreparacion() {
       header: 'N°',
       cell: (order) => (
         <Link
-          className="font-medium text-primary hover:underline"
+          className="font-medium text-accent hover:underline"
           to={`/pedidos/${order.id}`}
           onClick={(event) => event.stopPropagation()}
         >
@@ -447,7 +447,7 @@ export function PedidosPreparacion() {
       >
         {openOrder ? (
           <div className="flex flex-col gap-4">
-            <Link className="text-sm font-medium text-primary hover:underline" to={`/pedidos/${openOrder.id}`}>
+            <Link className="text-sm font-medium text-accent hover:underline" to={`/pedidos/${openOrder.id}`}>
               Abrir página completa
             </Link>
             <OrderDetail order={openOrder} compact />

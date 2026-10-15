@@ -160,6 +160,31 @@ textarea {
   font: inherit;
 }
 
+input,
+select,
+textarea {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
 h1,
 p {
   margin: 0;
@@ -873,7 +898,7 @@ p {
   width: 28px;
   height: 28px;
   border: 3px solid var(--border);
-  border-top-color: var(--primary);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -901,6 +926,7 @@ p {
 .lumi-swal {
   background: var(--surface) !important;
   color: var(--text) !important;
+  border: 1px solid var(--border) !important;
   border-radius: 10px !important;
   font-family: var(--font-base) !important;
   box-shadow: var(--shadow-md) !important;
@@ -989,6 +1015,13 @@ p {
   font-weight: 500;
   background: var(--surface);
   color: var(--text);
+}
+
+.lumi-swal-select:focus,
+.lumi-swal-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .lumi-swal-list {
@@ -1166,13 +1199,13 @@ p {
 }
 
 .view-toggle button.active {
-  background: var(--primary);
-  color: var(--primary-fg);
+  background: var(--accent);
+  color: var(--accent-fg);
   font-weight: 600;
 }
 
 .view-toggle button.active:hover {
-  background: var(--primary-hover);
+  background: var(--accent-hover);
 }
 
 .view-toggle button.active:focus-visible {
@@ -1437,9 +1470,9 @@ p {
 }
 
 .order-step-current .order-step-dot {
-  border-color: var(--primary);
-  background: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-soft);
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .order-step-todo .order-step-dot {
@@ -1558,13 +1591,13 @@ p {
 }
 
 .order-link {
-  color: inherit;
+  color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .order-link:hover {
-  color: var(--text);
+  color: var(--accent-hover);
 }
 
 .form-stack {
@@ -1662,11 +1695,16 @@ p {
 .field select,
 .field textarea {
   width: 100%;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: 11px 12px;
   background: var(--surface);
-  color: inherit;
+  color: var(--text);
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--text-muted);
 }
 
 .field textarea {
@@ -1676,8 +1714,9 @@ p {
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-  outline: 2px solid var(--ring);
-  border-color: transparent;
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .field input:disabled,
@@ -1761,6 +1800,9 @@ p {
 
 .inline-field input {
   flex: 1;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 .text-button {
@@ -1800,7 +1842,7 @@ p {
 }
 
 .toggle.on {
-  background: var(--primary);
+  background: var(--accent);
 }
 
 .toggle span {
@@ -1837,6 +1879,9 @@ p {
 
 .address-input-wrap input {
   width: 100%;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 .address-suggest {
@@ -1872,7 +1917,7 @@ p {
 
 .address-suggest button[aria-selected='true'],
 .address-suggest button:hover {
-  background: var(--warning-soft);
+  background: var(--accent-soft);
 }
 
 .address-suggest strong {
@@ -1933,12 +1978,12 @@ p {
 
 .zone-chip.active {
   border-color: transparent;
-  background: var(--primary);
-  color: var(--primary-fg);
+  background: var(--accent);
+  color: var(--accent-fg);
 }
 
 .zone-chip.active:hover {
-  background: var(--primary-hover);
+  background: var(--accent-hover);
 }
 
 .zone-chip.active:focus-visible {

@@ -15,7 +15,7 @@ const HEIGHT: Record<ControlSize, string> = {
 }
 
 const CONTROL =
-  'w-full rounded-[10px] border border-border bg-surface px-3 text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:border-primary disabled:bg-surface-muted disabled:cursor-not-allowed'
+  'w-full rounded-[10px] border border-border bg-surface px-3 text-text focus-visible:outline-none focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--accent-soft)] disabled:bg-surface-muted disabled:cursor-not-allowed'
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   { className, invalid, disabled, size = 'md', children, ...rest },

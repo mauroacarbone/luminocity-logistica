@@ -31,7 +31,7 @@ export function EditReasonDialog({
         <h2 id="edit-reason-title" className="text-xl font-semibold">Motivo de la edición</h2>
         <p className="mt-1 text-sm text-lumi-muted">Contá por qué cambia el pedido.</p>
         {prepared && (
-          <p className="mt-3 rounded-xl bg-primary-soft px-3 py-2 text-sm text-lumi-ink">
+          <p className="mt-3 rounded-xl bg-accent-soft px-3 py-2 text-sm text-lumi-ink">
             El pedido ya está preparado. El cambio queda esperando confirmación del encargado.
           </p>
         )}

@@ -19,7 +19,7 @@ const TONE_CLASS: Record<BadgeTone, string> = {
   info: 'bg-info-soft text-info',
   purple: 'bg-info-soft text-info',
   orange: 'bg-warning-soft text-warning',
-  primary: 'bg-primary-soft text-primary',
+  primary: 'bg-accent-soft text-accent-ink',
 }
 
 const DOT_CLASS: Record<BadgeTone, string> = {
@@ -30,7 +30,7 @@ const DOT_CLASS: Record<BadgeTone, string> = {
   info: 'bg-info-dot',
   purple: 'bg-info-dot',
   orange: 'bg-warning-dot',
-  primary: 'bg-primary',
+  primary: 'bg-accent',
 }
 
 const SIZE_CLASS = {
