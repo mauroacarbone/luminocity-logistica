@@ -13,7 +13,7 @@ type ConfirmOptions = {
   didOpen?: SweetAlertOptions['didOpen']
 }
 
-/** Confirmación en español, con el amarillo de la app o rojo si es destructiva. */
+/** Confirmación en español: azul de acento, o rojo si es destructiva. */
 export async function confirm(
   titulo: string,
   texto: string,

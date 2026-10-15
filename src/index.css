@@ -879,8 +879,10 @@ p {
 }
 
 .lumi-swal {
-  border-radius: var(--r-lg) !important;
-  font-family: inherit;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-radius: 10px !important;
+  font-family: var(--font-base) !important;
   box-shadow: var(--shadow-md) !important;
 }
 
@@ -902,9 +904,11 @@ p {
 .lumi-swal-danger,
 .lumi-swal-cancel {
   border: 0;
-  border-radius: var(--r-lg);
+  border-radius: 10px;
   padding: 10px 16px;
-  font-weight: 700;
+  font-family: var(--font-base);
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -917,8 +921,11 @@ p {
   background: var(--accent-hover);
 }
 
-.lumi-swal-confirm:focus-visible {
-  box-shadow: 0 0 0 2px var(--ring);
+.lumi-swal-confirm:focus-visible,
+.lumi-swal-danger:focus-visible,
+.lumi-swal-cancel:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ring);
 }
 
 .lumi-swal-danger {
@@ -955,8 +962,8 @@ p {
 .lumi-swal-select,
 .lumi-swal-input {
   width: 100%;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 10px 12px;
   font: inherit;
   font-weight: 500;
