@@ -95,3 +95,27 @@ export function homePathForRole(role: Role) {
   if (role === 'chofer' && paths.includes('/mis-entregas')) return '/mis-entregas'
   return '/'
 }
+
+export type Breadcrumb = { label: string; to?: string }
+
+export function breadcrumbsFor(pathname: string, role: Role, crumb?: string): Breadcrumb[] {
+  const crumbs: Breadcrumb[] = [{ label: 'Inicio', to: homePathForRole(role) }]
+  const item = NAV.filter((entry) => pathMatches(pathname, entry.to, 'end' in entry ? entry.end : false)).sort(
+    (left, right) => right.to.length - left.to.length,
+  )[0]
+  if (!item) {
+    if (crumb) crumbs.push({ label: crumb })
+    return crumbs
+  }
+  if (!STANDALONE.has(item.to)) {
+    const group = GROUPS.find((entry) => entry.paths.includes(item.to))
+    if (group) crumbs.push({ label: group.title })
+  }
+  if (pathname !== item.to) {
+    crumbs.push({ label: item.label, to: item.to })
+    crumbs.push({ label: crumb ?? 'Detalle' })
+    return crumbs
+  }
+  crumbs.push({ label: item.label })
+  return crumbs
+}

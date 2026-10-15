@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Page } from '../components/ui'
+import { Button, Page, PageHeader } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { Modal } from '../components/ui/Modal'
@@ -579,15 +579,15 @@ export function Usuarios() {
 
   return (
     <Page>
-      <header className="page-header row">
-        <div>
-          <h1>Usuarios</h1>
-          <p>Roles, celular corporativo, vendedor y transportista.</p>
-        </div>
-        <button type="button" className="btn-primary" onClick={() => setCreating(true)}>
-          Nuevo usuario
-        </button>
-      </header>
+      <PageHeader
+        title="Usuarios"
+        subtitle="Roles, celular corporativo, vendedor y transportista."
+        actions={
+          <Button variant="primary" onClick={() => setCreating(true)}>
+            Nuevo usuario
+          </Button>
+        }
+      />
       {creating && (
         <NewUserDialog
           roles={roles}

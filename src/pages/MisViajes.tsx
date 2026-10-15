@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Badge, Page } from '../components/ui'
+import { Badge, Page, PageHeader } from '../components/ui'
 import { isSession, type Session } from '../lib/authStore'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
 import { listDriverTrips, type DriverTrip } from '../lib/routeSheetsApi'
@@ -197,10 +197,10 @@ export function MisViajes() {
 
   return (
     <Page>
-      <header className="page-header">
-        <h1>{manager ? 'Viajes del chofer' : 'Mis viajes'}</h1>
-        <p>Pendientes, finalizados y kilómetros del período</p>
-      </header>
+      <PageHeader
+        title={manager ? 'Viajes del chofer' : 'Mis viajes'}
+        subtitle="Pendientes, finalizados y kilómetros del período"
+      />
 
       {manager && (
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">

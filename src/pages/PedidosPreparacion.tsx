@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button, Modal, Page } from '../components/ui'
+import { Button, Modal, Page, PageHeader } from '../components/ui'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { PriorityChip } from '../components/PriorityChip'
 import { DISPATCH_LABEL } from '../data/catalog'
@@ -191,10 +191,10 @@ export function PedidosPreparacion() {
 
   return (
     <Page>
-      <header className="page-header">
-        <h1>Pedidos y Preparación</h1>
-        <p>Pedidos de la semana, por preparar y preparados.</p>
-      </header>
+      <PageHeader
+        title="Pedidos y Preparación"
+        subtitle="Pedidos de la semana, por preparar y preparados."
+      />
 
       <div className="mt-6 grid grid-cols-3 items-center gap-2">
         <Button

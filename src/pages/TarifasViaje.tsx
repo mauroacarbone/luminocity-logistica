@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Page } from '../components/ui'
+import { Page, PageHeader } from '../components/ui'
 import { listTripRates, saveTripRate, type TripRate } from '../lib/tripRatesApi'
 import { businessToday } from '../lib/schedule'
 import { formatIsoDate } from '../lib/week'
@@ -72,10 +72,10 @@ export function TarifasViaje() {
 
   return (
     <Page width="narrow">
-      <header className="page-header">
-        <h1>Tarifas de viaje</h1>
-        <p>Monto por zona, con la fecha desde la que rige. Los viajes anteriores no cambian.</p>
-      </header>
+      <PageHeader
+        title="Tarifas de viaje"
+        subtitle="Monto por zona, con la fecha desde la que rige. Los viajes anteriores no cambian."
+      />
       <p className="mt-3 text-sm text-lumi-muted">
         Si un viaje pasa por más de una zona, cobra la tarifa vigente que da el monto más alto. El monto por km es
         opcional y se multiplica por los km del viaje. Una vigencia anterior a hoy solo afecta a los viajes que todavía

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent }
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
-import { Button, KpiCard, LoadState, Page } from '../components/ui'
+import { Button, KpiCard, LoadState, Page, PageHeader } from '../components/ui'
 import { withCurrent, withExtras } from '../data/catalog'
 import {
   CLAIM_MOTIVES,
@@ -1367,10 +1367,7 @@ export function PostVenta() {
 
   return (
     <Page>
-      <header className="page-header">
-        <h1>Post Venta</h1>
-        <p>Cargá y seguí los reclamos de clientes</p>
-      </header>
+      <PageHeader title="Post Venta" subtitle="Cargá y seguí los reclamos de clientes" />
 
       {linkNotice && (
         <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-primary-soft px-4 py-2 text-sm text-lumi-ink">

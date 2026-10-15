@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Page } from '../components/ui'
-import { Link, useParams } from 'react-router-dom'
+import { Page, PageHeader } from '../components/ui'
+import { useParams } from 'react-router-dom'
 import { NoAccess } from '../components/NoAccess'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -109,12 +109,7 @@ function PedidoDetalleView({ id }: { id: string }) {
   if (missing) {
     return (
       <Page>
-        <header className="page-header">
-          <h1>No existe ese pedido</h1>
-          <p>
-            <Link to="/pedidos">Volver a pedidos</Link>
-          </p>
-        </header>
+        <PageHeader title="No existe ese pedido" back={{ to: '/pedidos', label: 'Volver a pedidos' }} />
       </Page>
     )
   }
@@ -166,22 +161,16 @@ function PedidoDetalleView({ id }: { id: string }) {
 
   return (
     <Page>
-      <header className="page-header">
-        <p className="text-sm text-lumi-muted">
-          <Link to={user.role === 'chofer' ? '/mis-entregas' : '/pedidos'}>
-            {user.role === 'chofer' ? 'Mis entregas' : 'Pedidos'}
-          </Link>
-          {' · '}
-          {order.id}
-        </p>
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="inline-flex flex-wrap items-center gap-2">
-              <span>{order.id}</span>
-              <PriorityChip order={order} />
-            </h1>
-            <p className="font-semibold uppercase">{order.client}</p>
-          </div>
+      <PageHeader
+        crumb={order.id}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span>{order.id}</span>
+            <PriorityChip order={order} />
+          </span>
+        }
+        subtitle={<span className="font-semibold uppercase">{order.client}</span>}
+        actions={
           <OrderFlowButtons
             order={order}
             role={user.role}
@@ -191,8 +180,8 @@ function PedidoDetalleView({ id }: { id: string }) {
             transition={transitionOrder}
             onDone={() => setReloadKey((key) => key + 1)}
           />
-        </div>
-      </header>
+        }
+      />
 
       <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm sm:p-5">
         <OrderStepper order={order} variant="full" />

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Page } from '../components/ui'
+import { Page, PageHeader } from '../components/ui'
 import { normalizeTimeWindow } from '../lib/slot'
 import { useCatalog } from '../state/CatalogContext'
 
@@ -428,10 +428,10 @@ export function DatosMaestros() {
 
   return (
     <Page>
-      <header className="page-header">
-        <h1>Datos maestros</h1>
-        <p>Listas que usan los formularios de pedidos, despacho y post venta.</p>
-      </header>
+      <PageHeader
+        title="Datos maestros"
+        subtitle="Listas que usan los formularios de pedidos, despacho y post venta."
+      />
       <div className="form-stack">
         <StringList
           title="Vendedores"

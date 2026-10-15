@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Page } from '../components/ui'
+import { Page, PageHeader } from '../components/ui'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -472,11 +472,10 @@ export function PanelOperativo() {
 
   return (
     <Page>
-      <header className="page-header row">
-        <div>
-          <h1>Panel Operativo</h1>
-          <p>Resumen de la operación en tiempo real</p>
-        </div>
+      <PageHeader
+        title="Panel Operativo"
+        subtitle="Resumen de la operación en tiempo real"
+        actions={
         <div className="view-toggle" role="group" aria-label="Vista">
           <button
             type="button"
@@ -504,7 +503,8 @@ export function PanelOperativo() {
             Tabla
           </button>
         </div>
-      </header>
+        }
+      />
 
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Fecha de entrega">
         {FECHA_CHIPS.map((chip) => (

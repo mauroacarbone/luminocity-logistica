@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Page } from '../components/ui'
+import { Page, PageHeader } from '../components/ui'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { pendingEdit, type Order, type OrderEdit } from '../data/orders'
 import { confirm, error as showError, success } from '../lib/alerts'
@@ -166,10 +166,7 @@ export function Bandeja() {
 
   return (
     <Page>
-      <header className="page-header">
-        <h1>Bandeja</h1>
-        <p>Autorizaciones y ediciones que esperan confirmación.</p>
-      </header>
+      <PageHeader title="Bandeja" subtitle="Autorizaciones y ediciones que esperan confirmación." />
       {loading && <Spinner label="Cargando bandeja…" />}
       {error && <ServerDown message={error} onRetry={retry} />}
 

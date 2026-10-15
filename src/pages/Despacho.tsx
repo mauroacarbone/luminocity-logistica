@@ -4,7 +4,7 @@ import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
-import { Button, Page } from '../components/ui'
+import { Button, Page, PageHeader } from '../components/ui'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
 import {
@@ -452,25 +452,25 @@ export function Despacho() {
 
   return (
     <Page>
-      <header className="page-header row">
-        <div>
-          <h1>Despacho</h1>
-          <p>Seguimiento de pedidos en viaje y entregados</p>
-        </div>
-        {confirmDelivery && (
-          <Button
-            variant="primary"
-            size="lg"
-            className="shrink-0"
-            onClick={() => {
-              setDialogError('')
-              setDialog('entrega')
-            }}
-          >
-            Escanear QR y confirmar entrega
-          </Button>
-        )}
-      </header>
+      <PageHeader
+        title="Despacho"
+        subtitle="Seguimiento de pedidos en viaje y entregados"
+        actions={
+          confirmDelivery ? (
+            <Button
+              variant="primary"
+              size="lg"
+              className="shrink-0"
+              onClick={() => {
+                setDialogError('')
+                setDialog('entrega')
+              }}
+            >
+              Escanear QR y confirmar entrega
+            </Button>
+          ) : undefined
+        }
+      />
 
       {notice && (
         <p className="mt-4 rounded-xl bg-success-soft px-4 py-2 text-sm text-success">{notice}</p>

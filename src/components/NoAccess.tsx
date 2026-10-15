@@ -1,15 +1,9 @@
-import { Page } from './ui'
-import { Link } from 'react-router-dom'
+import { Page, PageHeader } from './ui'
 
 export function NoAccess() {
   return (
     <Page>
-      <header className="page-header">
-        <h1>No tenés acceso a esta sección</h1>
-        <p>
-          <Link to="/">Volver al inicio</Link>
-        </p>
-      </header>
+      <PageHeader title="No tenés acceso a esta sección" back={{ to: '/', label: 'Volver al inicio' }} />
     </Page>
   )
 }

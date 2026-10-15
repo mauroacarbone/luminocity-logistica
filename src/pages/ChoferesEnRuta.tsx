@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { Button, Modal, Page } from '../components/ui'
+import { Button, Modal, Page, PageHeader } from '../components/ui'
 import { isOwnDelivery } from '../data/catalog'
 import { error, success } from '../lib/alerts'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
@@ -261,10 +261,7 @@ export function ChoferesEnRuta() {
 
   return (
     <Page width="full">
-      <header className="page-header">
-        <h1>Choferes en ruta</h1>
-        <p>Última posición de los que están en viaje</p>
-      </header>
+      <PageHeader title="Choferes en ruta" subtitle="Última posición de los que están en viaje" />
       {status === 'loading' && <Spinner label="Cargando choferes…" />}
       {status === 'error' && (
         <ServerDown

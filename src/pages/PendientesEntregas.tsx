@@ -4,7 +4,7 @@ import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { Badge, Button, EmptyState, Modal, Page, statusTone } from '../components/ui'
+import { Badge, Button, EmptyState, Modal, Page, PageHeader, statusTone } from '../components/ui'
 import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL, isDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
@@ -996,44 +996,35 @@ export function PendientesEntregas() {
 
   return (
     <Page>
-      <header className="page-header row">
-        <div>
-          <h1>Pendientes de Entregas</h1>
-          <p>Lista de pedidos y modo picking con stock de Clanbox</p>
-        </div>
-        {canWrite && (
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-xl border border-lumi-line bg-surface px-4 py-2 text-sm shadow-sm"
-              onClick={downloadTemplate}
-            >
-              Descargar plantilla
-            </button>
-            <button
-              type="button"
-              className="rounded-xl bg-surface px-4 py-2 text-sm shadow-sm disabled:opacity-50"
-              disabled={busy}
-              onClick={() => fileRef.current?.click()}
-            >
-              Cargar Excel al Sheet
-            </button>
-          </div>
-        )}
-        {canWrite && (
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".xlsx,.xls,.csv,text/csv"
-            style={{ display: 'none' }}
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) void onFile(file)
-              event.target.value = ''
-            }}
-          />
-        )}
-      </header>
+      <PageHeader
+        title="Pendientes de Entregas"
+        subtitle="Lista de pedidos y modo picking con stock de Clanbox"
+        actions={
+          canWrite ? (
+            <>
+              <Button variant="secondary" size="lg" onClick={downloadTemplate}>
+                Descargar plantilla
+              </Button>
+              <Button variant="secondary" size="lg" disabled={busy} onClick={() => fileRef.current?.click()}>
+                Cargar Excel al Sheet
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
+      {canWrite && (
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xlsx,.xls,.csv,text/csv"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (file) void onFile(file)
+            event.target.value = ''
+          }}
+        />
+      )}
 
       <div className="mt-6 flex gap-1 border-b border-lumi-line">
         {(['lista', 'picking'] as const).map((item) => (

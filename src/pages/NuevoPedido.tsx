@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { EditReasonDialog } from '../components/EditReasonDialog'
-import { Button, Page } from '../components/ui'
+import { Button, Page, PageHeader } from '../components/ui'
 import { NoAccess } from '../components/NoAccess'
 import {
   DISPATCH_LABEL,
@@ -1143,14 +1143,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
   return (
     <Page width="narrow">
-      <header className="page-header">
-        <h1>{storedId ? 'Editar Pedido' : 'Nuevo Pedido'}</h1>
-        <p>
-          {storedId
-            ? 'Actualizá los datos del pedido.'
-            : 'Cargá un nuevo pedido de logística.'}
-        </p>
-      </header>
+      <PageHeader
+        title={storedId ? 'Editar Pedido' : 'Nuevo Pedido'}
+        subtitle={storedId ? 'Actualizá los datos del pedido.' : 'Cargá un nuevo pedido de logística.'}
+      />
 
       {draftOffer && (
         <p
@@ -1832,15 +1828,15 @@ export function NuevoPedido() {
           : 'No podés editar este pedido.'
       return (
         <Page width="narrow">
-          <header className="page-header">
-            <h1>Editar Pedido</h1>
-            <p>{message}</p>
-            <p className="mt-3">
-              <Link className="text-lumi-ink underline" to={`/pedidos/${encodeURIComponent(editingId)}`}>
+          <PageHeader
+            title="Editar Pedido"
+            subtitle={message}
+            actions={
+              <Link className="text-primary underline" to={`/pedidos/${encodeURIComponent(editingId)}`}>
                 Ver pedido {editingId}
               </Link>
-            </p>
-          </header>
+            }
+          />
         </Page>
       )
     }

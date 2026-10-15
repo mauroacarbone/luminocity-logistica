@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { StopRouteMap, type MapStop } from '../components/StopRouteMap'
 import { PriorityChip } from '../components/PriorityChip'
-import { Badge, Button, Modal, Page } from '../components/ui'
+import { Badge, Button, Modal, Page, PageHeader } from '../components/ui'
 import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
@@ -269,10 +269,11 @@ export function MisEntregas() {
 
   return (
     <Page>
-      <header className="page-header no-print">
-        <h1>Mis entregas</h1>
-        {user?.carrierName?.trim() ? <p>{user.carrierName}</p> : null}
-      </header>
+      <PageHeader
+        className="no-print"
+        title="Mis entregas"
+        subtitle={user?.carrierName?.trim() || undefined}
+      />
       {user?.role === 'chofer' && (
         <p className={`no-print mt-3 text-sm font-semibold ${shownGps === 'on' ? 'text-lumi-ink' : 'text-lumi-muted'}`}>
           {shownGps === 'on' ? 'Ubicación activa' : 'Ubicación apagada'}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Page } from '../components/ui'
+import { Page, PageHeader } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
@@ -150,10 +150,7 @@ export function Seguimiento() {
 
   return (
     <Page>
-      <header className="page-header">
-        <h1>Seguimiento</h1>
-        <p>Buscá un pedido y mirá en qué estado está.</p>
-      </header>
+      <PageHeader title="Seguimiento" subtitle="Buscá un pedido y mirá en qué estado está." />
 
       <div className="mt-6 flex flex-col gap-3">
         <label className="block text-sm">

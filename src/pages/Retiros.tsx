@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Page } from '../components/ui'
+import { Page, PageHeader } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -167,10 +167,7 @@ export function Retiros() {
 
   return (
     <Page>
-      <header className="page-header">
-        <h1>Retiros</h1>
-        <p>Pedidos para retirar por el local.</p>
-      </header>
+      <PageHeader title="Retiros" subtitle="Pedidos para retirar por el local." />
 
       <div className="mt-6 flex flex-col gap-3">
         <label className="block text-sm">
