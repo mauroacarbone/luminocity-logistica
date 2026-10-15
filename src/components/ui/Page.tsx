@@ -19,7 +19,7 @@ export function Page({ children, width = 'default', className }: PageProps) {
   return (
     <section
       className={cx(
-        'mx-auto flex w-full flex-col gap-4 px-4 md:px-6 lg:gap-6 lg:px-8',
+        'mx-auto flex w-full flex-col gap-4 px-4 pt-4 md:px-6 lg:gap-6 lg:px-8 lg:pt-6',
         WIDTH[width],
         className,
       )}

@@ -72,7 +72,7 @@ export function PageHeader({ title, subtitle, actions, back, crumb, className }:
               {back.label}
             </Link>
           ) : null}
-          <h1 className="text-xl font-semibold text-text">{title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary lg:text-[28px]">{title}</h1>
           {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
         </div>
         {actions ? (

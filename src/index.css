@@ -2196,7 +2196,7 @@ p {
   }
 
   .main {
-    padding-top: calc(56px + 16px);
+    padding-top: 56px;
     padding-bottom: 32px;
   }
 
@@ -2211,7 +2211,7 @@ p {
   }
 
   .main {
-    padding-top: calc(56px + 12px);
+    padding-top: 56px;
     padding-bottom: 32px;
   }
 
