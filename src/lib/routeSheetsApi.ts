@@ -224,6 +224,15 @@ export async function listDriverTrips(
   return { ok: true, data: result.data }
 }
 
+export function finishRouteSheet(id: string) {
+  return request(
+    `/api/route-sheets/${encodeURIComponent(id)}/finish`,
+    'POST',
+    {},
+    'No se pudo finalizar el viaje.',
+  )
+}
+
 export function startRouteSheet(id: string) {
   return request(
     `/api/route-sheets/${encodeURIComponent(id)}/start`,

@@ -73,6 +73,17 @@ routeSheetsRouter.delete('/:id', requireRole('encargado_deposito', 'admin'), asy
   })
 })
 
+routeSheetsRouter.post('/:id/finish', async (req, res) => {
+  await send(res, async () => {
+    const result = await finishSheet(req.params.id, req.user)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(result.sheet)
+  })
+})
+
 routeSheetsRouter.post('/:id/start', requireRole('chofer'), async (req, res) => {
   await send(res, async () => {
     const result = await startSheet(req.params.id, req.user)
@@ -256,6 +267,34 @@ function startSheet(id, user) {
     const next = { ...sheet, status: 'en_curso', startedAt: now }
     sheets[index] = next
     await writeCollection('orders', orders)
+    await writeCollection('routeSheets', sheets)
+    return { sheet: next }
+  })
+}
+
+function finishSheet(id, user) {
+  return locked(async () => {
+    if (user.role !== 'chofer' && user.role !== 'encargado_deposito' && user.role !== 'admin') {
+      return fail('No tenés permiso para finalizar el viaje.', 403)
+    }
+    const sheets = await readCollection('routeSheets')
+    const index = sheets.findIndex((item) => item.id === id)
+    if (index < 0) return fail('No existe esa hoja de ruta.', 404)
+    const sheet = sheets[index]
+    if (user.role === 'chofer' && sheet.driverId !== user.id) {
+      return fail('No tenés permiso para finalizar esta hoja.', 403)
+    }
+    if (sheet.status === 'cerrada') return fail('Esa hoja ya está cerrada', 409)
+    if (sheet.status !== 'en_curso') return fail('Solo podés finalizar una hoja en curso', 409)
+    const orders = await readCollection('orders')
+    const byId = new Map(orders.map((order) => [order.id, order]))
+    const next = {
+      ...sheet,
+      status: 'cerrada',
+      closedAt: new Date().toISOString(),
+      trip: buildTrip(sheet, byId),
+    }
+    sheets[index] = next
     await writeCollection('routeSheets', sheets)
     return { sheet: next }
   })

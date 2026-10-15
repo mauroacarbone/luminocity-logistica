@@ -4,12 +4,13 @@ import { OrderStepper } from '../components/OrderStepper'
 import { StopRouteMap, type MapStop } from '../components/StopRouteMap'
 import { PriorityChip } from '../components/PriorityChip'
 import { Badge } from '../components/ui'
+import { Modal } from '../components/ui/Modal'
 import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
 import { mapsLink, onTheWayText, whatsappLink } from '../lib/whatsapp'
 import { placeLine } from '../lib/place'
-import { listRouteSheets, startRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
+import { finishRouteSheet, listRouteSheets, startRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
 import { sheetIsReady, WAITING_SHEET } from '../lib/routeReady'
 import { businessOffset, businessToday, googleNavigate, mapsRouteLegs, stopPoint, wazeNavigate } from '../lib/schedule'
 import { compareDriverQueue, deliveryTimeliness, TIMELINESS_LABEL, timelinessTone } from '../lib/timeliness'
@@ -74,8 +75,13 @@ export function MisEntregas() {
   const [sheets, setSheets] = useState<RouteSheet[]>([])
   const [sheetsError, setSheetsError] = useState('')
   const [starting, setStarting] = useState('')
+  const [finishTarget, setFinishTarget] = useState<RouteSheet | null>(null)
+  const [finishing, setFinishing] = useState(false)
   const today = businessToday()
-  const tracking = !loading && !ordersError && orders.some((order) => order.status === 'en-viaje')
+  const canFinish =
+    user?.role === 'chofer' || user?.role === 'encargado_deposito' || user?.role === 'admin'
+  const tracking =
+    user?.role === 'chofer' && !loading && !ordersError && orders.some((order) => order.status === 'en-viaje')
   const hadTraveling = useRef(false)
   const userId = user?.id
 
@@ -249,16 +255,32 @@ export function MisEntregas() {
     await success('Recorrido iniciado')
   }
 
+  async function finishSheet() {
+    if (!finishTarget) return
+    setFinishing(true)
+    const result = await finishRouteSheet(finishTarget.id)
+    setFinishing(false)
+    if (!result.ok) {
+      await error(result.message)
+      return
+    }
+    setSheets((current) => current.filter((item) => item.id !== finishTarget.id))
+    setFinishTarget(null)
+    await success('Viaje finalizado')
+  }
+
   return (
     <section className="page">
       <header className="page-header no-print">
         <h1>Mis entregas</h1>
         {user?.carrierName?.trim() ? <p>{user.carrierName}</p> : null}
       </header>
-      <p className={`no-print mt-3 text-sm font-semibold ${shownGps === 'on' ? 'text-lumi-ink' : 'text-lumi-muted'}`}>
-        {shownGps === 'on' ? 'Ubicación activa' : 'Ubicación apagada'}
-      </p>
-      {shownGps === 'denied' && (
+      {user?.role === 'chofer' && (
+        <p className={`no-print mt-3 text-sm font-semibold ${shownGps === 'on' ? 'text-lumi-ink' : 'text-lumi-muted'}`}>
+          {shownGps === 'on' ? 'Ubicación activa' : 'Ubicación apagada'}
+        </p>
+      )}
+      {user?.role === 'chofer' && shownGps === 'denied' && (
         <p className="no-print mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold shadow-sm">
           Activá la ubicación para ordenar las entregas
         </p>
@@ -347,7 +369,17 @@ export function MisEntregas() {
               </div>
             </dl>
             <div className="no-print mt-3 flex flex-col gap-2">
-              {sheet.status === 'planificada' && sheet.date <= today && (
+              {sheet.status === 'en_curso' && canFinish && (
+                <button
+                  type="button"
+                  className="min-h-12 rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white disabled:opacity-50"
+                  disabled={finishing}
+                  onClick={() => setFinishTarget(sheet)}
+                >
+                  Finalizar viaje
+                </button>
+              )}
+              {user?.role === 'chofer' && sheet.status === 'planificada' && sheet.date <= today && (
                 <>
                   {!sheetIsReady(sheet, orders) && (
                     <p className="rounded-xl bg-surface px-4 py-3 text-sm font-semibold shadow-sm">
@@ -406,6 +438,44 @@ export function MisEntregas() {
           </section>
         )
       })}
+      {finishTarget && (
+        <Modal
+          labelledBy="finish-trip-title"
+          closeOnEscape={!finishing}
+          className="grid place-items-center bg-black/40 p-4"
+          onClose={() => {
+            if (!finishing) setFinishTarget(null)
+          }}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-lg">
+            <h2 id="finish-trip-title" className="text-xl font-semibold">
+              Finalizar viaje
+            </h2>
+            <p className="mt-2 text-sm">
+              La franja {finishTarget.slot} se cierra. Las paradas que no estén entregadas quedan en el viaje como no
+              entregadas, y los pedidos no cambian de estado.
+            </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                className="min-h-12 rounded-xl bg-lumi-ink px-4 text-base font-semibold text-white disabled:opacity-50"
+                disabled={finishing}
+                onClick={() => void finishSheet()}
+              >
+                {finishing ? 'Cerrando…' : 'Finalizar viaje'}
+              </button>
+              <button
+                type="button"
+                className="min-h-12 rounded-xl border border-lumi-line px-4 text-base font-semibold disabled:opacity-50"
+                disabled={finishing}
+                onClick={() => setFinishTarget(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
       <div className="view-toggle no-print mt-4" role="tablist" aria-label="Entregas">
         <button
           type="button"

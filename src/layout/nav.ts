@@ -92,6 +92,6 @@ export function activeItem(pathname: string, items: readonly NavItem[]): NavItem
 export function homePathForRole(role: Role) {
   const { standalone, groups } = visibleNav(role)
   const paths = [...standalone.map((i) => i.to), ...groups.flatMap((g) => g.items.map((i) => i.to))]
-  if (paths.includes('/mis-entregas')) return '/mis-entregas'
+  if (role === 'chofer' && paths.includes('/mis-entregas')) return '/mis-entregas'
   return '/'
 }
