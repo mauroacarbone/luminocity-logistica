@@ -1,4 +1,4 @@
-import type { ElementType, HTMLAttributes, ReactNode } from 'react'
+import { forwardRef, type ElementType, type HTMLAttributes, type ReactNode } from 'react'
 import { cx } from './cx'
 
 type CardAs = 'div' | 'section' | 'article' | 'li'
@@ -18,17 +18,14 @@ type CardProps = {
   children?: ReactNode
 } & HTMLAttributes<HTMLElement>
 
-export function Card({
-  as = 'div',
-  padding = 'md',
-  interactive = false,
-  className,
-  children,
-  ...rest
-}: CardProps) {
+export const Card = forwardRef<HTMLElement, CardProps>(function Card(
+  { as = 'div', padding = 'md', interactive = false, className, children, ...rest },
+  ref,
+) {
   const Tag = as as ElementType
   return (
     <Tag
+      ref={ref}
       className={cx(
         'rounded-2xl border border-border bg-surface shadow-sm',
         PADDING[padding],
@@ -40,7 +37,7 @@ export function Card({
       {children}
     </Tag>
   )
-}
+})
 
 type CardHeaderProps = {
   title: ReactNode

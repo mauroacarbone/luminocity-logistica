@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent }
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
-import { Button, FilterBar, KpiCard, LoadState, Page, PageHeader } from '../components/ui'
+import { Button, Card, Field, FilterBar, Input, KpiCard, LoadState, Page, PageHeader, Select, Textarea } from '../components/ui'
 import { withCurrent, withExtras } from '../data/catalog'
 import {
   CLAIM_MOTIVES,
@@ -137,18 +137,14 @@ function SearchField({
   onChange: (value: string) => void
 }) {
   return (
-    <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2">
-      <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" aria-hidden="true">
-        <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
-        <path d="M16 16l4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-      <input
+    <Field label="Buscar pedido">
+      <Input
+        size="lg"
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm outline-none"
       />
-    </label>
+    </Field>
   )
 }
 
@@ -493,21 +489,22 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
       <section className="form-card">
         <h2>Nuevo reclamo</h2>
         <div className="field-grid">
-          <label className="field full">
-            <span>Nombre del cliente *</span>
-            <input
-              value={client}
-              placeholder="Nombre del cliente"
-              aria-invalid={Boolean(errors.client)}
-              onChange={(event) => setClient(event.target.value)}
-            />
-            {errors.client && <small className="field-error">{errors.client}</small>}
-          </label>
+          <div className="field full">
+            <Field label="Nombre del cliente *" error={errors.client}>
+              <Input
+                size="lg"
+                value={client}
+                placeholder="Nombre del cliente"
+                onChange={(event) => setClient(event.target.value)}
+              />
+            </Field>
+          </div>
           <div className="field full">
             <span>N° de factura / pedido</span>
             {invoices.map((invoice, index) => (
               <div className="inline-field" key={index}>
-                <input
+                <Input
+                  size="lg"
                   value={invoice}
                   placeholder="Ej: 0001-00012345"
                   aria-label={`Factura ${index + 1}`}
@@ -541,27 +538,26 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
               + Agregar otra factura
             </Button>
           </div>
-          <label className="field">
-            <span>Teléfono</span>
-            <input
+          <Field label="Teléfono">
+            <Input
+              size="lg"
               value={phone}
               placeholder="+54 11..."
               onChange={(event) => setPhone(event.target.value)}
             />
-          </label>
-          <label className="field">
-            <span>Email</span>
-            <input
+          </Field>
+          <Field label="Email" error={errors.email}>
+            <Input
+              size="lg"
+              type="email"
               value={email}
               placeholder="cliente@email.com"
-              aria-invalid={Boolean(errors.email)}
               onChange={(event) => setEmail(event.target.value)}
             />
-            {errors.email && <small className="field-error">{errors.email}</small>}
-          </label>
-          <label className="field">
-            <span>Vendedor</span>
-            <select
+          </Field>
+          <Field label="Vendedor">
+            <Select
+              size="lg"
               value={sellerValue}
               disabled={sellerLocked || saving}
               onChange={(event) => setSeller(event.target.value)}
@@ -572,13 +568,12 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
                   {name}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Motivo *</span>
-            <select
+            </Select>
+          </Field>
+          <Field label="Motivo *" error={errors.motive}>
+            <Select
+              size="lg"
               value={motive}
-              aria-invalid={Boolean(errors.motive)}
               onChange={(event) => setMotive(event.target.value)}
             >
               <option value="">Seleccioná un motivo</option>
@@ -587,25 +582,24 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
                   {item}
                 </option>
               ))}
-            </select>
-            {errors.motive && <small className="field-error">{errors.motive}</small>}
-          </label>
-          <label className="field full">
-            <span>Descripción del problema *</span>
-            <textarea
-              value={description}
-              rows={4}
-              placeholder="Contá qué pasó..."
-              aria-invalid={Boolean(errors.description)}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-            {errors.description && <small className="field-error">{errors.description}</small>}
-          </label>
+            </Select>
+          </Field>
+          <div className="field full">
+            <Field label="Descripción del problema *" error={errors.description}>
+              <Textarea
+                value={description}
+                rows={4}
+                placeholder="Contá qué pasó..."
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </Field>
+          </div>
           <div className="field full">
             <span>Productos del reclamo *</span>
             {products.map((product, index) => (
               <div className="inline-field" key={index}>
-                <input
+                <Input
+                  size="lg"
                   value={product.name}
                   placeholder="Escribí el nombre o código del producto"
                   aria-label={`Producto ${index + 1}`}
@@ -618,10 +612,12 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
                     )
                   }
                 />
-                <input
+                <Input
+                  size="lg"
                   value={product.quantity}
                   inputMode="numeric"
                   aria-label={`Cantidad del producto ${index + 1}`}
+                  className="max-w-[4.5rem] shrink-0"
                   style={{ width: 72, flex: '0 0 72px' }}
                   onChange={(event) =>
                     setProducts((current) =>
@@ -661,7 +657,8 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
               style={{ display: 'inline-flex', justifyContent: 'center', padding: '10px 14px', cursor: 'pointer' }}
             >
               Agregar foto
-              <input
+              <Input
+                size="lg"
                 type="file"
                 accept="image/*"
                 multiple
@@ -693,18 +690,26 @@ function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
             )}
             {errors.photos && <small className="field-error">{errors.photos}</small>}
           </div>
-          <label className="field full">
-            <span>Adjuntar archivo</span>
-            <input
-              type="file"
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-              onChange={(event) => onAttachment(event.target.files?.[0])}
-            />
-            <small className="hint">PDF, Word, Excel o imagen. Máximo 2 MB.</small>
-            {readingFile && <small className="hint">Leyendo archivo…</small>}
-            {attachment && <small className="hint">{attachment.name}</small>}
-            {errors.file && <small className="field-error">{errors.file}</small>}
-          </label>
+          <div className="field full">
+            <Field
+              label="Adjuntar archivo"
+              hint={
+                readingFile
+                  ? 'Leyendo archivo…'
+                  : attachment
+                    ? `${attachment.name}. PDF, Word, Excel o imagen. Máximo 2 MB.`
+                    : 'PDF, Word, Excel o imagen. Máximo 2 MB.'
+              }
+              error={errors.file}
+            >
+              <Input
+                size="lg"
+                type="file"
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                onChange={(event) => onAttachment(event.target.files?.[0])}
+              />
+            </Field>
+          </div>
         </div>
         <div className="form-actions mt-4">
           <Button variant="ghost" disabled={saving} onClick={reset}>
@@ -878,9 +883,10 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   }, [highlight, claim.id])
 
   return (
-    <article
+    <Card
+      as="article"
       ref={cardRef}
-      className={`rounded-2xl bg-surface p-4 shadow-sm ${highlight ? 'ring-2 ring-accent' : ''}`}
+      className={highlight ? 'ring-2 ring-accent' : undefined}
     >
       <div className="w-full">
         <span
@@ -901,7 +907,8 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
 
         {!terminal && nextStatus && (
           <Button
-            variant="primary"
+            variant="secondary"
+            size="lg"
             fullWidth
             className="mt-3 sm:w-auto"
             disabled={busy}
@@ -1031,20 +1038,22 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
         </div>
       </div>
       {noting && (
-        <div className="mt-3 flex gap-2">
-          <input
-            value={note}
-            placeholder="Agregar una nota..."
-            disabled={busy}
-            onChange={(event) => setNote(event.target.value)}
-            className="min-w-0 flex-1 rounded-xl border border-border px-3 py-2 text-sm"
-          />
-          <Button variant="secondary" disabled={busy} onClick={() => void saveNote()}>
+        <div className="mt-3 flex items-end gap-2">
+          <Field label="Nota" className="min-w-0 flex-1">
+            <Input
+              size="lg"
+              value={note}
+              placeholder="Agregar una nota..."
+              disabled={busy}
+              onChange={(event) => setNote(event.target.value)}
+            />
+          </Field>
+          <Button variant="secondary" size="lg" disabled={busy} onClick={() => void saveNote()}>
             Guardar
           </Button>
         </div>
       )}
-    </article>
+    </Card>
   )
 }
 
@@ -1130,7 +1139,7 @@ function Dashboard({ claims }: { claims: Claim[] }) {
         <KpiCard title="Tasa de resolución" value={`${rate}%`} />
       </div>
 
-      <section className="rounded-2xl bg-surface p-5 shadow-sm">
+      <Card as="section">
         <h2 className="text-base font-semibold">Reclamos por estado</h2>
         {byStatus.length === 0 ? (
           <p className="mt-4 text-sm text-muted">Cuando cargues reclamos, vas a ver cómo se reparten.</p>
@@ -1152,9 +1161,9 @@ function Dashboard({ claims }: { claims: Claim[] }) {
             ))}
           </ul>
         )}
-      </section>
+      </Card>
 
-      <section className="rounded-2xl bg-surface p-5 shadow-sm">
+      <Card as="section">
         <h2 className="text-base font-semibold">Top motivos de reclamo</h2>
         {byMotive.length === 0 ? (
           <p className="mt-4 text-sm text-muted">Todavía no hay motivos para mostrar.</p>
@@ -1176,7 +1185,7 @@ function Dashboard({ claims }: { claims: Claim[] }) {
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </div>
   )
 }
@@ -1290,45 +1299,35 @@ export function PostVenta() {
       <PageHeader title="Post Venta" subtitle="Cargá y seguí los reclamos de clientes" />
 
       {linkNotice && (
-        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2 text-sm text-text">
+        <p className="mt-4 flex items-start justify-between gap-3 rounded-md bg-accent-soft px-4 py-2 text-sm text-text">
           <span>{linkNotice}</span>
-          <button type="button" className="shrink-0 font-medium" onClick={() => setLinkNotice(null)}>
+          <Button variant="ghost" size="sm" aria-label="Cerrar aviso" onClick={() => setLinkNotice(null)}>
             Cerrar
-          </button>
+          </Button>
         </p>
       )}
 
       {notice && (
-        <p className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-accent-soft px-4 py-2 text-sm text-text">
+        <p className="mt-4 flex items-start justify-between gap-3 rounded-md bg-accent-soft px-4 py-2 text-sm text-text">
           <span>{notice}</span>
-          <button type="button" className="shrink-0 font-medium" onClick={dismissNotice}>
+          <Button variant="ghost" size="sm" aria-label="Cerrar aviso" onClick={dismissNotice}>
             Cerrar
-          </button>
+          </Button>
         </p>
       )}
 
       {legacyOffer && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-3 shadow-sm">
+        <Card className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm">Hay reclamos guardados en este navegador</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
-              disabled={legacyBusy}
-              onClick={() => void onUploadLegacy()}
-            >
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" disabled={legacyBusy} onClick={() => void onUploadLegacy()}>
               Subirlos
-            </button>
-            <button
-              type="button"
-              className="rounded-xl border border-border px-3 py-1.5 text-sm disabled:opacity-50"
-              disabled={legacyBusy}
-              onClick={() => void onDismissLegacy()}
-            >
+            </Button>
+            <Button variant="ghost" disabled={legacyBusy} onClick={() => void onDismissLegacy()}>
               Descartar
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
       <FilterBar
