@@ -204,6 +204,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const legacyRef = useRef(legacyOrders)
   const importingRef = useRef(false)
   const refreshInFlight = useRef(false)
+  const writeSeq = useRef(0)
   const generation = useRef(0)
   const userId = user?.id ?? null
   const [trackedUserId, setTrackedUserId] = useState(userId)
@@ -269,8 +270,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       }
       if (!userId) return Promise.resolve()
       const id = generation.current
+      const seq = writeSeq.current
       return listOrders().then((result) => {
-        if (id !== generation.current) return
+        if (id !== generation.current || writeSeq.current !== seq) return
         if (!result.ok) {
           if (result.status === 401) logout()
           return
@@ -309,6 +311,10 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }
   }, [userId, refresh])
 
+  function noteWrite() {
+    writeSeq.current += 1
+  }
+
   function replaceOrders(list: Order[]) {
     ordersRef.current = list
     setOrders(list)
@@ -346,6 +352,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     reason?: string,
     override = false,
   ): Promise<OrderSaveResult> {
+    noteWrite()
     const previous = id ? ordersRef.current.find((item) => item.id === id) : undefined
     const body = orderBody(order, mode, previous)
     if (reason) body.reason = reason
@@ -380,6 +387,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }
 
   async function patchFields(id: string, fields: Record<string, unknown>): Promise<OrderSaveResult> {
+    noteWrite()
     const result = await patchOrder(id, fields)
     if (!result.ok) return fail(result)
     const saved = asOrder(result.data)
@@ -389,6 +397,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }
 
   async function transitionOrder(id: string, fields: Record<string, unknown>): Promise<OrderSaveResult> {
+    noteWrite()
     const result = await transitionOrderRequest(id, fields)
     if (!result.ok) return fail(result)
     const saved = asOrder(result.data)
@@ -403,6 +412,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     status: 'aplicada' | 'rechazada',
     override = false,
   ): Promise<OrderSaveResult> {
+    noteWrite()
     const result = await reviewOrderEdit(orderId, editId, status, override)
     if (!result.ok) return fail(result)
     const saved = asOrder(result.data)
@@ -412,6 +422,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }
 
   async function removeOrder(id: string): Promise<OrderDeleteResult> {
+    noteWrite()
     const result = await deleteOrder(id)
     if (!result.ok) {
       if (result.status === 401) logout()
@@ -426,6 +437,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
   async function importLegacy() {
     if (importingRef.current || legacyRef.current.length === 0) return
+    noteWrite()
     importingRef.current = true
     setImporting(true)
     setImportError('')
