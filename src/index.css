@@ -2166,10 +2166,9 @@ p {
 .planner-screen {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  height: calc(100dvh - (var(--header-top-h) + var(--tabs-h)) - 24px);
-  min-height: 0;
-  overflow: hidden;
+  gap: 16px;
+  container: planner / inline-size;
+  min-width: 0;
 }
 
 .planner-screen > header {
@@ -2194,33 +2193,51 @@ p {
 }
 
 .planner-toolbar {
-  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
+}
+
+.planner-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.planner-quota-full {
+  grid-column: 1 / -1;
 }
 
 .planner-body {
-  flex: 1 1 0;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(380px, 420px) minmax(0, 1fr);
-  gap: 12px;
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .planner-side {
   min-width: 0;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: 16px;
 }
 
 .planner-side-scroll {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.planner-line {
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.planner-line:last-child {
+  border-bottom: 0;
 }
 
 .planner-days > button {
@@ -2234,20 +2251,25 @@ p {
 }
 
 .planner-actions {
-  flex: 0 0 auto;
-  position: sticky;
-  bottom: 0;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  container: planner-actions / inline-size;
+}
+
+.planner-actions-tools {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
 .planner-map {
-  position: sticky;
-  top: 0;
-  align-self: stretch;
+  isolation: isolate;
+  z-index: 0;
   min-width: 0;
-  min-height: 0;
-  height: 100%;
+  width: 100%;
+  height: 50vh;
+  min-height: 320px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2278,41 +2300,29 @@ p {
   width: 100%;
 }
 
-@media (max-width: 1023px) {
-  .planner-screen {
-    height: auto;
-    overflow-x: hidden;
-    padding-bottom: 96px;
+@container planner-actions (min-width: 400px) {
+  .planner-actions-tools {
+    grid-template-columns: 1fr 1fr;
   }
+}
 
+@container planner (min-width: 1100px) {
   .planner-body {
-    display: flex;
-    flex-direction: column;
-    flex: none;
+    display: grid;
+    grid-template-columns: 420px minmax(0, 1fr);
+    gap: 24px;
+    padding: 16px;
+    align-items: start;
   }
 
-  .planner-side,
-  .planner-side-scroll {
-    overflow: visible;
-    flex: none;
-  }
-
-  .planner-actions {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 20;
-    padding: 12px;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
+  .planner-side {
+    max-height: calc(100dvh - (var(--header-top-h) + var(--tabs-h)) - 32px);
+    overflow-y: auto;
   }
 
   .planner-map {
-    position: static;
-    flex: none;
-    height: 50vh;
-    min-height: 50vh;
+    height: calc(100dvh - (var(--header-top-h) + var(--tabs-h)) - 32px);
+    min-height: 320px;
   }
 }
 

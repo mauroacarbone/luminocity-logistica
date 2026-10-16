@@ -680,7 +680,7 @@ export function PlanificadorRutas() {
         })}
       </div>
 
-      <div className="planner-filters no-print flex flex-wrap items-end gap-2">
+      <div className="planner-filters no-print">
         <label className="text-sm">
           Fecha
           <input
@@ -689,7 +689,7 @@ export function PlanificadorRutas() {
             className="mt-1 block w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
           />
         </label>
-        <label className="min-w-40 flex-1 text-sm">
+        <label className="text-sm">
           Chofer
           <Select
             value={driverId}
@@ -735,9 +735,11 @@ export function PlanificadorRutas() {
             ))}
           </Select>
         </label>
-        <p className={`pb-2 text-sm font-semibold ${used >= 3 ? 'text-danger' : ''}`}>
-          {driverId && timeWindow ? `${used}/3 en la franja` : ''}
-        </p>
+        {driverId && timeWindow ? (
+          <p className={`text-sm font-semibold ${used >= 3 ? 'planner-quota-full text-danger' : ''}`}>
+            {used}/3 en la franja
+          </p>
+        ) : null}
         {sheet && (
           <span className="mb-1 rounded-full bg-surface px-3 py-1 text-xs font-semibold">{SHEET_LABEL[sheet.status]}</span>
         )}
@@ -747,7 +749,7 @@ export function PlanificadorRutas() {
       <div className="planner-body">
       <div className="planner-side">
       <div className="planner-side-scroll">
-      <section className="no-print mb-4">
+      <section className="no-print">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-sm font-semibold text-text">Por planificar hoy</h2>
           {unplannedSummary ? <p className="text-sm text-muted">{unplannedSummary}</p> : null}
@@ -781,7 +783,7 @@ export function PlanificadorRutas() {
                       <div
                         key={order.id}
                         aria-disabled="true"
-                        className="flex min-h-14 w-full flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-left opacity-60 last:border-b-0"
+                        className="planner-line flex w-full flex-wrap items-center text-left opacity-60 last:border-b-0"
                       >
                         {cells}
                       </div>
@@ -791,7 +793,7 @@ export function PlanificadorRutas() {
                     <button
                       key={order.id}
                       type="button"
-                      className="flex min-h-14 w-full flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-left last:border-b-0 hover:bg-surface-2"
+                      className="planner-line flex w-full flex-wrap items-center text-left last:border-b-0 hover:bg-surface-2"
                       onClick={() => planPending(order)}
                     >
                       {cells}
@@ -830,7 +832,7 @@ export function PlanificadorRutas() {
                   {listedView.map((order) => (
                     <label
                       key={order.id}
-                      className="flex h-14 items-center gap-3 overflow-hidden border-b border-border px-3 last:border-b-0"
+                      className="planner-line flex items-center overflow-hidden last:border-b-0"
                     >
                       <input
                         type="checkbox"
@@ -881,7 +883,7 @@ export function PlanificadorRutas() {
                     {othersView.map((order) => (
                       <li
                         key={order.id}
-                        className="border-b border-border px-3 py-2 text-sm text-muted last:border-b-0"
+                        className="planner-line text-sm text-muted last:border-b-0"
                       >
                         <p className="flex flex-wrap items-center gap-2">
                           <Link className="order-link font-medium" to={`/pedidos/${order.id}`}>
@@ -912,7 +914,7 @@ export function PlanificadorRutas() {
           ) : (
             <ol className="mt-3 overflow-hidden rounded-[6px] border border-border">
               {stops.map((stop, index) => (
-                <li key={stop.key} className="flex h-14 items-center gap-3 overflow-hidden border-b border-border px-3 last:border-b-0">
+                <li key={stop.key} className="planner-line flex items-center overflow-hidden last:border-b-0">
                   <span className="inline-grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
                     {index + 1}
                   </span>
@@ -936,12 +938,12 @@ export function PlanificadorRutas() {
         }}
         disabled={readOnly}
         aria-label="Origen de la ruta"
-        className="mt-3 w-full min-w-0 rounded-xl border border-border bg-surface px-3 py-2 text-sm disabled:opacity-60"
+        className="w-full min-w-0 rounded-xl border border-border bg-surface px-3 py-2 text-sm disabled:opacity-60"
       />
 
-      {error && <p className="no-print mt-3 text-sm text-danger">{error}</p>}
+      {error && <p className="no-print text-sm text-danger">{error}</p>}
 
-      <p className="planner-stats no-print mt-3 text-sm text-muted">
+      <p className="planner-stats no-print text-sm text-muted">
         {deliveryStops} parada{deliveryStops === 1 ? '' : 's'}
         {' · '}
         {route && route.line.length > 0 ? formatKm(route.kilometers) : sheet ? formatKm(sheet.km) : '— km'}
@@ -950,15 +952,16 @@ export function PlanificadorRutas() {
       </p>
       </div>
 
-      <div className="planner-actions no-print sticky bottom-0 z-10 flex flex-wrap items-center gap-2 border-t border-border bg-surface py-3">
+      <div className="planner-actions no-print">
         {sheet?.status === 'cerrada' || sheet?.status === 'en_curso' ? (
-          <Button variant="secondary" size="lg" disabled>
+          <Button variant="secondary" size="lg" fullWidth disabled>
             {sheet.status === 'cerrada' ? 'Viaje finalizado' : 'Viaje en curso'}
           </Button>
         ) : sheet?.status === 'planificada' && sameDeliveryOrder(sheet.orderIds, stops, selectedIds) ? (
           <Button
             variant="secondary"
             size="lg"
+            fullWidth
             aria-disabled="true"
             className="hover:bg-btn-secondary"
             onClick={(event) => event.preventDefault()}
@@ -974,37 +977,42 @@ export function PlanificadorRutas() {
           <Button
             variant="primary"
             size="lg"
+            fullWidth
             disabled={loading || !driverId || !timeWindow}
             onClick={() => void confirmSheet()}
           >
             Confirmar hoja de ruta
           </Button>
         )}
-        <Button
-          variant="secondary"
-          size="lg"
-          disabled={loading || readOnly}
-          onClick={() => void draw(origin, selectedIds, false)}
-        >
-          {loading ? 'Calculando…' : 'Calcular ruta'}
-        </Button>
-        <Button
-          variant="secondary"
-          size="lg"
-          disabled={loading || readOnly}
-          onClick={() => void draw(origin, selectedIds, true)}
-        >
-          Optimizar orden
-        </Button>
-        <Button variant="secondary" size="lg" onClick={() => window.print()}>
-          Imprimir
-        </Button>
+        <div className="planner-actions-tools">
+          <Button
+            variant="secondary"
+            size="lg"
+            fullWidth
+            disabled={loading || readOnly}
+            onClick={() => void draw(origin, selectedIds, false)}
+          >
+            {loading ? 'Calculando…' : 'Calcular ruta'}
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            fullWidth
+            disabled={loading || readOnly}
+            onClick={() => void draw(origin, selectedIds, true)}
+          >
+            Optimizar orden
+          </Button>
+          <Button variant="secondary" size="lg" fullWidth onClick={() => window.print()}>
+            Imprimir
+          </Button>
+        </div>
         {sheet?.status === 'planificada' && (
-          <Button variant="danger-outline" size="lg" disabled={loading} onClick={() => void removeSheet()}>
+          <Button variant="danger-outline" size="lg" fullWidth disabled={loading} onClick={() => void removeSheet()}>
             Borrar hoja
           </Button>
         )}
-        <Button variant="ghost" size="lg" disabled={readOnly} onClick={clearPlan}>
+        <Button variant="ghost" size="lg" fullWidth disabled={readOnly} onClick={clearPlan}>
           Limpiar
         </Button>
       </div>
