@@ -20,6 +20,8 @@ type TableProps<T> = {
   /** Alto máximo del recuadro. El encabezado queda fijo dentro de ese scroll. */
   maxHeight?: string
   onRowClick?: (row: T) => void
+  /** Sin marco propio: la tabla vive dentro de otra caja. */
+  bare?: boolean
   className?: string
 }
 
@@ -124,6 +126,7 @@ export function Table<T>({
   empty,
   maxHeight = '70vh',
   onRowClick,
+  bare = false,
   className,
 }: TableProps<T>) {
   const scrollerRef = useRef<HTMLDivElement>(null)
@@ -158,7 +161,7 @@ export function Table<T>({
 
   return (
     <div className={cx('relative', className)}>
-      <div ref={scrollerRef} className="overflow-auto" style={{ maxHeight }}>
+      <div ref={scrollerRef} className="overflow-auto" style={bare ? undefined : { maxHeight }}>
         <table className={cx(TABLE, fixed && 'table-fixed')}>
           {caption ? <caption className="mb-2 text-left text-sm text-muted">{caption}</caption> : null}
           {columnsOf(columns)}

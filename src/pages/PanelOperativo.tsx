@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Badge, Button, Drawer, FilterBar, KpiCard, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, FilterBar, KpiCard, ListBox, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { NavIcon } from '../layout/NavIcon'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderDetail } from '../components/OrderDetail'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
@@ -335,6 +336,25 @@ function DetailActions({
   )
 }
 
+function PanelViewSwitch({ view, onChange }: { view: View; onChange: (next: View) => void }) {
+  const item = (value: View, label: string) => (
+    <button
+      type="button"
+      aria-pressed={view === value}
+      onClick={() => onChange(value)}
+      className={`rounded px-2.5 py-1 text-sm ${view === value ? 'bg-bg font-semibold text-text' : 'text-muted'}`}
+    >
+      {label}
+    </button>
+  )
+  return (
+    <div className="inline-flex rounded-md bg-surface-2 p-0.5" role="group" aria-label="Vista">
+      {item('kanban', 'Tablero')}
+      {item('tabla', 'Tabla')}
+    </div>
+  )
+}
+
 export function PanelOperativo() {
   const { user } = useAuth()
   const { orders, loading } = useOrders()
@@ -387,6 +407,9 @@ export function PanelOperativo() {
   const columns = statusFilter ? [statusFilter] : STATUS_ORDER
   const undatedCount = datedOrders.filter((order) => !hasDeliveryDate(order)).length
   const overdueCount = orders.filter((order) => isOverdue(order, today)).length
+  const openCount = datedOrders.filter((order) => order.status !== 'entregado').length
+  const deliveredCount = countFor(datedOrders, 'entregado')
+  const listFiltersActive = dateFilter !== 'semana' || statusFilter !== null
   const useAdvanceList = narrow && view === 'kanban' && !statusFilter
 
   const advanceOrders = useMemo(
@@ -597,34 +620,6 @@ export function PanelOperativo() {
         }
       />
 
-      <div className="view-toggle mt-4" role="group" aria-label="Vista">
-          <button
-            type="button"
-            className={view === 'kanban' ? 'active' : undefined}
-            aria-pressed={view === 'kanban'}
-            onClick={() => selectView('kanban')}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="4" width="5" height="16" rx="1" fill="none" stroke="currentColor" strokeWidth="1.8" />
-              <rect x="10" y="4" width="5" height="10" rx="1" fill="none" stroke="currentColor" strokeWidth="1.8" />
-              <rect x="17" y="4" width="4" height="13" rx="1" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            </svg>
-            Tablero
-          </button>
-          <button
-            type="button"
-            className={view === 'tabla' ? 'active' : undefined}
-            aria-pressed={view === 'tabla'}
-            onClick={() => selectView('tabla')}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="4" y="5" width="16" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-              <path d="M4 10h16M4 15h16M10 5v14" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            </svg>
-            Tabla
-          </button>
-      </div>
-
       <FilterBar
         className="mt-4"
         chips={[
@@ -668,6 +663,12 @@ export function PanelOperativo() {
         {fechaLabel}
         {undatedCount > 0 ? ` · ${undatedCount} sin fecha` : ''}
       </p>
+
+      {view === 'kanban' ? (
+        <div className="mt-4 flex justify-end">
+          <PanelViewSwitch view={view} onChange={selectView} />
+        </div>
+      ) : null}
 
       {view === 'kanban' && useAdvanceList ? (
         <div className="mt-4 flex flex-col gap-3">
@@ -748,19 +749,54 @@ export function PanelOperativo() {
           </div>
         </div>
       ) : (
-        <div className="mt-4">
+        <ListBox
+          className="mt-4"
+          counters={[
+            {
+              key: 'abiertos',
+              label: 'Abiertos',
+              count: openCount,
+              active: statusFilter !== 'entregado',
+              onClick: () => selectSummary('total'),
+            },
+            {
+              key: 'entregados',
+              label: 'Entregados',
+              count: deliveredCount,
+              active: statusFilter === 'entregado',
+              onClick: () => selectSummary('entregado'),
+            },
+          ]}
+          view={<PanelViewSwitch view={view} onChange={selectView} />}
+        >
           <Table
+            bare
             columns={panelColumns}
             rows={visibleOrders}
             rowKey={(order) => order.id}
             onRowClick={(order) => openPedido(order.id)}
             empty={
-              <p className="py-8 text-center text-sm text-muted">
-                {orders.length === 0 ? 'No hay pedidos.' : 'Ningún pedido coincide con el filtro.'}
-              </p>
+              <EmptyState
+                variant="plain"
+                icon={<NavIcon name="box" />}
+                title="No hay pedidos"
+                action={
+                  listFiltersActive ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        selectFecha('semana')
+                        selectSummary('total')
+                      }}
+                    >
+                      Limpiar filtros
+                    </button>
+                  ) : undefined
+                }
+              />
             }
           />
-        </div>
+        </ListBox>
       )}
 
       <Drawer

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { Badge, Button, Drawer, EmptyState, Modal, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, ListBox, Modal, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { NavIcon } from '../layout/NavIcon'
 import { OrderDetail } from '../components/OrderDetail'
 import { PriorityChip } from '../components/PriorityChip'
 import { DISPATCH_LABEL } from '../data/catalog'
@@ -10,8 +11,6 @@ import { canCancelOrder, canEditOrder, canPrepare } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
 import { compareOpenPriority } from '../lib/priority'
 import {
-  DAY_LONG,
-  DAY_SHORT,
   MONTH_SHORT,
   formatDayLabel,
   toIso,
@@ -319,60 +318,43 @@ export function PedidosPreparacion() {
         </Button>
       </div>
 
-      <div className="mt-4 grid min-w-0 grid-cols-7 gap-1">
-        {days.map((day) => {
+      <ListBox
+        className="mt-4"
+        counters={days.map((day) => {
           const iso = toIso(day)
           const count = weekOrders.filter((order) => order.deliveryDate === iso).length
-          const selected = iso === toIso(selectedDate)
-          return (
-            <button
-              key={iso}
-              type="button"
-              className={`flex min-w-0 flex-col items-center gap-1 border-b-2 px-0.5 py-2 text-xs sm:text-sm ${
-                selected
-                  ? 'border-accent font-semibold text-text'
-                  : 'border-transparent text-muted'
-              }`}
-              onClick={() => {
-                if (iso !== toIso(selectedDate) && openId) closePedido()
-                setSelectedIso(iso)
-              }}
-            >
-              <span className="truncate sm:hidden">{DAY_SHORT[day.getDay()]}</span>
-              <span className="hidden truncate sm:inline">{formatDayLabel(day)}</span>
-              <span
-                className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-muted'
-                }`}
-              >
-                {count}
-              </span>
-            </button>
-          )
+          return {
+            key: iso,
+            label: formatDayLabel(day),
+            count,
+            active: iso === toIso(selectedDate),
+            onClick: () => {
+              if (iso !== toIso(selectedDate) && openId) closePedido()
+              setSelectedIso(iso)
+            },
+          }
         })}
-      </div>
-
-      <div className="mt-6 flex items-baseline justify-between">
-        <h2 className="text-2xl font-semibold">{DAY_LONG[selectedDate.getDay()]}</h2>
-        <p className="text-sm text-muted">
-          {dayOrders.length} pedido{dayOrders.length === 1 ? '' : 's'}
-        </p>
-      </div>
-
-      {dayOrders.length === 0 ? (
-        <EmptyState className="mt-4" title="No hay pedidos." />
-      ) : (
-        <>
-          <div className="mt-4 hidden lg:block">
-            <Table columns={columns} rows={dayOrders} rowKey={(order) => order.id} onRowClick={(order) => openPedido(order.id)} />
-          </div>
-          <div className="mt-4 flex flex-col gap-3 lg:hidden">
-            {dayOrders.map((order) => (
-              <article
-                key={order.id}
-                className="cursor-pointer rounded-2xl bg-surface p-4 text-left shadow-sm"
-                onClick={() => openPedido(order.id)}
-              >
+      >
+        {dayOrders.length === 0 ? (
+          <EmptyState variant="plain" icon={<NavIcon name="box" />} title="No hay pedidos" />
+        ) : (
+          <>
+            <div className="hidden lg:block">
+              <Table
+                bare
+                columns={columns}
+                rows={dayOrders}
+                rowKey={(order) => order.id}
+                onRowClick={(order) => openPedido(order.id)}
+              />
+            </div>
+            <div className="flex flex-col lg:hidden">
+              {dayOrders.map((order) => (
+                <article
+                  key={order.id}
+                  className="cursor-pointer border-b border-border px-4 py-3 text-left last:border-b-0"
+                  onClick={() => openPedido(order.id)}
+                >
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -407,7 +389,8 @@ export function PedidosPreparacion() {
             ))}
           </div>
         </>
-      )}
+        )}
+      </ListBox>
 
       <Drawer
         open={Boolean(openOrder)}

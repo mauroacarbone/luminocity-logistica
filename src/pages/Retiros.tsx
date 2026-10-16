@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Button, FilterBar, Page, PageHeader } from '../components/ui'
+import { Button, EmptyState, FilterBar, ListBox, Page, PageHeader } from '../components/ui'
+import { NavIcon } from '../layout/NavIcon'
 import { Link } from 'react-router-dom'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
@@ -179,20 +180,6 @@ export function Retiros() {
           srOnly: true,
           placeholder: 'Cliente, teléfono, pedido o factura',
         }}
-        chips={[
-          {
-            id: 'estado',
-            label: 'Estado',
-            multiple: true,
-            values: [...selected],
-            options: CHIPS.map((chip) => ({
-              value: chip.value,
-              label: chip.label,
-              count: counts[chip.value],
-            })),
-            onChange: (value) => setSelected((prev) => toggleChip(prev, value as ChipStatus)),
-          },
-        ]}
         dateRange={{
           from,
           to,
@@ -237,24 +224,48 @@ export function Retiros() {
         </Button>
       </div>
 
-      <p className="mt-6 text-sm text-muted">
-        {filtered.length} retiro{filtered.length === 1 ? '' : 's'}
-      </p>
-
-      {ordersError ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm font-semibold text-danger shadow-sm">
-          {ordersError}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-muted shadow-sm">
-          {pickups.length === 0
-            ? 'No hay retiros para mostrar.'
-            : 'No hay retiros que coincidan con la búsqueda o los filtros.'}
-        </div>
-      ) : (
-        <ul className="mt-4 flex flex-col gap-3">
-          {filtered.map((order) => (
-            <li key={order.id}>
+      <ListBox
+        className="mt-4"
+        counters={CHIPS.map((chip) => ({
+          key: chip.value,
+          label: chip.label,
+          count: counts[chip.value],
+          active: selected.has(chip.value),
+          onClick: () => setSelected((prev) => toggleChip(prev, chip.value)),
+        }))}
+      >
+        {ordersError ? (
+          <div className="px-5 py-8 text-center text-sm font-semibold text-danger">{ordersError}</div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            variant="plain"
+            icon={<NavIcon name="box" />}
+            title="No hay pedidos"
+            action={
+              (query.trim() ? 1 : 0) +
+                (selected.size === 2 && selected.has('pendiente') && selected.has('preparado') ? 0 : 1) +
+                (allDates || from !== defaults.from || to !== defaults.to ? 1 : 0) >
+              0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const range = weekRange()
+                    setQuery('')
+                    setSelected(new Set<ChipStatus>(['pendiente', 'preparado']))
+                    setFrom(range.from)
+                    setTo(range.to)
+                    setAllDates(false)
+                  }}
+                >
+                  Limpiar filtros
+                </button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <ul>
+            {filtered.map((order) => (
+              <li key={order.id} className="min-h-14 border-b border-border px-4 py-3 last:border-b-0">
               <PickupCard
                 order={order}
                 today={today}
@@ -287,8 +298,9 @@ export function Retiros() {
               />
             </li>
           ))}
-        </ul>
-      )}
+          </ul>
+        )}
+      </ListBox>
     </Page>
   )
 }

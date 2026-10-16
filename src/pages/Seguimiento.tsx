@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Button, FilterBar, Page, PageHeader } from '../components/ui'
+import { Button, EmptyState, FilterBar, ListBox, Page, PageHeader } from '../components/ui'
+import { NavIcon } from '../layout/NavIcon'
 import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
@@ -140,6 +141,17 @@ export function Seguimiento() {
     })
   }, [orders, query, statusFilter, from, to, allDates, today])
 
+  const statusBase = orders.filter(
+    (order) => matchesQuery(order, query) && inDateRange(order, from, to, allDates),
+  )
+  const counters = chips.map((chip) => ({
+    key: chip.value,
+    label: chip.label,
+    count: statusBase.filter((order) => matchesStatus(order, chip.value)).length,
+    active: statusFilter === chip.value,
+    onClick: () => setStatusFilter(chip.value),
+  }))
+
   if (loading) {
     return (
       <Page>
@@ -161,15 +173,6 @@ export function Seguimiento() {
           srOnly: true,
           placeholder: 'Número, cliente o factura',
         }}
-        chips={[
-          {
-            id: 'estado',
-            label: 'Estado',
-            value: statusFilter,
-            options: chips,
-            onChange: (value) => setStatusFilter(value as StatusFilter),
-          },
-        ]}
         dateRange={{
           from,
           to,
@@ -213,26 +216,41 @@ export function Seguimiento() {
         </Button>
       </div>
 
-      <p className="mt-6 text-sm text-muted">
-        {filtered.length} de {orders.length} pedido{orders.length === 1 ? '' : 's'}
-      </p>
-
-      {ordersError ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm font-semibold text-danger shadow-sm">
-          {ordersError}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-muted shadow-sm">
-          {orders.length === 0
-            ? 'No hay pedidos para mostrar.'
-            : 'No hay pedidos que coincidan con la búsqueda o los filtros.'}
-        </div>
-      ) : (
-        <ul className="mt-4 flex flex-col gap-3">
-          {filtered.map((order) => {
-            const slot = normalizeTimeWindow(order.timeWindow)
-            return (
-              <li key={order.id} className="rounded-2xl bg-surface p-4 shadow-sm">
+      <ListBox className="mt-4" counters={counters}>
+        {ordersError ? (
+          <div className="px-5 py-8 text-center text-sm font-semibold text-danger">{ordersError}</div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            variant="plain"
+            icon={<NavIcon name="box" />}
+            title="No hay pedidos"
+            action={
+              (query.trim() ? 1 : 0) +
+                (statusFilter !== 'todos' ? 1 : 0) +
+                (allDates || from !== defaults.from || to !== defaults.to ? 1 : 0) >
+              0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const range = weekRange()
+                    setQuery('')
+                    setStatusFilter('todos')
+                    setFrom(range.from)
+                    setTo(range.to)
+                    setAllDates(false)
+                  }}
+                >
+                  Limpiar filtros
+                </button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <ul>
+            {filtered.map((order) => {
+              const slot = normalizeTimeWindow(order.timeWindow)
+              return (
+                <li key={order.id} className="min-h-14 border-b border-border px-4 py-3 last:border-b-0">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -286,8 +304,9 @@ export function Seguimiento() {
               </li>
             )
           })}
-        </ul>
-      )}
+          </ul>
+        )}
+      </ListBox>
     </Page>
   )
 }
