@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Page, PageHeader } from '../components/ui'
+import { Button, Field, Input, Page, PageHeader } from '../components/ui'
 import { normalizeTimeWindow } from '../lib/slot'
 import { useCatalog } from '../state/CatalogContext'
 
@@ -116,31 +116,31 @@ function StringList({
               {editing === index ? (
                 <form onSubmit={saveEdit}>
                   <div className="master-row">
-                    <label className="field">
-                      <input
+                    <Field label="Nombre" error={editError || undefined} className="min-w-0 flex-1">
+                      <Input
+                        size="lg"
                         value={editDraft}
-                        aria-label={`Editar ${title}`}
                         onChange={(event) => {
                           setEditDraft(event.target.value)
                           setEditError('')
                         }}
                       />
-                    </label>
-                    <button type="submit" className="btn-primary">
+                    </Field>
+                    <Button type="submit" variant="secondary" size="lg">
                       Guardar
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="btn-ghost"
+                      variant="ghost"
+                      size="lg"
                       onClick={() => {
                         setEditing(null)
                         setEditError('')
                       }}
                     >
                       Cancelar
-                    </button>
+                    </Button>
                   </div>
-                  {editError && <small className="field-error">{editError}</small>}
                 </form>
               ) : (
                 <div className="master-row">
@@ -148,32 +148,29 @@ function StringList({
                   {confirming === index ? (
                     <span className="master-confirm">
                       <span>¿Eliminar?</span>
-                      <button
-                        type="button"
-                        className="rounded-xl bg-danger-deep px-3 py-2 text-sm font-semibold text-inverse hover:bg-danger"
-                        onClick={() => remove(index)}
-                      >
+                      <Button type="button" variant="danger" size="lg" onClick={() => remove(index)}>
                         Sí
-                      </button>
-                      <button type="button" className="text-button" onClick={() => setConfirming(null)}>
+                      </Button>
+                      <Button type="button" variant="ghost" size="lg" onClick={() => setConfirming(null)}>
                         No
-                      </button>
+                      </Button>
                     </span>
                   ) : (
                     <span className="master-actions">
-                      <button type="button" className="text-button" onClick={() => startEdit(index)}>
+                      <Button type="button" variant="ghost" size="lg" onClick={() => startEdit(index)}>
                         Editar
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className="rounded-xl bg-danger-deep px-3 py-2 text-sm font-semibold text-inverse hover:bg-danger"
+                        variant="danger-outline"
+                        size="lg"
                         onClick={() => {
                           setConfirming(index)
                           setEditing(null)
                         }}
                       >
                         Eliminar
-                      </button>
+                      </Button>
                     </span>
                   )}
                 </div>
@@ -183,21 +180,20 @@ function StringList({
         </ul>
       )}
       <form className="master-add" onSubmit={add}>
-        <label className="field">
-          <input
+        <Field label="Nombre" error={addError || undefined} className="min-w-0 flex-1">
+          <Input
+            size="lg"
             value={draft}
             placeholder={placeholder}
-            aria-label={placeholder}
             onChange={(event) => {
               setDraft(event.target.value)
               setAddError('')
             }}
           />
-          {addError && <small className="field-error">{addError}</small>}
-        </label>
-        <button type="submit" className="btn-primary">
+        </Field>
+        <Button type="submit" variant="secondary" size="lg">
           Agregar
-        </button>
+        </Button>
       </form>
       {saveError && <small className="field-error">{saveError}</small>}
     </section>
@@ -309,42 +305,42 @@ function ZoneList({
               {editing === index ? (
                 <form onSubmit={saveEdit}>
                   <div className="master-row">
-                    <label className="field">
-                      <input
+                    <Field label="Nombre de la zona" error={editError || undefined} className="min-w-0 flex-1">
+                      <Input
+                        size="lg"
                         value={editName}
-                        aria-label="Nombre de la zona"
                         onChange={(event) => {
                           setEditName(event.target.value)
                           setEditError('')
                         }}
                       />
-                    </label>
-                    <label className="field">
-                      <input
+                    </Field>
+                    <Field label="Días de reparto" className="min-w-0 flex-1">
+                      <Input
+                        size="lg"
                         value={editDays}
-                        aria-label="Días de reparto"
                         placeholder="Lun · Jue"
                         onChange={(event) => {
                           setEditDays(event.target.value)
                           setEditError('')
                         }}
                       />
-                    </label>
-                    <button type="submit" className="btn-primary">
+                    </Field>
+                    <Button type="submit" variant="secondary" size="lg">
                       Guardar
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="btn-ghost"
+                      variant="ghost"
+                      size="lg"
                       onClick={() => {
                         setEditing(null)
                         setEditError('')
                       }}
                     >
                       Cancelar
-                    </button>
+                    </Button>
                   </div>
-                  {editError && <small className="field-error">{editError}</small>}
                 </form>
               ) : (
                 <div className="master-row">
@@ -355,32 +351,29 @@ function ZoneList({
                   {confirming === index ? (
                     <span className="master-confirm">
                       <span>¿Eliminar?</span>
-                      <button
-                        type="button"
-                        className="rounded-xl bg-danger-deep px-3 py-2 text-sm font-semibold text-inverse hover:bg-danger"
-                        onClick={() => remove(index)}
-                      >
+                      <Button type="button" variant="danger" size="lg" onClick={() => remove(index)}>
                         Sí
-                      </button>
-                      <button type="button" className="text-button" onClick={() => setConfirming(null)}>
+                      </Button>
+                      <Button type="button" variant="ghost" size="lg" onClick={() => setConfirming(null)}>
                         No
-                      </button>
+                      </Button>
                     </span>
                   ) : (
                     <span className="master-actions">
-                      <button type="button" className="text-button" onClick={() => startEdit(index)}>
+                      <Button type="button" variant="ghost" size="lg" onClick={() => startEdit(index)}>
                         Editar
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className="rounded-xl bg-danger-deep px-3 py-2 text-sm font-semibold text-inverse hover:bg-danger"
+                        variant="danger-outline"
+                        size="lg"
                         onClick={() => {
                           setConfirming(index)
                           setEditing(null)
                         }}
                       >
                         Eliminar
-                      </button>
+                      </Button>
                     </span>
                   )}
                 </div>
@@ -390,31 +383,31 @@ function ZoneList({
         </ul>
       )}
       <form className="master-add" onSubmit={add}>
-        <label className="field">
-          <input
+        <Field label="Nombre de la zona" className="min-w-0 flex-1">
+          <Input
+            size="lg"
             value={name}
             placeholder="Nombre de la zona"
-            aria-label="Nombre de la zona"
             onChange={(event) => {
               setName(event.target.value)
               setAddError('')
             }}
           />
-        </label>
-        <label className="field">
-          <input
+        </Field>
+        <Field label="Días de reparto" className="min-w-0 flex-1">
+          <Input
+            size="lg"
             value={days}
             placeholder="Días, ej. Lun · Jue"
-            aria-label="Días de reparto"
             onChange={(event) => {
               setDays(event.target.value)
               setAddError('')
             }}
           />
-        </label>
-        <button type="submit" className="btn-primary">
+        </Field>
+        <Button type="submit" variant="secondary" size="lg">
           Agregar
-        </button>
+        </Button>
       </form>
       {addError && <small className="field-error">{addError}</small>}
       {saveError && <small className="field-error">{saveError}</small>}
