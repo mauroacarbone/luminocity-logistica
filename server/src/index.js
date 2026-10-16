@@ -11,7 +11,7 @@ import { notificationsRouter } from './notifications.js'
 import { ordersRouter } from './orders.js'
 import { claimsRouter } from './claims.js'
 import { pickingRouter } from './picking.js'
-import { routeSheetsRouter } from './routeSheets.js'
+import { releaseClosedSheetOrders, routeSheetsRouter } from './routeSheets.js'
 import { tripRatesRouter } from './tripRates.js'
 import { usersRouter } from './usersRoute.js'
 import { ensureDemoUser } from './users.js'
@@ -144,6 +144,7 @@ try {
 }
 
 await ensureDemoUser()
+await releaseClosedSheetOrders()
 
 const port = Number(process.env.PORT) || 3001
 app.listen(port, () => {

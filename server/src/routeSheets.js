@@ -309,13 +309,49 @@ function finishSheet(id, user) {
     for (const id of ids) {
       const order = byId.get(id)
       if (!order) continue
-      if (assignBack(order, user, 'Viaje finalizado sin entregar', closedAt)) returned = true
+      if (!assignBack(order, user, 'Viaje finalizado sin entregar', closedAt)) continue
+      returned = true
+      delete order.routeId
+      delete order.routeSeq
+      const history = Array.isArray(order.history) ? order.history : []
+      history.push({
+        at: closedAt,
+        by: {
+          id: typeof user?.id === 'string' ? user.id : '',
+          name: typeof user?.name === 'string' ? user.name : '',
+        },
+        from: 'asignado',
+        to: 'asignado',
+        reason: `Volvió de la hoja ${sheet.id} sin entregar`,
+        via: 'hoja',
+      })
+      order.history = history
     }
     sheets[index] = next
     await writeCollection('routeSheets', sheets)
     if (returned) await writeCollection('orders', orders)
     await releaseIdleDrivers(orders, sheet.driverId)
     return { sheet: next }
+  })
+}
+
+/** Pedidos asignados que siguen apuntando a una hoja cerrada o que ya no existe. */
+export async function releaseClosedSheetOrders() {
+  return locked(async () => {
+    const orders = await readCollection('orders')
+    const sheets = await readCollection('routeSheets')
+    const bySheet = new Map(sheets.map((sheet) => [sheet.id, sheet]))
+    let changed = false
+    for (const order of orders) {
+      if (!order || order.status !== 'asignado') continue
+      if (typeof order.routeId !== 'string' || !order.routeId) continue
+      const sheet = bySheet.get(order.routeId)
+      if (sheet && sheet.status !== 'cerrada') continue
+      delete order.routeId
+      delete order.routeSeq
+      changed = true
+    }
+    if (changed) await writeCollection('orders', orders)
   })
 }
 
