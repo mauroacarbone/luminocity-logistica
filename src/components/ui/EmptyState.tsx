@@ -18,7 +18,11 @@ export function EmptyState({ title, description, icon, action, variant = 'card',
         {icon ? <div className="mx-auto mb-3 flex justify-center text-muted [&_.nav-icon]:size-6">{icon}</div> : null}
         <p className="text-xl font-semibold text-text">{title}</p>
         {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
-        {action ? <div className="mt-3 text-sm text-accent [&_button]:font-medium [&_button]:text-accent">{action}</div> : null}
+        {action ? (
+          <div className="mt-3 text-sm text-accent [&_button:not(.bg-btn-primary)]:font-medium [&_button:not(.bg-btn-primary)]:text-accent">
+            {action}
+          </div>
+        ) : null}
       </div>
     )
   }

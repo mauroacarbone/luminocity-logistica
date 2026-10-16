@@ -1192,26 +1192,32 @@ export function PendientesEntregas() {
       )}
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
 
-      <ListBox
-        className="mt-6"
-        counters={[
-          {
-            key: 'lista',
-            label: 'Lista',
-            count: filteredOpenOrders.length,
-            active: mode === 'lista',
-            onClick: () => setMode('lista'),
-          },
-          {
-            key: 'picking',
-            label: 'Picking',
-            count: groups.length,
-            active: mode === 'picking',
-            onClick: () => setMode('picking'),
-          },
-        ]}
-        filters={
+      <ListBox className="mt-6">
+        <div className="border-b border-border">
+          <div className="flex flex-wrap gap-2 px-3 py-2">
+            {(
+              [
+                { key: 'lista', label: 'Lista', count: filteredOpenOrders.length, active: mode === 'lista' },
+                { key: 'picking', label: 'Picking', count: groups.length, active: mode === 'picking' },
+              ] as const
+            ).map((counter) => (
+              <button
+                key={counter.key}
+                type="button"
+                aria-pressed={counter.active}
+                onClick={() => setMode(counter.key)}
+                className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-sm hover:bg-surface-2 ${
+                  counter.active ? 'font-semibold text-text' : 'text-muted'
+                }`}
+              >
+                <span>{counter.label}</span>
+                <span className="font-bold tabular-nums">{counter.count}</span>
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-border px-3 py-2">
           <FilterBar
+            stacked
             size="lg"
             search={{
               value: searchDraft,
@@ -1228,6 +1234,7 @@ export function PendientesEntregas() {
               {
                 id: 'estado',
                 label: 'Estado',
+                variant: 'segmented',
                 value: statusFilter,
                 options: STATUS_CHIPS,
                 onChange: (value) => patchParams({ estado: value }),
@@ -1235,6 +1242,7 @@ export function PendientesEntregas() {
               {
                 id: 'fecha',
                 label: 'Fecha',
+                variant: 'segmented',
                 value: fechaFilter,
                 options: FECHA_CHIPS,
                 onChange: (value) => patchParams({ fecha: value }),
@@ -1263,45 +1271,47 @@ export function PendientesEntregas() {
               patchParams({ q: null, estado: null, fecha: null, vendedor: null })
             }}
           />
-        }
-      >
-        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-          <p className="text-sm text-muted">
-            {mode === 'lista'
-              ? `${filteredOpenOrders.length} pedidos · ${filteredOrphans.length} sin pedido`
-              : `${filteredLines.length} de ${lines.length} filas`}
-          </p>
-          {mode === 'lista' && (
-            <>
-              <Button
-                variant="ghost"
-                size="lg"
-                disabled={busy || loading}
-                onClick={() => {
-                  void refresh().then((count) => {
-                    setMessage(
-                      count === 0
-                        ? 'Todavía no hay filas de picking.'
-                        : `Lista actualizada: ${count} filas.`,
-                    )
-                  })
-                }}
-              >
-                Actualizar lista
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2">
+            <p className="text-sm text-muted">
+              {mode === 'lista'
+                ? `${filteredOpenOrders.length} pedidos · ${filteredOrphans.length} sin pedido`
+                : `${filteredLines.length} de ${lines.length} filas`}
+            </p>
+            <div className="flex flex-wrap justify-end gap-2">
+              {mode === 'lista' && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    disabled={busy || loading}
+                    onClick={() => {
+                      void refresh().then((count) => {
+                        setMessage(
+                          count === 0
+                            ? 'Todavía no hay filas de picking.'
+                            : `Lista actualizada: ${count} filas.`,
+                        )
+                      })
+                    }}
+                  >
+                    Actualizar lista
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    disabled={filteredOpenOrders.length === 0 && orphanGroups.length === 0}
+                    onClick={exportFilteredCsv}
+                  >
+                    Exportar CSV
+                  </Button>
+                </>
+              )}
+              <Button variant="ghost" size="lg" onClick={openAllData}>
+                Ver todos los datos
               </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                disabled={filteredOpenOrders.length === 0 && orphanGroups.length === 0}
-                onClick={exportFilteredCsv}
-              >
-                Exportar CSV
-              </Button>
-            </>
-          )}
-          <Button variant="ghost" size="lg" onClick={openAllData}>
-            Ver todos los datos
-          </Button>
+            </div>
+          </div>
         </div>
 
         {mode === 'lista' ? (
@@ -1325,6 +1335,7 @@ export function PendientesEntregas() {
                       <Button
                         variant="primary"
                         size="lg"
+                        className="text-[var(--btn-primary-fg)]"
                         disabled={busy}
                         onClick={() => fileRef.current?.click()}
                       >

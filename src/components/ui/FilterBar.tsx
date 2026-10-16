@@ -36,7 +36,7 @@ export type FilterChipGroup = {
   value?: string
   values?: string[]
   multiple?: boolean
-  variant?: 'counters'
+  variant?: 'counters' | 'segmented'
   onChange: (value: string) => void
 }
 
@@ -58,6 +58,7 @@ type FilterBarProps = {
   onClear?: () => void
   activeCount?: number
   size?: FilterSize
+  stacked?: boolean
   className?: string
 }
 
@@ -99,10 +100,69 @@ function chipPressed(group: FilterChipGroup, value: string) {
   return group.value === value
 }
 
+function onSegmentKey(event: ReactKeyboardEvent<HTMLDivElement>, group: FilterChipGroup) {
+  const values = group.options.map((option) => option.value)
+  if (values.length === 0) return
+  const current = group.value && values.includes(group.value) ? group.value : values[0]
+  const index = values.indexOf(current)
+  let next: string | null = null
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = values[(index + 1) % values.length]
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = values[(index - 1 + values.length) % values.length]
+  else if (event.key === 'Home') next = values[0]
+  else if (event.key === 'End') next = values[values.length - 1]
+  if (next == null) return
+  event.preventDefault()
+  group.onChange(next)
+  event.currentTarget.querySelector<HTMLButtonElement>(`[data-option="${CSS.escape(next)}"]`)?.focus()
+}
+
+function SegmentedChips({ group }: { group: FilterChipGroup }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <span id={`${group.id}-label`} className="text-sm font-medium text-text">
+        {group.label}
+      </span>
+      <div
+        role="radiogroup"
+        aria-labelledby={`${group.id}-label`}
+        className="flex flex-wrap gap-2"
+        onKeyDown={(event) => onSegmentKey(event, group)}
+      >
+        {group.options.map((option) => {
+          const active = chipPressed(group, option.value)
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              tabIndex={active ? 0 : -1}
+              data-option={option.value}
+              className={cx(
+                'inline-flex h-9 items-center rounded-md px-3 text-sm',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                active
+                  ? 'border border-accent bg-accent-soft font-semibold text-text'
+                  : 'border border-border bg-transparent text-text',
+              )}
+              onClick={() => group.onChange(option.value)}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function ChipButtons({ groups, size }: { groups: FilterChipGroup[]; size: FilterSize }) {
   return (
     <>
-      {groups.map((group) => (
+      {groups.map((group) =>
+        group.variant === 'segmented' ? (
+          <SegmentedChips key={group.id} group={group} />
+        ) : (
         <div key={group.id} className="flex flex-wrap items-center gap-2" role="group" aria-label={group.label}>
           {group.variant === 'counters' ? null : <span className="text-sm font-medium text-muted">{group.label}</span>}
           {group.options.map((option) => {
@@ -134,7 +194,8 @@ function ChipButtons({ groups, size }: { groups: FilterChipGroup[]; size: Filter
             )
           })}
         </div>
-      ))}
+        ),
+      )}
     </>
   )
 }
@@ -406,6 +467,7 @@ export function FilterBar({
   onClear,
   activeCount = 0,
   size = 'md',
+  stacked = false,
   className,
 }: FilterBarProps) {
   const [open, setOpen] = useState(false)
@@ -444,6 +506,20 @@ export function FilterBar({
           </div>
         </div>
       </Modal>
+    )
+  }
+
+  if (stacked) {
+    return (
+      <div className={cx('flex flex-col gap-2', className)}>
+        {search ? <SearchField search={search} size={size} /> : null}
+        {hasExtra ? (
+          <div className="flex flex-wrap items-start gap-2">
+            <ExtraFilters selects={selects} chips={chips} dateRange={dateRange} size={size} native />
+            {clearButton}
+          </div>
+        ) : null}
+      </div>
     )
   }
 
