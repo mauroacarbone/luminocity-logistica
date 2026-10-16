@@ -332,44 +332,19 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
 type SearchTriggerProps = {
   onOpen: () => void
-  compact?: boolean
 }
 
-export function SearchTrigger({ onOpen, compact = false }: SearchTriggerProps) {
-  if (compact) {
-    return (
-      <button type="button" className="topbar-search-btn" aria-label="Buscar" onClick={onOpen}>
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          <path
-            d="M16 16l4 4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
-    )
-  }
-
-  const isMac =
-    typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
-
+export function SearchTrigger({ onOpen }: SearchTriggerProps) {
   return (
-    <button type="button" className="topnav-search" onClick={onOpen} aria-label="Buscar">
-      <svg className="topnav-search-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
-        <path
-          d="M16 16l4 4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      </svg>
-      <span className="topnav-search-label">Buscar…</span>
-      <kbd className="topnav-search-kbd">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
-    </button>
+    <>
+      <button type="button" className="app-search" onClick={onOpen}>
+        <NavIcon name="search" />
+        <span className="app-search-label">Escribí / para buscar</span>
+        <kbd className="app-search-kbd">/</kbd>
+      </button>
+      <button type="button" className="app-search-compact app-icon-btn" aria-label="Buscar" onClick={onOpen}>
+        <NavIcon name="search" />
+      </button>
+    </>
   )
 }

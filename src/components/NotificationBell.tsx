@@ -303,7 +303,7 @@ export function NotificationBell() {
       )}
       <button
         type="button"
-        className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-surface"
+        className="app-icon-btn relative"
         aria-label={
           unread > 0
             ? `Avisos, ${unread} sin leer`

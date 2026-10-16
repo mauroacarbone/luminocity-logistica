@@ -70,6 +70,17 @@ export function NavIcon({ name }: { name: NavIconName }) {
           <circle cx="10" cy="17" r="1.6" {...common} />
         </>
       )}
+      {name === 'menu' && <path d="M4 7h16M4 12h16M4 17h16" {...common} />}
+      {name === 'bell' && <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zM10 18a2 2 0 0 0 4 0" {...common} />}
+      {name === 'x' && <path d="M6 6l12 12M18 6L6 18" {...common} />}
+      {name === 'chevron-down' && <path d="M6 9l6 6 6-6" {...common} />}
+      {name === 'sidebar-collapse' && (
+        <>
+          <rect x="4" y="4" width="16" height="16" rx="2" {...common} />
+          <path d="M9 4v16M13 9l-3 3 3 3" {...common} />
+        </>
+      )}
+      {name === 'filter' && <path d="M4 6h16l-6 7v5l-4-2v-3L4 6z" {...common} />}
     </svg>
   )
 }

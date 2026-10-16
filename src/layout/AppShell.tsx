@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { NotificationBell } from '../components/NotificationBell'
-import { BRAND } from '../config/brand'
 import { focusables } from '../lib/focus'
-import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
-import { CommandPalette, SearchTrigger } from './CommandPalette'
+import { AppHeader } from './AppHeader'
+import { CommandPalette } from './CommandPalette'
 import { isEditableTarget, shouldIgnorePaletteShortcut } from './commandHotkeys'
 import { MobileNav } from './MobileNav'
-import { TopNav } from './TopNav'
+
+const SIDEBAR_KEY = 'luminocity.sidebar'
 
 const MENU_MQ = '(max-width: 1024px)'
 
@@ -30,7 +29,6 @@ function ImportReport({ text }: { text: string }) {
 }
 
 export function AppShell() {
-  const { user } = useAuth()
   const { loading, error, legacyCount, importing, importError, importLegacy, reload } = useOrders()
   const location = useLocation()
   const showImport = !loading && !error && legacyCount > 0
@@ -40,6 +38,13 @@ export function AppShell() {
   const [compact, setCompact] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia(MENU_MQ).matches : false,
   )
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) === 'collapsed'
+    } catch {
+      return false
+    }
+  })
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
   const paletteOpenerRef = useRef<HTMLElement | null>(null)
@@ -81,6 +86,22 @@ export function AppShell() {
   function closeMenu() {
     setMenuOpen(false)
     queueMicrotask(() => menuButtonRef.current?.focus())
+  }
+
+  function toggleNav() {
+    if (compact) {
+      setMenuOpen((open) => !open)
+      return
+    }
+    setSidebarCollapsed((current) => {
+      const next = !current
+      try {
+        localStorage.setItem(SIDEBAR_KEY, next ? 'collapsed' : 'open')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
   }
 
   function openPalette() {
@@ -162,37 +183,14 @@ export function AppShell() {
 
   return (
     <div className={menuOpen ? 'app menu-open' : 'app'}>
-      {compact ? (
-        <header className="topbar no-print">
-          <button
-            ref={menuButtonRef}
-            type="button"
-            className="topbar-menu-btn"
-            aria-label="Abrir menú"
-            aria-expanded={menuOpen}
-            aria-controls="app-mobile-nav"
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M4 7h16M4 12h16M4 17h16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-          <div className="topbar-brand">
-            <img src={BRAND.logoUrl} alt="" width={28} height={28} />
-            <span>{BRAND.name}</span>
-          </div>
-          <SearchTrigger onOpen={openPalette} compact />
-          {user ? <NotificationBell /> : <span className="topbar-spacer" />}
-        </header>
-      ) : (
-        <TopNav onOpenSearch={openPalette} />
-      )}
+      <AppHeader
+        menuOpen={menuOpen}
+        sidebarCollapsed={sidebarCollapsed}
+        compact={compact}
+        menuButtonRef={menuButtonRef}
+        onToggleNav={toggleNav}
+        onOpenSearch={openPalette}
+      />
 
       {compact ? (
         <>

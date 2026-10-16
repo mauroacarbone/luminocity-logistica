@@ -190,6 +190,244 @@ p {
   min-height: 100vh;
 }
 
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topnav);
+  background: var(--bg);
+}
+
+.app-header-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 0 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header-start,
+.app-header-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-header-end {
+  justify-content: flex-end;
+}
+
+.app-header-search {
+  display: flex;
+  justify-content: center;
+  flex: 0 1 360px;
+  min-width: 0;
+}
+
+.app-menu-btn,
+.app-icon-btn,
+.app-avatar-btn {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.app-menu-btn,
+.app-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.app-menu-btn {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+}
+
+.app-menu-btn:hover,
+.app-icon-btn:hover,
+.app-avatar-btn:hover {
+  background: var(--surface-2);
+}
+
+.app-menu-btn:focus-visible,
+.app-icon-btn:focus-visible,
+.app-avatar-btn:focus-visible,
+.app-search:focus-visible,
+.app-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.app-logo {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--brand-yellow);
+}
+
+.app-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.app-crumb-root,
+.app-crumb-area {
+  color: var(--text);
+}
+
+.app-crumb-area {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-crumb-sep {
+  color: var(--text-muted);
+}
+
+.app-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.app-search-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-search-kbd {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.app-search-compact {
+  display: none;
+}
+
+.app-avatar-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.app-avatar {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.app-tabs {
+  display: flex;
+  align-items: stretch;
+  height: 48px;
+  gap: 4px;
+  padding: 0 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.app-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 48px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+  scroll-snap-align: center;
+}
+
+.app-tab:hover {
+  background: var(--surface-2);
+}
+
+.app-tab.is-active {
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  border-radius: 0;
+  box-shadow: inset 0 -2px 0 var(--tab-indicator);
+}
+
+@media (max-width: 767px) {
+  .app-header-top {
+    height: 48px;
+  }
+
+  .app-crumb-root,
+  .app-crumb-sep {
+    display: none;
+  }
+
+  .app-search {
+    display: none;
+  }
+
+  .app-search-compact {
+    display: grid;
+  }
+}
+
 .topnav {
   position: sticky;
   top: 0;
@@ -2219,7 +2457,6 @@ p {
   }
 
   .main {
-    padding-top: 56px;
     padding-bottom: 32px;
   }
 
@@ -2234,7 +2471,6 @@ p {
   }
 
   .main {
-    padding-top: 56px;
     padding-bottom: 32px;
   }
 

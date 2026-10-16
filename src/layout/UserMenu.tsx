@@ -81,7 +81,7 @@ export function UserMenu({ open, onOpenChange }: UserMenuProps) {
       <button
         ref={buttonRef}
         type="button"
-        className="topnav-user-btn"
+        className="app-avatar-btn"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
@@ -89,23 +89,9 @@ export function UserMenu({ open, onOpenChange }: UserMenuProps) {
         onClick={() => onOpenChange(!open)}
         onKeyDown={onButtonKeyDown}
       >
-        <span className="topnav-avatar" aria-hidden="true">
+        <span className="app-avatar" aria-hidden="true">
           {initial}
         </span>
-        <span className="topnav-user-meta">
-          <span className="topnav-user-name">{user.name}</span>
-          <span className="topnav-user-role">{ROLE_LABEL[user.role]}</span>
-        </span>
-        <svg className="topnav-chevron" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M8 10l4 4 4-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
       </button>
       {open
         ? createPortal(
