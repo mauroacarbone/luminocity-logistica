@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Button, Page, PageHeader } from '../components/ui'
+import { Button, Field, Input, Page, PageHeader, Select } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { Modal } from '../components/ui/Modal'
@@ -24,6 +24,7 @@ function formatCreatedAt(value: unknown) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
   return date.toLocaleDateString('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -175,52 +176,46 @@ function NewUserDialog({
       onClose={onClose}
       labelledBy="new-user-title"
       closeOnEscape={!pending}
-      className="grid place-items-center bg-black/40 p-4"
+      className="grid place-items-center bg-overlay p-4"
     >
-      <form noValidate className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-lg" onSubmit={(event) => void onSubmit(event)}>
+      <form noValidate className="w-full max-w-md rounded-lg bg-surface p-5 shadow-md" onSubmit={(event) => void onSubmit(event)}>
         <h2 id="new-user-title" className="text-xl font-semibold">
           Nuevo usuario
         </h2>
         <p className="mt-1 text-sm text-muted">Nombre, email, contraseña inicial y rol.</p>
-        <label className="mt-4 block text-sm font-medium">
-          Nombre
-          <input
+        <div className="mt-4 flex flex-col gap-3">
+        <Field label="Nombre" error={errors.name}>
+          <Input
+            size="lg"
             autoFocus
             autoComplete="name"
             value={form.name}
-            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => patch({ name: event.target.value })}
           />
-          {errors.name && <small className="field-error">{errors.name}</small>}
-        </label>
-        <label className="mt-3 block text-sm font-medium">
-          Email
-          <input
+        </Field>
+        <Field label="Email" error={errors.email}>
+          <Input
+            size="lg"
             type="email"
             inputMode="email"
             autoComplete="off"
             value={form.email}
-            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => patch({ email: event.target.value })}
           />
-          {errors.email && <small className="field-error">{errors.email}</small>}
-        </label>
-        <label className="mt-3 block text-sm font-medium">
-          Contraseña inicial
-          <input
+        </Field>
+        <Field label="Contraseña inicial" error={errors.password}>
+          <Input
+            size="lg"
             type="password"
             autoComplete="new-password"
             value={form.password}
-            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => patch({ password: event.target.value })}
           />
-          {errors.password && <small className="field-error">{errors.password}</small>}
-        </label>
-        <label className="mt-3 block text-sm font-medium">
-          Rol
-          <select
+        </Field>
+        <Field label="Rol">
+          <Select
+            size="lg"
             value={form.role}
-            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => patch({ role: event.target.value as Role })}
           >
             {roles.map((role) => (
@@ -228,14 +223,13 @@ function NewUserDialog({
                 {ROLE_LABEL[role]}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
         {form.role === 'vendedor' && (
-          <label className="mt-3 block text-sm font-medium">
-            Vendedor
-            <select
+          <Field label="Vendedor">
+            <Select
+              size="lg"
               value={form.sellerName}
-              className="mt-1 w-full rounded-xl border border-border px-3 py-2"
               onChange={(event) => patch({ sellerName: event.target.value })}
             >
               <option value="">Sin vincular</option>
@@ -244,15 +238,14 @@ function NewUserDialog({
                   {name}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </Field>
         )}
         {form.role === 'chofer' && (
-          <label className="mt-3 block text-sm font-medium">
-            Transportista
-            <select
+          <Field label="Transportista">
+            <Select
+              size="lg"
               value={form.carrierName}
-              className="mt-1 w-full rounded-xl border border-border px-3 py-2"
               onChange={(event) => patch({ carrierName: event.target.value })}
             >
               <option value="">Sin vincular</option>
@@ -261,9 +254,10 @@ function NewUserDialog({
                   {name}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </Field>
         )}
+        </div>
         {errors.form && (
           <p className="field-error mt-3" role="alert">
             {errors.form}
@@ -332,36 +326,34 @@ function PasswordDialog({
       onClose={onClose}
       labelledBy="reset-password-title"
       closeOnEscape={!pending}
-      className="grid place-items-center bg-black/40 p-4"
+      className="grid place-items-center bg-overlay p-4"
     >
-      <form noValidate className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-lg" onSubmit={(event) => void onSubmit(event)}>
+      <form noValidate className="w-full max-w-md rounded-lg bg-surface p-5 shadow-md" onSubmit={(event) => void onSubmit(event)}>
         <h2 id="reset-password-title" className="text-xl font-semibold">
           Resetear contraseña
         </h2>
         <p className="mt-1 text-sm text-muted">Nueva contraseña para {account.name}.</p>
-        <label className="mt-4 block text-sm font-medium">
-          Nueva contraseña
-          <input
+        <div className="mt-4 flex flex-col gap-3">
+        <Field label="Nueva contraseña" error={errors.password}>
+          <Input
+            size="lg"
             autoFocus
             type="password"
             autoComplete="new-password"
             value={password}
-            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => setPassword(event.target.value)}
           />
-          {errors.password && <small className="field-error">{errors.password}</small>}
-        </label>
-        <label className="mt-3 block text-sm font-medium">
-          Confirmar contraseña
-          <input
+        </Field>
+        <Field label="Confirmar contraseña" error={errors.confirm}>
+          <Input
+            size="lg"
             type="password"
             autoComplete="new-password"
             value={confirmPassword}
-            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
             onChange={(event) => setConfirmPassword(event.target.value)}
           />
-          {errors.confirm && <small className="field-error">{errors.confirm}</small>}
-        </label>
+        </Field>
+        </div>
         {errors.form && (
           <p className="field-error mt-3" role="alert">
             {errors.form}
@@ -596,7 +588,7 @@ export function Usuarios() {
       {loading && <Spinner label="Cargando usuarios…" />}
       {error && <ServerDown message={error} onRetry={retry} />}
       {notice && (
-        <p className="mt-4 rounded-xl bg-success-soft px-4 py-2 text-sm text-success">{notice}</p>
+        <p className="mt-4 rounded-xl bg-success-soft px-4 py-2 text-sm text-success" role="status">{notice}</p>
       )}
       {!loading && !error && (
       <div className="mt-6 flex flex-col gap-3">
@@ -627,31 +619,28 @@ export function Usuarios() {
                 <p className="mt-2 text-xs text-muted">Solo el admin puede modificar esta cuenta</p>
               )}
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <label className="text-sm">
-                  Nombre
-                  <input
+                <Field label="Nombre">
+                  <Input
+                    size="lg"
                     value={draft.name}
                     disabled={locked}
-                    className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { name: event.target.value })}
                   />
-                </label>
-                <label className="text-sm">
-                  Email
-                  <input
+                </Field>
+                <Field label="Email">
+                  <Input
+                    size="lg"
                     type="email"
                     value={draft.email}
                     disabled={locked}
-                    className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { email: event.target.value })}
                   />
-                </label>
-                <label className="text-sm">
-                  Rol
-                  <select
+                </Field>
+                <Field label="Rol">
+                  <Select
+                    size="lg"
                     value={draft.role}
                     disabled={locked}
-                    className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { role: event.target.value as Role })}
                   >
                     {choices.map((role) => (
@@ -659,15 +648,14 @@ export function Usuarios() {
                         {ROLE_LABEL[role]}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </Select>
+                </Field>
                 {draft.role === 'vendedor' && (
-                  <label className="text-sm">
-                    Vendedor
-                    <select
+                  <Field label="Vendedor">
+                    <Select
+                      size="lg"
                       value={draft.sellerName}
                       disabled={locked}
-                      className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                       onChange={(event) => setDraft(account.id, { sellerName: event.target.value })}
                     >
                       <option value="">Sin vincular</option>
@@ -676,16 +664,15 @@ export function Usuarios() {
                           {name}
                         </option>
                       ))}
-                    </select>
-                  </label>
+                    </Select>
+                  </Field>
                 )}
                 {draft.role === 'chofer' && (
-                  <label className="text-sm">
-                    Transportista
-                    <select
+                  <Field label="Transportista">
+                    <Select
+                      size="lg"
                       value={draft.carrierName}
                       disabled={locked}
-                      className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                       onChange={(event) => setDraft(account.id, { carrierName: event.target.value })}
                     >
                       <option value="">Sin vincular</option>
@@ -694,19 +681,18 @@ export function Usuarios() {
                           {name}
                         </option>
                       ))}
-                    </select>
-                  </label>
+                    </Select>
+                  </Field>
                 )}
-                <label className="text-sm">
-                  Celular corporativo
-                  <input
+                <Field label="Celular corporativo">
+                  <Input
+                    size="lg"
                     value={draft.phone}
                     disabled={locked}
                     placeholder="11 5555 0101"
-                    className="mt-1 w-full rounded-xl border border-border px-3 py-2 disabled:bg-surface-muted"
                     onChange={(event) => setDraft(account.id, { phone: event.target.value })}
                   />
-                </label>
+                </Field>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button
