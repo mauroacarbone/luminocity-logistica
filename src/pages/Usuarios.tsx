@@ -269,21 +269,13 @@ function NewUserDialog({
             {errors.form}
           </p>
         )}
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-muted"
-            onClick={onClose}
-          >
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="ghost" size="lg" onClick={onClose}>
             Volver
-          </button>
-          <button
-            type="submit"
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50"
-            disabled={pending}
-          >
+          </Button>
+          <Button type="submit" variant="primary" size="lg" disabled={pending}>
             Crear
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
@@ -375,21 +367,13 @@ function PasswordDialog({
             {errors.form}
           </p>
         )}
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-muted"
-            onClick={onClose}
-          >
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="ghost" size="lg" onClick={onClose}>
             Volver
-          </button>
-          <button
-            type="submit"
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50"
-            disabled={pending}
-          >
+          </Button>
+          <Button type="submit" variant="primary" size="lg" disabled={pending}>
             Guardar
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
@@ -583,7 +567,7 @@ export function Usuarios() {
         title="Usuarios"
         subtitle="Roles, celular corporativo, vendedor y transportista."
         actions={
-          <Button variant="primary" onClick={() => setCreating(true)}>
+          <Button variant={creating || resetAccount ? 'secondary' : 'primary'} onClick={() => setCreating(true)}>
             Nuevo usuario
           </Button>
         }
@@ -725,35 +709,35 @@ export function Usuarios() {
                 </label>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50"
+                <Button
+                  variant="secondary"
+                  size="lg"
                   disabled={locked || !dirty || busy === account.id}
                   onClick={() => void save(account)}
                 >
                   Guardar
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl px-4 py-2 text-sm font-semibold hover:bg-surface-muted disabled:opacity-50"
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="lg"
                   disabled={locked || busy === account.id}
                   onClick={() => setResetAccount(account)}
                 >
                   Resetear contraseña
-                </button>
+                </Button>
                 {!mine && (
-                  <button
-                    type="button"
-                    className="rounded-xl px-4 py-2 text-sm font-semibold hover:bg-surface-muted disabled:opacity-50"
+                  <Button
+                    variant={account.active ? 'danger-outline' : 'ghost'}
+                    size="lg"
                     disabled={locked || busy === account.id}
                     onClick={() => void toggleActive(account)}
                   >
                     {account.active ? 'Desactivar' : 'Activar'}
-                  </button>
+                  </Button>
                 )}
                 {account.role === 'chofer' && (
                   <Link
-                    className="inline-flex min-h-11 items-center rounded-xl px-4 py-2 text-sm font-semibold hover:bg-surface-muted"
+                    className="inline-flex h-[52px] min-h-[52px] items-center justify-center rounded-[10px] bg-transparent px-5 text-base font-semibold text-text hover:bg-surface-2"
                     to={`/mis-viajes?chofer=${account.id}`}
                   >
                     Ver viajes
