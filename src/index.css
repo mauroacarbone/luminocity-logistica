@@ -189,7 +189,7 @@ p {
 .app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .app-body {
@@ -203,17 +203,18 @@ p {
     display: grid;
     grid-template-columns: auto 1fr;
     align-items: start;
+    min-height: calc(100dvh - 112px);
   }
 }
 
 .app-sidebar {
   position: sticky;
-  top: 104px;
+  top: 112px;
   display: flex;
   flex-direction: column;
   width: 220px;
-  height: calc(100dvh - 104px);
-  overflow: auto;
+  height: calc(100dvh - 112px);
+  overflow-y: auto;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--sidebar-border);
 }
