@@ -19,7 +19,7 @@ import { deleteRouteSheet, isRouteSheet, listRouteSheets, saveRouteSheet, type R
 import { driverSlotCount, normalizeTimeWindow, slotQuestion } from '../lib/slot'
 import { cssVar } from '../lib/theme'
 import { businessToday } from '../lib/schedule'
-import { DAY_SHORT, MONTH_SHORT, formatDayLabel, toIso, weekDays, weekOffsetForIso } from '../lib/week'
+import { DAY_SHORT, MONTH_SHORT, formatDayLabel, parseIso, toIso, weekDays, weekOffsetForIso } from '../lib/week'
 import { listUsers } from '../lib/usersApi'
 import { isSession } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
@@ -751,7 +751,7 @@ export function PlanificadorRutas() {
       <div className="planner-side-scroll">
       <section className="no-print">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-sm font-semibold text-text">Por planificar hoy</h2>
+          <h2 className="text-sm font-semibold text-text">Por planificar · {formatDayLabel(parseIso(iso))}</h2>
           {unplannedSummary ? <p className="text-sm text-muted">{unplannedSummary}</p> : null}
         </div>
         {unplannedGroups.length === 0 ? (
@@ -762,7 +762,8 @@ export function PlanificadorRutas() {
           unplannedGroups.map((group) => (
             <div key={group.slot} className="mt-3">
               <h3 className="text-sm font-semibold text-text">
-                {group.label}
+                {group.slot}
+                <span className="ml-2 font-normal text-muted">{group.label}</span>
                 <span className="ml-2 font-normal text-muted">{group.orders.length}</span>
               </h3>
               <div className="mt-2 overflow-hidden rounded-[6px] border border-border">
