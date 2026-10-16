@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { NavIcon } from '../../layout/NavIcon'
 import { usePopoverPosition } from '../../layout/usePopoverPosition'
 import { businessToday } from '../../lib/schedule'
+import { onSegmentKey } from '../../lib/radioKeys'
 import { Button } from './Button'
 import { cx } from './cx'
 import { Input } from './Input'
@@ -100,20 +101,11 @@ function chipPressed(group: FilterChipGroup, value: string) {
   return group.value === value
 }
 
-function onSegmentKey(event: ReactKeyboardEvent<HTMLDivElement>, group: FilterChipGroup) {
+function onChipKey(event: ReactKeyboardEvent<HTMLDivElement>, group: FilterChipGroup) {
   const values = group.options.map((option) => option.value)
-  if (values.length === 0) return
   const current = group.value && values.includes(group.value) ? group.value : values[0]
-  const index = values.indexOf(current)
-  let next: string | null = null
-  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = values[(index + 1) % values.length]
-  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = values[(index - 1 + values.length) % values.length]
-  else if (event.key === 'Home') next = values[0]
-  else if (event.key === 'End') next = values[values.length - 1]
-  if (next == null) return
-  event.preventDefault()
-  group.onChange(next)
-  event.currentTarget.querySelector<HTMLButtonElement>(`[data-option="${CSS.escape(next)}"]`)?.focus()
+  if (!current) return
+  onSegmentKey(event, values, current, group.onChange)
 }
 
 function SegmentedChips({ group }: { group: FilterChipGroup }) {
@@ -126,7 +118,7 @@ function SegmentedChips({ group }: { group: FilterChipGroup }) {
         role="radiogroup"
         aria-labelledby={`${group.id}-label`}
         className="flex flex-wrap gap-2"
-        onKeyDown={(event) => onSegmentKey(event, group)}
+        onKeyDown={(event) => onChipKey(event, group)}
       >
         {group.options.map((option) => {
           const active = chipPressed(group, option.value)

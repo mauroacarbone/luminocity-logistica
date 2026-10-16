@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { EditReasonDialog } from '../components/EditReasonDialog'
-import { Button, Page, PageHeader } from '../components/ui'
+import { Button, Field, Input, Page, PageHeader, Select, Textarea } from '../components/ui'
+import { onSegmentKey } from '../lib/radioKeys'
 import { NoAccess } from '../components/NoAccess'
 import {
   DISPATCH_LABEL,
@@ -140,19 +141,20 @@ async function showMissingFields(nextErrors: Errors, pickup: boolean) {
 
 function Toggle({
   pressed,
-  label,
+  labelledBy,
   onClick,
 }: {
   pressed: boolean
-  label: string
+  labelledBy: string
   onClick: () => void
 }) {
   return (
     <button
       type="button"
+      role="switch"
       className={pressed ? 'toggle on' : 'toggle'}
-      aria-pressed={pressed}
-      aria-label={label}
+      aria-checked={pressed}
+      aria-labelledby={labelledBy}
       onClick={onClick}
     >
       <span />
@@ -1150,7 +1152,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
       {draftOffer && (
         <p
-          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-accent-soft px-4 py-3 text-sm"
+          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md bg-accent-soft px-4 py-3 text-sm"
           role="status"
         >
           <span>
@@ -1170,47 +1172,90 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       <form className="form-stack" onSubmit={onSubmit} noValidate>
         <section className="form-card">
           <h2>Tipo de despacho</h2>
-          <div className="dispatch-types" role="radiogroup" aria-label="Tipo de despacho">
-            {(['propia', 'correo', 'retiro'] as const).map((type) => (
-              <button
-                key={type}
-                type="button"
-                role="radio"
-                aria-checked={dispatchType === type}
-                className={dispatchType === type ? 'dispatch-type active' : 'dispatch-type'}
-                onClick={() => chooseDispatch(type)}
-              >
-                {DISPATCH_LABEL[type]}
-              </button>
-            ))}
+          <div
+            className="flex flex-wrap gap-2"
+            role="radiogroup"
+            aria-label="Tipo de despacho"
+            onKeyDown={(event) =>
+              onSegmentKey(event, ['propia', 'correo', 'retiro'], dispatchType, chooseDispatch)
+            }
+          >
+            {(['propia', 'correo', 'retiro'] as const).map((type) => {
+              const active = dispatchType === type
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  tabIndex={active ? 0 : -1}
+                  data-option={type}
+                  className={`inline-flex h-11 min-h-11 items-center rounded-md px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    active
+                      ? 'border border-accent bg-accent-soft font-semibold text-text'
+                      : 'border border-border bg-transparent text-text'
+                  }`}
+                  onClick={() => chooseDispatch(type)}
+                >
+                  {DISPATCH_LABEL[type]}
+                </button>
+              )
+            })}
           </div>
           <h2 className="mt-4">Prioridad</h2>
-          <div className="dispatch-types" role="radiogroup" aria-label="Prioridad">
-            {PRIORITIES.map((value) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={priority === value}
-                className={priority === value ? 'dispatch-type active' : 'dispatch-type'}
-                disabled={Boolean(storedId && user?.role === 'vendedor')}
-                onClick={() => {
-                  if (storedId && user?.role === 'vendedor') return
-                  markDirty()
-                  setPriority(value)
-                }}
-              >
-                {PRIORITY_LABEL[value]}
-              </button>
-            ))}
+          <div
+            className="flex flex-wrap gap-2"
+            role="radiogroup"
+            aria-label="Prioridad"
+            onKeyDown={(event) => {
+              if (storedId && user?.role === 'vendedor') return
+              onSegmentKey(event, PRIORITIES, priority, (value) => {
+                markDirty()
+                setPriority(value)
+              })
+            }}
+          >
+            {PRIORITIES.map((value) => {
+              const active = priority === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  tabIndex={active ? 0 : -1}
+                  data-option={value}
+                  className={`inline-flex h-11 min-h-11 items-center rounded-md px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    active
+                      ? 'border border-accent bg-accent-soft font-semibold text-text'
+                      : 'border border-border bg-transparent text-text'
+                  }`}
+                  disabled={Boolean(storedId && user?.role === 'vendedor')}
+                  onClick={() => {
+                    if (storedId && user?.role === 'vendedor') return
+                    markDirty()
+                    setPriority(value)
+                  }}
+                >
+                  {PRIORITY_LABEL[value]}
+                </button>
+              )
+            })}
           </div>
           {storedId && user?.role === 'vendedor' && (
             <small className="hint mt-2 block">Solo el encargado cambia la prioridad.</small>
           )}
           {!pickup && (
-            <label className="field">
-              <span>Transportista</span>
-              <select
+            <Field
+              label="Transportista"
+              hint={
+                transporterOptions.length === 0
+                  ? 'No hay transportistas de este tipo. Cargalos en Datos maestros.'
+                  : 'El transportista queda asignado para cuando el pedido llegue a Despacho.'
+              }
+            >
+              <Select
+                size="lg"
                 value={transporter}
                 onChange={(event) => {
                   markDirty()
@@ -1223,24 +1268,19 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                     {name}
                   </option>
                 ))}
-              </select>
-              <small className="hint">
-                {transporterOptions.length === 0
-                  ? 'No hay transportistas de este tipo. Cargalos en Datos maestros.'
-                  : 'El transportista queda asignado para cuando el pedido llegue a Despacho.'}
-              </small>
-            </label>
+              </Select>
+            </Field>
           )}
         </section>
 
 
         <section className="form-card">
           <h2>Vendedor</h2>
-          <label className="field" data-field="seller">
-            <span>Vendedor *</span>
-            <select
+          <div data-field="seller">
+            <Field label="Vendedor *" error={errors.seller || undefined}>
+            <Select
+              size="lg"
               value={seller}
-              aria-invalid={Boolean(errors.seller)}
               disabled={Boolean(storedId && user?.role === 'vendedor')}
               onChange={(event) => {
                 markDirty()
@@ -1253,9 +1293,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   {name}
                 </option>
               ))}
-            </select>
-            {errors.seller && <small className="field-error">{errors.seller}</small>}
-          </label>
+            </Select>
+            </Field>
+          </div>
           {unlinkedSeller && (
             <p className="field-error mt-3" role="alert">
               Tu usuario todavía no está vinculado a un vendedor. Pedíselo al administrador.
@@ -1284,37 +1324,38 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         <section className="form-card">
           <h2>Datos del Cliente</h2>
           <div className="field-grid">
-            <label className="field" data-field="client">
-              <span>Nombre *</span>
-              <input
-                value={client}
-                placeholder="Nombre del cliente"
-                aria-invalid={Boolean(errors.client)}
-                onChange={(event) => {
-                  markDirty()
-                  setClient(event.target.value)
-                }}
-              />
-              {errors.client && <small className="field-error">{errors.client}</small>}
-            </label>
-            <label className="field" data-field="phone">
-              <span>Teléfono *</span>
-              <input
-                value={phone}
-                placeholder="+54 11..."
-                aria-invalid={Boolean(errors.phone)}
-                onChange={(event) => {
-                  markDirty()
-                  setPhone(event.target.value)
-                }}
-              />
-              {errors.phone && <small className="field-error">{errors.phone}</small>}
-            </label>
+            <div data-field="client">
+              <Field label="Nombre *" error={errors.client || undefined}>
+                <Input
+                  size="lg"
+                  value={client}
+                  placeholder="Nombre del cliente"
+                  onChange={(event) => {
+                    markDirty()
+                    setClient(event.target.value)
+                  }}
+                />
+              </Field>
+            </div>
+            <div data-field="phone">
+              <Field label="Teléfono *" error={errors.phone || undefined}>
+                <Input
+                  size="lg"
+                  value={phone}
+                  placeholder="+54 11..."
+                  onChange={(event) => {
+                    markDirty()
+                    setPhone(event.target.value)
+                  }}
+                />
+              </Field>
+            </div>
             <div className="field full">
               <span>N° Nota de Pedido / Factura</span>
               {invoices.map((invoice, index) => (
                 <div className="inline-field" key={index}>
-                  <input
+                  <Input
+                    size="lg"
                     value={invoice}
                     placeholder="FAC [A] 0006-00011801"
                     aria-label={`Factura ${index + 1}`}
@@ -1349,12 +1390,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           </div>
           <div className="toggle-row">
             <div>
-              <strong>Cobranza</strong>
+              <strong id="cobranza-label">Cobranza</strong>
               <p className="hint">Hay que cobrarle un monto al cliente al momento de la entrega</p>
             </div>
             <Toggle
               pressed={collectOnDelivery}
-              label="Cobranza en la entrega"
+              labelledBy="cobranza-label"
               onClick={() => {
                 markDirty()
                 setCollectOnDelivery((current) => !current)
@@ -1362,20 +1403,20 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             />
           </div>
           {collectOnDelivery && (
-            <label className="field amount-field" data-field="amount">
-              <span>Monto *</span>
-              <input
-                value={amount}
-                inputMode="decimal"
-                placeholder="Ej: 150000"
-                aria-invalid={Boolean(errors.amount)}
-                onChange={(event) => {
-                  markDirty()
-                  setAmount(event.target.value)
-                }}
-              />
-              {errors.amount && <small className="field-error">{errors.amount}</small>}
-            </label>
+            <div data-field="amount">
+              <Field label="Monto *" error={errors.amount || undefined}>
+                <Input
+                  size="lg"
+                  value={amount}
+                  inputMode="decimal"
+                  placeholder="Ej: 150000"
+                  onChange={(event) => {
+                    markDirty()
+                    setAmount(event.target.value)
+                  }}
+                />
+              </Field>
+            </div>
           )}
         </section>
 
@@ -1387,8 +1428,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 <label htmlFor="delivery-address">Dirección (Calle y Número) *</label>
                 <div className="address-row" ref={addressRef}>
                   <div className="address-input-wrap">
-                    <input
+                    <Input
                       id="delivery-address"
+                      size="lg"
                       value={address}
                       placeholder="Ej: Av. Corrientes 1234"
                       autoComplete="off"
@@ -1400,6 +1442,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                         suggestOpen ? `${listId}-opt-${activeSuggestion}` : undefined
                       }
                       aria-invalid={Boolean(errors.address)}
+                      aria-describedby={errors.address ? 'delivery-address-error' : undefined}
                       onChange={(event) => onAddressChange(event.target.value)}
                       onKeyDown={onAddressKeyDown}
                       onFocus={() => {
@@ -1455,26 +1498,30 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   </span>
                 )}
                 {locateError && <small className="field-error">{locateError}</small>}
-                {errors.address && <small className="field-error">{errors.address}</small>}
+                {errors.address && (
+                  <small id="delivery-address-error" className="field-error">
+                    {errors.address}
+                  </small>
+                )}
               </div>
-              <label className="field" data-field="between">
-                <span className="hint-danger">Entre calle 1 (al menos una obligatoria)</span>
-                <input
-                  value={betweenStreet1}
-                  placeholder="Ej: Callao"
-                  aria-invalid={Boolean(errors.between)}
-                  onChange={(event) => {
-                    markDirty()
-                    setBetweenStreet1(event.target.value)
-                    setBetweenNote('')
-                  }}
-                />
-                {errors.between && <small className="field-error">{errors.between}</small>}
+              <div data-field="between">
+                <Field label="Entre calle 1 (al menos una obligatoria)" error={errors.between || undefined}>
+                  <Input
+                    size="lg"
+                    value={betweenStreet1}
+                    placeholder="Ej: Callao"
+                    onChange={(event) => {
+                      markDirty()
+                      setBetweenStreet1(event.target.value)
+                      setBetweenNote('')
+                    }}
+                  />
+                </Field>
                 {betweenNote && <small className="field-warn">{betweenNote}</small>}
-              </label>
-              <label className="field">
-                <span>Entre calle 2</span>
-                <input
+              </div>
+              <Field label="Entre calle 2">
+                <Input
+                  size="lg"
                   value={betweenStreet2}
                   placeholder="Ej: Uruguay"
                   onChange={(event) => {
@@ -1483,12 +1530,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                     setBetweenNote('')
                   }}
                 />
-              </label>
-              <label className="field" data-field="propertyType">
-                <span>Tipo de propiedad *</span>
-                <select
+              </Field>
+              <div data-field="propertyType">
+                <Field label="Tipo de propiedad *" error={errors.propertyType || undefined}>
+                <Select
+                  size="lg"
                   value={propertyType}
-                  aria-invalid={Boolean(errors.propertyType)}
                   onChange={(event) => {
                     markDirty()
                     const next = event.target.value
@@ -1507,60 +1554,72 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                       {type}
                     </option>
                   ))}
-                </select>
-                {errors.propertyType && (
-                  <small className="field-error">{errors.propertyType}</small>
-                )}
-              </label>
+                </Select>
+                </Field>
+              </div>
               {placeKind(propertyType) === 'building' && (
                 <>
-                  <label className="field" data-field="floor">
-                    <span>Piso</span>
-                    <input
-                      value={floor}
-                      maxLength={20}
-                      aria-invalid={Boolean(errors.floor)}
-                      onChange={(event) => {
-                        markDirty()
-                        setFloor(event.target.value)
-                      }}
-                    />
-                    {errors.floor && <small className="field-error">{errors.floor}</small>}
-                  </label>
-                  <label className="field" data-field="unit">
-                    <span>Depto / Unidad</span>
-                    <input
-                      value={unit}
-                      maxLength={20}
-                      aria-invalid={Boolean(errors.unit)}
-                      onChange={(event) => {
-                        markDirty()
-                        setUnit(event.target.value)
-                      }}
-                    />
-                    {errors.unit && <small className="field-error">{errors.unit}</small>}
-                  </label>
+                  <div data-field="floor">
+                    <Field label="Piso" error={errors.floor || undefined}>
+                      <Input
+                        size="lg"
+                        value={floor}
+                        maxLength={20}
+                        onChange={(event) => {
+                          markDirty()
+                          setFloor(event.target.value)
+                        }}
+                      />
+                    </Field>
+                  </div>
+                  <div data-field="unit">
+                    <Field label="Depto / Unidad" error={errors.unit || undefined}>
+                      <Input
+                        size="lg"
+                        value={unit}
+                        maxLength={20}
+                        onChange={(event) => {
+                          markDirty()
+                          setUnit(event.target.value)
+                        }}
+                      />
+                    </Field>
+                  </div>
                 </>
               )}
               {(placeKind(propertyType) === 'building' || placeKind(propertyType) === 'house') && (
-                <label className="field" data-field="doorbell">
-                  <span>Timbre</span>
-                  <input
-                    value={doorbell}
-                    maxLength={20}
-                    aria-invalid={Boolean(errors.doorbell)}
-                    onChange={(event) => {
-                      markDirty()
-                      setDoorbell(event.target.value)
-                    }}
-                  />
-                  {errors.doorbell && <small className="field-error">{errors.doorbell}</small>}
-                </label>
+                <div data-field="doorbell">
+                  <Field label="Timbre" error={errors.doorbell || undefined}>
+                    <Input
+                      size="lg"
+                      value={doorbell}
+                      maxLength={20}
+                      onChange={(event) => {
+                        markDirty()
+                        setDoorbell(event.target.value)
+                      }}
+                    />
+                  </Field>
+                </div>
               )}
             </div>
-            <label className="field zone-field">
-              <span>Zona de reparto</span>
-              <select
+            <Field
+              className="zone-field"
+              label="Zona de reparto"
+              hint={
+                zonePending
+                  ? 'Calculando la zona…'
+                  : deliveryZone
+                    ? zoneManual
+                      ? `${deliveryZone}. Se mantiene hasta que cambies la dirección.`
+                      : `Detectada: ${deliveryZone}${zoneDays(deliveryZone, zones) ? ` · ${zoneDays(deliveryZone, zones)}` : ''}.`
+                    : zoneManual
+                      ? 'Sin zona. Si cambiás la dirección, se vuelve a calcular.'
+                      : 'Se calcula con la dirección. Podés elegirla a mano.'
+              }
+            >
+              <Select
+                size="lg"
                 value={deliveryZone}
                 onChange={(event) => {
                   markDirty()
@@ -1575,19 +1634,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                     {name}
                   </option>
                 ))}
-              </select>
-              <small className="hint">
-                {zonePending
-                  ? 'Calculando la zona…'
-                  : deliveryZone
-                    ? zoneManual
-                      ? `${deliveryZone}. Se mantiene hasta que cambies la dirección.`
-                      : `Detectada: ${deliveryZone}${zoneDays(deliveryZone, zones) ? ` · ${zoneDays(deliveryZone, zones)}` : ''}.`
-                    : zoneManual
-                      ? 'Sin zona. Si cambiás la dirección, se vuelve a calcular.'
-                      : 'Se calcula con la dirección. Podés elegirla a mano.'}
-              </small>
-            </label>
+              </Select>
+            </Field>
             <p className="zone-title">Días de reparto por zona</p>
             <div className="zone-list">
               {zones.map((item) => (
@@ -1605,28 +1653,29 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         <section className="form-card">
           <h2>Fecha y Horario</h2>
           <div className="field-grid">
-            <label className="field" data-field="deliveryDate">
-              <span>{pickup ? 'Fecha de retiro *' : 'Fecha de Entrega *'}</span>
-              <input
-                type="date"
-                value={deliveryDate}
-                aria-invalid={Boolean(errors.deliveryDate)}
-                onChange={(event) => {
-                  markDirty()
-                  setDeliveryDate(event.target.value)
-                }}
-              />
-              {errors.deliveryDate && (
-                <small className="field-error">{errors.deliveryDate}</small>
-              )}
+            <div data-field="deliveryDate">
+              <Field
+                label={pickup ? 'Fecha de retiro *' : 'Fecha de Entrega *'}
+                error={errors.deliveryDate || undefined}
+              >
+                <Input
+                  size="lg"
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(event) => {
+                    markDirty()
+                    setDeliveryDate(event.target.value)
+                  }}
+                />
+              </Field>
               {!pickup && !errors.deliveryDate && dayWarning && (
                 <small className="field-warn">{dayWarning}</small>
               )}
-            </label>
+            </div>
             {!pickup && (
-              <label className="field">
-                <span>Franja Horaria</span>
-                <select
+              <Field label="Franja Horaria">
+                <Select
+                  size="lg"
                   value={timeWindow}
                   onChange={(event) => {
                     markDirty()
@@ -1638,8 +1687,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                       {window}
                     </option>
                   ))}
-                </select>
-              </label>
+                </Select>
+              </Field>
             )}
           </div>
         </section>
@@ -1647,12 +1696,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         <section className="form-card toggle-card">
           <div className="toggle-row">
             <div>
-              <h2>Requiere Retiro</h2>
+              <h2 id="retiro-label">Requiere Retiro</h2>
               <p className="hint">Hay que retirar mercadería antes de entregar</p>
             </div>
             <Toggle
               pressed={requiresPickup}
-              label="Requiere retiro"
+              labelledBy="retiro-label"
               onClick={() => {
                 markDirty()
                 setRequiresPickup((current) => !current)
@@ -1663,8 +1712,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
         <section className="form-card">
           <h2>Notas adicionales</h2>
-          <label className="field">
-            <textarea
+          <Field label="Observaciones">
+            <Textarea
               value={notes}
               rows={4}
               placeholder="Observaciones..."
@@ -1673,22 +1722,24 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 setNotes(event.target.value)
               }}
             />
-          </label>
+          </Field>
         </section>
 
         <section className="form-card" ref={attachmentSectionRef} data-field="file">
           <h2>Documentación</h2>
-          <label className="field">
-            <span>Adjuntar remito, factura u otro archivo (imagen, PDF o Word, opcional)</span>
-            <input
+          <Field
+            label="Adjuntar remito, factura u otro archivo (imagen, PDF o Word, opcional)"
+            hint="Imagen, PDF o Word (.doc, .docx). Máximo 2 MB."
+            error={errors.file || undefined}
+          >
+            <Input
               ref={fileRef}
+              size="lg"
               type="file"
               accept={ATTACHMENT_ACCEPT}
-              aria-invalid={Boolean(errors.file)}
               onChange={(event) => onFile(event.target.files?.[0])}
             />
-            <small className="hint">Imagen, PDF o Word (.doc, .docx). Máximo 2 MB.</small>
-          </label>
+          </Field>
           {readingFile && <small className="hint">Leyendo archivo…</small>}
           {(attachmentName || attachmentDataUrl) && (
             <div className="attachment-bar">
@@ -1728,19 +1779,14 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               )}
             </div>
           )}
-          {errors.file && (
-            <small className="field-error" role="alert">
-              {errors.file}
-            </small>
-          )}
         </section>
 
         <section className="form-card">
           <h2>Datos de quien recibe (opcional)</h2>
           <div className="field-grid">
-            <label className="field">
-              <span>Nombre y Apellido</span>
-              <input
+            <Field label="Nombre y Apellido">
+              <Input
+                size="lg"
                 value={receiverName}
                 placeholder="Nombre completo de quien recibe"
                 onChange={(event) => {
@@ -1748,10 +1794,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   setReceiverName(event.target.value)
                 }}
               />
-            </label>
-            <label className="field">
-              <span>DNI</span>
-              <input
+            </Field>
+            <Field label="DNI">
+              <Input
+                size="lg"
                 value={receiverDni}
                 placeholder="Ej: 30123456"
                 onChange={(event) => {
@@ -1759,12 +1805,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   setReceiverDni(event.target.value)
                 }}
               />
-            </label>
+            </Field>
           </div>
         </section>
 
         {holdNotice && (
-          <p className="rounded-xl bg-accent-soft px-3 py-2 text-sm" role="status">
+          <p className="rounded-md bg-accent-soft px-3 py-2 text-sm" role="status">
             {holdNotice}
           </p>
         )}
@@ -1794,7 +1840,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             Cancelar
           </Button>
           <Button type="submit" variant="primary" disabled={readingFile || saving} loading={saving}>
-            {storedId ? 'Guardar cambios' : 'Crear Pedido'}
+            {storedId ? 'Guardar cambios' : 'Crear pedido'}
           </Button>
         </div>
       </form>
