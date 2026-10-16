@@ -144,8 +144,8 @@ export function NotificationBell() {
       const root = rootRef.current
       if (!root) return
       const rect = root.getBoundingClientRect()
-      const topbar = document.querySelector('.topbar')
-      const minTop = topbar instanceof HTMLElement ? topbar.getBoundingClientRect().bottom + 8 : 8
+      const header = document.querySelector('.app-header')
+      const minTop = header instanceof HTMLElement ? header.getBoundingClientRect().bottom + 8 : 8
       setPanelTop(Math.max(Math.round(rect.bottom + 8), Math.round(minTop)))
     }
     const frame = window.requestAnimationFrame(place)

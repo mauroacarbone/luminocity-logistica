@@ -27,7 +27,7 @@ type MenuPos = { top: number; left: number }
 function placeMenu(button: HTMLElement, menu: HTMLElement): MenuPos {
   const rect = button.getBoundingClientRect()
   const pad = 8
-  const bar = document.querySelector('.topnav') ?? document.querySelector('.topbar')
+  const bar = document.querySelector('.app-header')
   const topMin = bar instanceof HTMLElement ? bar.getBoundingClientRect().bottom + 4 : pad
   const width = menu.offsetWidth
   const height = menu.offsetHeight
