@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
+import { Button } from '../components/ui'
 import { focusables } from '../lib/focus'
 import { useOrders } from '../state/OrdersContext'
 import { useAuth } from '../state/AuthContext'
@@ -233,9 +234,9 @@ export function AppShell() {
         {showImport && (
           <div className="orders-import no-print">
             <p>Hay pedidos guardados solo en este navegador.</p>
-            <button type="button" className="btn-primary" onClick={() => void importLegacy()} disabled={importing}>
+            <Button type="button" variant="secondary" size="lg" onClick={() => void importLegacy()} disabled={importing} loading={importing}>
               Importar pedidos guardados en este navegador
-            </button>
+            </Button>
             {importError && <ImportReport text={importError} />}
           </div>
         )}

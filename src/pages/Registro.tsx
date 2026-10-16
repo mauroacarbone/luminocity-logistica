@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Button, Field, Input } from '../components/ui'
 import { AuthScreen } from '../layout/AuthScreen'
 import { useAuth } from '../state/AuthContext'
 
@@ -56,59 +57,51 @@ export function Registro() {
       }
     >
       <form className="auth-form" onSubmit={onSubmit} noValidate>
-        <label className="field">
-          <span>Nombre</span>
-          <input
+        <Field label="Nombre" error={errors.name}>
+          <Input
+            size="lg"
             autoComplete="name"
             value={name}
-            aria-invalid={Boolean(errors.name)}
             onChange={(event) => setName(event.target.value)}
           />
-          {errors.name && <small className="field-error">{errors.name}</small>}
-        </label>
-        <label className="field">
-          <span>Email</span>
-          <input
+        </Field>
+        <Field label="Email" error={errors.email}>
+          <Input
+            size="lg"
             type="email"
             inputMode="email"
             autoComplete="email"
             placeholder="tu@email.com"
             value={email}
-            aria-invalid={Boolean(errors.email)}
             onChange={(event) => setEmail(event.target.value)}
           />
-          {errors.email && <small className="field-error">{errors.email}</small>}
-        </label>
-        <label className="field">
-          <span>Contraseña</span>
-          <input
+        </Field>
+        <Field label="Contraseña" error={errors.password}>
+          <Input
+            size="lg"
             type="password"
             autoComplete="new-password"
             value={password}
-            aria-invalid={Boolean(errors.password)}
             onChange={(event) => setPassword(event.target.value)}
           />
-          {errors.password && <small className="field-error">{errors.password}</small>}
-        </label>
-        <label className="field">
-          <span>Confirmar contraseña</span>
-          <input
+        </Field>
+        <Field label="Confirmar contraseña" error={errors.confirm}>
+          <Input
+            size="lg"
             type="password"
             autoComplete="new-password"
             value={confirm}
-            aria-invalid={Boolean(errors.confirm)}
             onChange={(event) => setConfirm(event.target.value)}
           />
-          {errors.confirm && <small className="field-error">{errors.confirm}</small>}
-        </label>
+        </Field>
         {errors.form && (
           <p className="auth-error" role="alert">
             {errors.form}
           </p>
         )}
-        <button type="submit" className="btn-primary auth-submit" disabled={pending}>
+        <Button type="submit" variant="primary" size="lg" fullWidth loading={pending}>
           Crear cuenta
-        </button>
+        </Button>
       </form>
     </AuthScreen>
   )

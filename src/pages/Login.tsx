@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Button, Field, Input } from '../components/ui'
 import { AuthScreen } from '../layout/AuthScreen'
 import { takeSessionNotice } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
@@ -50,38 +51,34 @@ export function Login() {
       }
     >
       <form className="auth-form" onSubmit={onSubmit} noValidate>
-        <label className="field">
-          <span>Email</span>
-          <input
+        <Field label="Email" error={errors.email}>
+          <Input
+            size="lg"
             type="email"
             inputMode="email"
             autoComplete="username"
             placeholder="tu@email.com"
             value={email}
-            aria-invalid={Boolean(errors.email)}
             onChange={(event) => setEmail(event.target.value)}
           />
-          {errors.email && <small className="field-error">{errors.email}</small>}
-        </label>
-        <label className="field">
-          <span>Contraseña</span>
-          <input
+        </Field>
+        <Field label="Contraseña" error={errors.password}>
+          <Input
+            size="lg"
             type="password"
             autoComplete="current-password"
             value={password}
-            aria-invalid={Boolean(errors.password)}
             onChange={(event) => setPassword(event.target.value)}
           />
-          {errors.password && <small className="field-error">{errors.password}</small>}
-        </label>
+        </Field>
         {errors.form && (
           <p className="auth-error" role="alert">
             {errors.form}
           </p>
         )}
-        <button type="submit" className="btn-primary auth-submit" disabled={pending}>
+        <Button type="submit" variant="primary" size="lg" fullWidth loading={pending}>
           Entrar
-        </button>
+        </Button>
       </form>
     </AuthScreen>
   )

@@ -1,3 +1,5 @@
+import { Button } from './ui'
+
 export function Spinner({ label = 'Cargando…', compact = false }: { label?: string; compact?: boolean }) {
   return (
     <div
@@ -14,9 +16,9 @@ export function ServerDown({ message, onRetry }: { message: string; onRetry: () 
   return (
     <div className="server-down" role="alert">
       <p>{message}</p>
-      <button type="button" className="btn-primary" onClick={onRetry}>
+      <Button type="button" variant="secondary" size="lg" onClick={onRetry}>
         Reintentar
-      </button>
+      </Button>
     </div>
   )
 }
