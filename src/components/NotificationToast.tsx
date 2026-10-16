@@ -21,7 +21,7 @@ export function NotificationToast({ text, actionLabel, onAction, onClose }: Prop
 
   return createPortal(
     <div
-      className="fixed inset-x-4 top-16 rounded-2xl border border-border bg-surface p-4 shadow-md sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
+      className="fixed inset-x-4 top-16 rounded-lg border border-border bg-surface p-4 shadow-md sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:w-96"
       style={{ zIndex: 'var(--z-toast)' }}
       aria-live="polite"
     >

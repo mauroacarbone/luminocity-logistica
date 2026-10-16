@@ -28,7 +28,7 @@ export function EditReasonDialog({
 
   return (
     <Modal onClose={onClose} labelledBy="edit-reason-title" className="grid place-items-center bg-overlay p-4">
-      <form noValidate className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-md" onSubmit={onSubmit}>
+      <form noValidate className="w-full max-w-md rounded-lg bg-surface p-5 shadow-md" onSubmit={onSubmit}>
         <h2 id="edit-reason-title" className="text-xl font-semibold">Motivo de la edición</h2>
         <p className="mt-1 text-sm text-muted">Contá por qué cambia el pedido.</p>
         {prepared && (
