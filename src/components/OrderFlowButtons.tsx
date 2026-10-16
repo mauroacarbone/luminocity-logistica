@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Button } from './ui'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import type { Order, OrderStatus } from '../data/orders'
@@ -241,11 +242,6 @@ export function OrderFlowButtons({
 
   const stretch = layout === 'stretch'
   const compact = layout === 'compact'
-  const nextClass = stretch
-    ? 'min-h-11 flex-1 rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50'
-    : compact
-      ? 'min-h-9 rounded-xl bg-accent px-2.5 py-1 text-xs font-semibold text-accent-fg disabled:opacity-50'
-      : 'min-h-11 rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50'
   const moreClass = stretch
     ? 'grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border text-lg leading-none hover:bg-surface-muted disabled:opacity-50'
     : compact
@@ -258,14 +254,15 @@ export function OrderFlowButtons({
       className={stretch ? 'flex w-full items-center gap-2' : 'flex flex-wrap items-center gap-2'}
     >
       {next && (
-        <button
-          type="button"
-          className={nextClass}
+        <Button
+          variant="primary"
+          size={compact ? 'sm' : 'lg'}
+          className={stretch ? 'flex-1' : undefined}
           disabled={busy}
           onClick={() => void onNext()}
         >
           {next.label}
-        </button>
+        </Button>
       )}
       {backs.length > 0 && (
         <div className="relative shrink-0">
