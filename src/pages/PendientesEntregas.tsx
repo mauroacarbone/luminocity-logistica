@@ -434,7 +434,7 @@ export function PendientesEntregas() {
   const [alignedId, setAlignedId] = useState<string | null>(null)
 
   const today = businessToday()
-  const weekStart = startOfWeek(new Date())
+  const weekStart = startOfWeek(parseIso(businessToday()))
   const weekFrom = toIso(weekStart)
   const weekTo = toIso(addDays(weekStart, 6))
 
