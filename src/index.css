@@ -1274,6 +1274,7 @@ p {
   place-items: center;
   font-size: 13px;
   color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
 }
 
 .column-cards {
@@ -1343,43 +1344,6 @@ p {
 .order-meta.delivery {
   color: var(--info);
   margin-top: 4px;
-}
-
-.table-wrap {
-  margin-top: 22px;
-  background: var(--surface);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: auto;
-}
-
-.orders-table,
-.count {
-  font-variant-numeric: tabular-nums;
-}
-
-.orders-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.orders-table th,
-.orders-table td {
-  text-align: left;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-.orders-table th {
-  background: var(--surface-2);
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.zone-inline {
-  color: var(--text-muted);
 }
 
 .status-pill {
@@ -2482,7 +2446,7 @@ a.bg-accent:focus-visible {
     break-inside: auto;
   }
 
-  .driver-sheet article {
+  .driver-sheet .driver-stop {
     break-inside: avoid;
     box-shadow: none;
     border: 1px solid var(--border);

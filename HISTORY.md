@@ -122,6 +122,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 33.6.2 | Layout y acciones estilo GitHub | Hecho |
 | 33.6.1.1 | Contraste al imprimir y en el hover de los botones | Hecho |
 | 33.6.2.1 | Contadores del Panel y detalles de accesibilidad | Hecho |
+| 32h | Páginas de logística con el layout nuevo | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -324,6 +325,8 @@ El Brief 33.3 guarda en la hoja en curso las paradas que se reprograman o se bor
 El Brief 33.4, si un pedido sale de una hoja en curso y estaba en viaje, vuelve a asignado con el motivo de la hoja y el chofer deja de figurar en ruta cuando ya no tiene pedidos en viaje. Al finalizar a mano, esos pedidos pasan a asignado con "Viaje finalizado sin entregar"; los entregados no cambian y se apaga el seguimiento. En Mis viajes, realizados, km y lejanía cuentan solo hojas cerradas con alguna entrega. Las cerradas sin entregas siguen en Finalizados con el chip "Sin entregas" y en el CSV con el monto vacío. En Nuevo pedido, los botones de despacho pueden usar dos renglones centrados, en una sola fila y con letra de al menos 14px.
 
 La paleta pasa a azul y grises suaves. El fondo, las tarjetas y el texto salen de tokens; el botón principal es el azul de acento y el amarillo queda en el logo. Los estados de pedido y de puntualidad usan fondo suave con texto y borde oscuros. El texto secundario da más de 4,5:1 sobre el fondo y las tarjetas. Mis entregas vuelve a ser solo del chofer: el encargado y el admin entran al Panel y, si abren esa ruta, vuelven ahí. Finalizan el viaje desde la tarjeta del chofer en Choferes en ruta.
+
+El Brief 32h lleva el layout de caja de lista a Despacho, Pendientes de Entregas, el Planificador, Choferes en ruta, Mis entregas y Mis viajes. En el escritorio la lista es una tabla y en el celular son filas; el detalle de un pedido se abre al costado. El día de hoy se calcula en hora de Buenos Aires. En el celular el logo queda visible y el buscador pasa a ser una lupa.
 
 El Brief 33.6.2.1 deja el contador Abiertos solo con pedidos que no están entregados, y sin marcar si el filtro viene de un KPI. La barra lateral indica si está contraída, el cajón separa las áreas y el ítem activo es el único con página actual. Iniciar recorrido o Finalizar viaje pasan al título de Mis entregas. El encabezado y las pestañas crecen, y la barra queda en 220px, pegada a todo el alto de la pantalla. El alto del encabezado sale de `--header-top-h` y `--tabs-h`, y el subrayado de la pestaña activa es una línea de 2px con puntas redondeadas.
 

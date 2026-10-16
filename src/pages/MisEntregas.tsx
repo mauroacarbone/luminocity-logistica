@@ -559,7 +559,7 @@ function DeliveryCard({
   const strike = done ? 'line-through' : ''
 
   return (
-    <div className={`border-b border-border px-4 py-3 last:border-b-0 ${highlight ? 'bg-surface-2' : ''}`}>
+    <div className={`driver-stop border-b border-border px-4 py-3 last:border-b-0 ${highlight ? 'bg-surface-2' : ''}`}>
       <div className="flex items-start gap-3">
         {stopNumber != null && (
           <span className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
