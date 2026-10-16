@@ -883,7 +883,7 @@ export function PendientesEntregas() {
 
     return (
       <Button
-        variant="primary"
+        variant="secondary"
         size="lg"
         className="mt-2"
         disabled={preparingKey === group.key || busy}
