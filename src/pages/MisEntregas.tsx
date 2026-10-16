@@ -25,6 +25,12 @@ const SEND_EVERY_MS = 30_000
 const RELOAD_AFTER_MS = 4000
 const coordsAsked = new Set<string>()
 
+function sheetPrimary(sheet: RouteSheet, role: string | undefined, today: string, canFinish: boolean) {
+  if (sheet.status === 'en_curso' && canFinish) return 'finish' as const
+  if (role === 'chofer' && sheet.status === 'planificada' && sheet.date <= today) return 'start' as const
+  return null
+}
+
 function pointOf(order: Order): Point | null {
   if (typeof order.lat !== 'number' || typeof order.lng !== 'number') return null
   if (!Number.isFinite(order.lat) || !Number.isFinite(order.lng)) return null
@@ -205,6 +211,8 @@ export function MisEntregas() {
   const shownGps: Gps = tracking ? gps : 'off'
   const position = shownGps === 'on' ? here : null
   const visibleSheets = sheets
+  const headerSheet = visibleSheets.find((sheet) => sheetPrimary(sheet, user?.role, today, canFinish))
+  const headerKind = headerSheet ? sheetPrimary(headerSheet, user?.role, today, canFinish) : null
   const onSheet = new Set(visibleSheets.flatMap((sheet) => sheet.orderIds))
   const loose = orders.filter((order) => !onSheet.has(order.id))
   const assigned = sortDeliveries(
@@ -273,6 +281,27 @@ export function MisEntregas() {
         className="no-print"
         title="Mis entregas"
         subtitle={user?.carrierName?.trim() || undefined}
+        actions={
+          headerSheet && headerKind === 'finish' ? (
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={finishing}
+              onClick={() => setFinishTarget(headerSheet)}
+            >
+              Finalizar viaje
+            </Button>
+          ) : headerSheet && headerKind === 'start' ? (
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={starting === headerSheet.id || !sheetIsReady(headerSheet, orders)}
+              onClick={() => void startSheet(headerSheet)}
+            >
+              Iniciar recorrido
+            </Button>
+          ) : undefined
+        }
       />
       {user?.role === 'chofer' && (
         <p className={`no-print mt-3 text-sm font-semibold ${shownGps === 'on' ? 'text-text' : 'text-muted'}`}>
@@ -364,8 +393,8 @@ export function MisEntregas() {
               </div>
             </dl>
             <div className="no-print mt-3 flex flex-col gap-2">
-              {sheet.status === 'en_curso' && canFinish && (
-                <Button variant="primary" size="lg" fullWidth disabled={finishing} onClick={() => setFinishTarget(sheet)}>
+              {sheet.status === 'en_curso' && canFinish && sheet.id !== headerSheet?.id && (
+                <Button variant="secondary" size="lg" fullWidth disabled={finishing} onClick={() => setFinishTarget(sheet)}>
                   Finalizar viaje
                 </Button>
               )}
@@ -376,15 +405,17 @@ export function MisEntregas() {
                       {WAITING_SHEET}
                     </p>
                   )}
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    fullWidth
-                    disabled={starting === sheet.id || !sheetIsReady(sheet, orders)}
-                    onClick={() => void startSheet(sheet)}
-                  >
-                    Iniciar recorrido
-                  </Button>
+                  {sheet.id !== headerSheet?.id && (
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      fullWidth
+                      disabled={starting === sheet.id || !sheetIsReady(sheet, orders)}
+                      onClick={() => void startSheet(sheet)}
+                    >
+                      Iniciar recorrido
+                    </Button>
+                  )}
                 </>
               )}
               {sheet.status === 'planificada' && sheet.date > today && (
