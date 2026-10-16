@@ -406,7 +406,14 @@ export function PanelOperativo() {
   }, [datedOrders, statusFilter])
   const columns = statusFilter ? [statusFilter] : STATUS_ORDER
   const undatedCount = datedOrders.filter((order) => !hasDeliveryDate(order)).length
-  const overdueCount = orders.filter((order) => isOverdue(order, today)).length
+  const overdueCount = orders.filter(
+    (order) =>
+      isOverdue(order, today) &&
+      (order.status === 'pendiente' ||
+        order.status === 'preparado' ||
+        order.status === 'asignado' ||
+        order.status === 'en-viaje'),
+  ).length
   const openCount = datedOrders.filter((order) => order.status !== 'entregado').length
   const deliveredCount = countFor(datedOrders, 'entregado')
   const listFiltersActive = dateFilter !== 'semana' || statusFilter !== null
