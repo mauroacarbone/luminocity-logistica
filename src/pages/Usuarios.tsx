@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Button, Field, Input, Page, PageHeader, Select } from '../components/ui'
+import { Button, Card, Field, Input, Page, PageHeader, Select } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { Modal } from '../components/ui/Modal'
@@ -601,9 +601,10 @@ export function Usuarios() {
           const dirty = draftDirty(draft, account)
           const choices = roleChoices(user?.role, locked, draft.role)
           return (
-            <article
+            <Card
+              as="article"
               key={account.id}
-              className={`rounded-2xl bg-surface p-4 shadow-sm ${account.active ? '' : 'opacity-60'}`}
+              className={account.active ? undefined : 'opacity-60'}
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span
@@ -730,7 +731,7 @@ export function Usuarios() {
                   </Link>
                 )}
               </div>
-            </article>
+            </Card>
           )
         })}
       </div>
