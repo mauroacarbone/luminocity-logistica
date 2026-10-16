@@ -327,7 +327,7 @@ El Brief 33.4, si un pedido sale de una hoja en curso y estaba en viaje, vuelve 
 
 La paleta pasa a azul y grises suaves. El fondo, las tarjetas y el texto salen de tokens; el botón principal es el azul de acento y el amarillo queda en el logo. Los estados de pedido y de puntualidad usan fondo suave con texto y borde oscuros. El texto secundario da más de 4,5:1 sobre el fondo y las tarjetas. Mis entregas vuelve a ser solo del chofer: el encargado y el admin entran al Panel y, si abren esa ruta, vuelven ahí. Finalizan el viaje desde la tarjeta del chofer en Choferes en ruta.
 
-El Brief 32g.2 muestra el período del Panel como un control segmentado: Atrasados, Hoy, Mañana, Esta semana y Todos. Tablero o Tabla queda en esa misma fila. En el Planificador, los pedidos de la fecha elegida que no están en una hoja aparecen arriba, agrupados por franja, y se suman al recorrido del chofer elegido.
+El Brief 32g.2 muestra el período del Panel como un control segmentado: Atrasados, Hoy, Mañana, Esta semana y Todos. Tablero o Tabla queda en esa misma fila. En el Planificador, los pedidos de la fecha elegida que no están en una hoja aparecen arriba, agrupados por franja, y se suman al recorrido del chofer elegido. Si la hoja ya está confirmada y el orden no cambió, el botón queda en «Hoja de ruta confirmada».
 
 El Brief 32h lleva el layout de caja de lista a Despacho, Pendientes de Entregas, el Planificador, Choferes en ruta, Mis entregas y Mis viajes. En el escritorio la lista es una tabla y en el celular son filas; el detalle de un pedido se abre al costado. El día de hoy se calcula en hora de Buenos Aires. En el celular el logo queda visible y el buscador pasa a ser una lupa.
 

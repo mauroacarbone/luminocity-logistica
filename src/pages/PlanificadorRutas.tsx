@@ -76,6 +76,14 @@ function pointOf(order: Order): LatLng | null {
   return { lat: order.lat, lng: order.lng }
 }
 
+function sameDeliveryOrder(saved: string[], stops: Stop[], selectedIds: string[]) {
+  const current = stops.some((stop) => stop.key !== 'origen')
+    ? stops.filter((stop) => stop.key !== 'origen').map((stop) => stop.key)
+    : selectedIds
+  if (current.length !== saved.length) return false
+  return current.every((id, index) => id === saved[index])
+}
+
 function slotPeriod(slot: string) {
   const hour = Number((normalizeTimeWindow(slot) || '').slice(0, 2))
   if (!Number.isFinite(hour)) return 'Franja'
@@ -915,14 +923,35 @@ export function PlanificadorRutas() {
       </div>
 
       <div className="planner-actions no-print sticky bottom-0 z-10 flex flex-wrap items-center gap-2 border-t border-border bg-surface py-3">
-        <Button
-          variant="primary"
-          size="lg"
-          disabled={loading || readOnly || !driverId || !timeWindow}
-          onClick={() => void confirmSheet()}
-        >
-          Confirmar hoja de ruta
-        </Button>
+        {sheet?.status === 'cerrada' || sheet?.status === 'en_curso' ? (
+          <Button variant="secondary" size="lg" disabled>
+            {sheet.status === 'cerrada' ? 'Viaje finalizado' : 'Viaje en curso'}
+          </Button>
+        ) : sheet?.status === 'planificada' && sameDeliveryOrder(sheet.orderIds, stops, selectedIds) ? (
+          <Button
+            variant="secondary"
+            size="lg"
+            aria-disabled="true"
+            className="hover:bg-btn-secondary"
+            onClick={(event) => event.preventDefault()}
+          >
+            <span className="inline-flex items-center gap-2 text-success">
+              <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Hoja de ruta confirmada
+            </span>
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            size="lg"
+            disabled={loading || !driverId || !timeWindow}
+            onClick={() => void confirmSheet()}
+          >
+            Confirmar hoja de ruta
+          </Button>
+        )}
         <Button
           variant="secondary"
           size="lg"
