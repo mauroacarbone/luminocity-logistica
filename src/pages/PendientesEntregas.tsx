@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { OrderDetail } from '../components/OrderDetail'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { OrderStepper } from '../components/OrderStepper'
 import { PriorityChip } from '../components/PriorityChip'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { Badge, Button, EmptyState, FilterBar, Modal, Page, PageHeader, statusTone } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, FilterBar, ListBox, Modal, Page, PageHeader, Select, statusTone, Table, type TableColumn } from '../components/ui'
 import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL, isDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
@@ -24,6 +25,7 @@ import {
   previewPickingWorkbook,
   type PickingLine,
   type PickingPreview,
+  type PickingPreviewRow,
 } from '../lib/pickingSheet'
 import { compareOpenPriority, PRIORITY_LABEL, priorityOf } from '../lib/priority'
 import { businessToday } from '../lib/schedule'
@@ -412,10 +414,11 @@ export function PendientesEntregas() {
   const lockedSeller = isVendedor ? (user?.sellerName?.trim() ?? '') : ''
   const fileRef = useRef<HTMLInputElement>(null)
   const linkingRef = useRef(new Set<string>())
+  const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [mode, setMode] = useState<Mode>('lista')
   const [searchDraft, setSearchDraft] = useState(() => searchParams.get('q') ?? '')
-  const [expanded, setExpanded] = useState<string | null>(null)
   const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [preparingKey, setPreparingKey] = useState<string | null>(null)
@@ -428,6 +431,7 @@ export function PendientesEntregas() {
   const [showAllData, setShowAllData] = useState(false)
   const [visibleColumnIds, setVisibleColumnIds] = useState<string[]>([])
   const [flowBusy, setFlowBusy] = useState(false)
+  const [alignedId, setAlignedId] = useState<string | null>(null)
 
   const today = businessToday()
   const weekStart = startOfWeek(new Date())
@@ -725,7 +729,7 @@ export function PendientesEntregas() {
       return
     }
     setPreview(null)
-    setExpanded(null)
+    patchParams({ grupo: null })
     setMessage(
       `Importación: ${result.created} creadas, ${result.updated} actualizadas, ${result.removed} borradas.`,
     )
@@ -878,14 +882,15 @@ export function PendientesEntregas() {
     }
 
     return (
-      <button
-        type="button"
-        className="mt-2 rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
+      <Button
+        variant="primary"
+        size="lg"
+        className="mt-2"
         disabled={preparingKey === group.key || busy}
         onClick={() => void markOrderPrepared(group)}
       >
         {order.status === 'preparado' ? 'Marcar filas preparadas' : 'Marcar preparado'}
-      </button>
+      </Button>
     )
   }
 
@@ -901,10 +906,87 @@ export function PendientesEntregas() {
     setMessage(result.message)
   }
 
+  function openPedido(id: string) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.set('pedido', id)
+        next.delete('grupo')
+        return next
+      },
+      { state: { fromList: true } },
+    )
+  }
+
+  function openGrupo(key: string) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.set('grupo', key)
+        next.delete('pedido')
+        return next
+      },
+      { state: { fromList: true } },
+    )
+  }
+
   function openDetail(key: string) {
     setMode('picking')
-    setExpanded(key)
+    openGrupo(key)
   }
+
+  const closeFromList = useCallback(() => {
+    if (location.state && typeof location.state === 'object' && (location.state as { fromList?: boolean }).fromList) {
+      navigate(-1)
+      return
+    }
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.delete('pedido')
+        next.delete('grupo')
+        return next
+      },
+      { replace: true },
+    )
+  }, [location.state, navigate, setSearchParams])
+
+  const openId = searchParams.get('pedido')
+  const grupoId = searchParams.get('grupo')
+  const openOrder =
+    filteredOpenOrders.find((order) => order.id === openId) ??
+    (openId ? openOrders.find((order) => order.id === openId) ?? null : null)
+  const openGroup =
+    groups.find((group) => group.key === grupoId) ??
+    orphanGroups.find((group) => group.key === grupoId) ??
+    null
+
+  if (!loading && openId && alignedId !== openId) {
+    const found = openOrders.find((order) => order.id === openId)
+    if (found) {
+      setAlignedId(openId)
+      if (mode !== 'lista') setMode('lista')
+      if (!filteredOpenOrders.some((order) => order.id === openId)) {
+        setSearchDraft('')
+        patchParams({ q: null, estado: null, fecha: null, vendedor: null })
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (loading || !openId) return
+    if (!pedidos.some((order) => order.id === openId)) closeFromList()
+  }, [loading, openId, pedidos, closeFromList])
+
+  useEffect(() => {
+    if (!openId || alignedId !== openId || mode !== 'lista') return
+    if (!filteredOpenOrders.some((order) => order.id === openId)) closeFromList()
+  }, [openId, alignedId, mode, filteredOpenOrders, closeFromList])
+
+  useEffect(() => {
+    if (loading || !grupoId) return
+    if (!openGroup) closeFromList()
+  }, [loading, grupoId, openGroup, closeFromList])
 
   function exportFilteredCsv() {
     const header = [
@@ -986,6 +1068,79 @@ export function PendientesEntregas() {
     )
   }
 
+  const listaColumns: TableColumn<Order>[] = [
+    {
+      key: 'id',
+      header: 'N°',
+      cell: (order) => (
+        <Link
+          className="font-medium text-accent hover:underline"
+          to={`/pedidos/${order.id}`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {order.id}
+        </Link>
+      ),
+    },
+    { key: 'client', header: 'Cliente', cell: (order) => order.client },
+    { key: 'priority', header: 'Prioridad', cell: (order) => <PriorityChip order={order} /> },
+    {
+      key: 'status',
+      header: 'Estado',
+      cell: (order) => <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>,
+    },
+    {
+      key: 'date',
+      header: 'Entrega',
+      cell: (order) => (order.deliveryDate ? formatIsoDate(order.deliveryDate) : '—'),
+    },
+    {
+      key: 'picking',
+      header: 'Picking',
+      align: 'right',
+      cell: (order) => {
+        const orderLines = linesByOpenOrder.map.get(order.id) ?? []
+        if (orderLines.length === 0) return 'Sin picking'
+        const progress = progressOfLines(orderLines)
+        return progress.readyToPrepare ? 'Listo' : `${progress.pct}%`
+      },
+    },
+  ]
+
+  const pickingColumns: TableColumn<PickingGroup>[] = [
+    { key: 'invoice', header: 'Comprobante', cell: (group) => group.invoice },
+    { key: 'client', header: 'Cliente', cell: (group) => group.client },
+    { key: 'seller', header: 'Vendedor', cell: (group) => group.seller || '—' },
+    {
+      key: 'date',
+      header: 'Fecha',
+      cell: (group) => (group.date ? formatIsoDate(group.date) : '—'),
+    },
+    {
+      key: 'progress',
+      header: 'Avance',
+      align: 'right',
+      cell: (group) => {
+        const progress = progressOf(group)
+        return progress.readyToPrepare ? 'Listo' : `${progress.pct}%`
+      },
+    },
+  ]
+
+  const previewColumns: TableColumn<PickingPreviewRow>[] = [
+    { key: 'fila', header: 'Fila', cell: (row) => row.excelRows.join(', ') },
+    { key: 'cliente', header: 'Cliente', cell: (row) => row.cliente },
+    { key: 'comprobante', header: 'Comprobante', cell: (row) => row.comprobante },
+    { key: 'articulo', header: 'Artículo', cell: (row) => row.articulo },
+    { key: 'cantidad', header: 'Cantidad', align: 'right', cell: (row) => row.cantidad },
+    { key: 'vendedor', header: 'Vendedor', cell: (row) => row.vendedor || '—' },
+    {
+      key: 'notas',
+      header: 'Notas',
+      cell: (row) => (row.combinedFrom > 1 ? `${row.combinedFrom} filas combinadas` : '—'),
+    },
+  ]
+
   return (
     <Page>
       <PageHeader
@@ -1018,43 +1173,16 @@ export function PendientesEntregas() {
         />
       )}
 
-      <div className="mt-6 flex gap-1 border-b border-border">
-        {(['lista', 'picking'] as const).map((item) => (
-          <button
-            key={item}
-            type="button"
-            className={`border-b-2 px-3 py-2 text-sm ${
-              mode === item
-                ? 'border-accent font-semibold text-text'
-                : 'border-transparent text-muted'
-            }`}
-            onClick={() => setMode(item)}
-          >
-            {item === 'lista' ? 'Lista' : 'Picking'}
-          </button>
-        ))}
-      </div>
-
       {legacyOffer && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-3 shadow-sm">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface px-4 py-3">
           <p className="text-sm">Hay datos guardados en este navegador</p>
           <div className="flex gap-2">
-            <button
-              type="button"
-              className="rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
-              disabled={busy}
-              onClick={() => void onUploadLegacy()}
-            >
+            <Button variant="secondary" size="lg" disabled={busy} onClick={() => void onUploadLegacy()}>
               Subirlos
-            </button>
-            <button
-              type="button"
-              className="rounded-xl border border-border px-3 py-1.5 text-sm"
-              disabled={busy}
-              onClick={dismissLegacy}
-            >
+            </Button>
+            <Button variant="ghost" size="lg" disabled={busy} onClick={dismissLegacy}>
               Descartar
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -1064,205 +1192,133 @@ export function PendientesEntregas() {
       )}
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
 
-      {preview && (
-        <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold">Vista previa de importación</h2>
-              <p className="mt-1 text-sm text-muted">
-                {preview.valid.length} válidas · {preview.discarded.length} descartadas ·{' '}
-                {preview.valid.filter((row) => row.combinedFrom > 1).length} combinadas
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="text-sm">
-                Modo
-                <select
-                  value={importMode}
-                  onChange={(event) => setImportMode(event.target.value as ImportMode)}
-                  className="ml-2 rounded-xl border border-border px-3 py-1.5"
-                >
-                  <option value="merge">Combinar</option>
-                  <option value="replace">Reemplazar todo</option>
-                </select>
-              </label>
-              <button
-                type="button"
-                className="rounded-xl border border-border px-3 py-1.5 text-sm"
-                disabled={busy}
-                onClick={() => setPreview(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
-                disabled={busy || preview.valid.length === 0}
-                onClick={() => void confirmImport()}
-              >
-                Confirmar importación
-              </button>
-            </div>
-          </div>
-
-          {preview.valid.length > 0 && (
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border text-muted">
-                    <th className="px-2 py-2 font-medium">Fila</th>
-                    <th className="px-2 py-2 font-medium">Cliente</th>
-                    <th className="px-2 py-2 font-medium">Comprobante</th>
-                    <th className="px-2 py-2 font-medium">Artículo</th>
-                    <th className="px-2 py-2 font-medium">Cantidad</th>
-                    <th className="px-2 py-2 font-medium">Vendedor</th>
-                    <th className="px-2 py-2 font-medium">Notas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.valid.map((row) => (
-                    <tr key={`${row.comprobante}-${row.articulo}-${row.excelRows.join('-')}`} className="border-b border-border/70">
-                      <td className="px-2 py-2">{row.excelRows.join(', ')}</td>
-                      <td className="px-2 py-2">{row.cliente}</td>
-                      <td className="px-2 py-2">{row.comprobante}</td>
-                      <td className="px-2 py-2">{row.articulo}</td>
-                      <td className="px-2 py-2">{row.cantidad}</td>
-                      <td className="px-2 py-2">{row.vendedor || '—'}</td>
-                      <td className="px-2 py-2 text-muted">
-                        {row.combinedFrom > 1 ? `${row.combinedFrom} filas combinadas` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {preview.discarded.length > 0 && (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold">Filas descartadas</h3>
-              <ul className="mt-2 flex flex-col gap-1 text-sm text-danger">
-                {preview.discarded.map((row) => (
-                  <li key={`${row.excelRow}-${row.message}`}>
-                    Fila {row.excelRow}: {row.message}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      <FilterBar
-        className="mt-4"
-        search={{
-          value: searchDraft,
-          label: 'Buscar',
-          srOnly: true,
-          placeholder: 'Número, cliente, comprobante o teléfono',
-          onChange: setSearchDraft,
-          onSubmit: (value) => {
-            setSearchDraft(value)
-            patchParams({ q: value.trim() || null })
-          },
-        }}
-        chips={[
+      <ListBox
+        className="mt-6"
+        counters={[
           {
-            id: 'estado',
-            label: 'Estado',
-            value: statusFilter,
-            options: STATUS_CHIPS,
-            onChange: (value) => patchParams({ estado: value }),
+            key: 'lista',
+            label: 'Lista',
+            count: filteredOpenOrders.length,
+            active: mode === 'lista',
+            onClick: () => setMode('lista'),
           },
           {
-            id: 'fecha',
-            label: 'Fecha',
-            value: fechaFilter,
-            options: FECHA_CHIPS,
-            onChange: (value) => patchParams({ fecha: value }),
+            key: 'picking',
+            label: 'Picking',
+            count: groups.length,
+            active: mode === 'picking',
+            onClick: () => setMode('picking'),
           },
         ]}
-        selects={[
-          {
-            id: 'vendedor',
-            label: 'Vendedor',
-            value: isVendedor ? lockedSeller : seller || 'todos',
-            disabled: isVendedor,
-            onChange: (value) => patchParams({ vendedor: value }),
-            options: isVendedor
-              ? [{ value: lockedSeller, label: lockedSeller || 'Sin vendedor asignado' }]
-              : [{ value: 'todos', label: 'Todos' }, ...sellers.map((name) => ({ value: name, label: name }))],
-          },
-        ]}
-        activeCount={
-          (searchApplied.trim() || searchDraft.trim() ? 1 : 0) +
-          (statusFilter !== 'todos' ? 1 : 0) +
-          (fechaFilter !== 'semana' ? 1 : 0) +
-          (!isVendedor && seller !== 'todos' ? 1 : 0)
+        filters={
+          <FilterBar
+            size="lg"
+            search={{
+              value: searchDraft,
+              label: 'Buscar',
+              srOnly: true,
+              placeholder: 'Número, cliente, comprobante o teléfono',
+              onChange: setSearchDraft,
+              onSubmit: (value) => {
+                setSearchDraft(value)
+                patchParams({ q: value.trim() || null })
+              },
+            }}
+            chips={[
+              {
+                id: 'estado',
+                label: 'Estado',
+                value: statusFilter,
+                options: STATUS_CHIPS,
+                onChange: (value) => patchParams({ estado: value }),
+              },
+              {
+                id: 'fecha',
+                label: 'Fecha',
+                value: fechaFilter,
+                options: FECHA_CHIPS,
+                onChange: (value) => patchParams({ fecha: value }),
+              },
+            ]}
+            selects={[
+              {
+                id: 'vendedor',
+                label: 'Vendedor',
+                value: isVendedor ? lockedSeller : seller || 'todos',
+                disabled: isVendedor,
+                onChange: (value) => patchParams({ vendedor: value }),
+                options: isVendedor
+                  ? [{ value: lockedSeller, label: lockedSeller || 'Sin vendedor asignado' }]
+                  : [{ value: 'todos', label: 'Todos' }, ...sellers.map((name) => ({ value: name, label: name }))],
+              },
+            ]}
+            activeCount={
+              (searchApplied.trim() || searchDraft.trim() ? 1 : 0) +
+              (statusFilter !== 'todos' ? 1 : 0) +
+              (fechaFilter !== 'semana' ? 1 : 0) +
+              (!isVendedor && seller !== 'todos' ? 1 : 0)
+            }
+            onClear={() => {
+              setSearchDraft('')
+              patchParams({ q: null, estado: null, fecha: null, vendedor: null })
+            }}
+          />
         }
-        onClear={() => {
-          setSearchDraft('')
-          patchParams({ q: null, estado: null, fecha: null, vendedor: null })
-        }}
-      />
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <p className="text-sm text-muted">
-          {mode === 'lista'
-            ? `${filteredOpenOrders.length} pedidos · ${filteredOrphans.length} sin pedido`
-            : `${filteredLines.length} de ${lines.length} filas`}
-        </p>
-        <button
-          type="button"
-          className="rounded-xl border border-border px-3 py-1.5 text-sm"
-          onClick={openAllData}
-        >
-          Ver todos los datos
-        </button>
-      </div>
+      >
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+          <p className="text-sm text-muted">
+            {mode === 'lista'
+              ? `${filteredOpenOrders.length} pedidos · ${filteredOrphans.length} sin pedido`
+              : `${filteredLines.length} de ${lines.length} filas`}
+          </p>
+          {mode === 'lista' && (
+            <>
+              <Button
+                variant="ghost"
+                size="lg"
+                disabled={busy || loading}
+                onClick={() => {
+                  void refresh().then((count) => {
+                    setMessage(
+                      count === 0
+                        ? 'Todavía no hay filas de picking.'
+                        : `Lista actualizada: ${count} filas.`,
+                    )
+                  })
+                }}
+              >
+                Actualizar lista
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                disabled={filteredOpenOrders.length === 0 && orphanGroups.length === 0}
+                onClick={exportFilteredCsv}
+              >
+                Exportar CSV
+              </Button>
+            </>
+          )}
+          <Button variant="ghost" size="lg" onClick={openAllData}>
+            Ver todos los datos
+          </Button>
+        </div>
 
-      {mode === 'lista' ? (
-        <>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-xl px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
-              disabled={busy || loading}
-              onClick={() => {
-                void refresh().then((count) => {
-                  setMessage(
-                    count === 0
-                      ? 'Todavía no hay filas de picking.'
-                      : `Lista actualizada: ${count} filas.`,
-                  )
-                })
-              }}
-            >
-              Actualizar lista
-            </button>
-            <button
-              type="button"
-              className="rounded-xl border border-border bg-surface px-3 py-2 text-sm shadow-sm disabled:opacity-50"
-              disabled={filteredOpenOrders.length === 0 && orphanGroups.length === 0}
-              onClick={exportFilteredCsv}
-            >
-              Exportar CSV
-            </button>
-          </div>
-
-          {filteredOpenOrders.length === 0 && orphanGroups.length === 0 ? (
-            openOrders.length === 0 && orphanLines.length === 0 ? (
-              <div className="mt-4">
-                <EmptyState title="No hay pedidos pendientes" />
-              </div>
-            ) : (
-              <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-                Ningún pedido coincide con el filtro.
-              </div>
-            )
+        {mode === 'lista' ? (
+          filteredOpenOrders.length === 0 && orphanGroups.length === 0 ? (
+            <EmptyState
+              variant="plain"
+              title={
+                openOrders.length === 0 && orphanLines.length === 0
+                  ? 'No hay pedidos pendientes'
+                  : 'Ningún pedido coincide con el filtro.'
+              }
+            />
           ) : (
-            <div className="mt-4 flex flex-col gap-3">
+            <>
               {filteredOpenOrders.length > 0 && lines.length === 0 && (
                 <EmptyState
+                  variant="plain"
                   title="Todavía no se importó el Excel de picking"
                   action={
                     canWrite ? (
@@ -1278,304 +1334,347 @@ export function PendientesEntregas() {
                   }
                 />
               )}
-
-              {filteredOpenOrders.map((order) => {
-                const orderLines = linesByOpenOrder.map.get(order.id) ?? []
-                const hasPicking = orderLines.length > 0
-                const progress = progressOfLines(orderLines)
-                const days = overdueDays(order.deliveryDate, today)
-                const prepareGroup = hasPicking
-                  ? groupForOrder(order, linesForOrder(linesByInvoice, order))
-                  : null
-                return (
-                  <article key={order.id} className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Link
-                            className="order-link text-base font-semibold"
-                            to={`/pedidos/${order.id}`}
-                          >
-                            {order.id}
-                          </Link>
-                          <PriorityChip order={order} />
-                          <Badge tone={statusTone(order.status)}>
-                            {statusPillFor(order, order.status)}
-                          </Badge>
-                        </div>
-                        <p className="mt-1 text-sm">
-                          {order.client}
-                          {order.seller ? (
-                            <span className="text-muted"> · {order.seller}</span>
-                          ) : null}
-                        </p>
+              {filteredOpenOrders.length > 0 && (
+                <>
+                  <div className="hidden lg:block">
+                    <Table
+                      bare
+                      columns={listaColumns}
+                      rows={filteredOpenOrders}
+                      rowKey={(order) => order.id}
+                      onRowClick={(order) => openPedido(order.id)}
+                    />
+                  </div>
+                  <div className="flex flex-col lg:hidden">
+                    {filteredOpenOrders.map((order) => (
+                      <article
+                        key={order.id}
+                        className="cursor-pointer border-b border-border px-4 py-3 last:border-b-0"
+                        onClick={() => openPedido(order.id)}
+                      >
+                        <button
+                          type="button"
+                          className="rounded-md font-semibold text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            openPedido(order.id)
+                          }}
+                        >
+                          N° {order.id}
+                        </button>
+                        <p className="mt-1 font-semibold">{order.client}</p>
                         <div className="mt-2">
-                          <OrderStepper order={order} variant="compact" />
+                          <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>
                         </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                          {order.deliveryDate ? (
-                            <span>Entrega: {formatIsoDate(order.deliveryDate)}</span>
-                          ) : (
-                            <span className="text-muted">Sin fecha de entrega</span>
-                          )}
-                          {days > 0 && (
-                            <span className="inline-flex rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-danger">
-                              Atrasado {days} día{days === 1 ? '' : 's'}
-                            </span>
-                          )}
-                        </div>
-                        {hasPicking ? (
-                          <>
-                            <GroupPickingSummary group={groupForOrder(order, orderLines)} />
-                            {prepareGroup ? prepareBlock(prepareGroup) : null}
-                          </>
-                        ) : (
-                          <div className="mt-2">
-                            <p className="text-sm text-muted">Sin picking</p>
-                            {user && canWrite && (
-                              <div className="mt-2">
-                                <OrderFlowButtons
-                                  order={order}
-                                  role={user.role}
-                                  via="picking"
-                                  busy={flowBusy}
-                                  onBusy={setFlowBusy}
-                                  transition={transitionOrder}
-                                  layout="compact"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {hasPicking && (
-                        <div className="flex shrink-0 items-center gap-3">
-                          <div
-                            className="h-1.5 overflow-hidden rounded-full bg-neutral-soft"
-                            style={{ width: 96 }}
-                          >
-                            <div
-                              className="h-full bg-accent"
-                              style={{ width: `${progress.pct}%` }}
-                            />
-                          </div>
-                          {progress.readyToPrepare ? (
-                            <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success">
-                              Listo
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted">{progress.pct}%</span>
-                          )}
-                          <button
-                            type="button"
-                            className="text-sm hover:underline"
-                            onClick={() =>
-                              openDetail(
-                                normalizeInvoiceKey(orderLines[0]?.invoice ?? '') ||
-                                  order.id,
-                              )
-                            }
-                          >
-                            Ver detalle
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                )
-              })}
-
+                        <Button
+                          variant="ghost"
+                          size="lg"
+                          className="mt-3"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            openPedido(order.id)
+                          }}
+                        >
+                          Ver pedido
+                        </Button>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              )}
               {orphanGroups.length > 0 && (
-                <div className="mt-2">
-                  <h2 className="mb-2 text-sm font-semibold text-muted">Filas sin pedido</h2>
-                  <div className="flex flex-col gap-3">
+                <section className="px-4 py-4">
+                  <h2 className="text-sm font-semibold text-text">Filas sin pedido</h2>
+                  <div className="mt-2 overflow-hidden rounded-md border border-border">
                     {orphanGroups.map((group) => {
                       const progress = progressOf(group)
                       return (
-                        <article
+                        <button
                           key={group.key}
-                          className="rounded-2xl bg-surface px-4 py-3 shadow-sm"
+                          type="button"
+                          className="flex w-full items-center justify-between gap-3 border-b border-border px-4 py-3 text-left last:border-b-0 hover:bg-surface-2"
+                          onClick={() => openGrupo(group.key)}
                         >
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="min-w-0">
-                              <p className="font-semibold">
-                                {group.invoice} — {group.client}
-                              </p>
-                              {subtitle(group) && (
-                                <p className="mt-1 text-sm text-muted">{subtitle(group)}</p>
-                              )}
-                              <OrderLinkBlock link={group.link} />
-                              <GroupPickingSummary group={group} />
-                              {prepareBlock(group)}
-                            </div>
-                            <div className="flex shrink-0 items-center gap-3">
-                              <div
-                                className="h-1.5 overflow-hidden rounded-full bg-neutral-soft"
-                                style={{ width: 96 }}
-                              >
-                                <div
-                                  className="h-full bg-accent"
-                                  style={{ width: `${progress.pct}%` }}
-                                />
-                              </div>
-                              {progress.readyToPrepare ? (
-                                <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success">
-                                  Listo
-                                </span>
-                              ) : (
-                                <span className="text-xs text-muted">{progress.pct}%</span>
-                              )}
-                              <button
-                                type="button"
-                                className="text-sm hover:underline"
-                                onClick={() => openDetail(group.key)}
-                              >
-                                Ver detalle
-                              </button>
-                            </div>
-                          </div>
-                        </article>
+                          <span className="min-w-0">
+                            <span className="block font-semibold">
+                              {group.invoice} — {group.client}
+                            </span>
+                            {subtitle(group) ? (
+                              <span className="mt-1 block text-sm text-muted">{subtitle(group)}</span>
+                            ) : null}
+                          </span>
+                          <span className="shrink-0 text-sm tabular-nums text-muted">
+                            {progress.readyToPrepare ? 'Listo' : `${progress.pct}%`}
+                          </span>
+                        </button>
                       )
                     })}
                   </div>
-                </div>
+                </section>
               )}
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <p className="mt-4 text-sm text-muted">
-            Sin URL de Clanbox configurada — configurala en Configuración para ver stock real.
-          </p>
-
-          {groups.length === 0 ? (
-            <div className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-              {lines.length === 0
+            </>
+          )
+        ) : groups.length === 0 ? (
+          <EmptyState
+            variant="plain"
+            title={
+              lines.length === 0
                 ? 'No hay productos para preparar.'
-                : 'Ningún pedido coincide con la búsqueda.'}
+                : 'Ningún pedido coincide con la búsqueda.'
+            }
+          />
+        ) : (
+          <>
+            <p className="border-b border-border px-4 py-3 text-sm text-muted">
+              Sin URL de Clanbox configurada — configurala en Configuración para ver stock real.
+            </p>
+            <div className="hidden lg:block">
+              <Table
+                bare
+                columns={pickingColumns}
+                rows={groups}
+                rowKey={(group) => group.key}
+                onRowClick={(group) => openGrupo(group.key)}
+              />
             </div>
-          ) : (
-            <div className="mt-4 flex flex-col gap-3">
+            <div className="flex flex-col lg:hidden">
               {groups.map((group) => {
                 const progress = progressOf(group)
-                const open = expanded === group.key
                 return (
-                  <article key={group.key} className="overflow-hidden rounded-2xl bg-surface shadow-sm">
-                    <div className="border-b border-border px-4 py-3">
-                      <button
-                        type="button"
-                        className="flex w-full items-center justify-between gap-4 text-left"
-                        aria-expanded={open}
-                        onClick={() => setExpanded(open ? null : group.key)}
-                      >
-                        <span className="min-w-0">
-                          <span className="block font-semibold">
-                            {group.invoice} — {group.client}
-                          </span>
-                          {subtitle(group) && (
-                            <span className="mt-1 block text-sm text-muted">{subtitle(group)}</span>
-                          )}
-                        </span>
-                        <span className="flex shrink-0 items-center gap-3">
-                          <span
-                            className="h-1.5 overflow-hidden rounded-full bg-neutral-soft"
-                            style={{ width: 96 }}
-                          >
-                            <span
-                              className="block h-full bg-accent"
-                              style={{ width: `${progress.pct}%` }}
-                            />
-                          </span>
-                          <span className="text-xs text-muted">
-                            {progress.readyToPrepare ? 'Listo' : `${progress.pct}%`}
-                          </span>
-                          <span aria-hidden="true">{open ? '▴' : '▾'}</span>
-                        </span>
-                      </button>
-                      <OrderLinkBlock link={group.link} />
-                      <GroupPickingSummary group={group} />
-                      {prepareBlock(group)}
-                    </div>
-                    {open && (
-                      <div className="flex flex-col gap-2 px-4 py-3">
-                        {group.lines.map((line) => {
-                          const complete = isLineComplete(line)
-                          const prepared = line.status === 'preparado'
-                          const saving = savingId === line.id
-                          return (
-                            <div
-                              key={line.id}
-                              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl px-3 py-3 ${
-                                complete ? 'bg-success-soft' : 'bg-surface-muted'
-                              }`}
-                            >
-                              <div className="min-w-0">
-                                <p className="font-medium">{line.product}</p>
-                                <p className="text-sm text-muted">
-                                  Cantidad pedida: {line.quantity}
-                                </p>
-                              </div>
-                              <div className="flex shrink-0 flex-wrap items-center gap-2">
-                                {canWrite ? (
-                                  <>
-                                    <label className="text-sm">
-                                      <span className="sr-only">Cantidad pickeada</span>
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={line.quantity}
-                                        step={1}
-                                        value={qtyDraftFor(line)}
-                                        disabled={prepared || saving}
-                                        className="w-20 rounded-xl border border-border bg-surface px-2 py-1.5 text-sm disabled:opacity-60"
-                                        onChange={(event) =>
-                                          setQtyDraft(line.id, event.target.value)
-                                        }
-                                        onBlur={() => void savePickedQty(line, qtyDraftFor(line))}
-                                        onKeyDown={(event) => {
-                                          if (event.key === 'Enter') {
-                                            event.preventDefault()
-                                            ;(event.target as HTMLInputElement).blur()
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                    <button
-                                      type="button"
-                                      className="rounded-xl border border-border bg-surface px-3 py-1.5 text-sm disabled:opacity-50"
-                                      disabled={prepared || complete || saving}
-                                      onClick={() => void markComplete(line)}
-                                    >
-                                      Completo
-                                    </button>
-                                  </>
-                                ) : (
-                                  <p className="text-sm text-muted">
-                                    {pickedOf(line)} / {line.quantity}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
+                  <article
+                    key={group.key}
+                    className="cursor-pointer border-b border-border px-4 py-3 last:border-b-0"
+                    onClick={() => openGrupo(group.key)}
+                  >
+                    <p className="font-semibold">
+                      {group.invoice} — {group.client}
+                    </p>
+                    {subtitle(group) ? <p className="mt-1 text-sm text-muted">{subtitle(group)}</p> : null}
+                    <p className="mt-1 text-sm tabular-nums text-muted">
+                      {progress.readyToPrepare ? 'Listo' : `${progress.pct}%`}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      className="mt-3"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        openGrupo(group.key)
+                      }}
+                    >
+                      Ver detalle
+                    </Button>
                   </article>
                 )
               })}
             </div>
-          )}
-        </>
+          </>
+        )}
+      </ListBox>
+
+      <Drawer
+        open={Boolean(openOrder) && !grupoId}
+        onClose={closeFromList}
+        title={openOrder?.id ?? 'Pedido'}
+        subtitle={openOrder ? openOrder.client.toUpperCase() : undefined}
+        footer={
+          openOrder ? (
+            <div className="flex w-full flex-col gap-2">
+              {(() => {
+                const orderLines = linesByOpenOrder.map.get(openOrder.id) ?? []
+                const hasPicking = orderLines.length > 0
+                const prepareGroup = hasPicking
+                  ? groupForOrder(openOrder, linesForOrder(linesByInvoice, openOrder))
+                  : null
+                return (
+                  <>
+                    {hasPicking && prepareGroup ? prepareBlock(prepareGroup) : null}
+                    {!hasPicking && user && canWrite ? (
+                      <OrderFlowButtons
+                        order={openOrder}
+                        role={user.role}
+                        via="picking"
+                        busy={flowBusy}
+                        onBusy={setFlowBusy}
+                        transition={transitionOrder}
+                        layout="compact"
+                      />
+                    ) : null}
+                    {hasPicking ? (
+                      <Button
+                        variant="ghost"
+                        size="lg"
+                        onClick={() =>
+                          openDetail(
+                            normalizeInvoiceKey(orderLines[0]?.invoice ?? '') || openOrder.id,
+                          )
+                        }
+                      >
+                        Ver detalle
+                      </Button>
+                    ) : null}
+                  </>
+                )
+              })()}
+            </div>
+          ) : null
+        }
+      >
+        {openOrder ? <OrderDetail order={openOrder} compact /> : null}
+      </Drawer>
+
+      <Drawer
+        open={Boolean(openGroup)}
+        onClose={closeFromList}
+        title={openGroup ? `${openGroup.invoice} — ${openGroup.client}` : 'Picking'}
+        subtitle={openGroup ? subtitle(openGroup) : undefined}
+        footer={openGroup ? prepareBlock(openGroup) : null}
+      >
+        {openGroup ? (
+          <div className="flex flex-col gap-3">
+            <OrderLinkBlock link={openGroup.link} />
+            <GroupPickingSummary group={openGroup} />
+            <div className="flex flex-col gap-2">
+              {openGroup.lines.map((line) => {
+                const complete = isLineComplete(line)
+                const prepared = line.status === 'preparado'
+                const saving = savingId === line.id
+                return (
+                  <div
+                    key={line.id}
+                    className={`flex flex-wrap items-center justify-between gap-3 rounded-md border border-border px-3 py-3 ${
+                      complete ? 'bg-success-soft' : 'bg-surface'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium">{line.product}</p>
+                      <p className="text-sm text-muted">Cantidad pedida: {line.quantity}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      {canWrite ? (
+                        <>
+                          <label className="text-sm">
+                            <span className="sr-only">Cantidad pickeada</span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={line.quantity}
+                              step={1}
+                              value={qtyDraftFor(line)}
+                              disabled={prepared || saving}
+                              className="w-20 rounded-xl border border-border bg-surface px-2 py-1.5 text-sm disabled:opacity-60"
+                              onChange={(event) => setQtyDraft(line.id, event.target.value)}
+                              onBlur={() => void savePickedQty(line, qtyDraftFor(line))}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault()
+                                  ;(event.target as HTMLInputElement).blur()
+                                }
+                              }}
+                            />
+                          </label>
+                          <Button
+                            variant="secondary"
+                            size="lg"
+                            disabled={prepared || complete || saving}
+                            onClick={() => void markComplete(line)}
+                          >
+                            Completo
+                          </Button>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted">
+                          {pickedOf(line)} / {line.quantity}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+      </Drawer>
+
+      {preview && (
+        <Modal
+          onClose={() => {
+            if (busy) return
+            setPreview(null)
+          }}
+          labelledBy="picking-preview-title"
+          className="grid place-items-center bg-overlay p-4"
+        >
+          <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-md border border-border bg-surface p-4 sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 id="picking-preview-title" className="text-xl font-semibold">
+                  Vista previa de importación
+                </h2>
+                <p className="mt-1 text-sm text-muted">
+                  {preview.valid.length} válidas · {preview.discarded.length} descartadas ·{' '}
+                  {preview.valid.filter((row) => row.combinedFrom > 1).length} combinadas
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="text-sm">
+                  Modo
+                  <Select
+                    className="mt-1"
+                    size="lg"
+                    value={importMode}
+                    onChange={(event) => setImportMode(event.target.value as ImportMode)}
+                  >
+                    <option value="merge">Combinar</option>
+                    <option value="replace">Reemplazar todo</option>
+                  </Select>
+                </label>
+                <Button variant="ghost" size="lg" disabled={busy} onClick={() => setPreview(null)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  disabled={busy || preview.valid.length === 0}
+                  onClick={() => void confirmImport()}
+                >
+                  Confirmar importación
+                </Button>
+              </div>
+            </div>
+            {preview.valid.length > 0 && (
+              <div className="mt-4 min-h-0">
+                <Table
+                  maxHeight="60vh"
+                  columns={previewColumns}
+                  rows={preview.valid}
+                  rowKey={(row) => `${row.comprobante}-${row.articulo}-${row.excelRows.join('-')}`}
+                />
+              </div>
+            )}
+            {preview.discarded.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-text">Filas descartadas</h3>
+                <ul className="mt-2 flex flex-col gap-1 text-sm text-danger">
+                  {preview.discarded.map((row) => (
+                    <li key={`${row.excelRow}-${row.message}`}>
+                      Fila {row.excelRow}: {row.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
 
       {showAllData && (
         <Modal
           onClose={() => setShowAllData(false)}
           labelledBy="picking-all-data-title"
-          className="grid place-items-center bg-black/40 p-4"
+          className="grid place-items-center bg-overlay p-4"
         >
-          <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-2xl bg-surface p-4 shadow-lg sm:p-5">
+          <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-md border border-border bg-surface p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 id="picking-all-data-title" className="text-xl font-semibold">
@@ -1591,24 +1690,19 @@ export function PendientesEntregas() {
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:opacity-50"
+                <Button
+                  variant="secondary"
+                  size="lg"
                   disabled={visibleColumns.length === 0}
                   onClick={() => downloadCsv(filteredLines, visibleColumns)}
                 >
                   Exportar CSV
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl border border-border px-3 py-1.5 text-sm"
-                  onClick={() => setShowAllData(false)}
-                >
+                </Button>
+                <Button variant="ghost" size="lg" onClick={() => setShowAllData(false)}>
                   Cerrar
-                </button>
+                </Button>
               </div>
             </div>
-
             <div className="mt-3 flex max-h-32 flex-wrap gap-2 overflow-auto">
               {dataColumns.map((column) => {
                 const active = visibleColumnIds.includes(column.id)
@@ -1625,39 +1719,22 @@ export function PendientesEntregas() {
                 )
               })}
             </div>
-
-            <div className="mt-4 min-h-0 flex-1 overflow-auto">
+            <div className="mt-4 min-h-0">
               {filteredLines.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted">
-                  Ninguna fila coincide con el filtro.
-                </p>
+                <EmptyState variant="plain" title="Ninguna fila coincide con el filtro." />
               ) : visibleColumns.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted">
-                  Elegí al menos una columna para ver la tabla.
-                </p>
+                <EmptyState variant="plain" title="Elegí al menos una columna para ver la tabla." />
               ) : (
-                <table className="min-w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-muted">
-                      {visibleColumns.map((column) => (
-                        <th key={column.id} className="whitespace-nowrap px-2 py-2 font-medium">
-                          {column.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modalLines.map((line) => (
-                      <tr key={line.id} className="border-b border-border/70">
-                        {visibleColumns.map((column) => (
-                          <td key={column.id} className="whitespace-nowrap px-2 py-2">
-                            {cellValue(line, column.id) || '—'}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Table
+                  maxHeight="60vh"
+                  columns={visibleColumns.map((column) => ({
+                    key: column.id,
+                    header: column.label,
+                    cell: (line: PickingLine) => cellValue(line, column.id) || '—',
+                  }))}
+                  rows={modalLines}
+                  rowKey={(line) => line.id}
+                />
               )}
             </div>
           </div>
