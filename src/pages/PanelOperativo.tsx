@@ -338,20 +338,40 @@ function DetailActions({
 }
 
 function PanelViewSwitch({ view, onChange }: { view: View; onChange: (next: View) => void }) {
-  const item = (value: View, label: string) => (
-    <button
-      type="button"
-      aria-pressed={view === value}
-      onClick={() => onChange(value)}
-      className={`rounded px-2.5 py-1 text-sm ${view === value ? 'bg-bg font-semibold text-text' : 'text-muted'}`}
-    >
-      {label}
-    </button>
-  )
+  const item = (value: View, label: string, icon: 'board' | 'list') => {
+    const active = view === value
+    return (
+      <button
+        type="button"
+        role="radio"
+        aria-checked={active}
+        onClick={() => onChange(value)}
+        className={`inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-sm sm:flex-none ${
+          active
+            ? 'border border-accent bg-accent-soft font-semibold text-text'
+            : 'border border-border bg-transparent text-text'
+        }`}
+      >
+        {icon === 'board' ? (
+          <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          </svg>
+        ) : (
+          <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        )}
+        {label}
+      </button>
+    )
+  }
   return (
-    <div className="inline-flex rounded-md bg-surface-2 p-0.5" role="group" aria-label="Vista">
-      {item('kanban', 'Tablero')}
-      {item('tabla', 'Tabla')}
+    <div className="flex w-full gap-1 sm:w-auto" role="radiogroup" aria-label="Vista">
+      {item('kanban', 'Tablero', 'board')}
+      {item('tabla', 'Tabla', 'list')}
     </div>
   )
 }
@@ -635,8 +655,9 @@ export function PanelOperativo() {
         }
       />
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <div role="radiogroup" aria-label="Entregas para" className="flex flex-wrap gap-1">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div role="radiogroup" aria-label="Entregas para" className="flex flex-wrap gap-1">
           {FECHA_CHIPS.map((chip) => {
             const active = dateFilter === chip.value
             return (
@@ -662,6 +683,8 @@ export function PanelOperativo() {
             Limpiar filtros
           </button>
         ) : null}
+        </div>
+        <PanelViewSwitch view={view} onChange={selectView} />
       </div>
 
       {sheetsError && (
@@ -688,12 +711,6 @@ export function PanelOperativo() {
           onClick={() => selectFecha('atrasados')}
         />
       </div>
-
-      {view === 'kanban' ? (
-        <div className="mt-4 flex justify-end">
-          <PanelViewSwitch view={view} onChange={selectView} />
-        </div>
-      ) : null}
 
       {view === 'kanban' && useAdvanceList ? (
         <div className="mt-4 flex flex-col gap-3">
@@ -792,7 +809,6 @@ export function PanelOperativo() {
               onClick: () => setStatusFilter('entregado'),
             },
           ]}
-          view={<PanelViewSwitch view={view} onChange={selectView} />}
         >
           <Table
             bare
