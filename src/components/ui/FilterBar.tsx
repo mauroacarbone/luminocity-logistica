@@ -311,7 +311,15 @@ function FilterSelectMenu({ item }: { item: FilterSelect }) {
   )
 }
 
-function SelectFields({ selects, native }: { selects: FilterSelect[]; native?: boolean }) {
+function SelectFields({
+  selects,
+  native,
+  className,
+}: {
+  selects: FilterSelect[]
+  native?: boolean
+  className?: string
+}) {
   if (!native) {
     return (
       <>
@@ -324,7 +332,10 @@ function SelectFields({ selects, native }: { selects: FilterSelect[]; native?: b
   return (
     <>
       {selects.map((item) => (
-        <label key={item.id} className="flex min-w-40 flex-col gap-1 text-sm font-medium text-text">
+        <label
+          key={item.id}
+          className={cx('flex flex-col gap-1 text-sm font-medium text-text', className ?? 'min-w-40')}
+        >
           {item.label}
           <Select
             value={item.value}
@@ -512,13 +523,27 @@ export function FilterBar({
   if (stacked) {
     return (
       <div className={cx('flex flex-col gap-2', className)}>
-        {search ? <SearchField search={search} size={size} /> : null}
-        {hasExtra ? (
+        <div className="flex flex-wrap items-end gap-2">
+          {search ? (
+            <div className="min-w-[min(100%,12rem)] flex-1">
+              <SearchField search={search} size={size} />
+            </div>
+          ) : null}
+          {selects && selects.length > 0 ? (
+            <SelectFields
+              selects={selects}
+              native
+              className="min-w-[min(100%,10rem)] flex-1"
+            />
+          ) : null}
+        </div>
+        {chips && chips.length > 0 ? (
           <div className="flex flex-wrap items-start gap-2">
-            <ExtraFilters selects={selects} chips={chips} dateRange={dateRange} size={size} native />
+            <ChipButtons groups={chips} size={size} />
+            {dateRange ? <Dates dateRange={dateRange} /> : null}
             {clearButton}
           </div>
-        ) : null}
+        ) : clearButton}
       </div>
     )
   }

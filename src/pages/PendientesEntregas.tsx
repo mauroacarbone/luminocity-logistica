@@ -1335,7 +1335,6 @@ export function PendientesEntregas() {
                       <Button
                         variant="primary"
                         size="lg"
-                        className="text-[var(--btn-primary-fg)]"
                         disabled={busy}
                         onClick={() => fileRef.current?.click()}
                       >
