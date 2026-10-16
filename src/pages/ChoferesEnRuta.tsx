@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { Button, FilterBar, Modal, Page, PageHeader } from '../components/ui'
+import { Badge, Button, EmptyState, FilterBar, ListBox, Modal, Page, PageHeader, Table, type TableColumn } from '../components/ui'
 import { isOwnDelivery } from '../data/catalog'
 import { error, success } from '../lib/alerts'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
@@ -10,6 +10,7 @@ import { finishRouteSheet, listOpenRouteSheets, type RouteSheet } from '../lib/r
 import { isSession } from '../lib/authStore'
 import { listUsers } from '../lib/usersApi'
 import { formatIsoDate } from '../lib/week'
+import { clockTime } from '../lib/schedule'
 import { cssVar } from '../lib/theme'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -41,6 +42,16 @@ function minutesAgo(updatedAt: string, now: number) {
   const hours = Math.round(minutes / 60)
   if (hours === 1) return 'hace 1 hora'
   return `hace ${hours} horas`
+}
+
+function staleMinutes(updatedAt: string, now: number) {
+  const at = new Date(updatedAt).getTime()
+  if (!Number.isFinite(at)) return 0
+  return Math.max(0, Math.round((now - at) / 60000))
+}
+
+function staleLabel(updatedAt: string, now: number) {
+  return `Sin señal hace ${staleMinutes(updatedAt, now)} min`
 }
 
 function isStale(updatedAt: string, now: number) {
@@ -115,7 +126,11 @@ function DriversMap({
                   <span className="block">{sheetLine(driver.id, sheets, orders)?.progress}</span>
                 </>
               )}
-              {stale && <span className="block">sin señal</span>}
+              {stale && (
+                <span className="block">
+                  {staleLabel(driver.updatedAt, now)} · {clockTime(driver.updatedAt)}
+                </span>
+              )}
             </Popup>
           </CircleMarker>
         )
@@ -245,6 +260,35 @@ export function ChoferesEnRuta() {
       )
   }, [accountNames, drivers, orders, sheets])
 
+  const tripColumns: TableColumn<(typeof openTrips)[number]>[] = [
+    { key: 'driver', header: 'Chofer', cell: (trip) => trip.driverName },
+    { key: 'date', header: 'Fecha', cell: (trip) => formatIsoDate(trip.sheet.date) },
+    { key: 'slot', header: 'Franja', cell: (trip) => trip.sheet.slot },
+    {
+      key: 'pending',
+      header: 'Paradas pendientes',
+      align: 'right',
+      cell: (trip) => trip.pending,
+    },
+    {
+      key: 'action',
+      header: 'Acción',
+      cell: (trip) => (
+        <Button
+          variant="secondary"
+          size="lg"
+          disabled={finishing}
+          onClick={(event) => {
+            event.stopPropagation()
+            setFinishTarget(trip.sheet)
+          }}
+        >
+          Finalizar viaje
+        </Button>
+      ),
+    },
+  ]
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return drivers.filter((driver) => {
@@ -272,38 +316,51 @@ export function ChoferesEnRuta() {
       )}
       {status === 'ready' && (
         <>
-          <section className="mt-4">
-            <h2 className="text-xl font-semibold">Viajes en curso</h2>
+          <ListBox
+            className="mt-4"
+            counters={[
+              {
+                key: 'curso',
+                label: 'En curso',
+                count: openTrips.length,
+                active: true,
+                onClick: () => undefined,
+              },
+            ]}
+          >
             {openTrips.length === 0 ? (
-              <p className="mt-3 rounded-2xl bg-surface px-4 py-6 text-sm text-muted shadow-sm">
-                No hay viajes en curso.
-              </p>
+              <EmptyState variant="plain" title="No hay viajes en curso" />
             ) : (
-              <ul className="mt-3 flex flex-col gap-2">
-                {openTrips.map(({ sheet, driverName, pending }) => (
-                  <li key={sheet.id} className="rounded-2xl bg-surface px-4 py-3 text-sm shadow-sm">
-                    <p className="font-semibold">{driverName}</p>
-                    <p>
-                      {formatIsoDate(sheet.date)} · {sheet.slot}
-                    </p>
-                    <p>
-                      {pending === 1 ? '1 parada pendiente' : `${pending} paradas pendientes`}
-                    </p>
-                    <Button
-                      variant="secondary"
-                      size="lg"
-                      fullWidth
-                      className="mt-3"
-                      disabled={finishing}
-                      onClick={() => setFinishTarget(sheet)}
-                    >
-                      Finalizar viaje
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <div className="hidden lg:block">
+                  <Table bare columns={tripColumns} rows={openTrips} rowKey={(trip) => trip.sheet.id} />
+                </div>
+                <div className="flex flex-col lg:hidden">
+                  {openTrips.map(({ sheet, driverName, pending }) => (
+                    <article key={sheet.id} className="border-b border-border px-4 py-3 last:border-b-0">
+                      <p className="font-semibold">{driverName}</p>
+                      <p className="mt-1 text-sm text-muted">
+                        {formatIsoDate(sheet.date)} · {sheet.slot}
+                      </p>
+                      <p className="mt-1 text-sm">
+                        {pending === 1 ? '1 parada pendiente' : `${pending} paradas pendientes`}
+                      </p>
+                      <Button
+                        variant="secondary"
+                        size="lg"
+                        fullWidth
+                        className="mt-3"
+                        disabled={finishing}
+                        onClick={() => setFinishTarget(sheet)}
+                      >
+                        Finalizar viaje
+                      </Button>
+                    </article>
+                  ))}
+                </div>
+              </>
             )}
-          </section>
+          </ListBox>
           <FilterBar
             className="mt-4"
             search={{
@@ -333,25 +390,29 @@ export function ChoferesEnRuta() {
             }}
           />
 
-          <div className="mt-4 overflow-hidden rounded-2xl bg-border-strong" style={{ height: 480 }}>
+          <div className="mt-4 overflow-hidden rounded-md border border-border bg-surface" style={{ height: 480 }}>
             {visible.length > 0 ? (
               <DriversMap drivers={visible} now={now} sheets={sheets} orders={deliveryOrders} />
             ) : (
-              <div className="grid h-full place-items-center px-6 text-center text-sm text-muted">
-                {drivers.length === 0
-                  ? 'No hay choferes en ruta.'
-                  : filterMissing
-                    ? 'Ese chofer no está en ruta'
-                    : 'Ningún chofer coincide con el filtro.'}
-              </div>
+              <EmptyState
+                variant="plain"
+                title={
+                  drivers.length === 0
+                    ? 'No hay choferes en ruta'
+                    : filterMissing
+                      ? 'Ese chofer no está en ruta'
+                      : 'Ningún chofer coincide con el filtro.'
+                }
+              />
             )}
           </div>
           {visible.length > 0 && (
-            <ul className="mt-4 flex flex-col gap-2">
+            <div className="mt-4 overflow-hidden rounded-md border border-border">
               {visible.map((driver) => {
                 const line = sheetLine(driver.id, sheets, deliveryOrders)
+                const stale = isStale(driver.updatedAt, now)
                 return (
-                  <li key={driver.id} className="rounded-2xl bg-surface px-4 py-3 text-sm shadow-sm">
+                  <article key={driver.id} className="border-b border-border px-4 py-3 text-sm last:border-b-0">
                     <p className="font-semibold">{driver.name}</p>
                     <p>{driver.carrierName}</p>
                     <p>{travelingLabel(driver.traveling)}</p>
@@ -362,15 +423,23 @@ export function ChoferesEnRuta() {
                         <p>{line.progress}</p>
                       </>
                     )}
+                    <p className="mt-2 flex flex-wrap items-center gap-2">
+                      {stale ? (
+                        <Badge tone="warning">{staleLabel(driver.updatedAt, now)}</Badge>
+                      ) : (
+                        <span className="text-muted">{minutesAgo(driver.updatedAt, now)}</span>
+                      )}
+                      <span className="text-muted">{clockTime(driver.updatedAt)}</span>
+                    </p>
                     <p className="mt-2">
-                      <Link className="order-link text-sm font-semibold" to={`/mis-viajes?chofer=${driver.id}`}>
+                      <Link className="text-sm font-semibold text-accent hover:underline" to={`/mis-viajes?chofer=${driver.id}`}>
                         Ver viajes
                       </Link>
                     </p>
-                  </li>
+                  </article>
                 )
               })}
-            </ul>
+            </div>
           )}
         </>
       )}
@@ -383,7 +452,7 @@ export function ChoferesEnRuta() {
             if (!finishing) setFinishTarget(null)
           }}
         >
-          <div className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-lg">
+          <div className="w-full max-w-md rounded-md border border-border bg-surface p-5">
             <h2 id="finish-trip-title" className="text-xl font-semibold">
               Finalizar viaje
             </h2>
