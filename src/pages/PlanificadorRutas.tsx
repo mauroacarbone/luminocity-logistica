@@ -3,7 +3,7 @@ import { Button, EmptyState, Page, PageHeader, Select } from '../components/ui'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { PriorityChip } from '../components/PriorityChip'
-import { isOwnDelivery } from '../data/catalog'
+import { isOwnDelivery, isPickup } from '../data/catalog'
 import { STATUS_PILL, type Order } from '../data/orders'
 import { confirm, error as showError, success } from '../lib/alerts'
 import { placeLine } from '../lib/place'
@@ -74,6 +74,12 @@ function pointOf(order: Order): LatLng | null {
   if (typeof order.lat !== 'number' || typeof order.lng !== 'number') return null
   if (!Number.isFinite(order.lat) || !Number.isFinite(order.lng)) return null
   return { lat: order.lat, lng: order.lng }
+}
+
+function slotPeriod(slot: string) {
+  const hour = Number((normalizeTimeWindow(slot) || '').slice(0, 2))
+  if (!Number.isFinite(hour)) return 'Franja'
+  return hour < 13 ? 'Mañana' : 'Tarde'
 }
 
 function formatKm(kilometers: number) {
@@ -200,6 +206,8 @@ export function PlanificadorRutas() {
   const [route, setRoute] = useState<PlannedRoute | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [queuedId, setQueuedId] = useState<string | null>(null)
+  const [planNonce, setPlanNonce] = useState(0)
   const ordersRef = useRef(orders)
   const drawRef = useRef<(from: string, ids: string[], optimize: boolean) => Promise<boolean>>(async () => false)
   useEffect(() => {
@@ -243,6 +251,27 @@ export function PlanificadorRutas() {
     if (!isOwnDelivery(order)) return false
     return !normalizeTimeWindow(order.timeWindow)
   })
+  const unplanned = orders
+    .filter((order) => {
+      if (order.deliveryDate !== iso || !isOwnDelivery(order) || isPickup(order)) return false
+      if (order.routeId) return false
+      if (!normalizeTimeWindow(order.timeWindow)) return false
+      return order.status === 'pendiente' || order.status === 'preparado' || order.status === 'asignado'
+    })
+    .sort(sortListed)
+  const unplannedGroups = [...unplanned.reduce((groups, order) => {
+    const key = normalizeTimeWindow(order.timeWindow) || order.timeWindow || ''
+    const current = groups.get(key)
+    if (current) current.orders.push(order)
+    else groups.set(key, { slot: key, label: slotPeriod(key), orders: [order] })
+    return groups
+  }, new Map<string, { slot: string; label: string; orders: Order[] }>()).values()]
+  const unplannedSummary = [...unplannedGroups.reduce((counts, group) => {
+    counts.set(group.label, (counts.get(group.label) ?? 0) + group.orders.length)
+    return counts
+  }, new Map<string, number>()).entries()]
+    .map(([label, count]) => `${label} ${count}`)
+    .join(' · ')
 
   useEffect(() => {
     void listUsers().then((result) => {
@@ -329,9 +358,17 @@ export function PlanificadorRutas() {
         result.data.find(
           (item) => item.driverId === driverId && normalizeTimeWindow(item.slot) === timeWindow,
         ) ?? null
+      const extra = queuedId
+      const base = found?.orderIds ?? []
+      const canAdd = Boolean(extra) && (!found || found.status === 'planificada') && !base.includes(extra ?? '')
+      const ids = canAdd && extra ? [...new Set([...base, extra])] : base
+      let next = ids
       setSheet(found)
       setOrigin(found?.origin || DEFAULT_ORIGIN)
-      setSelectedIds(found?.orderIds ?? [])
+      setSelectedIds((current) => {
+        next = canAdd && extra ? [...new Set([...base, ...current, extra])] : ids
+        return next
+      })
       setStops([])
       setRoute(
         found
@@ -339,12 +376,13 @@ export function PlanificadorRutas() {
           : null,
       )
       setError('')
-      if (found) void drawRef.current(found.origin, found.orderIds, false)
+      if (canAdd) void drawRef.current(found?.origin || DEFAULT_ORIGIN, next, false)
+      else if (found) void drawRef.current(found.origin, found.orderIds, false)
     })
     return () => {
       cancelled = true
     }
-  }, [driverId, timeWindow, iso, logout])
+  }, [driverId, timeWindow, iso, logout, planNonce, queuedId])
 
   const sheetId = sheet?.id
   const sheetStatus = sheet?.status
@@ -373,12 +411,39 @@ export function PlanificadorRutas() {
     const match = nextDays.find((day) => toIso(day) === today)
     setWeekOffset(offset)
     setSelectedIso(toIso(match ?? nextDays[0]))
+    setQueuedId(null)
     setError('')
   }
 
   function pickDay(next: string) {
     setSelectedIso(next)
+    setQueuedId(null)
     setError('')
+  }
+
+  function planPending(order: Order) {
+    const next = normalizeTimeWindow(order.timeWindow)
+    if (!next || readOnly) return
+    if (!driverId) {
+      if (next !== timeWindow) {
+        setSlot(next)
+        setSheet(null)
+        setSelectedIds([])
+        setStops([])
+        setRoute(null)
+      }
+      return
+    }
+    setQueuedId(order.id)
+    if (next !== timeWindow) {
+      setSlot(next)
+      setSheet(null)
+      setSelectedIds([])
+      setStops([])
+      setRoute(null)
+      return
+    }
+    setPlanNonce((current) => current + 1)
   }
 
   function toggle(id: string) {
@@ -616,6 +681,7 @@ export function PlanificadorRutas() {
             className="mt-1"
             onChange={(event) => {
               setDriverId(event.target.value)
+              setQueuedId(null)
               setSheet(null)
               setSelectedIds([])
               setStops([])
@@ -638,6 +704,7 @@ export function PlanificadorRutas() {
             className="mt-1"
             onChange={(event) => {
               setSlot(event.target.value)
+              setQueuedId(null)
               setSheet(null)
               setSelectedIds([])
               setStops([])
@@ -664,6 +731,42 @@ export function PlanificadorRutas() {
       <div className="planner-body">
       <div className="planner-side">
       <div className="planner-side-scroll">
+      <section className="no-print mb-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-sm font-semibold text-text">Por planificar hoy</h2>
+          {unplannedSummary ? <p className="text-sm text-muted">{unplannedSummary}</p> : null}
+        </div>
+        {unplannedGroups.length === 0 ? (
+          <div className="mt-3 overflow-hidden rounded-[6px] border border-border">
+            <EmptyState variant="plain" className="!py-8" title="No hay pedidos por planificar para esta fecha" />
+          </div>
+        ) : (
+          unplannedGroups.map((group) => (
+            <div key={group.slot} className="mt-3">
+              <h3 className="text-sm font-semibold text-text">
+                {group.label}
+                <span className="ml-2 font-normal text-muted">{group.orders.length}</span>
+              </h3>
+              <div className="mt-2 overflow-hidden rounded-[6px] border border-border">
+                {group.orders.map((order) => (
+                  <button
+                    key={order.id}
+                    type="button"
+                    className="flex min-h-14 w-full flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-left last:border-b-0 hover:bg-surface-2"
+                    onClick={() => planPending(order)}
+                  >
+                    <span className="font-medium text-accent">{order.id}</span>
+                    <span className="font-semibold">{order.client}</span>
+                    {order.zone ? <span className="text-sm text-muted">{order.zone}</span> : null}
+                    <PriorityChip order={order} />
+                    <span className="ml-auto text-sm text-muted">{group.slot}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </section>
       <div className="planner-list no-print flex flex-col gap-4">
         <section>
           <div className="flex items-baseline justify-between gap-3">
