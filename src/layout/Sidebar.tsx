@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { BRAND } from '../config/brand'
 import { ROLE_LABEL } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
@@ -34,15 +34,14 @@ function AreaLink({ tab, onNavigate }: { tab: AppTab; onNavigate?: () => void })
   const { user } = useAuth()
   const active = user ? activeTabId(user.role, location.pathname) === tab.id : false
   return (
-    <NavLink
+    <Link
       to={tab.to}
       className={active ? 'app-side-link is-active' : 'app-side-link'}
-      aria-current={active ? 'page' : undefined}
       onClick={() => onNavigate?.()}
     >
       <NavIcon name={tab.icon} />
       <span>{tab.label}</span>
-    </NavLink>
+    </Link>
   )
 }
 
@@ -87,6 +86,7 @@ export function Sidebar({ mode, sections, collapsed, onCollapse, onClose, onNavi
       <nav className="app-side-nav" aria-label={dock ? 'Páginas' : 'Menú'}>
         {mode === 'drawer' ? (
           <div className="app-side-section">
+            <p className="app-side-label">Áreas</p>
             {tabs.map((tab) => (
               <AreaLink key={tab.id} tab={tab} onNavigate={onNavigate} />
             ))}
@@ -107,6 +107,8 @@ export function Sidebar({ mode, sections, collapsed, onCollapse, onClose, onNavi
           type="button"
           className="app-side-collapse"
           aria-label={collapsed ? 'Expandir barra lateral' : 'Contraer barra lateral'}
+          aria-expanded={!collapsed}
+          aria-controls="app-sidebar"
           onClick={onCollapse}
         >
           <NavIcon name="sidebar-collapse" />
