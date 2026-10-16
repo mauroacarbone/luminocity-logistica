@@ -519,6 +519,10 @@ export function PanelOperativo() {
       }
       const results = await Promise.all(dates.map((date) => listRouteSheets(date)))
       if (cancelled) return
+      if (results.every((result) => !result.ok)) {
+        setSheetsError(true)
+        return
+      }
       const failed = results.some((result) => !result.ok && result.status !== 403)
       const merged: RouteSheet[] = []
       for (const result of results) {
