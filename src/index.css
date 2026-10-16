@@ -615,10 +615,29 @@ p {
   background: var(--tab-indicator);
 }
 
-@media (max-width: 767px) {
-  .app-crumb-root,
-  .app-crumb-sep {
+@media (max-width: 639px) {
+  .app-header-top {
+    gap: 8px;
+    padding: 0 12px;
+  }
+
+  .app-header-start,
+  .app-header-end {
+    flex: 0 0 auto;
+  }
+
+  .app-logo {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+
+  .app-crumbs {
     display: none;
+  }
+
+  .app-header-search {
+    display: contents;
   }
 
   .app-search {
@@ -627,6 +646,22 @@ p {
 
   .app-search-compact {
     display: grid;
+    width: 40px;
+    height: 40px;
+    margin-left: auto;
+    flex: 0 0 40px;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .app-header-start {
+    flex: 0 1 auto;
+  }
+
+  .app-header-search {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 360px;
   }
 }
 
