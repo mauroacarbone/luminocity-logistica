@@ -23,6 +23,7 @@ type Point = { lat: number; lng: number }
 
 const SEND_EVERY_MS = 30_000
 const RELOAD_AFTER_MS = 4000
+const SHEETS_EVERY_MS = 60_000
 const coordsAsked = new Set<string>()
 
 function sheetPrimary(sheet: RouteSheet, role: string | undefined, today: string, canFinish: boolean) {
@@ -91,40 +92,52 @@ export function MisEntregas() {
 
   useEffect(() => {
     let cancelled = false
-    const yesterday = businessOffset(-1)
-    const dates = new Set<string>([today, yesterday])
-    for (const order of orders) {
-      if (!order.sheetPlanned && !order.routeId) continue
-      if (typeof order.deliveryDate === 'string' && order.deliveryDate.trim()) {
-        dates.add(order.deliveryDate)
-      }
-    }
-    void Promise.all([...dates].map((date) => listRouteSheets(date))).then((results) => {
-      if (cancelled) return
-      const failed = results.find((result) => !result.ok)
-      if (failed && !failed.ok) {
-        setSheetsError(failed.message)
-      } else {
-        setSheetsError('')
-      }
-      const open: RouteSheet[] = []
-      for (const result of results) {
-        if (!result.ok) continue
-        for (const sheet of result.data) {
-          if (open.some((item) => item.id === sheet.id)) continue
-          if (sheet.status === 'cerrada') continue
-          open.push(sheet)
+    function loadSheets() {
+      const yesterday = businessOffset(-1)
+      const dates = new Set<string>([today, yesterday])
+      for (const order of orders) {
+        if (!order.sheetPlanned && !order.routeId) continue
+        if (typeof order.deliveryDate === 'string' && order.deliveryDate.trim()) {
+          dates.add(order.deliveryDate)
         }
       }
-      open.sort((left, right) => {
-        if (left.date !== right.date) return left.date < right.date ? -1 : 1
-        if (left.slot !== right.slot) return left.slot < right.slot ? -1 : 1
-        return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
+      void Promise.all([...dates].map((date) => listRouteSheets(date))).then((results) => {
+        if (cancelled) return
+        const failed = results.find((result) => !result.ok)
+        if (failed && !failed.ok) {
+          setSheetsError(failed.message)
+        } else {
+          setSheetsError('')
+        }
+        const open: RouteSheet[] = []
+        for (const result of results) {
+          if (!result.ok) continue
+          for (const sheet of result.data) {
+            if (open.some((item) => item.id === sheet.id)) continue
+            if (sheet.status === 'cerrada') continue
+            open.push(sheet)
+          }
+        }
+        open.sort((left, right) => {
+          if (left.date !== right.date) return left.date < right.date ? -1 : 1
+          if (left.slot !== right.slot) return left.slot < right.slot ? -1 : 1
+          return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
+        })
+        setSheets(open)
       })
-      setSheets(open)
-    })
+    }
+    loadSheets()
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') loadSheets()
+    }, SHEETS_EVERY_MS)
+    function onVisibility() {
+      if (document.visibilityState === 'visible') loadSheets()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
       cancelled = true
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [today, orders])
 
