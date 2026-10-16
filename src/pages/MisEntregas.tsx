@@ -112,10 +112,15 @@ export function MisEntregas() {
         if (!result.ok) continue
         for (const sheet of result.data) {
           if (open.some((item) => item.id === sheet.id)) continue
-          if (sheet.status === 'cerrada' || sheet.date > today) continue
+          if (sheet.status === 'cerrada') continue
           open.push(sheet)
         }
       }
+      open.sort((left, right) => {
+        if (left.date !== right.date) return left.date < right.date ? -1 : 1
+        if (left.slot !== right.slot) return left.slot < right.slot ? -1 : 1
+        return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
+      })
       setSheets(open)
     })
     return () => {
