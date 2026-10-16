@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
+import { Button } from './ui'
 import { Modal } from './ui/Modal'
 import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL } from '../data/catalog'
@@ -65,7 +66,7 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
       <div className="cover-print-frame pointer-events-none fixed inset-0 grid place-items-center p-4">
         <article
           id="cover-print"
-          className="pointer-events-auto w-full max-w-md rounded-2xl bg-surface p-6 shadow-md"
+          className="pointer-events-auto w-full max-w-md rounded-lg bg-surface p-6 shadow-md"
         >
           <p className="text-sm font-semibold tracking-wide text-muted">{BRAND.name}</p>
           <h2 id="cover-title" className="mt-1 text-2xl font-semibold">
@@ -96,20 +97,12 @@ export function QrCoverDialog({ order, onClose }: { order: Order; onClose: () =>
             ))}
           </dl>
           <div className="no-print mt-5 flex justify-end gap-2">
-            <button
-              type="button"
-              className="rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-muted"
-              onClick={onClose}
-            >
+            <Button type="button" variant="ghost" size="lg" onClick={onClose}>
               Cerrar
-            </button>
-            <button
-              type="button"
-              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg"
-              onClick={printCover}
-            >
+            </Button>
+            <Button type="button" variant="primary" size="lg" onClick={printCover}>
               Imprimir
-            </button>
+            </Button>
           </div>
         </article>
       </div>

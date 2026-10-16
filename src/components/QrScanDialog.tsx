@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
+import { Button, Field, Input } from './ui'
 import { Modal } from './ui/Modal'
 
 let cameraTurn: Promise<void> = Promise.resolve()
@@ -150,10 +151,10 @@ export function QrScanDialog({
     <Modal
       onClose={onClose}
       labelledBy="scan-title"
-      className="grid place-items-center bg-black/40 p-4"
+      className="grid place-items-center bg-overlay p-4"
     >
       <form
-        className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-md"
+        className="w-full max-w-md rounded-lg bg-surface p-5 shadow-md"
         onSubmit={(event) => {
           event.preventDefault()
           onSubmit(code)
@@ -183,33 +184,24 @@ export function QrScanDialog({
             </p>
           )}
         </div>
-        <label className="mt-4 block text-sm font-medium">
-          N° de pedido o factura
-          <input
-            ref={inputRef}
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-            placeholder="P-1234567"
-            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
-          />
-        </label>
-        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+        <div className="mt-4">
+          <Field label="N° de pedido o factura" error={error || undefined}>
+            <Input
+              ref={inputRef}
+              size="lg"
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              placeholder="P-1234567"
+            />
+          </Field>
+        </div>
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
-            disabled={pending}
-            onClick={onClose}
-          >
+          <Button type="button" variant="ghost" size="lg" disabled={pending} onClick={onClose}>
             Cerrar
-          </button>
-          <button
-            type="submit"
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50"
-            disabled={pending}
-          >
+          </Button>
+          <Button type="submit" variant="primary" size="lg" disabled={pending}>
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
