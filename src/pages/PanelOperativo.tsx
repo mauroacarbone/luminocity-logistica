@@ -21,7 +21,7 @@ import { compareOpenPriority } from '../lib/priority'
 import { placeLine } from '../lib/place'
 import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
 import { normalizeTimeWindow } from '../lib/slot'
-import { businessToday } from '../lib/schedule'
+import { businessOffset, businessToday } from '../lib/schedule'
 import { addDays, formatIsoDate, parseIso, startOfWeek, toIso } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -412,8 +412,8 @@ export function PanelOperativo() {
   const dateFilter = parseFecha(searchParams.get('fecha'))
   const openId = searchParams.get('pedido')
   const openOrder = orders.find((order) => order.id === openId) ?? null
-  const today = toIso(new Date())
-  const tomorrow = toIso(addDays(new Date(), 1))
+  const today = businessToday()
+  const tomorrow = businessOffset(1)
   const weekStart = startOfWeek(parseIso(businessToday()))
   const weekFrom = toIso(weekStart)
   const weekTo = toIso(addDays(weekStart, 6))
