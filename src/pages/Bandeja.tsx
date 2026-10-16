@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Page, PageHeader } from '../components/ui'
+import { Button, Card, EmptyState, Page, PageHeader } from '../components/ui'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { pendingEdit, type Order, type OrderEdit } from '../data/orders'
 import { confirm, error as showError, success } from '../lib/alerts'
@@ -174,47 +174,43 @@ export function Bandeja() {
       <>
       <h2 className="mt-6 text-xl font-semibold">Autorizaciones</h2>
       {pendingAuth.length === 0 ? (
-        <div className="mt-3 rounded-2xl bg-surface px-5 py-6 text-sm text-muted shadow-sm">
-          No hay autorizaciones pendientes.
-        </div>
+        <EmptyState variant="plain" className="mt-3" title="No hay autorizaciones pendientes." />
       ) : (
         <div className="mt-3 flex flex-col gap-3">
           {pendingAuth.map((item) => (
-            <article key={item.id} className="rounded-2xl bg-surface p-4 shadow-sm">
+            <Card as="article" key={item.id}>
               <p className="font-semibold">{names[item.requestedBy] ?? 'Vendedor'}</p>
               <p className="mt-1 text-sm text-muted">Quiere cargar a nombre de {item.seller}.</p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  className="rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg"
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="lg"
                   disabled={busy === item.id}
                   onClick={() => void decideAuth(item.id, 'aprobada')}
                 >
                   Aprobar
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl bg-danger-deep px-3 py-1.5 text-sm font-semibold text-inverse hover:bg-danger"
+                </Button>
+                <Button
+                  variant="danger-outline"
+                  size="lg"
                   disabled={busy === item.id}
                   onClick={() => void decideAuth(item.id, 'rechazada')}
                 >
                   Rechazar
-                </button>
+                </Button>
               </div>
-            </article>
+            </Card>
           ))}
         </div>
       )}
 
       <h2 className="mt-8 text-xl font-semibold">Ediciones</h2>
       {pendingEdits.length === 0 ? (
-        <div className="mt-3 rounded-2xl bg-surface px-5 py-6 text-sm text-muted shadow-sm">
-          No hay ediciones pendientes.
-        </div>
+        <EmptyState variant="plain" className="mt-3" title="No hay ediciones pendientes." />
       ) : (
         <div className="mt-3 flex flex-col gap-3">
           {pendingEdits.map(({ order, edit }) => (
-            <article key={edit.id} className="rounded-2xl bg-surface p-4 shadow-sm">
+            <Card as="article" key={edit.id}>
               <p className="font-semibold">
                 {order.id} · {order.client}
               </p>
@@ -228,25 +224,25 @@ export function Bandeja() {
                   </li>
                 ))}
               </ul>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  className="rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg"
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="lg"
                   disabled={busy === edit.id}
                   onClick={() => void decideEdit(order, edit, 'aplicada')}
                 >
                   Aprobar
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl bg-danger-deep px-3 py-1.5 text-sm font-semibold text-inverse hover:bg-danger"
+                </Button>
+                <Button
+                  variant="danger-outline"
+                  size="lg"
                   disabled={busy === edit.id}
                   onClick={() => void decideEdit(order, edit, 'rechazada')}
                 >
                   Rechazar
-                </button>
+                </Button>
               </div>
-            </article>
+            </Card>
           ))}
         </div>
       )}
