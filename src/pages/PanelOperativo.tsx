@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Badge, Button, Drawer, EmptyState, FilterBar, KpiCard, ListBox, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, KpiCard, ListBox, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderDetail } from '../components/OrderDetail'
@@ -379,7 +379,6 @@ export function PanelOperativo() {
   const weekStart = startOfWeek(new Date())
   const weekFrom = toIso(weekStart)
   const weekTo = toIso(addDays(weekStart, 6))
-  const fechaLabel = FECHA_CHIPS.find((chip) => chip.value === dateFilter)?.label ?? 'Esta semana'
 
   const canPlan = Boolean(user && canOpen(user.role, '/rutas'))
 
@@ -416,7 +415,6 @@ export function PanelOperativo() {
       : statusFilter
         ? [statusFilter]
         : STATUS_ORDER
-  const undatedCount = datedOrders.filter((order) => !hasDeliveryDate(order)).length
   const overdueCount = orders.filter(
     (order) =>
       isOverdue(order, today) &&
@@ -427,7 +425,6 @@ export function PanelOperativo() {
   ).length
   const openCount = datedOrders.filter((order) => order.status !== 'entregado').length
   const deliveredCount = countFor(datedOrders, 'entregado')
-  const listFiltersActive = dateFilter !== 'semana' || statusFilter !== null
   const useAdvanceList = narrow && view === 'kanban' && !statusFilter
 
   const advanceOrders = useMemo(
@@ -638,20 +635,34 @@ export function PanelOperativo() {
         }
       />
 
-      <FilterBar
-        className="mt-4"
-        chips={[
-          {
-            id: 'fecha',
-            label: 'Fecha de entrega',
-            value: dateFilter,
-            options: FECHA_CHIPS,
-            onChange: (value) => selectFecha(value as FechaFilter),
-          },
-        ]}
-        activeCount={dateFilter === 'semana' ? 0 : 1}
-        onClear={() => selectFecha('semana')}
-      />
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div role="radiogroup" aria-label="Entregas para" className="flex flex-wrap gap-1">
+          {FECHA_CHIPS.map((chip) => {
+            const active = dateFilter === chip.value
+            return (
+              <button
+                key={chip.value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => selectFecha(chip.value)}
+                className={`h-9 rounded-md px-3 text-sm ${
+                  active
+                    ? 'border border-accent bg-accent-soft font-semibold text-text'
+                    : 'border border-border bg-transparent text-text'
+                }`}
+              >
+                {chip.label}
+              </button>
+            )
+          })}
+        </div>
+        {dateFilter !== 'semana' ? (
+          <button type="button" className="h-9 px-2 text-sm font-medium text-accent" onClick={() => selectFecha('semana')}>
+            Limpiar filtros
+          </button>
+        ) : null}
+      </div>
 
       {sheetsError && (
         <p className="mt-3 text-sm text-muted">No se pudieron cargar las hojas de ruta</p>
@@ -677,10 +688,6 @@ export function PanelOperativo() {
           onClick={() => selectFecha('atrasados')}
         />
       </div>
-      <p className="mt-2 text-sm text-muted">
-        {fechaLabel}
-        {undatedCount > 0 ? ` · ${undatedCount} sin fecha` : ''}
-      </p>
 
       {view === 'kanban' ? (
         <div className="mt-4 flex justify-end">
@@ -799,14 +806,8 @@ export function PanelOperativo() {
                 icon={<NavIcon name="box" />}
                 title="No hay pedidos"
                 action={
-                  listFiltersActive ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        selectFecha('semana')
-                        selectSummary('total')
-                      }}
-                    >
+                  dateFilter !== 'semana' ? (
+                    <button type="button" onClick={() => selectFecha('semana')}>
                       Limpiar filtros
                     </button>
                   ) : undefined
