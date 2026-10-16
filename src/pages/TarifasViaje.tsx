@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Page, PageHeader } from '../components/ui'
+import { Button, Card, EmptyState, Field, Input, Page, PageHeader } from '../components/ui'
 import { listTripRates, saveTripRate, type TripRate } from '../lib/tripRatesApi'
 import { businessToday } from '../lib/schedule'
 import { formatIsoDate } from '../lib/week'
@@ -82,16 +82,14 @@ export function TarifasViaje() {
         no se cerraron.
       </p>
       {error && (
-        <p className="mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-danger shadow-sm">{error}</p>
+        <p className="mt-4 text-sm font-semibold text-danger" role="alert">
+          {error}
+        </p>
       )}
       {loading ? (
-        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-          Cargando tarifas…
-        </p>
+        <EmptyState variant="plain" className="mt-4" title="Cargando tarifas…" />
       ) : names.length === 0 ? (
-        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-          Todavía no hay zonas de entrega.
-        </p>
+        <EmptyState variant="plain" className="mt-4" title="Todavía no hay zonas de entrega." />
       ) : (
         <div className="mt-4 flex flex-col gap-3">
           {names.map((zone) => (
@@ -176,7 +174,7 @@ function ZoneRate({
   }
 
   return (
-    <article className="rounded-2xl bg-surface p-4 shadow-sm">
+    <Card as="article">
       <h2 className="text-lg font-semibold">{zone}</h2>
       <p className="mt-1 text-sm text-muted">
         {active
@@ -186,44 +184,36 @@ function ZoneRate({
           : 'Todavía no hay una tarifa vigente.'}
       </p>
       <form className="mt-3 grid gap-2 sm:grid-cols-2" onSubmit={(event) => void onSubmit(event)}>
-        <label className="text-sm">
-          Vigente desde
-          <input
-            type="date"
-            value={effectiveFrom}
-            className="mt-1 block min-h-12 w-full rounded-xl border border-border bg-surface px-3 text-base"
-            onChange={(event) => setEffectiveFrom(event.target.value)}
-          />
-        </label>
-        <label className="text-sm">
-          Monto por viaje (ARS)
-          <input
+        <Field label="Vigente desde">
+          <Input type="date" size="lg" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
+        </Field>
+        <Field label="Monto por viaje (ARS)">
+          <Input
             inputMode="decimal"
+            size="lg"
             value={perTrip}
             placeholder="0"
-            className="mt-1 block min-h-12 w-full rounded-xl border border-border bg-surface px-3 text-base"
             onChange={(event) => setPerTrip(event.target.value)}
           />
-        </label>
-        <label className="text-sm sm:col-span-2">
-          Monto por km (ARS, opcional)
-          <input
+        </Field>
+        <Field label="Monto por km (ARS, opcional)" className="sm:col-span-2">
+          <Input
             inputMode="decimal"
+            size="lg"
             value={perKm}
             placeholder="Vacío si no se usa"
-            className="mt-1 block min-h-12 w-full rounded-xl border border-border bg-surface px-3 text-base"
             onChange={(event) => setPerKm(event.target.value)}
           />
-        </label>
-        <button
-          type="submit"
-          className="min-h-12 rounded-xl bg-accent px-4 text-base font-semibold text-accent-fg disabled:opacity-50 sm:col-span-2"
-          disabled={busy}
-        >
-          {busy ? 'Guardando…' : 'Guardar tarifa'}
-        </button>
+        </Field>
+        <Button type="submit" variant="secondary" size="lg" fullWidth className="sm:col-span-2" loading={busy}>
+          Guardar tarifa
+        </Button>
       </form>
-      {error && <p className="mt-2 text-sm font-semibold text-danger">{error}</p>}
+      {error && (
+        <p className="mt-2 text-sm font-semibold text-danger" role="alert">
+          {error}
+        </p>
+      )}
       {notice && <p className="mt-2 text-sm font-semibold text-success">{notice}</p>}
       {rates.length > 0 && (
         <ul className="mt-3 flex flex-col gap-1 text-sm text-muted">
@@ -238,6 +228,6 @@ function ZoneRate({
             ))}
         </ul>
       )}
-    </article>
+    </Card>
   )
 }
