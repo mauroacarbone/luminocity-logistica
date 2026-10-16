@@ -560,7 +560,6 @@ function DeliveryCard({
   const canLeave = order.status === 'asignado'
   const canDeliver = order.status === 'en-viaje'
   const showLeave = canLeave && !order.sheetPlanned && (!inSheet || allowLeave)
-  const plannedNotice = canLeave && Boolean(order.sheetPlanned)
   const strike = done ? 'line-through' : ''
 
   return (
@@ -624,13 +623,12 @@ function DeliveryCard({
               Waze
             </a>
           )}
-          {plannedNotice && routeReady && (
-            <p className="rounded-xl bg-surface-muted px-3 py-2 text-sm font-semibold">
-              En hoja de ruta planificada para el {formatIsoDate(order.deliveryDate)}. Salís con
-              «Iniciar recorrido».
+          {order.sheetPlanned && (
+            <p className="rounded-md border border-border px-3 py-2 text-sm font-semibold">
+              En hoja de ruta planificada para el {formatIsoDate(order.deliveryDate)}
             </p>
           )}
-          {canLeave && !routeReady && !inSheet && (
+          {canLeave && !routeReady && !inSheet && !order.sheetPlanned && (
             <p className="rounded-md border border-border px-3 py-2 text-sm font-semibold">{WAITING_SHEET}</p>
           )}
           {showLeave && (
