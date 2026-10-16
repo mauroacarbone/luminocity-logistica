@@ -18,7 +18,7 @@ function SideLink({
     <NavLink
       to={item.to}
       end={'end' in item ? item.end : false}
-      title={collapsed ? item.label : undefined}
+      title={item.label}
       aria-label={collapsed ? item.label : undefined}
       className={({ isActive }) => (isActive ? 'app-side-link is-active' : 'app-side-link')}
       onClick={() => onNavigate?.()}
@@ -36,6 +36,7 @@ function AreaLink({ tab, onNavigate }: { tab: AppTab; onNavigate?: () => void })
   return (
     <Link
       to={tab.to}
+      title={tab.label}
       className={active ? 'app-side-link is-active' : 'app-side-link'}
       onClick={() => onNavigate?.()}
     >
