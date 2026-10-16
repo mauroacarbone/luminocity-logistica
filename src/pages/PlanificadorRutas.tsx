@@ -755,7 +755,7 @@ export function PlanificadorRutas() {
           {unplannedSummary ? <p className="text-sm text-muted">{unplannedSummary}</p> : null}
         </div>
         {unplannedGroups.length === 0 ? (
-          <div className="mt-3 overflow-hidden rounded-[6px] border border-border">
+          <div className="mt-3 overflow-hidden rounded-md border border-border">
             <EmptyState variant="plain" className="!py-8" title="No hay pedidos por planificar para esta fecha" />
           </div>
         ) : (
@@ -766,7 +766,7 @@ export function PlanificadorRutas() {
                 <span className="ml-2 font-normal text-muted">{group.label}</span>
                 <span className="ml-2 font-normal text-muted">{group.orders.length}</span>
               </h3>
-              <div className="mt-2 overflow-hidden rounded-[6px] border border-border">
+              <div className="mt-2 overflow-hidden rounded-md border border-border">
                 {group.orders.map((order) => {
                   const waiting = order.status === 'pendiente'
                   const cells = (
@@ -815,13 +815,13 @@ export function PlanificadorRutas() {
             </p>
           </div>
           {!driverId || !timeWindow ? (
-            <div className="mt-3 overflow-hidden rounded-[6px] border border-border">
+            <div className="mt-3 overflow-hidden rounded-md border border-border">
               <EmptyState variant="plain" className="!py-8" title="Elegí chofer y franja." />
             </div>
           ) : (
             <>
               {listedView.length === 0 ? (
-                <div className="mt-3 overflow-hidden rounded-[6px] border border-border">
+                <div className="mt-3 overflow-hidden rounded-md border border-border">
                   <EmptyState
                     variant="plain"
                     className="!py-8"
@@ -829,7 +829,7 @@ export function PlanificadorRutas() {
                   />
                 </div>
               ) : (
-                <div className="mt-3 overflow-hidden rounded-[6px] border border-border">
+                <div className="mt-3 overflow-hidden rounded-md border border-border">
                   {listedView.map((order) => (
                     <label
                       key={order.id}
@@ -880,7 +880,7 @@ export function PlanificadorRutas() {
                   <h3 className="text-sm font-semibold text-text">
                     Otros pedidos de la franja
                   </h3>
-                  <ul className="mt-2 overflow-hidden rounded-[6px] border border-border">
+                  <ul className="mt-2 overflow-hidden rounded-md border border-border">
                     {othersView.map((order) => (
                       <li
                         key={order.id}
@@ -909,11 +909,11 @@ export function PlanificadorRutas() {
             {stops.length > 0 ? <span className="ml-2 font-normal text-muted">{stops.length}</span> : null}
           </h2>
           {stops.length === 0 ? (
-            <div className="mt-3 overflow-hidden rounded-[6px] border border-border">
+            <div className="mt-3 overflow-hidden rounded-md border border-border">
               <EmptyState variant="plain" className="!py-8" title="El orden aparece al calcular la ruta." />
             </div>
           ) : (
-            <ol className="mt-3 overflow-hidden rounded-[6px] border border-border">
+            <ol className="mt-3 overflow-hidden rounded-md border border-border">
               {stops.map((stop, index) => (
                 <li key={stop.key} className="planner-line flex items-center overflow-hidden last:border-b-0">
                   <span className="inline-grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent">

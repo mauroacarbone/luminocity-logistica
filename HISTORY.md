@@ -124,6 +124,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 33.6.2.1 | Contadores del Panel y detalles de accesibilidad | Hecho |
 | 32h | Páginas de logística con el layout nuevo | Hecho |
 | 32g.2 | Filtros y vista del Panel operativo | Hecho |
+| 32j | Pendientes de Mis entregas, Planificador, Pendientes, Despacho y Panel | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -328,6 +329,8 @@ El Brief 33.4, si un pedido sale de una hoja en curso y estaba en viaje, vuelve 
 La paleta pasa a azul y grises suaves. El fondo, las tarjetas y el texto salen de tokens; el botón principal es el azul de acento y el amarillo queda en el logo. Los estados de pedido y de puntualidad usan fondo suave con texto y borde oscuros. El texto secundario da más de 4,5:1 sobre el fondo y las tarjetas. Mis entregas vuelve a ser solo del chofer: el encargado y el admin entran al Panel y, si abren esa ruta, vuelven ahí. Finalizan el viaje desde la tarjeta del chofer en Choferes en ruta.
 
 El Brief 32g.2 muestra el período del Panel como un control segmentado: Atrasados, Hoy, Mañana, Esta semana y Todos. Tablero o Tabla queda en esa misma fila. En el Planificador, los pedidos de la fecha elegida que no están en una hoja aparecen arriba, agrupados por franja, y se suman al recorrido del chofer elegido. Si la hoja ya está confirmada y el orden no cambió, el botón queda en «Hoja de ruta confirmada».
+
+El Brief 32j muestra en Mis entregas las hojas de los días siguientes, ordenadas por fecha y franja, y avisa «En hoja de ruta planificada» cuando el pedido ya tiene hoja. Las hojas del chofer se vuelven a pedir cada minuto y al volver a la pestaña. En Por planificar solo se eligen preparados, o asignados del chofer elegido; los pendientes se ven atenuados. El planificador se acomoda al ancho, titula el día y la franja, y Despacho usa los selects del kit. Las semanas de Pendientes y del Panel salen de la fecha de Buenos Aires. Los selectores del Panel se mueven con el teclado.
 
 El Brief 32h lleva el layout de caja de lista a Despacho, Pendientes de Entregas, el Planificador, Choferes en ruta, Mis entregas y Mis viajes. En el escritorio la lista es una tabla y en el celular son filas; el detalle de un pedido se abre al costado. El día de hoy se calcula en hora de Buenos Aires. En el celular el logo queda visible y el buscador pasa a ser una lupa.
 

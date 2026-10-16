@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { Badge, Button, Drawer, EmptyState, KpiCard, ListBox, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
@@ -338,6 +338,27 @@ function DetailActions({
   )
 }
 
+function onRadioKey<T extends string>(
+  event: KeyboardEvent<HTMLElement>,
+  values: readonly T[],
+  current: T,
+  onChange: (next: T) => void,
+) {
+  const index = Math.max(0, values.indexOf(current))
+  let next: T | null = null
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = values[(index + 1) % values.length]
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+    next = values[(index - 1 + values.length) % values.length]
+  } else if (event.key === 'Home') next = values[0]
+  else if (event.key === 'End') next = values[values.length - 1]
+  if (next == null) return
+  event.preventDefault()
+  onChange(next)
+  event.currentTarget.querySelector<HTMLButtonElement>(`[data-option="${next}"]`)?.focus()
+}
+
+const VIEW_OPTIONS: View[] = ['kanban', 'tabla']
+
 function PanelViewSwitch({ view, onChange }: { view: View; onChange: (next: View) => void }) {
   const item = (value: View, label: string, icon: 'board' | 'list') => {
     const active = view === value
@@ -346,6 +367,8 @@ function PanelViewSwitch({ view, onChange }: { view: View; onChange: (next: View
         type="button"
         role="radio"
         aria-checked={active}
+        tabIndex={active ? 0 : -1}
+        data-option={value}
         onClick={() => onChange(value)}
         className={`inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-sm sm:flex-none ${
           active
@@ -353,24 +376,18 @@ function PanelViewSwitch({ view, onChange }: { view: View; onChange: (next: View
             : 'border border-border bg-transparent text-text'
         }`}
       >
-        {icon === 'board' ? (
-          <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="3" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            <rect x="14" y="3" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            <rect x="3" y="14" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            <rect x="14" y="14" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          </svg>
-        ) : (
-          <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        )}
+        <NavIcon name={icon} />
         {label}
       </button>
     )
   }
   return (
-    <div className="flex w-full gap-1 sm:w-auto" role="radiogroup" aria-label="Vista">
+    <div
+      className="flex w-full gap-1 sm:w-auto"
+      role="radiogroup"
+      aria-label="Vista"
+      onKeyDown={(event) => onRadioKey(event, VIEW_OPTIONS, view, onChange)}
+    >
       {item('kanban', 'Tablero', 'board')}
       {item('tabla', 'Tabla', 'list')}
     </div>
@@ -658,7 +675,12 @@ export function PanelOperativo() {
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div role="radiogroup" aria-label="Entregas para" className="flex flex-wrap gap-1">
+          <div
+            role="radiogroup"
+            aria-label="Entregas para"
+            className="flex flex-wrap gap-1"
+            onKeyDown={(event) => onRadioKey(event, FECHA_VALUES, dateFilter, selectFecha)}
+          >
           {FECHA_CHIPS.map((chip) => {
             const active = dateFilter === chip.value
             return (
@@ -667,6 +689,8 @@ export function PanelOperativo() {
                 type="button"
                 role="radio"
                 aria-checked={active}
+                tabIndex={active ? 0 : -1}
+                data-option={chip.value}
                 onClick={() => selectFecha(chip.value)}
                 className={`h-9 rounded-md px-3 text-sm ${
                   active

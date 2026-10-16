@@ -30,6 +30,8 @@ export type NavIconName =
   | 'chevron-down'
   | 'sidebar-collapse'
   | 'filter'
+  | 'board'
+  | 'list'
 
 type NavSectionDef = { label?: string; paths: readonly string[] }
 
