@@ -1,3 +1,5 @@
+import { businessToday } from './schedule'
+
 export const DAY_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 export const DAY_LONG = [
   'Domingo',
@@ -49,14 +51,19 @@ export function parseIso(iso: string) {
   return new Date(year, month - 1, day)
 }
 
+function businessDate() {
+  const [year, month, day] = businessToday().split('-').map(Number)
+  return new Date(year, (month ?? 1) - 1, day ?? 1)
+}
+
 export function weekDays(offset: number) {
-  const start = addDays(startOfWeek(new Date()), offset * 7)
+  const start = addDays(startOfWeek(businessDate()), offset * 7)
   return Array.from({ length: 7 }, (_, index) => addDays(start, index))
 }
 
 export function weekOffsetForIso(iso: string) {
   const target = startOfWeek(parseIso(iso)).getTime()
-  const current = startOfWeek(new Date()).getTime()
+  const current = startOfWeek(businessDate()).getTime()
   return Math.round((target - current) / (7 * 24 * 60 * 60 * 1000))
 }
 

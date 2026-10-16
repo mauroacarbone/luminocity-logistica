@@ -26,6 +26,7 @@ import {
   type PickingPreview,
 } from '../lib/pickingSheet'
 import { compareOpenPriority, PRIORITY_LABEL, priorityOf } from '../lib/priority'
+import { businessToday } from '../lib/schedule'
 import { addDays, formatIsoDate, parseIso, startOfWeek, toIso } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
@@ -428,7 +429,7 @@ export function PendientesEntregas() {
   const [visibleColumnIds, setVisibleColumnIds] = useState<string[]>([])
   const [flowBusy, setFlowBusy] = useState(false)
 
-  const today = toIso(new Date())
+  const today = businessToday()
   const weekStart = startOfWeek(new Date())
   const weekFrom = toIso(weekStart)
   const weekTo = toIso(addDays(weekStart, 6))

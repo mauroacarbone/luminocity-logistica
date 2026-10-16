@@ -10,6 +10,7 @@ import { confirm, error, success } from '../lib/alerts'
 import { canCancelOrder, canEditOrder, canPrepare } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
 import { compareOpenPriority } from '../lib/priority'
+import { businessToday } from '../lib/schedule'
 import {
   MONTH_SHORT,
   formatDayLabel,
@@ -118,7 +119,7 @@ export function PedidosPreparacion() {
   const { user } = useAuth()
   const { orders, loading, removeOrder, transitionOrder } = useOrders()
   const [weekOffset, setWeekOffset] = useState(0)
-  const [selectedIso, setSelectedIso] = useState(() => toIso(new Date()))
+  const [selectedIso, setSelectedIso] = useState(() => businessToday())
   const [preparing, setPreparing] = useState<Order | null>(null)
   const [prepareError, setPrepareError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -180,7 +181,7 @@ export function PedidosPreparacion() {
 
   function showWeek(offset: number) {
     const nextDays = weekDays(offset)
-    const today = toIso(new Date())
+    const today = businessToday()
     const match = nextDays.find((day) => toIso(day) === today)
     setWeekOffset(offset)
     setSelectedIso(toIso(match ?? nextDays[0]))

@@ -18,6 +18,7 @@ import {
 import { deleteRouteSheet, isRouteSheet, listRouteSheets, saveRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
 import { driverSlotCount, normalizeTimeWindow, slotQuestion } from '../lib/slot'
 import { cssVar } from '../lib/theme'
+import { businessToday } from '../lib/schedule'
 import { DAY_SHORT, MONTH_SHORT, formatDayLabel, toIso, weekDays, weekOffsetForIso } from '../lib/week'
 import { listUsers } from '../lib/usersApi'
 import { isSession } from '../lib/authStore'
@@ -188,7 +189,7 @@ export function PlanificadorRutas() {
   const { orders, refresh } = useOrders()
   const { timeWindows } = useCatalog()
   const [weekOffset, setWeekOffset] = useState(() => (presetIso ? weekOffsetForIso(presetIso) : 0))
-  const [selectedIso, setSelectedIso] = useState(() => presetIso || toIso(new Date()))
+  const [selectedIso, setSelectedIso] = useState(() => presetIso || businessToday())
   const [drivers, setDrivers] = useState<DriverOption[]>([])
   const [driverId, setDriverId] = useState(presetDriver)
   const [slot, setSlot] = useState('')
@@ -368,7 +369,7 @@ export function PlanificadorRutas() {
 
   function showWeek(offset: number) {
     const nextDays = weekDays(offset)
-    const today = toIso(new Date())
+    const today = businessToday()
     const match = nextDays.find((day) => toIso(day) === today)
     setWeekOffset(offset)
     setSelectedIso(toIso(match ?? nextDays[0]))
