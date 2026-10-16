@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, EmptyState, Page, PageHeader, Select } from '../components/ui'
+import { Badge, Button, EmptyState, Page, PageHeader, Select } from '../components/ui'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { PriorityChip } from '../components/PriorityChip'
@@ -82,6 +82,12 @@ function sameDeliveryOrder(saved: string[], stops: Stop[], selectedIds: string[]
     : selectedIds
   if (current.length !== saved.length) return false
   return current.every((id, index) => id === saved[index])
+}
+
+function canChooseUnplanned(order: Order, driverId: string) {
+  if (order.status === 'preparado') return true
+  if (order.status === 'asignado') return !order.driverId || order.driverId === driverId
+  return false
 }
 
 function slotPeriod(slot: string) {
@@ -262,9 +268,10 @@ export function PlanificadorRutas() {
   const unplanned = orders
     .filter((order) => {
       if (order.deliveryDate !== iso || !isOwnDelivery(order) || isPickup(order)) return false
-      if (order.routeId) return false
+      if (order.routeId || order.sheetPlanned) return false
       if (!normalizeTimeWindow(order.timeWindow)) return false
-      return order.status === 'pendiente' || order.status === 'preparado' || order.status === 'asignado'
+      if (order.status === 'pendiente') return true
+      return canChooseUnplanned(order, driverId)
     })
     .sort(sortListed)
   const unplannedGroups = [...unplanned.reduce((groups, order) => {
@@ -430,6 +437,7 @@ export function PlanificadorRutas() {
   }
 
   function planPending(order: Order) {
+    if (!canChooseUnplanned(order, driverId)) return
     const next = normalizeTimeWindow(order.timeWindow)
     if (!next || readOnly) return
     if (!driverId) {
@@ -756,20 +764,40 @@ export function PlanificadorRutas() {
                 <span className="ml-2 font-normal text-muted">{group.orders.length}</span>
               </h3>
               <div className="mt-2 overflow-hidden rounded-[6px] border border-border">
-                {group.orders.map((order) => (
-                  <button
-                    key={order.id}
-                    type="button"
-                    className="flex min-h-14 w-full flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-left last:border-b-0 hover:bg-surface-2"
-                    onClick={() => planPending(order)}
-                  >
-                    <span className="font-medium text-accent">{order.id}</span>
-                    <span className="font-semibold">{order.client}</span>
-                    {order.zone ? <span className="text-sm text-muted">{order.zone}</span> : null}
-                    <PriorityChip order={order} />
-                    <span className="ml-auto text-sm text-muted">{group.slot}</span>
-                  </button>
-                ))}
+                {group.orders.map((order) => {
+                  const waiting = order.status === 'pendiente'
+                  const cells = (
+                    <>
+                      <span className="font-medium text-accent">{order.id}</span>
+                      <span className="font-semibold">{order.client}</span>
+                      {order.zone ? <span className="text-sm text-muted">{order.zone}</span> : null}
+                      <PriorityChip order={order} />
+                      {waiting ? <Badge tone="warning">Falta preparar</Badge> : null}
+                      <span className="ml-auto text-sm text-muted">{group.slot}</span>
+                    </>
+                  )
+                  if (waiting) {
+                    return (
+                      <div
+                        key={order.id}
+                        aria-disabled="true"
+                        className="flex min-h-14 w-full flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-left opacity-60 last:border-b-0"
+                      >
+                        {cells}
+                      </div>
+                    )
+                  }
+                  return (
+                    <button
+                      key={order.id}
+                      type="button"
+                      className="flex min-h-14 w-full flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-left last:border-b-0 hover:bg-surface-2"
+                      onClick={() => planPending(order)}
+                    >
+                      {cells}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           ))
