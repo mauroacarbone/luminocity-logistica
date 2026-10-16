@@ -1,4 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { NavIcon } from '../../layout/NavIcon'
+import { usePopoverPosition } from '../../layout/usePopoverPosition'
 import { businessToday } from '../../lib/schedule'
 import { Button } from './Button'
 import { cx } from './cx'
@@ -33,6 +36,7 @@ export type FilterChipGroup = {
   value?: string
   values?: string[]
   multiple?: boolean
+  variant?: 'counters'
   onChange: (value: string) => void
 }
 
@@ -100,26 +104,32 @@ function ChipButtons({ groups, size }: { groups: FilterChipGroup[]; size: Filter
     <>
       {groups.map((group) => (
         <div key={group.id} className="flex flex-wrap items-center gap-2" role="group" aria-label={group.label}>
-          <span className="text-sm font-medium text-muted">{group.label}</span>
+          {group.variant === 'counters' ? null : <span className="text-sm font-medium text-muted">{group.label}</span>}
           {group.options.map((option) => {
             const pressed = chipPressed(group, option.value)
+            const counter = group.variant === 'counters'
             return (
               <button
                 key={option.value}
                 type="button"
                 aria-pressed={pressed}
                 className={cx(
-                  'inline-flex items-center rounded-full border px-3 text-sm font-medium',
-                  size === 'lg' ? 'min-h-[44px] py-2' : 'py-1.5',
+                  'inline-flex items-center text-sm',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  pressed
-                    ? 'border-transparent bg-accent text-accent-fg'
-                    : 'border-border bg-surface text-text hover:bg-surface-2',
+                  counter
+                    ? cx('h-8 px-2', pressed ? 'font-semibold text-text' : 'text-muted')
+                    : cx(
+                        'rounded-md border border-border bg-surface-2 px-3 font-medium text-text hover:bg-surface',
+                        size === 'lg' ? 'min-h-[44px] py-2' : 'py-1.5',
+                        pressed && 'border-accent text-text',
+                      ),
                 )}
                 onClick={() => group.onChange(option.value)}
               >
                 {option.label}
-                {option.count != null ? ` (${option.count})` : ''}
+                {option.count != null ? (
+                  counter ? <span className="ml-1 font-semibold">{option.count}</span> : ` (${option.count})`
+                ) : null}
               </button>
             )
           })}
@@ -129,7 +139,127 @@ function ChipButtons({ groups, size }: { groups: FilterChipGroup[]; size: Filter
   )
 }
 
-function SelectFields({ selects }: { selects: FilterSelect[] }) {
+function FilterSelectMenu({ item }: { item: FilterSelect }) {
+  const [open, setOpen] = useState(false)
+  const [focus, setFocus] = useState(0)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const listId = useId()
+  const { top, left, menuRef } = usePopoverPosition(buttonRef, open, 'start')
+  const selected = item.options.find((option) => option.value === item.value)
+  const hasValue = Boolean(selected && selected.value !== '' && selected.label !== item.label)
+
+  useEffect(() => {
+    if (!open) return
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node | null
+      if (!target) return
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return
+      setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [open, menuRef])
+
+  function onKeyDown(event: ReactKeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setOpen(false)
+      buttonRef.current?.focus()
+      return
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      if (!open) {
+        setFocus(Math.max(0, item.options.findIndex((option) => option.value === item.value)))
+        setOpen(true)
+        return
+      }
+      setFocus((current) => Math.min(item.options.length - 1, current + 1))
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setFocus((current) => Math.max(0, current - 1))
+    }
+    if (event.key === 'Enter' && open) {
+      event.preventDefault()
+      const option = item.options[focus]
+      if (option) item.onChange(option.value)
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        className={cx(
+          'inline-flex h-8 items-center gap-1 rounded-md px-2 text-sm hover:bg-surface-2',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          hasValue ? 'text-text' : 'text-muted',
+        )}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listId}
+        disabled={item.disabled}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={onKeyDown}
+      >
+        {hasValue ? selected?.label : item.label}
+        <NavIcon name="chevron-down" />
+      </button>
+      {open
+        ? createPortal(
+            <div
+              ref={menuRef}
+              id={listId}
+              role="listbox"
+              aria-label={item.label}
+              className="fixed z-[1200] min-w-44 rounded-md border border-border bg-surface py-1 shadow-md"
+              style={{ top, left }}
+              onKeyDown={onKeyDown}
+            >
+              {item.options.map((option, index) => {
+                const chosen = option.value === item.value
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="option"
+                    aria-selected={chosen}
+                    className={cx(
+                      'flex h-8 w-full items-center gap-2 px-3 text-left text-sm text-text hover:bg-surface-2',
+                      index === focus && 'bg-surface-2',
+                    )}
+                    onMouseEnter={() => setFocus(index)}
+                    onClick={() => {
+                      item.onChange(option.value)
+                      setOpen(false)
+                    }}
+                  >
+                    <span className="w-4">{chosen ? '✓' : ''}</span>
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>,
+            document.body,
+          )
+        : null}
+    </div>
+  )
+}
+
+function SelectFields({ selects, native }: { selects: FilterSelect[]; native?: boolean }) {
+  if (!native) {
+    return (
+      <>
+        {selects.map((item) => (
+          <FilterSelectMenu key={item.id} item={item} />
+        ))}
+      </>
+    )
+  }
   return (
     <>
       {selects.map((item) => (
@@ -202,27 +332,47 @@ function Dates({ dateRange }: { dateRange: FilterDateRange }) {
 
 function SearchField({ search, size }: { search: FilterSearch; size: FilterSize }) {
   return (
-    <div className="flex min-w-0 flex-1 items-end gap-2">
-      <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium text-text">
-        <span className={search.srOnly ? 'sr-only' : undefined}>{search.label}</span>
-        <Input
-          type="search"
-          value={search.value}
-          placeholder={search.placeholder}
-          onChange={(event) => search.onChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter' || !search.onSubmit) return
-            event.preventDefault()
-            search.onSubmit(event.currentTarget.value)
-          }}
-        />
-      </label>
-      {search.onSubmit ? (
-        <Button variant="secondary" size={size} onClick={() => search.onSubmit?.(search.value)}>
-          Buscar
-        </Button>
+    <form
+      className={cx(
+        'flex w-full items-center rounded-md border border-border bg-bg focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--accent-soft)]',
+        size === 'lg' ? 'h-10' : 'h-8',
+      )}
+      onSubmit={(event) => {
+        event.preventDefault()
+        search.onSubmit?.(search.value)
+      }}
+    >
+      <span className="sr-only">{search.label}</span>
+      <span className="pl-2 text-muted" aria-hidden="true">
+        <NavIcon name="search" />
+      </span>
+      <input
+        type="search"
+        value={search.value}
+        placeholder={search.placeholder ?? search.label}
+        className="min-w-0 flex-1 bg-transparent px-2 text-sm text-text outline-none placeholder:text-muted"
+        onChange={(event) => search.onChange(event.target.value)}
+      />
+      {search.value ? (
+        <button
+          type="button"
+          className="grid h-full place-items-center px-2 text-muted hover:text-text"
+          aria-label="Limpiar búsqueda"
+          onClick={() => search.onChange('')}
+        >
+          <NavIcon name="x" />
+        </button>
       ) : null}
-    </div>
+      {search.onSubmit ? (
+        <button
+          type="submit"
+          className="grid h-full place-items-center border-l border-border px-2 text-muted hover:text-text"
+          aria-label="Buscar"
+        >
+          <NavIcon name="search" />
+        </button>
+      ) : null}
+    </form>
   )
 }
 
@@ -231,15 +381,17 @@ function ExtraFilters({
   chips,
   dateRange,
   size,
+  native,
 }: {
   selects?: FilterSelect[]
   chips?: FilterChipGroup[]
   dateRange?: FilterDateRange
   size: FilterSize
+  native?: boolean
 }) {
   return (
     <>
-      {selects && selects.length > 0 ? <SelectFields selects={selects} /> : null}
+      {selects && selects.length > 0 ? <SelectFields selects={selects} native={native} /> : null}
       {chips && chips.length > 0 ? <ChipButtons groups={chips} size={size} /> : null}
       {dateRange ? <Dates dateRange={dateRange} /> : null}
     </>
@@ -260,9 +412,10 @@ export function FilterBar({
   const hasExtra = Boolean((selects && selects.length > 0) || (chips && chips.length > 0) || dateRange)
   const clearButton =
     onClear && activeCount > 0 ? (
-      <Button variant="ghost" size={size} onClick={onClear}>
+      <button type="button" className="inline-flex items-center gap-1 text-sm text-accent hover:underline" onClick={onClear}>
+        <NavIcon name="x" />
         Limpiar filtros
-      </Button>
+      </button>
     ) : null
 
   let sheet: ReactNode = null
@@ -271,7 +424,7 @@ export function FilterBar({
       <Modal label="Filtros" onClose={() => setOpen(false)} className="flex items-end bg-overlay">
         <div className="max-h-[85vh] w-full overflow-auto rounded-t-[10px] border border-border bg-surface p-4">
           <div className="flex flex-col gap-4">
-            <ExtraFilters selects={selects} chips={chips} dateRange={dateRange} size={size} />
+            <ExtraFilters selects={selects} chips={chips} dateRange={dateRange} size={size} native />
             <Button variant="primary" size="lg" fullWidth onClick={() => setOpen(false)}>
               Ver resultados
             </Button>
@@ -296,7 +449,7 @@ export function FilterBar({
 
   return (
     <div className={className}>
-      <div className="flex flex-wrap items-end gap-3 rounded-[10px] border border-border bg-surface p-3">
+      <div className="flex flex-col gap-3">
         {search ? <SearchField search={search} size={size} /> : null}
         {hasExtra ? (
           <Button variant="secondary" size={size} className="sm:hidden" onClick={() => setOpen(true)}>
