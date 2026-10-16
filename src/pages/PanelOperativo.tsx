@@ -45,6 +45,7 @@ function sortPanelList(left: Order, right: Order) {
 
 type View = 'kanban' | 'tabla'
 type FechaFilter = 'atrasados' | 'hoy' | 'manana' | 'semana' | 'todos'
+type SummaryFilter = OrderStatus | 'abiertos' | null
 
 const VIEW_KEY = 'luminocity.panelView'
 const FECHA_VALUES: FechaFilter[] = ['atrasados', 'hoy', 'manana', 'semana', 'todos']
@@ -362,7 +363,7 @@ export function PanelOperativo() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [view, setView] = useState<View>(loadView)
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | null>(null)
+  const [statusFilter, setStatusFilter] = useState<SummaryFilter>(null)
   const [sheets, setSheets] = useState<RouteSheet[]>([])
   const [sheetsError, setSheetsError] = useState(false)
   const [narrow, setNarrow] = useState(
@@ -401,10 +402,20 @@ export function PanelOperativo() {
   )
 
   const visibleOrders = useMemo(() => {
-    const list = statusFilter ? ordersByStatus(datedOrders, statusFilter) : datedOrders
+    const list =
+      statusFilter === 'abiertos'
+        ? datedOrders.filter((order) => order.status !== 'entregado')
+        : statusFilter
+          ? ordersByStatus(datedOrders, statusFilter)
+          : datedOrders
     return [...list].sort(sortPanelList)
   }, [datedOrders, statusFilter])
-  const columns = statusFilter ? [statusFilter] : STATUS_ORDER
+  const columns =
+    statusFilter === 'abiertos'
+      ? STATUS_ORDER.filter((status) => status !== 'entregado')
+      : statusFilter
+        ? [statusFilter]
+        : STATUS_ORDER
   const undatedCount = datedOrders.filter((order) => !hasDeliveryDate(order)).length
   const overdueCount = orders.filter(
     (order) =>
@@ -725,7 +736,7 @@ export function PanelOperativo() {
         </div>
       ) : view === 'kanban' ? (
         <div className="board-scroll">
-          <div className={statusFilter ? 'kanban filtered' : 'kanban'}>
+          <div className={statusFilter && statusFilter !== 'abiertos' ? 'kanban filtered' : 'kanban'}>
             {columns.map((status) => {
               const column = [...ordersByStatus(visibleOrders, status)].sort(sortPanelList)
               return (
@@ -763,15 +774,15 @@ export function PanelOperativo() {
               key: 'abiertos',
               label: 'Abiertos',
               count: openCount,
-              active: statusFilter !== 'entregado',
-              onClick: () => selectSummary('total'),
+              active: statusFilter === 'abiertos',
+              onClick: () => setStatusFilter('abiertos'),
             },
             {
               key: 'entregados',
               label: 'Entregados',
               count: deliveredCount,
               active: statusFilter === 'entregado',
-              onClick: () => selectSummary('entregado'),
+              onClick: () => setStatusFilter('entregado'),
             },
           ]}
           view={<PanelViewSwitch view={view} onChange={selectView} />}
