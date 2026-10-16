@@ -3,14 +3,16 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { focusables } from '../lib/focus'
 import { useOrders } from '../state/OrdersContext'
+import { useAuth } from '../state/AuthContext'
 import { AppHeader } from './AppHeader'
 import { CommandPalette } from './CommandPalette'
 import { isEditableTarget, shouldIgnorePaletteShortcut } from './commandHotkeys'
-import { MobileNav } from './MobileNav'
+import { sidebarFor } from './nav'
+import { Sidebar } from './Sidebar'
 
 const SIDEBAR_KEY = 'luminocity.sidebar'
 
-const MENU_MQ = '(max-width: 1024px)'
+const MENU_MQ = '(max-width: 1023px)'
 
 function ImportReport({ text }: { text: string }) {
   const [head, ...rest] = text.split('\n')
@@ -29,6 +31,7 @@ function ImportReport({ text }: { text: string }) {
 }
 
 export function AppShell() {
+  const { user } = useAuth()
   const { loading, error, legacyCount, importing, importError, importLegacy, reload } = useOrders()
   const location = useLocation()
   const showImport = !loading && !error && legacyCount > 0
@@ -180,6 +183,8 @@ export function AppShell() {
 
   const drawerClosed = compact && !menuOpen
   const drawerDialog = compact && menuOpen
+  const sections = user ? sidebarFor(user.role, location.pathname) : null
+  const showDock = !compact && sections != null
 
   return (
     <div className={menuOpen ? 'app menu-open' : 'app'}>
@@ -208,11 +213,20 @@ export function AppShell() {
               ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Menú' }
               : {})}
           >
-            <MobileNav onClose={closeMenu} onNavigate={closeMenu} />
+            <Sidebar mode="drawer" sections={sections} onClose={closeMenu} onNavigate={closeMenu} />
           </div>
         </>
       ) : null}
 
+      <div className={showDock ? 'app-body has-sidebar' : 'app-body'}>
+        {showDock ? (
+          <Sidebar
+            mode="dock"
+            sections={sections}
+            collapsed={sidebarCollapsed}
+            onCollapse={toggleNav}
+          />
+        ) : null}
       <main className="main">
         {loading && <Spinner label="Cargando pedidos…" />}
         {error && <ServerDown message={error} onRetry={reload} />}
@@ -228,6 +242,7 @@ export function AppShell() {
         {!showImport && importError && <ImportReport text={importError} />}
         {!loading && !error && <Outlet />}
       </main>
+      </div>
 
       {paletteOpen ? <CommandPalette open onClose={closePalette} /> : null}
     </div>
