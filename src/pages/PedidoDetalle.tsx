@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Page, PageHeader } from '../components/ui'
+import { Card, Page, PageHeader } from '../components/ui'
 import { useParams } from 'react-router-dom'
 import { OrderDetail } from '../components/OrderDetail'
 import { NoAccess } from '../components/NoAccess'
@@ -120,9 +120,9 @@ function PedidoDetalleView({ id }: { id: string }) {
         }
       />
 
-      <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm sm:p-5">
+      <Card className="mt-4">
         <OrderStepper order={order} variant="full" />
-      </div>
+      </Card>
 
       <OrderDetail order={order} onOrderChange={setOrder} />
     </Page>
