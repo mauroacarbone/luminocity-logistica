@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { OrderDetail } from '../components/OrderDetail'
 import { OrderFlowButtons } from '../components/OrderFlowButtons'
 import { PriorityChip } from '../components/PriorityChip'
-import { Badge, Button, Drawer, EmptyState, FilterBar, ListBox, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, FilterBar, ListBox, Page, PageHeader, Select, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
 import { QrCoverDialog } from '../components/QrCoverDialog'
 import { QrScanDialog } from '../components/QrScanDialog'
@@ -697,12 +697,12 @@ export function Despacho() {
             <div className="flex w-full flex-col gap-2">
                   {assign && !isPickup(openOrder) && (
                     <>
-                      <label className="text-xs text-muted">
+                      <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
                         Transportista
-                        <select
+                        <Select
+                          size="lg"
                           value={openOrder.transporter ?? ''}
                           disabled={busyId === openOrder.id}
-                          className="mt-1 block w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text disabled:opacity-50 sm:max-w-44"
                           onChange={(event) => {
                             const select = event.target
                             const next = select.value
@@ -724,27 +724,24 @@ export function Despacho() {
                               {name}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </label>
                       {isOwnDelivery(openOrder) && (
-                      <div className="text-xs text-muted">
-                        <label htmlFor={`chofer-${openOrder.id}`}>Chofer</label>
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <div className="flex flex-col gap-1.5">
+                        <label htmlFor={`chofer-${openOrder.id}`} className="text-sm font-medium text-text">
+                          Chofer
+                        </label>
+                        <div className="flex flex-col gap-2">
                           {openOrder.status === 'pendiente' ? (
-                            <select
-                              id={`chofer-${openOrder.id}`}
-                              value=""
-                              disabled
-                              className="block w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text disabled:opacity-50 sm:max-w-44"
-                            >
+                            <Select id={`chofer-${openOrder.id}`} size="lg" value="" disabled>
                               <option value="">Primero marcá preparado</option>
-                            </select>
+                            </Select>
                           ) : openOrder.status === 'en-viaje' || openOrder.status === 'entregado' ? (
-                            <select
+                            <Select
                               id={`chofer-${openOrder.id}`}
+                              size="lg"
                               value={openOrder.driverId ?? ''}
                               disabled
-                              className="block w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text disabled:opacity-50 sm:max-w-44"
                             >
                               <option value={openOrder.driverId ?? ''}>
                                 {openOrder.driverId
@@ -752,19 +749,15 @@ export function Despacho() {
                                     openOrder.driverId
                                   : 'Sin chofer'}
                               </option>
-                            </select>
+                            </Select>
                           ) : !normalizeTimeWindow(openOrder.timeWindow) && !openOrder.driverId ? (
-                            <select
-                              id={`chofer-${openOrder.id}`}
-                              value=""
-                              disabled
-                              className="block w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text disabled:opacity-50 sm:max-w-44"
-                            >
+                            <Select id={`chofer-${openOrder.id}`} size="lg" value="" disabled>
                               <option value="">Asigná una franja primero</option>
-                            </select>
+                            </Select>
                           ) : (
-                            <select
+                            <Select
                               id={`chofer-${openOrder.id}`}
+                              size="lg"
                               value={openOrder.driverId ?? ''}
                               disabled={busyId === openOrder.id}
                               aria-describedby={
@@ -772,7 +765,6 @@ export function Despacho() {
                                   ? `franja-${openOrder.id}`
                                   : undefined
                               }
-                              className="block min-w-0 flex-1 rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text disabled:opacity-50 sm:max-w-44"
                               onChange={(event) => {
                                 const select = event.target
                                 const driverId = select.value
@@ -800,7 +792,7 @@ export function Despacho() {
                                   name={openOrder.driverId}
                                 />
                               )}
-                            </select>
+                            </Select>
                           )}
                           {openOrder.status !== 'pendiente' &&
                             openOrder.status !== 'en-viaje' &&
