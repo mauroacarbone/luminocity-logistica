@@ -363,7 +363,7 @@ function Dates({ dateRange }: { dateRange: FilterDateRange }) {
               'rounded-full border px-3 py-1.5 text-sm font-medium',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               pressed
-                ? 'border-transparent bg-accent text-accent-fg'
+                ? 'border-accent bg-accent-soft font-semibold text-text'
                 : 'border-border bg-surface text-text hover:bg-surface-2',
             )}
             onClick={() => dateRange.onChange(range)}

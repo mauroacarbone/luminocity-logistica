@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ServerDown, Spinner } from './LoadState'
+import { Button } from './ui'
 import { NotificationToast } from './NotificationToast'
 import { confirm, error as showError, success } from '../lib/alerts'
 import { namesMatch } from '../lib/access'
@@ -413,23 +414,21 @@ export function NotificationBell() {
                             <span>{formatWhen(item.createdAt)}</span>
                           </div>
                           {canOpenWa ? (
-                            <button
+                            <Button
                               type="button"
-                              className="mt-2 w-full rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-fg disabled:opacity-50"
+                              variant="secondary"
+                              fullWidth
+                              className="mt-2"
                               disabled={sending === item.id}
                               onClick={() => void sendWhatsapp(item)}
                             >
                               Enviar por WhatsApp
-                            </button>
+                            </Button>
                           ) : (
                             <p className="mt-2 text-xs text-muted">
-                              <button
-                                type="button"
-                                className="w-full rounded-lg bg-border px-3 py-2 font-semibold"
-                                disabled
-                              >
+                              <Button type="button" variant="secondary" fullWidth disabled>
                                 Enviar por WhatsApp
-                              </button>
+                              </Button>
                               Sin celular cargado
                             </p>
                           )}

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Button } from './ui'
 import { Modal } from './ui/Modal'
 
 export function EditReasonDialog({
@@ -54,19 +55,12 @@ export function EditReasonDialog({
           </p>
         )}
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-muted"
-            onClick={onClose}
-          >
+          <Button type="button" variant="ghost" size="lg" onClick={onClose}>
             Volver
-          </button>
-          <button
-            type="submit"
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg"
-          >
+          </Button>
+          <Button type="submit" variant="primary" size="lg">
             Guardar
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
