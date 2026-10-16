@@ -2287,6 +2287,20 @@ p {
     --text-muted: #59636E;
     --border: #D0D7DE;
     --accent: #0969DA;
+    --success: #1A7F37;
+    --success-soft: #DAFBE1;
+    --warning: #9A6700;
+    --warning-soft: #FFF8C5;
+    --danger: #CF222E;
+    --danger-soft: #FFEBE9;
+    --info: #0969DA;
+    --info-soft: #DDF4FF;
+    --neutral: #59636E;
+    --neutral-soft: #EFF2F5;
+    --accent-soft: #DDF4FF;
+    --accent-ink: #0550AE;
+    --text-subtle: #424A53;
+    --surface-muted: #F6F8FA;
   }
 
   .planner-screen {
@@ -2359,6 +2373,20 @@ a.bg-accent:focus-visible {
     --text-muted: #59636E;
     --border: #D0D7DE;
     --accent: #0969DA;
+    --success: #1A7F37;
+    --success-soft: #DAFBE1;
+    --warning: #9A6700;
+    --warning-soft: #FFF8C5;
+    --danger: #CF222E;
+    --danger-soft: #FFEBE9;
+    --info: #0969DA;
+    --info-soft: #DDF4FF;
+    --neutral: #59636E;
+    --neutral-soft: #EFF2F5;
+    --accent-soft: #DDF4FF;
+    --accent-ink: #0550AE;
+    --text-subtle: #424A53;
+    --surface-muted: #F6F8FA;
   }
 
   .app-sidebar,
