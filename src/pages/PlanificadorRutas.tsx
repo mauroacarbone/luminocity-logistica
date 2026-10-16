@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Page, PageHeader } from '../components/ui'
+import { Button, EmptyState, Page, PageHeader, Select } from '../components/ui'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { PriorityChip } from '../components/PriorityChip'
@@ -588,8 +588,8 @@ export function PlanificadorRutas() {
               <span className="w-full text-center sm:hidden">{day.getDate()}</span>
               <span className="hidden w-full truncate text-center sm:inline">{formatDayLabel(day)}</span>
               <span
-                className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs ${
-                  selected ? 'bg-accent text-accent-fg' : 'bg-surface text-muted'
+                className={`grid h-6 min-w-6 place-items-center rounded-full bg-accent-soft px-1 text-xs ${
+                  selected ? 'font-semibold text-accent' : 'text-muted'
                 }`}
               >
                 {count}
@@ -610,9 +610,10 @@ export function PlanificadorRutas() {
         </label>
         <label className="min-w-40 flex-1 text-sm">
           Chofer
-          <select
+          <Select
             value={driverId}
-            className="mt-1 block w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
+            size="lg"
+            className="mt-1"
             onChange={(event) => {
               setDriverId(event.target.value)
               setSheet(null)
@@ -627,13 +628,14 @@ export function PlanificadorRutas() {
                 {driver.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="text-sm">
           Franja
-          <select
+          <Select
             value={slot}
-            className="mt-1 block w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
+            size="lg"
+            className="mt-1"
             onChange={(event) => {
               setSlot(event.target.value)
               setSheet(null)
@@ -648,7 +650,7 @@ export function PlanificadorRutas() {
                 {item}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <p className={`pb-2 text-sm font-semibold ${used >= 3 ? 'text-danger' : ''}`}>
           {driverId && timeWindow ? `${used}/3 en la franja` : ''}
@@ -665,31 +667,35 @@ export function PlanificadorRutas() {
       <div className="planner-list no-print flex flex-col gap-4">
         <section>
           <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-sm font-semibold tracking-wide text-muted">PEDIDOS DE LA FRANJA</h2>
+            <h2 className="text-sm font-semibold text-text">Pedidos de la franja</h2>
             <p className="text-sm text-muted">
               {selectedIds.length} seleccionado{selectedIds.length === 1 ? '' : 's'}
             </p>
           </div>
           {!driverId || !timeWindow ? (
-            <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-              Elegí chofer y franja.
+            <div className="mt-3 overflow-hidden rounded-[6px] border border-border">
+              <EmptyState variant="plain" className="!py-8" title="Elegí chofer y franja." />
             </div>
           ) : (
             <>
               {listedView.length === 0 ? (
-                <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-                  {emptySelectableMessage(others.length, preparedWithoutSlot.length, used)}
+                <div className="mt-3 overflow-hidden rounded-[6px] border border-border">
+                  <EmptyState
+                    variant="plain"
+                    className="!py-8"
+                    title={emptySelectableMessage(others.length, preparedWithoutSlot.length, used)}
+                  />
                 </div>
               ) : (
-                <div className="mt-3 flex flex-col gap-2">
+                <div className="mt-3 overflow-hidden rounded-[6px] border border-border">
                   {listedView.map((order) => (
                     <label
                       key={order.id}
-                      className="flex items-start gap-3 rounded-2xl bg-surface px-4 py-3 shadow-sm"
+                      className="flex h-14 items-center gap-3 overflow-hidden border-b border-border px-3 last:border-b-0"
                     >
                       <input
                         type="checkbox"
-                        className="mt-1"
+                        className="shrink-0"
                         checked={selectedIds.includes(order.id)}
                         disabled={readOnly}
                         onChange={() => toggle(order.id)}
@@ -729,14 +735,14 @@ export function PlanificadorRutas() {
 
               {othersView.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-sm font-semibold tracking-wide text-muted">
+                  <h3 className="text-sm font-semibold text-text">
                     Otros pedidos de la franja
                   </h3>
-                  <ul className="mt-2 flex flex-col gap-2">
+                  <ul className="mt-2 overflow-hidden rounded-[6px] border border-border">
                     {othersView.map((order) => (
                       <li
                         key={order.id}
-                        className="rounded-2xl bg-surface px-4 py-3 text-sm text-muted shadow-sm"
+                        className="border-b border-border px-3 py-2 text-sm text-muted last:border-b-0"
                       >
                         <p className="flex flex-wrap items-center gap-2">
                           <Link className="order-link font-medium" to={`/pedidos/${order.id}`}>
@@ -756,22 +762,25 @@ export function PlanificadorRutas() {
         </section>
 
         <section>
-          <h2 className="text-sm font-semibold tracking-wide text-muted">ORDEN DE ENTREGA</h2>
+          <h2 className="text-sm font-semibold text-text">
+            Orden de entrega
+            {stops.length > 0 ? <span className="ml-2 font-normal text-muted">{stops.length}</span> : null}
+          </h2>
           {stops.length === 0 ? (
-            <div className="mt-3 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-              El orden aparece al calcular la ruta.
+            <div className="mt-3 overflow-hidden rounded-[6px] border border-border">
+              <EmptyState variant="plain" className="!py-8" title="El orden aparece al calcular la ruta." />
             </div>
           ) : (
-            <ol className="mt-3 flex flex-col gap-2">
+            <ol className="mt-3 overflow-hidden rounded-[6px] border border-border">
               {stops.map((stop, index) => (
-                <li key={stop.key} className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
-                  <p className="font-medium">
-                    <span className="mr-2 inline-grid h-6 w-6 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-fg">
-                      {index + 1}
-                    </span>
-                    {stop.title}
-                  </p>
-                  <p className="mt-1 pl-8 text-sm text-muted">{stop.detail}</p>
+                <li key={stop.key} className="flex h-14 items-center gap-3 overflow-hidden border-b border-border px-3 last:border-b-0">
+                  <span className="inline-grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{stop.title}</span>
+                    <span className="block truncate text-sm text-muted">{stop.detail}</span>
+                  </span>
                 </li>
               ))}
             </ol>
@@ -841,7 +850,7 @@ export function PlanificadorRutas() {
       </div>
       </div>
 
-      <div className="planner-map no-print overflow-hidden rounded-2xl bg-border-strong">
+      <div className="planner-map no-print overflow-hidden rounded-md border border-border bg-surface">
         {route && stops.length > 0 && route.line.length > 0 ? (
           <RouteMap stops={stops} line={route.line} />
         ) : (
