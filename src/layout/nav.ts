@@ -22,30 +22,62 @@ export const NAV = [
 
 export type NavItem = (typeof NAV)[number]
 export type GroupId = 'operacion' | 'seguimiento' | 'post-venta' | 'admin'
-export type NavIconName = NavItem['icon']
+export type NavIconName =
+  | NavItem['icon']
+  | 'menu'
+  | 'bell'
+  | 'x'
+  | 'chevron-down'
+  | 'sidebar-collapse'
+  | 'filter'
 
-export const GROUPS: { id: GroupId; title: string; paths: readonly string[] }[] = [
+type NavSectionDef = { label?: string; paths: readonly string[] }
+
+const GROUP_DEFS: { id: GroupId; title: string; icon: NavIconName; sections: NavSectionDef[] }[] = [
   {
     id: 'operacion',
     title: 'Operación',
-    paths: ['/', '/nuevo-pedido', '/pedidos', '/pendientes', '/despacho', '/retiros'],
+    icon: 'panel',
+    sections: [
+      { paths: ['/', '/nuevo-pedido', '/pedidos', '/pendientes', '/despacho', '/retiros'] },
+    ],
   },
   {
     id: 'seguimiento',
     title: 'Seguimiento',
-    paths: ['/seguimiento', '/rutas', '/choferes'],
+    icon: 'search',
+    sections: [
+      { label: 'Pedidos', paths: ['/seguimiento'] },
+      { label: 'Rutas', paths: ['/rutas', '/choferes'] },
+    ],
   },
   {
     id: 'post-venta',
     title: 'Post Venta',
-    paths: ['/post-venta'],
+    icon: 'refresh',
+    sections: [{ paths: ['/post-venta'] }],
   },
   {
     id: 'admin',
     title: 'Administración',
-    paths: ['/usuarios', '/datos-maestros', '/tarifas', '/bandeja'],
+    icon: 'settings',
+    sections: [
+      { paths: ['/usuarios', '/bandeja'] },
+      { paths: ['/datos-maestros', '/tarifas'] },
+    ],
   },
 ]
+
+export const GROUPS: {
+  id: GroupId
+  title: string
+  icon: NavIconName
+  sections: NavSectionDef[]
+  paths: readonly string[]
+}[] = GROUP_DEFS.map((group) => ({
+  ...group,
+  paths: group.sections.flatMap((section) => section.paths),
+}))
 
 export const STANDALONE = new Set<string>(['/mis-entregas', '/mis-viajes'])
 
@@ -87,6 +119,60 @@ export function activeItem(pathname: string, items: readonly NavItem[]): NavItem
   return (
     items.find((item) => pathMatches(pathname, item.to, 'end' in item ? item.end : false)) ?? null
   )
+}
+
+export type AppTab = { id: string; label: string; icon: NavIconName; to: string }
+
+export function tabsFor(role: Role): AppTab[] {
+  const { standalone, groups } = visibleNav(role)
+  if (role === 'chofer') {
+    return standalone.map((item) => ({
+      id: item.to,
+      label: item.label,
+      icon: item.icon,
+      to: item.to,
+    }))
+  }
+  return groups.map((group) => {
+    const def = GROUPS.find((entry) => entry.id === group.id)
+    return {
+      id: group.id,
+      label: group.title,
+      icon: def?.icon ?? 'panel',
+      to: group.items[0].to,
+    }
+  })
+}
+
+export type SidebarSection = { label?: string; items: NavItem[] }
+
+export function sidebarFor(role: Role, pathname: string): SidebarSection[] | null {
+  if (role === 'chofer') return null
+  const { groups } = visibleNav(role)
+  const groupId = activeGroupId(pathname, groups)
+  const group = groups.find((entry) => entry.id === groupId)
+  if (!group || group.items.length <= 1) return null
+  const def = GROUPS.find((entry) => entry.id === group.id)
+  if (!def) return null
+  const allowed = new Set(group.items.map((item) => item.to))
+  const sections = def.sections
+    .map((section) => ({
+      label: section.label,
+      items: section.paths.flatMap((path) => {
+        const item = itemByPath(path)
+        return item && allowed.has(item.to) ? [item] : []
+      }),
+    }))
+    .filter((section) => section.items.length > 0)
+  return sections.length > 0 ? sections : null
+}
+
+export function activeTabId(role: Role, pathname: string): string | null {
+  if (role === 'chofer') {
+    const tab = tabsFor(role).find((entry) => pathMatches(pathname, entry.to))
+    return tab?.id ?? null
+  }
+  return activeGroupId(pathname, visibleNav(role).groups)
 }
 
 export function homePathForRole(role: Role) {
