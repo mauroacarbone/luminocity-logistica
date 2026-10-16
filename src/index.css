@@ -23,7 +23,7 @@
   --accent-soft: rgba(56, 139, 253, 0.15);
   --accent-ink: #4493F8;
   --btn-primary: #238636;
-  --btn-primary-hover: #29903B;
+  --btn-primary-hover: #1F7A32;
   --btn-primary-fg: #FFFFFF;
   --btn-secondary: #212830;
   --btn-secondary-hover: #262C36;
@@ -51,6 +51,7 @@
   --danger-soft: rgba(248, 81, 73, 0.1);
   --danger-dot: #F85149;
   --danger-deep: #DA3633;
+  --danger-hover: #B62324;
   --info: #4493F8;
   --info-soft: rgba(56, 139, 253, 0.15);
   --info-dot: #4493F8;
@@ -117,6 +118,7 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-danger-deep: var(--danger-deep);
+  --color-danger-hover: var(--danger-hover);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
   --color-success-dot: var(--success-dot);
