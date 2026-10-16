@@ -127,6 +127,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32j | Pendientes de Mis entregas, Planificador, Pendientes, Despacho y Panel | Hecho |
 | 32j.1 | Primario verde, hoy del Panel y refresco sin F5 | Hecho |
 | 32j.2 | Refresco más seguro | Hecho |
+| 32i | Formularios, pantallas de admin y limpieza de CSS | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -337,6 +338,8 @@ El Brief 32j muestra en Mis entregas las hojas de los días siguientes, ordenada
 El Brief 32j.1 usa el botón primario del kit en el siguiente paso del pedido. Hoy y mañana del Panel salen de la hora de Buenos Aires. Los pedidos se vuelven a pedir cada 30 segundos con la pestaña visible, y también al volver o al enfocar la ventana; el Panel hace lo mismo con las hojas, sin vaciarlas ni cerrar el pedido abierto.
 
 El Brief 32j.2 no borra las hojas del Panel si el refresco falla por completo: deja las anteriores y marca el error. Un refresco silencioso de pedidos que salió antes de guardar, pasar de estado, borrar o importar se descarta si esa escritura ocurrió mientras la lista estaba en vuelo.
+
+El Brief 32i deja un solo primario en Usuarios («Nuevo usuario») y pasa Guardar, resetear y activar a botones del kit. Tarifas de viaje y Datos maestros usan Field, Input y botones secundarios. Nuevo pedido usa el selector segmentado del Panel, con flechas, y los campos del kit; «Crear pedido» sigue siendo el único primario. Las fechas de alta de usuarios salen en hora de Buenos Aires. El detalle del pedido va en Card. Se borran `.dispatch-type`, `.text-button` y `.btn-ghost`. `.btn-primary` queda porque lo usan el login, el registro, la importación y el reintento. El hover de `bg-accent` queda porque otras pantallas todavía pintan acciones de azul.
 
 El Brief 32h lleva el layout de caja de lista a Despacho, Pendientes de Entregas, el Planificador, Choferes en ruta, Mis entregas y Mis viajes. En el escritorio la lista es una tabla y en el celular son filas; el detalle de un pedido se abre al costado. El día de hoy se calcula en hora de Buenos Aires. En el celular el logo queda visible y el buscador pasa a ser una lupa.
 
