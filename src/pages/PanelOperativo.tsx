@@ -26,6 +26,7 @@ import { addDays, formatIsoDate, parseIso, startOfWeek, toIso } from '../lib/wee
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
 
+const REFRESH_MS = 30_000
 const ADVANCE_STATUSES: OrderStatus[] = ['pendiente', 'preparado', 'asignado']
 const DONE_STATUSES: OrderStatus[] = ['en-viaje', 'entregado']
 
@@ -408,6 +409,7 @@ export function PanelOperativo() {
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 800px)').matches,
   )
   const [showDone, setShowDone] = useState(false)
+  const [sheetsTick, setSheetsTick] = useState(0)
 
   const dateFilter = parseFecha(searchParams.get('fecha'))
   const openId = searchParams.get('pedido')
@@ -428,6 +430,20 @@ export function PanelOperativo() {
     syncNarrow()
     media.addEventListener('change', syncNarrow)
     return () => media.removeEventListener('change', syncNarrow)
+  }, [])
+
+  useEffect(() => {
+    function bump() {
+      if (document.visibilityState === 'visible') setSheetsTick((current) => current + 1)
+    }
+    const timer = window.setInterval(bump, REFRESH_MS)
+    document.addEventListener('visibilitychange', bump)
+    window.addEventListener('focus', bump)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', bump)
+      window.removeEventListener('focus', bump)
+    }
   }, [])
 
   const datedOrders = useMemo(
@@ -518,7 +534,7 @@ export function PanelOperativo() {
     return () => {
       cancelled = true
     }
-  }, [canPlan, datesKey])
+  }, [canPlan, datesKey, sheetsTick])
 
   function selectFecha(next: FechaFilter) {
     setSearchParams(

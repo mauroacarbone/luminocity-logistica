@@ -203,6 +203,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const ordersRef = useRef(orders)
   const legacyRef = useRef(legacyOrders)
   const importingRef = useRef(false)
+  const refreshInFlight = useRef(false)
   const generation = useRef(0)
   const userId = user?.id ?? null
   const [trackedUserId, setTrackedUserId] = useState(userId)
@@ -282,6 +283,31 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     },
     [userId, logout, reload],
   )
+
+  useEffect(() => {
+    if (!userId) return
+    function tick() {
+      if (document.visibilityState !== 'visible') return
+      if (importingRef.current || refreshInFlight.current) return
+      refreshInFlight.current = true
+      void refresh({ silent: true }).finally(() => {
+        refreshInFlight.current = false
+      })
+    }
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') tick()
+    }, 30_000)
+    function onVisible() {
+      if (document.visibilityState === 'visible') tick()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [userId, refresh])
 
   function replaceOrders(list: Order[]) {
     ordersRef.current = list
