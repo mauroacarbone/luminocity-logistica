@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { StopRouteMap, type MapStop } from '../components/StopRouteMap'
 import { PriorityChip } from '../components/PriorityChip'
-import { Badge, Button, Modal, Page, PageHeader } from '../components/ui'
+import { Badge, Button, EmptyState, KpiCard, Modal, Page, PageHeader } from '../components/ui'
 import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
@@ -304,20 +304,16 @@ export function MisEntregas() {
         }
       />
       {user?.role === 'chofer' && (
-        <p className={`no-print mt-3 text-sm font-semibold ${shownGps === 'on' ? 'text-text' : 'text-muted'}`}>
-          {shownGps === 'on' ? 'Ubicación activa' : 'Ubicación apagada'}
-        </p>
+        <div className="no-print mt-3">
+          <Badge tone={shownGps === 'on' ? 'success' : 'neutral'}>
+            {shownGps === 'on' ? 'Ubicación activa' : 'Ubicación apagada'}
+          </Badge>
+        </div>
       )}
       {user?.role === 'chofer' && shownGps === 'denied' && (
-        <p className="no-print mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold shadow-sm">
-          Activá la ubicación para ordenar las entregas
-        </p>
+        <p className="no-print mt-3 text-sm text-muted">Activá la ubicación para ordenar las entregas</p>
       )}
-      {sheetsError && (
-        <p className="no-print mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-danger shadow-sm">
-          {sheetsError}
-        </p>
-      )}
+      {sheetsError && <p className="no-print mt-4 text-sm font-semibold text-danger">{sheetsError}</p>}
       {visibleSheets.map((sheet) => {
         const stops = sheet.orderIds
           .map((id) => orders.find((order) => order.id === id))
@@ -364,34 +360,20 @@ export function MisEntregas() {
                 Descargar PDF
               </Button>
             </div>
-            <dl className="mt-3 grid grid-cols-2 gap-2 text-base sm:grid-cols-3">
-              <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-muted">Paradas</dt>
-                <dd className="text-lg font-semibold">{stops.length}</dd>
-              </div>
-              <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-muted">Entregadas</dt>
-                <dd className="text-lg font-semibold">{deliveredCount}</dd>
-              </div>
-              <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-muted">Pendientes</dt>
-                <dd className="text-lg font-semibold">{pendingCount}</dd>
-              </div>
-              <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-muted">Atrasadas</dt>
-                <dd className="text-lg font-semibold">{lateCount}</dd>
-              </div>
-              <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-muted">Bultos</dt>
-                <dd className="text-lg font-semibold">{packageCount}</dd>
-              </div>
-              <div className="rounded-xl bg-surface px-3 py-2">
-                <dt className="text-sm text-muted">Recorrido</dt>
-                <dd className="text-lg font-semibold">
-                  {sheet.km > 0 || sheet.minutes > 0 ? `${sheet.km} km · ${sheet.minutes} min` : '—'}
-                </dd>
-              </div>
-            </dl>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <KpiCard title="Paradas" value={stops.length} />
+              <KpiCard title="Entregadas" value={deliveredCount} />
+              <KpiCard title="Pendientes" value={pendingCount} />
+              <KpiCard
+                title="Atrasadas"
+                value={<span className={lateCount > 0 ? 'text-danger' : undefined}>{lateCount}</span>}
+              />
+              <KpiCard title="Bultos" value={packageCount} />
+              <KpiCard
+                title="Recorrido"
+                value={sheet.km > 0 || sheet.minutes > 0 ? `${sheet.km} km · ${sheet.minutes} min` : '—'}
+              />
+            </div>
             <div className="no-print mt-3 flex flex-col gap-2">
               {sheet.status === 'en_curso' && canFinish && sheet.id !== headerSheet?.id && (
                 <Button variant="secondary" size="lg" fullWidth disabled={finishing} onClick={() => setFinishTarget(sheet)}>
@@ -401,7 +383,7 @@ export function MisEntregas() {
               {user?.role === 'chofer' && sheet.status === 'planificada' && sheet.date <= today && (
                 <>
                   {!sheetIsReady(sheet, orders) && (
-                    <p className="rounded-xl bg-surface px-4 py-3 text-sm font-semibold shadow-sm">
+                    <p className="rounded-md border border-border px-4 py-3 text-sm font-semibold">
                       {WAITING_SHEET}
                     </p>
                   )}
@@ -419,14 +401,14 @@ export function MisEntregas() {
                 </>
               )}
               {sheet.status === 'planificada' && sheet.date > today && (
-                <p className="rounded-xl bg-surface px-4 py-3 text-sm font-semibold shadow-sm">
+                <p className="rounded-md border border-border px-4 py-3 text-sm font-semibold">
                   Se inicia el {sheetDateLabel}
                 </p>
               )}
               {legs.map((leg) => (
                 <a
                   key={leg.href}
-                  className="grid min-h-12 place-items-center rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary"
+                  className="inline-flex h-[52px] w-full items-center justify-center rounded-[10px] border border-border bg-btn-secondary px-5 text-base font-semibold text-text"
                   href={leg.href}
                   target="_blank"
                   rel="noreferrer"
@@ -435,28 +417,27 @@ export function MisEntregas() {
                 </a>
               ))}
             </div>
-            <div className="mt-3 h-56 overflow-hidden rounded-2xl bg-border-strong">
+            <div className="mt-3 h-56 overflow-hidden rounded-md border border-border bg-surface">
               <StopRouteMap stops={mapStops} />
             </div>
-            <ul className="mt-3 flex flex-col gap-3">
+            <div className="mt-3 overflow-hidden rounded-md border border-border">
               {stops.map((order, index) => (
-                <li key={order.id}>
-                  <DeliveryCard
-                    order={order}
-                    distance=""
-                    busy={busy === order.id}
-                    stopNumber={index + 1}
-                    inSheet
-                    done={order.status === 'entregado'}
-                    highlight={order.id === nextId}
-                    allowLeave={sheet.status === 'en_curso'}
-                    routeReady={sheetIsReady(sheet, orders)}
-                    onLeave={() => void changeStatus(order, 'en-viaje')}
-                    onDelivered={() => void changeStatus(order, 'entregado')}
-                  />
-                </li>
+                <DeliveryCard
+                  key={order.id}
+                  order={order}
+                  distance=""
+                  busy={busy === order.id}
+                  stopNumber={index + 1}
+                  inSheet
+                  done={order.status === 'entregado'}
+                  highlight={order.id === nextId}
+                  allowLeave={sheet.status === 'en_curso'}
+                  routeReady={sheetIsReady(sheet, orders)}
+                  onLeave={() => void changeStatus(order, 'en-viaje')}
+                  onDelivered={() => void changeStatus(order, 'entregado')}
+                />
               ))}
-            </ul>
+            </div>
           </section>
         )
       })}
@@ -469,7 +450,7 @@ export function MisEntregas() {
             if (!finishing) setFinishTarget(null)
           }}
         >
-          <div className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-lg">
+          <div className="w-full max-w-md rounded-md border border-border bg-surface p-5">
             <h2 id="finish-trip-title" className="text-xl font-semibold">
               Finalizar viaje
             </h2>
@@ -510,28 +491,31 @@ export function MisEntregas() {
         </button>
       </div>
       {visible.length === 0 ? (
-        <p className="no-print mt-6 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-          {(tab === 'asignados' ? assignedCount : travelingCount) > 0
-            ? 'Tus entregas están en la hoja de ruta de arriba.'
-            : 'No hay entregas.'}
-        </p>
+        <EmptyState
+          variant="plain"
+          className="no-print"
+          title={
+            (tab === 'asignados' ? assignedCount : travelingCount) > 0
+              ? 'Tus entregas están en la hoja de ruta de arriba.'
+              : 'No hay entregas.'
+          }
+        />
       ) : (
-        <ul className="no-print mt-4 flex flex-col gap-3">
+        <div className="no-print mt-4 overflow-hidden rounded-md border border-border">
           {visible.map((order) => {
             const place = position ? pointOf(order) : null
             return (
-              <li key={order.id}>
-                <DeliveryCard
-                  order={order}
-                  distance={place && position ? formatDistance(haversine(position, place)) : ''}
-                  busy={busy === order.id}
-                  onLeave={() => void changeStatus(order, 'en-viaje')}
-                  onDelivered={() => void changeStatus(order, 'entregado')}
-                />
-              </li>
+              <DeliveryCard
+                key={order.id}
+                order={order}
+                distance={place && position ? formatDistance(haversine(position, place)) : ''}
+                busy={busy === order.id}
+                onLeave={() => void changeStatus(order, 'en-viaje')}
+                onDelivered={() => void changeStatus(order, 'entregado')}
+              />
             )
           })}
-        </ul>
+        </div>
       )}
     </Page>
   )
@@ -575,31 +559,35 @@ function DeliveryCard({
   const strike = done ? 'line-through' : ''
 
   return (
-    <article className={`rounded-2xl bg-surface p-4 shadow-sm ${highlight ? 'ring-2 ring-accent' : ''}`}>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className={`border-b border-border px-4 py-3 last:border-b-0 ${highlight ? 'bg-surface-2' : ''}`}>
+      <div className="flex items-start gap-3">
         {stopNumber != null && (
-          <span className="inline-grid h-8 w-8 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-fg">
+          <span className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
             {stopNumber}
           </span>
         )}
-        <p className={`text-lg font-bold ${strike}`}>{order.id}</p>
+        <div className="min-w-0">
+          <p className={`font-semibold ${strike}`}>{order.client}</p>
+          <p className={`text-sm text-muted ${strike}`}>{order.address || 'Sin dirección'}</p>
+          <p className="text-sm text-muted">{order.timeWindow || 'Sin franja'}</p>
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <p className={`text-sm font-semibold ${strike}`}>{order.id}</p>
         <PriorityChip order={order} showNormal />
         {order.status !== 'entregado' && (
           <Badge tone={timelinessTone(punctuality)}>{TIMELINESS_LABEL[punctuality]}</Badge>
         )}
         <OrderStepper order={order} variant="compact" />
       </div>
-      <p className={`mt-1 text-lg font-semibold ${strike}`}>{order.client}</p>
-      <p className={`mt-2 text-base ${strike}`}>{order.address || 'Sin dirección'}</p>
-      {placeLine(order) && <p className="text-base">{placeLine(order)}</p>}
-      <p className="text-base text-muted">{order.zone || 'Sin zona'}</p>
-      {distance && <p className="mt-1 text-base font-semibold">{distance}</p>}
-      {inSheet && <p className="mt-2 text-base">Franja: {order.timeWindow || '—'}</p>}
-      <p className="text-base">Teléfono: {order.phone || '—'}</p>
-      <p className="text-base">Bultos: {order.packages ?? '—'}</p>
-      {inSheet && <p className="text-base">Notas: {order.notes?.trim() || '—'}</p>}
+      {placeLine(order) && <p className="mt-1 text-sm text-muted">{placeLine(order)}</p>}
+      <p className="text-sm text-muted">{order.zone || 'Sin zona'}</p>
+      {distance && <p className="mt-1 text-sm font-semibold">{distance}</p>}
+      <p className="text-sm text-muted">Teléfono: {order.phone || '—'}</p>
+      <p className="text-sm text-muted">Bultos: {order.packages ?? '—'}</p>
+      {inSheet && <p className="text-sm text-muted">Notas: {order.notes?.trim() || '—'}</p>}
       <p className="mt-2">
-        <Link className="order-link text-sm font-semibold" to={`/pedidos/${order.id}`}>
+        <Link className="text-sm font-semibold text-accent hover:underline" to={`/pedidos/${order.id}`}>
           Ver detalle
         </Link>
       </p>
@@ -609,7 +597,7 @@ function DeliveryCard({
         <div className="mt-4 flex flex-col gap-2">
           {maps ? (
             <a
-              className="grid min-h-12 place-items-center rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary"
+              className="inline-flex h-[52px] w-full items-center justify-center rounded-[10px] border border-border bg-btn-secondary px-5 text-base font-semibold text-text hover:bg-btn-secondary-hover"
               href={maps}
               target="_blank"
               rel="noreferrer"
@@ -623,7 +611,7 @@ function DeliveryCard({
           )}
           {inSheet && waze && (
             <a
-              className="grid min-h-12 place-items-center rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary"
+              className="inline-flex h-[52px] w-full items-center justify-center rounded-[10px] border border-border bg-btn-secondary px-5 text-base font-semibold text-text"
               href={waze}
               target="_blank"
               rel="noreferrer"
@@ -638,7 +626,7 @@ function DeliveryCard({
             </p>
           )}
           {canLeave && !routeReady && !inSheet && (
-            <p className="rounded-xl bg-surface px-3 py-2 text-sm font-semibold shadow-sm">{WAITING_SHEET}</p>
+            <p className="rounded-md border border-border px-3 py-2 text-sm font-semibold">{WAITING_SHEET}</p>
           )}
           {showLeave && (
             <Button
@@ -654,7 +642,7 @@ function DeliveryCard({
           {order.status === 'en-viaje' &&
             (notice ? (
               <a
-                className="grid min-h-12 place-items-center rounded-xl border border-border bg-surface px-4 text-base font-semibold text-primary"
+                className="inline-flex h-[52px] w-full items-center justify-center rounded-[10px] border border-border bg-btn-secondary px-5 text-base font-semibold text-text"
                 href={notice}
                 target="_blank"
                 rel="noreferrer"
@@ -668,18 +656,18 @@ function DeliveryCard({
             ))}
           {canDeliver && (
             <Button
-              variant="secondary"
+              variant="ghost"
               size="lg"
               fullWidth
-              className="!border-transparent !bg-success !text-inverse hover:!bg-success"
+              className="border border-border"
               disabled={busy}
               onClick={onDelivered}
             >
-              Entregado
+              Confirmar entrega
             </Button>
           )}
         </div>
       )}
-    </article>
+    </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Badge, Button, FilterBar, Page, PageHeader } from '../components/ui'
+import { Badge, Button, EmptyState, FilterBar, KpiCard, ListBox, Page, PageHeader } from '../components/ui'
 import { isSession, type Session } from '../lib/authStore'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
 import { listDriverTrips, type DriverTrip } from '../lib/routeSheetsApi'
@@ -242,89 +242,76 @@ export function MisViajes() {
         }}
       />
 
-      <div className={`mt-4 grid gap-2 ${summary.priced ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
-        <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
-          <p className="text-sm text-muted">Viajes realizados</p>
-          <p className="text-2xl font-semibold">{summary.count}</p>
-        </article>
-        <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
-          <p className="text-sm text-muted">Km del período</p>
-          <p className="text-2xl font-semibold">{formatKm(summary.km)}</p>
-          {summary.estimated && <p className="text-sm text-muted">Incluye tramos estimados</p>}
-        </article>
-        {summary.priced && (
-          <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
-            <p className="text-sm text-muted">Total a cobrar</p>
-            <p className="text-2xl font-semibold">{formatArs(summary.pay)}</p>
-          </article>
-        )}
-        <article className="rounded-2xl bg-surface px-4 py-3 shadow-sm">
-          <p className="text-sm text-muted">Viajes por lejanía</p>
-          {summary.zones.length === 0 ? (
-            <p className="mt-1 text-sm text-muted">Sin viajes finalizados</p>
-          ) : (
-            <ul className="mt-2 flex flex-wrap gap-2">
-              {summary.zones.map(([zone, count]) => (
-                <li key={zone}>
-                  <Badge tone="neutral">
+      <div className={`mt-4 grid grid-cols-2 gap-2 ${summary.priced ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+        <KpiCard title="Viajes realizados" value={summary.count} />
+        <KpiCard
+          title="Km del período"
+          value={
+            <>
+              {formatKm(summary.km)}
+              {summary.estimated ? (
+                <span className="mt-1 block text-sm font-medium text-muted">Incluye tramos estimados</span>
+              ) : null}
+            </>
+          }
+        />
+        {summary.priced && <KpiCard title="Total a cobrar" value={formatArs(summary.pay)} />}
+        <KpiCard
+          title="Viajes por lejanía"
+          value={
+            summary.zones.length === 0 ? (
+              '—'
+            ) : (
+              <span className="flex flex-wrap gap-2 text-base font-medium">
+                {summary.zones.map(([zone, count]) => (
+                  <Badge key={zone} tone="neutral">
                     {zone} · {count}
                   </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
+                ))}
+              </span>
+            )
+          }
+        />
       </div>
 
-      <div className="view-toggle no-print mt-4" role="tablist" aria-label="Viajes">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'pendientes'}
-          className={tab === 'pendientes' ? 'active min-h-12 flex-1' : 'min-h-12 flex-1'}
-          onClick={() => setTab('pendientes')}
-        >
-          Pendientes
-          <span>{pending.length}</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'finalizados'}
-          className={tab === 'finalizados' ? 'active min-h-12 flex-1' : 'min-h-12 flex-1'}
-          onClick={() => setTab('finalizados')}
-        >
-          Finalizados
-          <span>{finished.length}</span>
-        </button>
-      </div>
+      {error && <p className="mt-4 text-sm font-semibold text-danger">{error}</p>}
 
-      {error && (
-        <p className="mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-danger shadow-sm">
-          {error}
-        </p>
-      )}
-      {manager && !driverId ? (
-        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-          Elegí un chofer para ver sus viajes.
-        </p>
-      ) : loading ? (
-        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-          Cargando viajes…
-        </p>
-      ) : visible.length === 0 ? (
-        <p className="mt-4 rounded-2xl bg-surface px-5 py-8 text-center text-sm text-muted shadow-sm">
-          {tab === 'pendientes' ? 'No hay viajes pendientes en este período.' : 'No hay viajes finalizados en este período.'}
-        </p>
-      ) : (
-        <ul className="mt-4 flex flex-col gap-3">
-          {visible.map((trip) => (
-            <li key={trip.id}>
-              <TripCard trip={trip} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <ListBox
+        className="mt-4"
+        counters={[
+          {
+            key: 'pendientes',
+            label: 'Pendientes',
+            count: pending.length,
+            active: tab === 'pendientes',
+            onClick: () => setTab('pendientes'),
+          },
+          {
+            key: 'finalizados',
+            label: 'Finalizados',
+            count: finished.length,
+            active: tab === 'finalizados',
+            onClick: () => setTab('finalizados'),
+          },
+        ]}
+      >
+        {manager && !driverId ? (
+          <EmptyState variant="plain" title="Elegí un chofer para ver sus viajes." />
+        ) : loading ? (
+          <EmptyState variant="plain" title="Cargando viajes…" />
+        ) : visible.length === 0 ? (
+          <EmptyState
+            variant="plain"
+            title={
+              tab === 'pendientes'
+                ? 'No hay viajes pendientes en este período.'
+                : 'No hay viajes finalizados en este período.'
+            }
+          />
+        ) : (
+          visible.map((trip) => <TripCard key={trip.id} trip={trip} />)
+        )}
+      </ListBox>
     </Page>
   )
 }
@@ -332,27 +319,27 @@ export function MisViajes() {
 function TripCard({ trip }: { trip: DriverTrip }) {
   const zones = trip.zones.length > 0 ? trip.zones : ['Sin zona']
   return (
-    <article className="rounded-2xl bg-surface p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">
+    <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-b-0">
+      <div className="min-w-0">
+        <p className="font-semibold">
           {formatIsoDate(trip.date)} · {trip.slot}
-        </h2>
-        {trip.status === 'cerrada' && trip.delivered < 1 && <Badge tone="neutral">Sin entregas</Badge>}
-        <p className="text-base font-semibold">
-          {formatKm(trip.km)}
-          {trip.kmEstimated ? ' · estimado' : ''}
-          {trip.amount != null ? ` · ${formatArs(trip.amount)}` : ''}
         </p>
+        <p className="text-sm text-muted">{stopCount(trip)}</p>
+        <p className="text-sm text-muted">{scheduleLabel(trip)}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {trip.status === 'cerrada' && trip.delivered < 1 && <Badge tone="neutral">Sin entregas</Badge>}
+          {zones.map((zone) => (
+            <Badge key={zone} tone="neutral">
+              {zone}
+            </Badge>
+          ))}
+        </div>
       </div>
-      <p className="mt-2 text-base">{stopCount(trip)}</p>
-      <p className="mt-1 text-base text-muted">{scheduleLabel(trip)}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {zones.map((zone) => (
-          <Badge key={zone} tone="neutral">
-            {zone}
-          </Badge>
-        ))}
-      </div>
-    </article>
+      <p className="shrink-0 text-right font-semibold tabular-nums">
+        {formatKm(trip.km)}
+        {trip.kmEstimated ? ' · estimado' : ''}
+        {trip.amount != null ? ` · ${formatArs(trip.amount)}` : ''}
+      </p>
+    </div>
   )
 }
