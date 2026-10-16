@@ -10,75 +10,50 @@ type PageHeaderProps = {
   actions?: ReactNode
   back?: { to: string; label: string }
   crumb?: string
+  divider?: boolean
   className?: string
 }
 
-const CRUMB_LINK =
-  'rounded-md text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+const BACK_LINK =
+  'mb-2 inline-flex items-center gap-1 rounded-md text-sm text-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
-function Crumbs({ items }: { items: Breadcrumb[] }) {
-  const collapsed = items.length > 2
-  return (
-    <nav aria-label="Migas de pan">
-      <ol className="flex flex-wrap items-center gap-1 text-sm text-muted">
-        {collapsed ? (
-          <li className="sm:hidden" aria-hidden="true">
-            …
-          </li>
-        ) : null}
-        {items.map((item, index) => {
-          const last = index === items.length - 1
-          const hide = collapsed && index < items.length - 2
-          return (
-            <li key={`${item.label}-${index}`} className={cx('flex items-center gap-1', hide && 'hidden sm:flex')}>
-              {index > 0 ? (
-                <span aria-hidden="true" className="text-muted">
-                  ›
-                </span>
-              ) : null}
-              {last || !item.to ? (
-                <span aria-current={last ? 'page' : undefined} className={last ? 'text-text' : undefined}>
-                  {item.label}
-                </span>
-              ) : (
-                <Link to={item.to} className={CRUMB_LINK}>
-                  {item.label}
-                </Link>
-              )}
-            </li>
-          )
-        })}
-      </ol>
-    </nav>
-  )
+function parentCrumb(items: Breadcrumb[]) {
+  return [...items].reverse().find((item) => item.to && item.label !== 'Inicio')
 }
 
-export function PageHeader({ title, subtitle, actions, back, crumb, className }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, actions, back, crumb, divider, className }: PageHeaderProps) {
   const { pathname } = useLocation()
   const { user } = useAuth()
-  const crumbs = user ? breadcrumbsFor(pathname, user.role, crumb) : []
+  const detail = Boolean(crumb || back)
+  const crumbs = user && detail ? breadcrumbsFor(pathname, user.role, crumb) : []
+  const parent = back ? null : parentCrumb(crumbs)
 
   return (
-    <header className={cx('flex flex-col gap-3', className)}>
-      {crumbs.length > 0 ? <Crumbs items={crumbs} /> : null}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          {back ? (
-            <Link
-              to={back.to}
-              className="mb-2 inline-flex items-center gap-1 rounded-lg text-sm text-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span aria-hidden="true">←</span>
-              {back.label}
-            </Link>
-          ) : null}
-          <h1 className="text-2xl font-bold tracking-tight text-primary lg:text-[28px]">{title}</h1>
-          {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
-        </div>
-        {actions ? (
-          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">{actions}</div>
+    <header
+      className={cx(
+        'flex flex-wrap items-center justify-between gap-3',
+        divider && 'border-b border-border pb-4',
+        className,
+      )}
+    >
+      <div className="min-w-0">
+        {back ? (
+          <Link to={back.to} className={BACK_LINK}>
+            <span aria-hidden="true">←</span>
+            {back.label}
+          </Link>
+        ) : parent?.to ? (
+          <Link to={parent.to} className={BACK_LINK}>
+            <span aria-hidden="true">←</span>
+            {parent.label}
+          </Link>
         ) : null}
+        <h1 className="text-2xl font-semibold text-text">{title}</h1>
+        {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
       </div>
+      {actions ? (
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 min-[360px]:w-auto">{actions}</div>
+      ) : null}
     </header>
   )
 }

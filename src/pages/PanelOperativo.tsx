@@ -589,7 +589,15 @@ export function PanelOperativo() {
         title="Panel Operativo"
         subtitle="Resumen de la operación en tiempo real"
         actions={
-        <div className="view-toggle" role="group" aria-label="Vista">
+          user && canOpen(user.role, '/nuevo-pedido') ? (
+            <Button variant="primary" onClick={() => navigate('/nuevo-pedido')}>
+              Nuevo pedido
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <div className="view-toggle mt-4" role="group" aria-label="Vista">
           <button
             type="button"
             className={view === 'kanban' ? 'active' : undefined}
@@ -615,9 +623,7 @@ export function PanelOperativo() {
             </svg>
             Tabla
           </button>
-        </div>
-        }
-      />
+      </div>
 
       <FilterBar
         className="mt-4"
