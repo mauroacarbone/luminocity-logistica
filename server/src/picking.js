@@ -666,6 +666,19 @@ export function readManualItem(body, partial = false) {
   return result
 }
 
+export function readManualItems(value) {
+  if (value === undefined) return { value: [] }
+  if (!Array.isArray(value)) return fail('Los artículos no son válidos.')
+  if (value.length > 100) return fail('Podés cargar hasta 100 artículos.')
+  const items = []
+  for (const item of value) {
+    const parsed = readManualItem(item)
+    if (parsed.error) return parsed
+    items.push(parsed)
+  }
+  return { value: items }
+}
+
 export function buildManualRow(order, item, now) {
   const invoices = Array.isArray(order?.invoices)
     ? order.invoices.filter((value) => typeof value === 'string' && value.trim())

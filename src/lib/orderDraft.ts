@@ -34,6 +34,13 @@ export type OrderDraftFields = {
   attachmentNeedsReupload?: boolean
   receiverName: string
   receiverDni: string
+  items?: DraftArticle[]
+}
+
+export type DraftArticle = {
+  code: string
+  description: string
+  quantity: string
 }
 
 export type OrderDraftRecord = {
@@ -135,6 +142,29 @@ export function clearOrderDraftsForUser(userId: string) {
 
 export function newOrderSessionKey(userId: string) {
   return `luminocity.nuevoPedido.borrador.${userId}`
+}
+
+export function draftArticles(value: unknown): DraftArticle[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .flatMap((item) => {
+      if (!item || typeof item !== 'object') return []
+      const row = item as Record<string, unknown>
+      const quantity =
+        typeof row.quantity === 'string'
+          ? row.quantity
+          : typeof row.quantity === 'number' && Number.isFinite(row.quantity)
+            ? String(row.quantity)
+            : '1'
+      return [
+        {
+          code: typeof row.code === 'string' ? row.code : '',
+          description: typeof row.description === 'string' ? row.description : '',
+          quantity,
+        },
+      ]
+    })
+    .slice(0, 100)
 }
 
 export function readSessionDraft(userId: string): OrderDraftFields | null {

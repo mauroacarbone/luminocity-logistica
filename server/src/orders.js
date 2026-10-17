@@ -25,7 +25,7 @@ import {
   notifyWarehouse,
 } from './notifications.js'
 import { applyTransition, stampStatus, withHistory } from './orderFlow.js'
-import { buildManualRow, readManualItem, syncChecklist } from './picking.js'
+import { buildManualRow, readManualItem, readManualItems, syncChecklist } from './picking.js'
 import {
   TAKE_STALE_MS,
   actorOf,
@@ -346,6 +346,8 @@ function createOrder(body, user) {
     if (user.role === 'vendedor' && (parsed.order.packages != null || parsed.order.driverId)) {
       return fail('No podés asignar bultos ni chofer al cargar el pedido.', 403)
     }
+    const manual = readManualItems(body.items)
+    if (manual.error) return manual
     const otherSeller =
       user.role === 'vendedor' &&
       normalizeName(parsed.order.seller) !== normalizeName(user.sellerName)
@@ -384,11 +386,29 @@ function createOrder(body, user) {
     orders.push(order)
     await writeOrders(orders)
     await linkPickingIfInvoicesChanged(orders, order, null)
+    const createdIds = []
+    if (manual.value.length > 0) {
+      const picking = await readCollection('picking')
+      const list = Array.isArray(picking) ? picking : []
+      for (const item of manual.value) {
+        const row = buildManualRow(order, item, createdAt)
+        createdIds.push(row.id)
+        list.push(row)
+      }
+      await writeCollection('picking', list)
+      await syncChecklist(orders, orders.length - 1, user)
+    }
     if (staged) {
       try {
         await saveAuthorizations(staged)
       } catch (error) {
         await writeOrders(orders.filter((item) => item.id !== order.id))
+        if (createdIds.length > 0) {
+          const picking = await readCollection('picking')
+          const drop = new Set(createdIds)
+          const list = Array.isArray(picking) ? picking.filter((row) => !drop.has(row?.id)) : []
+          await writeCollection('picking', list)
+        }
         throw error
       }
     }
@@ -400,7 +420,7 @@ function createOrder(body, user) {
         actorId: user.id,
       })
     }
-    return { order }
+    return { order: orders[orders.length - 1] ?? order }
   })
 }
 

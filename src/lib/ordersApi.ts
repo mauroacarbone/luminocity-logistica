@@ -1,7 +1,9 @@
 import type { Order } from '../data/orders'
 import { loadToken } from './authStore'
 
-export type OrderDraft = Omit<Order, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>
+export type OrderDraft = Omit<Order, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'> & {
+  items?: ManualItemInput[]
+}
 
 export type ApiSuccess = { ok: true; data: unknown }
 export type SlotFull = {
@@ -277,6 +279,8 @@ export function orderBody(order: OrderDraft, mode: 'create' | 'patch', previous?
 
   if (typeof order.packages === 'number') body.packages = order.packages
   else if (mode === 'patch') body.packages = null
+
+  if (mode === 'create' && order.items && order.items.length > 0) body.items = order.items
 
   return body
 }

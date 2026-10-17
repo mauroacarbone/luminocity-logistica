@@ -25,15 +25,18 @@ import { confirm, error } from '../lib/alerts'
 import {
   clearOrderDraft,
   clearSessionDraft,
+  draftArticles,
   formatDraftAgo,
   orderDraftKey,
   readOrderDraft,
   readSessionDraft,
   writeOrderDraft,
   writeSessionDraft,
+  type DraftArticle,
   type OrderDraftFields,
   type OrderDraftRecord,
 } from '../lib/orderDraft'
+import type { ManualItemInput } from '../lib/ordersApi'
 import { requiresInvoicePdf } from '../lib/preparation'
 import { isOrderPriority, PRIORITIES, PRIORITY_LABEL, priorityOf } from '../lib/priority'
 import type { OrderPriority } from '../data/orders'
@@ -79,6 +82,7 @@ type ErrorKey =
   | 'file'
 
 type Errors = Partial<Record<ErrorKey, string>>
+type ItemFieldErrors = { code?: string; description?: string; quantity?: string }
 
 /** Orden visual en el formulario (de arriba hacia abajo). */
 const FIELD_ORDER: ErrorKey[] = [
@@ -189,6 +193,29 @@ function formatLoadedAt(date: Date) {
 
 function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function articlesForCreate(rows: DraftArticle[]): { items: ManualItemInput[]; errors?: Record<number, ItemFieldErrors> } {
+  const errors: Record<number, ItemFieldErrors> = {}
+  const items: ManualItemInput[] = []
+  rows.forEach((row, index) => {
+    const code = row.code.trim()
+    const description = row.description.trim()
+    if (!code) return
+    const rowErrors: ItemFieldErrors = {}
+    if (code.length > 60) rowErrors.code = 'Cargá el código del artículo.'
+    if (description.length > 200) rowErrors.description = 'La descripción puede tener hasta 200 caracteres.'
+    const quantity = Number(row.quantity)
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      rowErrors.quantity = 'La cantidad tiene que ser un entero mayor a 0.'
+    }
+    if (rowErrors.code || rowErrors.description || rowErrors.quantity) errors[index] = rowErrors
+    else items.push({ code, quantity, ...(description ? { description } : {}) })
+  })
+  if (items.length > 100) {
+    errors[0] = { ...errors[0], code: 'Podés cargar hasta 100 artículos.' }
+  }
+  return Object.keys(errors).length > 0 ? { items: [], errors } : { items }
 }
 
 function PedidoForm({ editingId }: { editingId?: string }) {
@@ -314,6 +341,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [askingAuth, setAskingAuth] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [sessionNotice, setSessionNotice] = useState(Boolean(sessionSeed))
+  const seededArticles = draftArticles(sessionSeed?.items)
+  const [articles, setArticles] = useState<DraftArticle[]>(seededArticles)
+  const [articlesOpen, setArticlesOpen] = useState(seededArticles.some((row) => row.code.trim()))
+  const [articleErrors, setArticleErrors] = useState<Record<number, ItemFieldErrors>>({})
   const [draftOffer, setDraftOffer] = useState<OrderDraftRecord | null>(() => {
     if (!user || !editingId) return null
     const stored = readOrderDraft(orderDraftKey(user.id, editingId))
@@ -341,6 +372,23 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
   function markDirty() {
     setDirty(true)
+  }
+
+  function updateArticle(index: number, patch: Partial<DraftArticle>) {
+    markDirty()
+    setArticles((current) => current.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)))
+    setArticleErrors((current) => {
+      if (!current[index]) return current
+      const next = { ...current }
+      delete next[index]
+      return next
+    })
+  }
+
+  function removeArticle(index: number) {
+    markDirty()
+    setArticles((current) => current.filter((_, rowIndex) => rowIndex !== index))
+    setArticleErrors({})
   }
 
   function collectDraftFields(): OrderDraftFields {
@@ -372,6 +420,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       attachmentNeedsReupload: Boolean(reattachName),
       receiverName,
       receiverDni,
+      items: articles,
     }
   }
 
@@ -462,6 +511,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     setNotes(typeof fields.notes === 'string' ? fields.notes : '')
     setReceiverName(typeof fields.receiverName === 'string' ? fields.receiverName : '')
     setReceiverDni(typeof fields.receiverDni === 'string' ? fields.receiverDni : '')
+    const nextArticles = draftArticles(fields.items)
+    setArticles(nextArticles)
+    setArticlesOpen(nextArticles.some((row) => row.code.trim()))
+    setArticleErrors({})
 
     const name = typeof fields.attachmentName === 'string' ? fields.attachmentName : ''
     const dataUrl = typeof fields.attachmentDataUrl === 'string' ? fields.attachmentDataUrl : ''
@@ -1071,6 +1124,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           place: zoneHint?.place,
         })
     const stored = storedId ? orders.find((order) => order.id === storedId) : undefined
+    const articlePayload = storedId ? undefined : articlesForCreate(articles)
+    if (articlePayload && articlePayload.errors) {
+      setArticleErrors(articlePayload.errors)
+      setArticlesOpen(true)
+      return
+    }
+    setArticleErrors({})
     const draft: OrderDraft = {
       client: client.trim(),
       address: pickup ? undefined : address.trim(),
@@ -1102,6 +1162,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       draft.floor = floorValue
       draft.unit = unitValue
       draft.doorbell = doorbellValue
+    }
+    if (!storedId && articlePayload && articlePayload.items.length > 0) {
+      draft.items = articlePayload.items
     }
     if (storedId) {
       draftRef.current = draft
@@ -1583,6 +1646,68 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             </div>
           )}
         </section>
+
+        {!storedId && (
+          <section className="form-card">
+            <h2>Artículos (opcional)</h2>
+            {articlesOpen ? (
+              <div className="flex flex-col gap-3">
+                {articles.map((row, index) => (
+                  <div key={index} className="flex flex-col gap-3 rounded-md border border-border p-3">
+                    <Field label="Código" error={articleErrors[index]?.code}>
+                      <Input
+                        value={row.code}
+                        autoComplete="off"
+                        onChange={(event) => updateArticle(index, { code: event.target.value })}
+                      />
+                    </Field>
+                    <Field label="Descripción (opcional)" error={articleErrors[index]?.description}>
+                      <Input
+                        value={row.description}
+                        autoComplete="off"
+                        onChange={(event) => updateArticle(index, { description: event.target.value })}
+                      />
+                    </Field>
+                    <Field label="Cantidad" error={articleErrors[index]?.quantity}>
+                      <Input
+                        value={row.quantity}
+                        inputMode="numeric"
+                        autoComplete="off"
+                        onChange={(event) => updateArticle(index, { quantity: event.target.value })}
+                      />
+                    </Field>
+                    <Button variant="ghost" onClick={() => removeArticle(index)}>
+                      Quitar
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  disabled={articles.length >= 100}
+                  onClick={() => {
+                    markDirty()
+                    setArticles((current) => [...current, { code: '', description: '', quantity: '1' }])
+                  }}
+                >
+                  Agregar otro
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  markDirty()
+                  setArticlesOpen(true)
+                  setArticles((current) =>
+                    current.length > 0 ? current : [{ code: '', description: '', quantity: '1' }],
+                  )
+                }}
+              >
+                Cargar artículos
+              </Button>
+            )}
+          </section>
+        )}
 
         {!pickup && (
           <section className="form-card">
