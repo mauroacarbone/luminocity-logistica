@@ -377,6 +377,9 @@ async function finishPreparation(next, current, input, user) {
   next.preparation = sessions.length > 0 ? { sessions } : undefined
   if (!next.preparation) delete next.preparation
 
+  const sent = readChecklist(input)
+  if (sent.error) return sent
+
   const picking = await readCollection('picking')
   const rows = Array.isArray(picking) ? picking.filter((row) => row && row.orderId === current.id) : []
   let incomplete = false
@@ -384,11 +387,6 @@ async function finishPreparation(next, current, input, user) {
   if (rows.length > 0) {
     const total = rows.length
     const done = rows.filter((row) => rowIsPicked(row)).length
-    const sent = readChecklist(input)
-    if (sent.error) return sent
-    if (sent.value && (sent.value.done !== done || sent.value.total !== total)) {
-      return fail('El checklist no coincide con los artículos.')
-    }
     checklist = { done, total }
     incomplete = done < total
     next.prepChecklist = checklist
