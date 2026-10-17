@@ -405,20 +405,19 @@ function SearchField({ search, size }: { search: FilterSearch; size: FilterSize 
         search.onSubmit?.(search.value)
       }}
     >
-      <span className="sr-only">{search.label}</span>
       <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden="true">
         <NavIcon name="search" />
       </span>
       <Input
         type="search"
         size={size}
+        aria-label={search.label}
         value={search.value}
         placeholder={search.placeholder ?? search.label}
-        className="[&::-webkit-search-cancel-button]:appearance-none"
-        style={{
-          paddingLeft: '2.5rem',
-          paddingRight: hasSubmit && hasValue ? '5rem' : hasSubmit || hasValue ? '2.5rem' : undefined,
-        }}
+        className={cx(
+          'pl-10 [&::-webkit-search-cancel-button]:appearance-none',
+          hasSubmit && hasValue ? 'pr-20' : hasSubmit || hasValue ? 'pr-10' : undefined,
+        )}
         onChange={(event) => search.onChange(event.target.value)}
       />
       {hasValue ? (
