@@ -1246,7 +1246,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const pickup = dispatchType === 'retiro'
 
   return (
-    <Page width="narrow">
+    <Page>
       <PageHeader
         title={storedId ? 'Editar Pedido' : 'Nuevo Pedido'}
         subtitle={storedId ? 'Actualizá los datos del pedido.' : 'Cargá un nuevo pedido de logística.'}
@@ -1283,7 +1283,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         </p>
       )}
 
-      <form className="form-stack" onSubmit={onSubmit} noValidate>
+      <form className="form-stack @container !max-w-none" onSubmit={onSubmit} noValidate>
+        <div className="grid grid-cols-1 items-start gap-4 @min-[900px]:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-4">
         <section className="form-card">
           <h2>Tipo de despacho</h2>
           <div
@@ -1386,8 +1388,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             </Field>
           )}
         </section>
+        </div>
 
-
+        <div className="flex min-w-0 flex-col gap-4">
         <section className="form-card">
           <h2>Vendedor</h2>
           <div data-field="seller">
@@ -1763,7 +1766,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             </div>
           </section>
         )}
+        </div>
 
+        <div className="flex min-w-0 flex-col gap-4 @min-[900px]:col-span-full">
         <section className="form-card">
           <h2>Fecha y Horario</h2>
           <div className="field-grid">
@@ -1956,6 +1961,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           <Button type="submit" variant="primary" disabled={readingFile || saving} loading={saving}>
             {storedId ? 'Guardar cambios' : 'Crear pedido'}
           </Button>
+        </div>
+        </div>
         </div>
       </form>
       {reasonOpen && (
