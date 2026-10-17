@@ -6,11 +6,12 @@ import { Badge, Button, EmptyState, FilterBar, ListBox, Modal, Page, PageHeader,
 import { isOwnDelivery } from '../data/catalog'
 import { error, success } from '../lib/alerts'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
-import { finishRouteSheet, listOpenRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
+import { finishRouteSheet, listOpenRouteSheets, listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
+import { missedClosedStop } from '../lib/sheetStop'
 import { isSession } from '../lib/authStore'
 import { listUsers } from '../lib/usersApi'
 import { formatIsoDate } from '../lib/week'
-import { clockTime } from '../lib/schedule'
+import { businessToday, clockTime } from '../lib/schedule'
 import { cssVar } from '../lib/theme'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
@@ -145,6 +146,7 @@ export function ChoferesEnRuta() {
   const { orders, refresh } = useOrders()
   const [drivers, setDrivers] = useState<LiveDriver[]>([])
   const [sheets, setSheets] = useState<RouteSheet[]>([])
+  const [closedToday, setClosedToday] = useState<RouteSheet[]>([])
   const [now, setNow] = useState(() => Date.now())
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [message, setMessage] = useState('')
@@ -192,8 +194,11 @@ export function ChoferesEnRuta() {
       }
       const sheetsResult = await listOpenRouteSheets()
       if (cancelled) return
+      const dayResult = await listRouteSheets(businessToday())
+      if (cancelled) return
       setDrivers(result.data)
       setSheets(sheetsResult.ok ? sheetsResult.data : [])
+      setClosedToday(dayResult.ok ? dayResult.data.filter((sheet) => sheet.status === 'cerrada') : [])
       setNow(Date.now())
       setStatus('ready')
     }
@@ -361,6 +366,38 @@ export function ChoferesEnRuta() {
               </>
             )}
           </ListBox>
+          {closedToday.length > 0 ? (
+            <section className="mt-4">
+              <h2 className="text-sm font-semibold text-text">Viajes finalizados de hoy</h2>
+              {closedToday.map((sheet) => {
+                const driverName = accountNames.get(sheet.driverId) || 'Sin nombre'
+                return (
+                  <details key={sheet.id} className="mt-2 rounded-md border border-border bg-surface">
+                    <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">
+                      {driverName} · {formatIsoDate(sheet.date)} · {sheet.slot}
+                    </summary>
+                    <ul className="border-t border-border">
+                      {sheet.orderIds.map((id) => {
+                        const order = orders.find((item) => item.id === id)
+                        const missed = !order || missedClosedStop(order, sheet.id)
+                        return (
+                          <li
+                            key={id}
+                            className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-sm last:border-b-0"
+                          >
+                            <span className="min-w-0">{order ? `${order.id} — ${order.client}` : id}</span>
+                            <Badge tone={missed ? 'danger' : 'success'}>
+                              {missed ? 'No entregado' : 'Entregado'}
+                            </Badge>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </details>
+                )
+              })}
+            </section>
+          ) : null}
           <FilterBar
             className="mt-4"
             search={{

@@ -868,7 +868,7 @@ function buildTrip(sheet, byId) {
         return {
           orderId,
           zone: zoneOf(order),
-          delivered: Boolean(order && order.status === 'entregado'),
+          delivered: !missedClosedStop(order, sheet.id),
         }
       }),
     ...dropped,
@@ -887,6 +887,13 @@ function buildTrip(sheet, byId) {
     km: distance.km,
     kmEstimated: distance.estimated,
   }
+}
+
+function missedClosedStop(order, sheetId) {
+  if (!order || order.status !== 'entregado') return true
+  const reason = `Volvió de la hoja ${sheetId} sin entregar`
+  const history = Array.isArray(order.history) ? order.history : []
+  return history.some((entry) => entry && entry.reason === reason)
 }
 
 function zoneOf(order) {

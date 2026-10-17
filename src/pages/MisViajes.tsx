@@ -326,6 +326,18 @@ function TripCard({ trip }: { trip: DriverTrip }) {
         </p>
         <p className="text-sm text-muted">{stopCount(trip)}</p>
         <p className="text-sm text-muted">{scheduleLabel(trip)}</p>
+        {trip.status === 'cerrada' && trip.stops.length > 0 ? (
+          <ul className="mt-2 flex flex-col gap-1">
+            {trip.stops.map((stop) => (
+              <li key={stop.orderId} className="flex flex-wrap items-center gap-2 text-sm">
+                <span>{stop.orderId}</span>
+                <Badge tone={stop.delivered ? 'success' : 'danger'}>
+                  {stop.delivered ? 'Entregado' : 'No entregado'}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-2">
           {trip.status === 'cerrada' && trip.delivered < 1 && <Badge tone="neutral">Sin entregas</Badge>}
           {zones.map((zone) => (

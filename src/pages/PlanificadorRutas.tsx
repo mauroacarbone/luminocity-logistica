@@ -20,6 +20,7 @@ import { driverSlotCount, normalizeTimeWindow, slotQuestion } from '../lib/slot'
 import { cssVar } from '../lib/theme'
 import { labelDrivers } from '../lib/driverLabel'
 import { businessToday, clockTime } from '../lib/schedule'
+import { missedClosedStop } from '../lib/sheetStop'
 import { DAY_SHORT, MONTH_SHORT, formatDayLabel, parseIso, toIso, weekDays, weekOffsetForIso } from '../lib/week'
 import { listUsers } from '../lib/usersApi'
 import { isSession } from '../lib/authStore'
@@ -902,9 +903,15 @@ export function PlanificadorRutas() {
                             <span className="mt-1 block text-sm text-muted">{order.address}</span>
                           )}
                         </span>
-                        <span className={`status-pill status-${order.status} shrink-0`}>
-                          {STATUS_PILL[order.status]}
-                        </span>
+                        {sheet?.status === 'cerrada' ? (
+                          <Badge tone={missedClosedStop(order, sheet.id) ? 'danger' : 'success'}>
+                            {missedClosedStop(order, sheet.id) ? 'No entregado' : 'Entregado'}
+                          </Badge>
+                        ) : (
+                          <span className={`status-pill status-${order.status} shrink-0`}>
+                            {STATUS_PILL[order.status]}
+                          </span>
+                        )}
                       </span>
                     </label>
                   ))}
@@ -1077,9 +1084,17 @@ export function PlanificadorRutas() {
                 {item.orderIds.map((id) => {
                   const order = orders.find((candidate) => candidate.id === id)
                   return (
-                    <li key={id} className="border-b border-border px-3 py-2 text-sm last:border-b-0">
-                      <span className="font-medium">{id}</span>
-                      {order ? ` — ${order.client}` : ''}
+                    <li
+                      key={id}
+                      className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-sm last:border-b-0"
+                    >
+                      <span className="min-w-0">
+                        <span className="font-medium">{id}</span>
+                        {order ? ` — ${order.client}` : ''}
+                      </span>
+                      <Badge tone={!order || missedClosedStop(order, item.id) ? 'danger' : 'success'}>
+                        {!order || missedClosedStop(order, item.id) ? 'No entregado' : 'Entregado'}
+                      </Badge>
                     </li>
                   )
                 })}
