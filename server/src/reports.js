@@ -143,6 +143,7 @@ async function loadDrivers(period) {
   for (const driver of drivers) {
     totals.closedTrips += driver.closedTrips
     totals.deliveries += driver.deliveries
+    totals.undelivered += driver.undelivered
     totals.km = roundKm(totals.km + driver.km)
     totals.kmEstimated = roundKm(totals.kmEstimated + driver.kmEstimated)
     totals.unsealed += driver.unsealed
