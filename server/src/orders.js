@@ -713,7 +713,7 @@ async function markPickingInPreparation(orderId, nowIso) {
   if (!Array.isArray(picking)) return
   let changed = false
   for (const row of picking) {
-    if (!row || row.orderId !== orderId || row.status === 'en_preparacion') continue
+    if (!row || row.orderId !== orderId || row.status !== 'pendiente') continue
     row.status = 'en_preparacion'
     row.updatedAt = nowIso
     changed = true
