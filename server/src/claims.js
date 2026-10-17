@@ -716,17 +716,31 @@ function takeRepair(user, id) {
     if (found.error) return found
     const repair = found.claim.repair
     if (!repair) return fail('Este reclamo no tiene una reparación.', 409)
-    const current = repair.technician
-    if (current && current.id !== user.id && user.role !== 'admin') {
-      return fail(`Lo tiene ${current.name}`, 409)
+    if (repair.step === 'entregado' || repair.step === 'rechazado') {
+      return fail('La reparación ya está cerrada.', 409)
     }
+    const current = repair.technician
+    if (repair.step === 'por-levantar') {
+      repair.technician = { id: user.id, name: user.name }
+      repair.step = 'diagnostico'
+      found.claim.status = 'reparacion'
+      found.claim.events.push({
+        at: new Date().toISOString(),
+        status: 'reparacion',
+        note: `Levantado por ${user.name}`,
+        by: actorOf(user),
+      })
+      await writeClaims(found.list)
+      return { claim: found.claim }
+    }
+    if (current && current.id === user.id) return { claim: found.claim }
+    if (current && user.role !== 'admin') return fail(`Lo tiene ${current.name}`, 409)
+    if (user.role !== 'admin') return fail('La reparación ya está en curso.', 409)
     repair.technician = { id: user.id, name: user.name }
-    repair.step = 'diagnostico'
-    found.claim.status = 'reparacion'
     found.claim.events.push({
       at: new Date().toISOString(),
-      status: 'reparacion',
-      note: `Levantado por ${user.name}`,
+      status: found.claim.status,
+      note: `Reasignado a ${user.name}`,
       by: actorOf(user),
     })
     await writeClaims(found.list)
