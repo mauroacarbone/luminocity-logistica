@@ -34,6 +34,7 @@ const NUM_FMT: Partial<Record<ColumnKind, string>> = {
   km: '0.0',
   pct: '0.0%',
   date: 'dd/mm/yyyy',
+  duration: '0.0',
 }
 
 function sheetName(name: string) {
@@ -60,8 +61,13 @@ type ExcelCell = {
   fill?: { type: 'pattern'; pattern: 'solid'; fgColor: { argb: string } }
 }
 
+function headerOf(column: XlsxColumn) {
+  return column.kind === 'duration' ? `${column.header} (min)` : column.header
+}
+
 function numeric(kind: ColumnKind, value: number): ExcelCell {
   if (kind === 'pct') return { value: value / 100, numFmt: NUM_FMT.pct }
+  if (kind === 'duration') return { value: value / 60000, numFmt: NUM_FMT.duration }
   return { value, numFmt: NUM_FMT[kind] }
 }
 
@@ -75,7 +81,7 @@ function dataCell(column: XlsxColumn, row: XlsxRow): ExcelCell {
     return { value: textOf(custom ?? raw), font: italic }
   }
   if (column.kind === 'text') return { value: textOf(custom ?? raw), font: italic }
-  if (typeof raw === 'number' && (column.kind === 'km' || !custom)) {
+  if (typeof raw === 'number' && (column.kind === 'km' || column.kind === 'duration' || !custom)) {
     return { ...numeric(column.kind, raw), font: italic }
   }
   if (custom) return { value: guardCsvFormula(custom), font: italic }
@@ -117,10 +123,10 @@ export async function writeXlsx({ fileName, meta, sheets }: { fileName: string; 
       bump(0, line)
     }
     if ((source.preamble?.length ?? 0) > 0) sheet.addRow([])
-    const header = sheet.addRow(source.columns.map((column) => column.header))
+    const header = sheet.addRow(source.columns.map((column) => headerOf(column)))
     const headerRow = header.number
     header.eachCell((cell, index) => {
-      paint(cell, { value: source.columns[index - 1]?.header ?? '', font: { bold: true }, fill: headerFill })
+      paint(cell, { value: headerOf(source.columns[index - 1] ?? { key: '', header: '', kind: 'text' }), font: { bold: true }, fill: headerFill })
     })
     for (const item of source.rows) {
       const row = sheet.addRow(source.columns.map(() => ''))

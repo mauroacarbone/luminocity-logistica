@@ -308,3 +308,45 @@ export function getClaimsReport(period: ReportPeriod): Promise<{ ok: true; data:
 export function getPickupsReport(period: ReportPeriod): Promise<{ ok: true; data: PickupsReport } | ApiFailure> {
   return getReport('/api/reports/pickups', period, 'No se pudieron cargar los retiros.', isPickups)
 }
+
+export type PreparationRow = {
+  id: string
+  name: string
+  armed: number
+  packages: number
+  timed: number
+  avgMs: number | null
+  medianMs: number | null
+  incomplete: number
+  direct: number
+}
+
+export type PreparationReport = {
+  period: ReportPeriod
+  rows: PreparationRow[]
+  total: PreparationRow
+}
+
+function isPreparationRow(value: unknown): value is PreparationRow {
+  if (!isRecord(value)) return false
+  return (
+    isText(value.id) &&
+    isText(value.name) &&
+    isNum(value.armed) &&
+    isNum(value.packages) &&
+    isNum(value.timed) &&
+    isNumOrNull(value.avgMs) &&
+    isNumOrNull(value.medianMs) &&
+    isNum(value.incomplete) &&
+    isNum(value.direct)
+  )
+}
+
+function isPreparation(value: unknown): value is PreparationReport {
+  if (!isRecord(value) || !isPeriod(value.period) || !isPreparationRow(value.total)) return false
+  return Array.isArray(value.rows) && value.rows.every(isPreparationRow)
+}
+
+export function getPreparationReport(period: ReportPeriod): Promise<{ ok: true; data: PreparationReport } | ApiFailure> {
+  return getReport('/api/reports/preparation', period, 'No se pudo cargar la preparación.', isPreparation)
+}

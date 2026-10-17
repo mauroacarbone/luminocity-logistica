@@ -1,5 +1,6 @@
 import { CLAIM_STATUS_LABEL, type ClaimStatus } from '../data/claims'
 import { STATUS_PILL, type OrderStatus } from '../data/orders'
+import { formatPrepMs } from './preparation'
 import { isOrderPriority, PRIORITY_LABEL } from './priority'
 import type {
   ClaimsReport,
@@ -13,11 +14,12 @@ import type {
   OverduePickup,
   PickupDay,
   PickupsReport,
+  PreparationReport,
   SlotDay,
 } from './reportsApi'
 import { formatIsoDate } from './week'
 
-export type ColumnKind = 'text' | 'count' | 'money' | 'km' | 'pct' | 'date'
+export type ColumnKind = 'text' | 'count' | 'money' | 'km' | 'pct' | 'date' | 'duration'
 
 export type RawValue = string | number | null
 
@@ -32,6 +34,7 @@ export type ModelColumn = {
     part: (row: ModelRow) => number
     whole: (row: ModelRow) => number
   }
+  durationOf?: () => number | null
 }
 
 export type ModelRow = {
@@ -72,6 +75,7 @@ export type ReportSource = {
   drivers: DriversReport
   claims: ClaimsReport
   pickups: PickupsReport
+  preparation: PreparationReport
 }
 
 export type ReportModel = {
@@ -151,6 +155,10 @@ export function totalRow(columns: ModelColumn[], rows: ModelRow[], label = 'Tota
       const value = whole ? Math.round((part / whole) * 1000) / 10 : null
       return { key: column.key, value, text: column.format(value) }
     }
+    if (column.kind === 'duration') {
+      const value = column.durationOf ? column.durationOf() : null
+      return { key: column.key, value, text: column.format(value) }
+    }
     if (column.kind !== 'count' && column.kind !== 'money' && column.kind !== 'km') {
       return { key: column.key, value: '', text: '' }
     }
@@ -204,12 +212,17 @@ function sectionTotal(id: string, columns: ModelColumn[], rows: ModelRow[]): Sec
   return { mode: 'rows', lines }
 }
 
+function formatDuration(value: RawValue) {
+  return formatPrepMs(typeof value === 'number' ? value : null)
+}
+
 function column(
   key: string,
   header: string,
   kind: ColumnKind,
   format: (value: RawValue) => string,
   pctKey?: string,
+  durationOf?: () => number | null,
 ): ModelColumn {
   const align = kind === 'text' || kind === 'date' ? 'left' : 'right'
   return {
@@ -225,6 +238,7 @@ function column(
           whole: (row) => row.pct?.[pctKey]?.whole ?? 0,
         }
       : undefined,
+    durationOf,
   }
 }
 
@@ -624,6 +638,35 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
         column('status', 'Estado', 'text', formatText),
       ],
       rows: data.pickups.overdue.map(overdueRow),
+    },
+    {
+      id: 'preparacion',
+      title: 'Preparación por operario',
+      sheet: 'Preparación',
+      csvId: 'preparacion',
+      columns: [
+        column('name', 'Operario', 'text', formatText),
+        column('armed', 'Armados', 'count', formatCount),
+        column('packages', 'Bultos', 'count', formatCount),
+        column('timed', 'Con duración', 'count', formatCount),
+        column('incomplete', 'Incompletos', 'count', formatCount),
+        column('direct', 'Directos', 'count', formatCount),
+        column('avg', 'Promedio', 'duration', formatDuration, undefined, () => data.preparation.total.avgMs),
+        column('median', 'Mediana', 'duration', formatDuration, undefined, () => data.preparation.total.medianMs),
+      ],
+      rows: data.preparation.rows.map((row) => ({
+        rowId: row.id || row.name,
+        values: {
+          name: row.name,
+          armed: row.armed,
+          packages: row.packages,
+          timed: row.timed,
+          incomplete: row.incomplete,
+          direct: row.direct,
+          avg: row.avgMs,
+          median: row.medianMs,
+        },
+      })),
     },
   ]
   const sections = drafts.map((draft) => ({

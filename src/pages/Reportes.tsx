@@ -13,7 +13,7 @@ import { businessOffset, businessToday } from '../lib/schedule'
 import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
-import { getClaimsReport, getDeliveriesReport, getDriversReport, getPickupsReport } from '../lib/reportsApi'
+import { getClaimsReport, getDeliveriesReport, getDriversReport, getPickupsReport, getPreparationReport } from '../lib/reportsApi'
 
 type Preset = 'hoy' | '7' | 'mes' | 'anterior' | 'personalizado'
 
@@ -156,6 +156,7 @@ const SECTIONS = [
   { id: 'zonas', label: 'Zonas' },
   { id: 'prioridad', label: 'Prioridad' },
   { id: 'choferes', label: 'Choferes' },
+  { id: 'preparacion', label: 'Preparación' },
   { id: 'reclamos', label: 'Reclamos' },
   { id: 'retiros', label: 'Retiros' },
 ] as const
@@ -356,10 +357,11 @@ export function Reportes() {
       getDriversReport({ from, to }),
       getClaimsReport({ from, to }),
       getPickupsReport({ from, to }),
-    ]).then(([deliveries, drivers, claims, pickups]) => {
+      getPreparationReport({ from, to }),
+    ]).then(([deliveries, drivers, claims, pickups, preparation]) => {
       if (cancelled) return
-      if (!deliveries.ok || !drivers.ok || !claims.ok || !pickups.ok) {
-        const failed = [deliveries, drivers, claims, pickups].find((result) => !result.ok)
+      if (!deliveries.ok || !drivers.ok || !claims.ok || !pickups.ok || !preparation.ok) {
+        const failed = [deliveries, drivers, claims, pickups, preparation].find((result) => !result.ok)
         setData(null)
         setError(failed && !failed.ok ? failed.message : 'No se pudieron cargar los reportes.')
         setLoading(false)
@@ -370,6 +372,7 @@ export function Reportes() {
         drivers: drivers.data,
         claims: claims.data,
         pickups: pickups.data,
+        preparation: preparation.data,
       })
       setLoading(false)
     })
@@ -622,6 +625,7 @@ function ReportTables({
       {block('zonas')}
       {block('prioridad')}
       {block('choferes')}
+      {block('preparacion')}
       <div id="reclamos" className="flex scroll-mt-24 flex-col gap-4">
         <h2 className="text-lg font-semibold text-text">Reclamos</h2>
         <p className="text-sm text-muted">{model.claimsNote}</p>

@@ -277,6 +277,18 @@ reportsRouter.get('/pickups', async (req, res) => {
   })
 })
 
+reportsRouter.get('/preparation', async (req, res) => {
+  await send(res, async () => {
+    const period = readPeriod(req.query ?? {})
+    if (period.error) {
+      res.status(period.status).json({ message: period.error })
+      return
+    }
+    const report = await locked(() => loadPreparation(period))
+    res.json(report)
+  })
+})
+
 async function loadClaims(period) {
   const now = Date.now()
   const rows = await claimsInPeriod(period)
@@ -679,6 +691,158 @@ function percent(part, whole) {
 
 function text(value) {
   return typeof value === 'string' ? value.trim() : ''
+}
+
+const PREP_DAY = `to_char((data->>'preparedAt')::timestamptz AT TIME ZONE 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD')`
+const PREP_MS = `(data->>'prepMs') ~ '^[0-9]+$'`
+
+async function loadPreparation(period) {
+  if (!usingDatabase()) return preparationFromOrders(await readCollection('orders'), period)
+  const rows = await queryRows(
+    `SELECT operator_id, operator_name, armed, packages, timed, avg_ms, median_ms, incomplete, direct
+     FROM (
+       SELECT data->'preparedBy'->>'id' AS operator_id,
+              (array_agg(data->'preparedBy'->>'name' ORDER BY data->>'preparedAt' DESC))[1] AS operator_name,
+              COUNT(*)::int AS armed,
+              COALESCE(SUM(CASE WHEN (data->>'packages') ~ '^[0-9]+$' THEN (data->>'packages')::int ELSE 0 END), 0)::int AS packages,
+              COUNT(*) FILTER (WHERE ${PREP_MS})::int AS timed,
+              AVG(CASE WHEN ${PREP_MS} THEN (data->>'prepMs')::float END) AS avg_ms,
+              percentile_cont(0.5) WITHIN GROUP (ORDER BY (data->>'prepMs')::float) FILTER (WHERE ${PREP_MS}) AS median_ms,
+              COUNT(*) FILTER (WHERE data->>'prepIncomplete' = 'true')::int AS incomplete,
+              COUNT(*) FILTER (WHERE NOT (${PREP_MS}))::int AS direct
+       FROM orders
+       WHERE data->>'preparedAt' IS NOT NULL
+         AND ${PREP_DAY} BETWEEN $1 AND $2
+         AND COALESCE(data->'preparedBy'->>'id', '') <> ''
+       GROUP BY data->'preparedBy'->>'id'
+     ) AS grouped
+     ORDER BY operator_name`,
+    [period.from, period.to],
+  )
+  const totals = await queryRows(
+    `SELECT COUNT(*)::int AS armed,
+            COALESCE(SUM(CASE WHEN (data->>'packages') ~ '^[0-9]+$' THEN (data->>'packages')::int ELSE 0 END), 0)::int AS packages,
+            COUNT(*) FILTER (WHERE ${PREP_MS})::int AS timed,
+            AVG(CASE WHEN ${PREP_MS} THEN (data->>'prepMs')::float END) AS avg_ms,
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY (data->>'prepMs')::float) FILTER (WHERE ${PREP_MS}) AS median_ms,
+            COUNT(*) FILTER (WHERE data->>'prepIncomplete' = 'true')::int AS incomplete,
+            COUNT(*) FILTER (WHERE NOT (${PREP_MS}))::int AS direct
+     FROM orders
+     WHERE data->>'preparedAt' IS NOT NULL
+       AND ${PREP_DAY} BETWEEN $1 AND $2
+       AND COALESCE(data->'preparedBy'->>'id', '') <> ''`,
+    [period.from, period.to],
+  )
+  return {
+    period,
+    rows: rows.map(prepRow),
+    total: prepRow(totals[0] ?? {}),
+  }
+}
+
+function preparationFromOrders(orders, period) {
+  const groups = new Map()
+  const allMs = []
+  let packages = 0
+  let incomplete = 0
+  let direct = 0
+  for (const order of orders) {
+    if (!order?.preparedAt || !order.preparedBy?.id) continue
+    const parsed = Date.parse(order.preparedAt)
+    if (!Number.isFinite(parsed)) continue
+    const day = businessDate(parsed)
+    if (!day || day < period.from || day > period.to) continue
+    const id = order.preparedBy.id
+    const current = groups.get(id) ?? {
+      id,
+      name: text(order.preparedBy.name) || id,
+      armed: 0,
+      packages: 0,
+      timed: 0,
+      ms: [],
+      incomplete: 0,
+      direct: 0,
+      latest: '',
+    }
+    if (order.preparedAt >= current.latest) {
+      current.latest = order.preparedAt
+      current.name = text(order.preparedBy.name) || id
+    }
+    current.armed += 1
+    const count = Number.isInteger(order.packages) ? order.packages : 0
+    current.packages += count
+    packages += count
+    if (order.prepIncomplete === true) {
+      current.incomplete += 1
+      incomplete += 1
+    }
+    if (typeof order.prepMs === 'number' && Number.isFinite(order.prepMs) && order.prepMs >= 0) {
+      current.timed += 1
+      current.ms.push(order.prepMs)
+      allMs.push(order.prepMs)
+    } else {
+      current.direct += 1
+      direct += 1
+    }
+    groups.set(id, current)
+  }
+  const rows = [...groups.values()]
+    .map((group) => ({
+      id: group.id,
+      name: group.name,
+      armed: group.armed,
+      packages: group.packages,
+      timed: group.timed,
+      avgMs: averageMs(group.ms),
+      medianMs: medianMs(group.ms),
+      incomplete: group.incomplete,
+      direct: group.direct,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name, 'es'))
+  return {
+    period,
+    rows,
+    total: {
+      id: '',
+      name: '',
+      armed: rows.reduce((sum, row) => sum + row.armed, 0),
+      packages,
+      timed: allMs.length,
+      avgMs: averageMs(allMs),
+      medianMs: medianMs(allMs),
+      incomplete,
+      direct,
+    },
+  }
+}
+
+function prepRow(row) {
+  return {
+    id: text(row.operator_id),
+    name: text(row.operator_name),
+    armed: Number(row.armed) || 0,
+    packages: Number(row.packages) || 0,
+    timed: Number(row.timed) || 0,
+    avgMs: row.avg_ms == null ? null : Math.round(Number(row.avg_ms)),
+    medianMs: row.median_ms == null ? null : Math.round(Number(row.median_ms)),
+    incomplete: Number(row.incomplete) || 0,
+    direct: Number(row.direct) || 0,
+  }
+}
+
+function averageMs(values) {
+  if (values.length === 0) return null
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
+}
+
+function medianMs(values) {
+  if (values.length === 0) return null
+  const sorted = [...values].sort((left, right) => left - right)
+  const mid = (sorted.length - 1) * 0.5
+  const low = Math.floor(mid)
+  const high = Math.ceil(mid)
+  const value = low === high ? sorted[low] : sorted[low] * (high - mid) + sorted[high] * (mid - low)
+  return Math.round(value)
 }
 
 export async function send(res, task) {
