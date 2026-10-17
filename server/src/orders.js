@@ -883,11 +883,14 @@ function updateOrderItem(id, itemId, body, user) {
       row.articulo = parsed.description || code
     }
     if (parsed.quantity !== undefined) {
+      const previousQty = typeof row.cantidad === 'number' && Number.isFinite(row.cantidad) ? row.cantidad : 0
+      let counted = 0
+      if (typeof row.pickedQty === 'number' && Number.isFinite(row.pickedQty)) counted = row.pickedQty
+      else if (row.status === 'preparado') counted = previousQty
+      if (counted > parsed.quantity) counted = parsed.quantity
       row.cantidad = parsed.quantity
-      if (typeof row.pickedQty === 'number' && row.pickedQty > parsed.quantity) {
-        row.pickedQty = parsed.quantity
-        row.status = pickedStatus(row.pickedQty, row.cantidad)
-      }
+      row.pickedQty = counted
+      row.status = pickedStatus(counted, parsed.quantity)
     }
     row.updatedAt = new Date().toISOString()
     list[index] = row
