@@ -268,6 +268,10 @@ export async function applyTransition(orders, current, input, user, via, options
   if (rule.clearDriver) {
     delete next.driverId
     delete next.trackingNumber
+    if (isOwnDelivery(current)) {
+      delete next.transporter
+      delete next.driverName
+    }
   }
 
   if (rule.direction === 'back' && rule.pickupOnly && to === 'preparado') {

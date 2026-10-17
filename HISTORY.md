@@ -134,6 +134,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32l.1 | Atrasados, segundo viaje y avisos de hoja | Hecho |
 | 32l.3 | Prioridad del detalle, transportista y motivo al finalizar | Hecho |
 | 32l.4 | Buscador de Seguimiento con un solo borde | Hecho |
+| 32l.2 | Planificador más holgado y buscador accesible | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -358,6 +359,8 @@ El Brief 32l.1 muestra en la franja de hoy los atrasados elegibles, con la marca
 El Brief 32l.3 deja en el detalle solo la prioridad actual del pedido. En una entrega propia el transportista queda con el nombre del chofer. Al finalizar un viaje con paradas sin entregar hace falta un motivo por cada una, queda en el historial y se avisa a encargados y admins.
 
 El Brief 32l.4 deja el buscador de Seguimiento, Retiros y Post venta con el Input del kit: la lupa adentro, un solo borde y el foco en ese borde.
+
+El Brief 32l.2 ensancha la columna izquierda del Planificador, deja el mapa más bajo y fijo al bajar, y no repite en Atrasados un pedido que ya está en la franja. El buscador del kit tiene nombre accesible. Al quitar el chofer de una entrega propia también se borran el transportista y el nombre del chofer.
 
 El Brief 32h lleva el layout de caja de lista a Despacho, Pendientes de Entregas, el Planificador, Choferes en ruta, Mis entregas y Mis viajes. En el escritorio la lista es una tabla y en el celular son filas; el detalle de un pedido se abre al costado. El día de hoy se calcula en hora de Buenos Aires. En el celular el logo queda visible y el buscador pasa a ser una lupa.
 
