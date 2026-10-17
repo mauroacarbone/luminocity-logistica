@@ -145,6 +145,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 34.2 | Ajustes al armado y al alta de pedidos | Hecho |
 | 34.3 | Mi preparación completa y armado solo desde ahí | Hecho |
 | 34.5 | Vínculo de artículos y excepción de retiros viejos | Hecho |
+| 34.6 | Artículos manuales en el armado | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -403,6 +404,8 @@ El Brief 32f.2 deja Borrar hoja con borde de peligro y el planificador entra en 
 El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pedido se abrió desde la lista. En el celular, el número del pedido es un botón con foco. En el Panel, el detalle se cierra si el pedido deja de verse, y Atrasados cuenta todos los pedidos abiertos, sin el filtro de fecha.
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
+
+El Brief 34.6 deja cargar artículos a mano, con código y cantidad, mientras no haya CRM. En Mi preparación se agregan, editan y quitan si el pedido está pendiente: el encargado y el admin siempre, y depósito solo si lo tomó y la toma sigue activa. En el alta de Nuevo pedido el bloque es opcional y empieza cerrado. Cada fila guarda `source` excel, manual o crm; sin origen cuenta como excel. Reimportar el Excel no pisa las manuales ni las de CRM. `fetchCrmItems` queda listo para el día en que el CRM mande los artículos con source crm.
 
 El Brief 34.5 vincula en el servidor las filas de picking sin pedido cuando el comprobante coincide con uno solo, al contar, al tomar y al armar. Mi preparación cuenta por comprobante solo esas filas, así cliente y servidor ven las mismas. Un retiro viejo sin PDF se puede editar; el PDF se vuelve a exigir si el pedido pasa a retiro, si cambia el adjunto o si es un alta. El cajón sigue mostrando «Sin PDF adjunto».
 
