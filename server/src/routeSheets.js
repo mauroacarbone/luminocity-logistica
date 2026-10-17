@@ -88,7 +88,7 @@ routeSheetsRouter.delete('/:id', requireRole('encargado_deposito', 'admin'), asy
 
 routeSheetsRouter.post('/:id/finish', async (req, res) => {
   await send(res, async () => {
-    const result = await finishSheet(req.params.id, req.user)
+    const result = await finishSheet(req.params.id, req.user, req.body ?? {})
     if (result.error) {
       sendError(res, result)
       return
@@ -323,7 +323,33 @@ function startSheet(id, user) {
   })
 }
 
-function finishSheet(id, user) {
+const FINISH_REASONS = new Set(['No estaba el cliente', 'Dirección incorrecta', 'Rechazado', 'Sin tiempo'])
+
+function readFinishReasons(body, pendingIds) {
+  if (pendingIds.length === 0) return { value: new Map() }
+  const raw = body?.reasons
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return fail('Indicá el motivo de cada parada sin entregar.')
+  }
+  const value = new Map()
+  for (const id of pendingIds) {
+    const item = raw[id]
+    if (!item || typeof item !== 'object') return fail('Indicá el motivo de cada parada sin entregar.')
+    const code = typeof item.reason === 'string' ? item.reason.trim() : ''
+    const note = typeof item.note === 'string' ? item.note.trim() : ''
+    if (code === 'Otro') {
+      if (!note) return fail('Indicá el motivo de cada parada sin entregar.')
+      if (note.length > 200) return fail('El motivo puede tener hasta 200 caracteres.')
+      value.set(id, note)
+      continue
+    }
+    if (!FINISH_REASONS.has(code)) return fail('Indicá el motivo de cada parada sin entregar.')
+    value.set(id, code)
+  }
+  return { value }
+}
+
+function finishSheet(id, user, body) {
   return locked(async () => {
     if (user.role !== 'chofer' && user.role !== 'encargado_deposito' && user.role !== 'admin') {
       return fail('No tenés permiso para finalizar el viaje.', 403)
@@ -339,6 +365,10 @@ function finishSheet(id, user) {
     if (sheet.status !== 'en_curso') return fail('Solo podés finalizar una hoja en curso', 409)
     const orders = await readCollection('orders')
     const byId = new Map(orders.map((order) => [order.id, order]))
+    const ids = Array.isArray(sheet.orderIds) ? sheet.orderIds : []
+    const pendingIds = ids.filter((orderId) => byId.get(orderId)?.status === 'en-viaje')
+    const reasons = readFinishReasons(body, pendingIds)
+    if (reasons.error) return reasons
     const closedAt = new Date().toISOString()
     const next = {
       ...sheet,
@@ -346,12 +376,14 @@ function finishSheet(id, user) {
       closedAt,
       trip: await sealTrip(sheet, byId),
     }
-    const ids = Array.isArray(sheet.orderIds) ? sheet.orderIds : []
     let returned = false
-    for (const id of ids) {
-      const order = byId.get(id)
+    for (const orderId of ids) {
+      const order = byId.get(orderId)
       if (!order) continue
-      if (!assignBack(order, user, 'Viaje finalizado sin entregar', closedAt)) continue
+      const motive = reasons.value.get(orderId)
+      if (!assignBack(order, user, motive ? `Viaje finalizado sin entregar: ${motive}` : 'Viaje finalizado sin entregar', closedAt)) {
+        continue
+      }
       returned = true
       delete order.routeId
       delete order.routeSeq
@@ -373,6 +405,13 @@ function finishSheet(id, user) {
     await writeCollection('routeSheets', sheets)
     if (returned) await writeCollection('orders', orders)
     await releaseIdleDrivers(orders, sheet.driverId)
+    if (pendingIds.length > 0) {
+      const driverName = (await driverDisplayName(sheet.driverId)) || 'El chofer'
+      await notifyPlanners({
+        text: `${driverName} finalizó la hoja ${sheet.id} con ${pendingIds.length} sin entregar`,
+        orderId: pendingIds[0],
+      })
+    }
     return { sheet: next }
   })
 }

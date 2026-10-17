@@ -238,11 +238,14 @@ export async function listDriverTrips(
   return { ok: true, data: result.data }
 }
 
-export function finishRouteSheet(id: string) {
+export function finishRouteSheet(
+  id: string,
+  reasons?: Record<string, { reason: string; note?: string }>,
+) {
   return request(
     `/api/route-sheets/${encodeURIComponent(id)}/finish`,
     'POST',
-    {},
+    reasons ? { reasons } : {},
     'No se pudo finalizar el viaje.',
   )
 }

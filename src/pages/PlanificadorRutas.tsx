@@ -20,7 +20,7 @@ import { driverSlotCount, normalizeTimeWindow, slotQuestion } from '../lib/slot'
 import { cssVar } from '../lib/theme'
 import { labelDrivers } from '../lib/driverLabel'
 import { businessToday, clockTime } from '../lib/schedule'
-import { missedClosedStop } from '../lib/sheetStop'
+import { missedClosedStop, undeliveredReason } from '../lib/sheetStop'
 import { DAY_SHORT, MONTH_SHORT, formatDayLabel, parseIso, toIso, weekDays, weekOffsetForIso } from '../lib/week'
 import { listUsers } from '../lib/usersApi'
 import { isSession } from '../lib/authStore'
@@ -1091,6 +1091,9 @@ export function PlanificadorRutas() {
                       <span className="min-w-0">
                         <span className="font-medium">{id}</span>
                         {order ? ` — ${order.client}` : ''}
+                        {order && missedClosedStop(order, item.id) && undeliveredReason(order, item.id) ? (
+                          <span className="mt-1 block text-muted">{undeliveredReason(order, item.id)}</span>
+                        ) : null}
                       </span>
                       <Badge tone={!order || missedClosedStop(order, item.id) ? 'danger' : 'success'}>
                         {!order || missedClosedStop(order, item.id) ? 'No entregado' : 'Entregado'}

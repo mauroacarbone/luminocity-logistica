@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
 import { StopRouteMap, type MapStop } from '../components/StopRouteMap'
 import { PriorityChip } from '../components/PriorityChip'
-import { Badge, Button, EmptyState, KpiCard, Modal, Page, PageHeader } from '../components/ui'
+import { FinishTripDialog } from '../components/FinishTripDialog'
+import { Badge, Button, EmptyState, KpiCard, Page, PageHeader } from '../components/ui'
 import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
@@ -279,10 +280,10 @@ export function MisEntregas() {
     await success('Recorrido iniciado')
   }
 
-  async function finishSheet() {
+  async function finishSheet(reasons?: Record<string, { reason: string; note?: string }>) {
     if (!finishTarget) return
     setFinishing(true)
-    const result = await finishRouteSheet(finishTarget.id)
+    const result = await finishRouteSheet(finishTarget.id, reasons)
     setFinishing(false)
     if (!result.ok) {
       await error(result.message)
@@ -290,6 +291,7 @@ export function MisEntregas() {
     }
     setSheets((current) => current.filter((item) => item.id !== finishTarget.id))
     setFinishTarget(null)
+    await refresh({ silent: true })
     await success('Viaje finalizado')
   }
 
@@ -460,33 +462,17 @@ export function MisEntregas() {
           </section>
         )
       })}
-      {finishTarget && (
-        <Modal
-          labelledBy="finish-trip-title"
-          closeOnEscape={!finishing}
-          className="grid place-items-center bg-overlay p-4"
+      {finishTarget ? (
+        <FinishTripDialog
+          sheet={finishTarget}
+          orders={orders}
+          busy={finishing}
           onClose={() => {
             if (!finishing) setFinishTarget(null)
           }}
-        >
-          <div className="w-full max-w-md rounded-md border border-border bg-surface p-5">
-            <h2 id="finish-trip-title" className="text-xl font-semibold">
-              Finalizar viaje
-            </h2>
-            <p className="mt-2 text-sm">
-              Las paradas pendientes quedan sin entregar y vuelven a asignado para reprogramarlas.
-            </p>
-            <div className="mt-4 flex flex-col gap-2">
-              <Button variant="primary" size="lg" fullWidth loading={finishing} onClick={() => void finishSheet()}>
-                Finalizar viaje
-              </Button>
-              <Button variant="secondary" size="lg" fullWidth disabled={finishing} onClick={() => setFinishTarget(null)}>
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+          onConfirm={(reasons) => void finishSheet(reasons)}
+        />
+      ) : null}
       <div className="view-toggle no-print mt-4" role="tablist" aria-label="Entregas">
         <button
           type="button"

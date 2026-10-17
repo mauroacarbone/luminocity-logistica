@@ -2,12 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ServerDown, Spinner } from '../components/LoadState'
-import { Badge, Button, EmptyState, FilterBar, ListBox, Modal, Page, PageHeader, Table, type TableColumn } from '../components/ui'
+import { Badge, Button, EmptyState, FilterBar, ListBox, Page, PageHeader, Table, type TableColumn } from '../components/ui'
 import { isOwnDelivery } from '../data/catalog'
 import { error, success } from '../lib/alerts'
 import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
 import { finishRouteSheet, listOpenRouteSheets, listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
-import { missedClosedStop } from '../lib/sheetStop'
+import { FinishTripDialog } from '../components/FinishTripDialog'
+import { missedClosedStop, undeliveredReason } from '../lib/sheetStop'
 import { isSession } from '../lib/authStore'
 import { listUsers } from '../lib/usersApi'
 import { formatIsoDate } from '../lib/week'
@@ -222,10 +223,10 @@ export function ChoferesEnRuta() {
     [orders],
   )
 
-  async function finishSheet() {
+  async function finishSheet(reasons?: Record<string, { reason: string; note?: string }>) {
     if (!finishTarget) return
     setFinishing(true)
-    const result = await finishRouteSheet(finishTarget.id)
+    const result = await finishRouteSheet(finishTarget.id, reasons)
     setFinishing(false)
     if (!result.ok) {
       await error(result.message)
@@ -380,12 +381,16 @@ export function ChoferesEnRuta() {
                       {sheet.orderIds.map((id) => {
                         const order = orders.find((item) => item.id === id)
                         const missed = !order || missedClosedStop(order, sheet.id)
+                        const reason = order && missed ? undeliveredReason(order, sheet.id) : ''
                         return (
                           <li
                             key={id}
                             className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-sm last:border-b-0"
                           >
-                            <span className="min-w-0">{order ? `${order.id} — ${order.client}` : id}</span>
+                            <span className="min-w-0">
+                              {order ? `${order.id} — ${order.client}` : id}
+                              {reason ? <span className="mt-1 block text-muted">{reason}</span> : null}
+                            </span>
                             <Badge tone={missed ? 'danger' : 'success'}>
                               {missed ? 'No entregado' : 'Entregado'}
                             </Badge>
@@ -480,33 +485,17 @@ export function ChoferesEnRuta() {
           )}
         </>
       )}
-      {finishTarget && (
-        <Modal
-          labelledBy="finish-trip-title"
-          closeOnEscape={!finishing}
-          className="grid place-items-center bg-overlay p-4"
+      {finishTarget ? (
+        <FinishTripDialog
+          sheet={finishTarget}
+          orders={orders}
+          busy={finishing}
           onClose={() => {
             if (!finishing) setFinishTarget(null)
           }}
-        >
-          <div className="w-full max-w-md rounded-md border border-border bg-surface p-5">
-            <h2 id="finish-trip-title" className="text-xl font-semibold">
-              Finalizar viaje
-            </h2>
-            <p className="mt-2 text-sm">
-              Las paradas pendientes quedan sin entregar y vuelven a asignado para reprogramarlas.
-            </p>
-            <div className="mt-4 flex flex-col gap-2">
-              <Button variant="primary" size="lg" fullWidth loading={finishing} onClick={() => void finishSheet()}>
-                Finalizar viaje
-              </Button>
-              <Button variant="secondary" size="lg" fullWidth disabled={finishing} onClick={() => setFinishTarget(null)}>
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+          onConfirm={(reasons) => void finishSheet(reasons)}
+        />
+      ) : null}
     </Page>
   )
 }
