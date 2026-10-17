@@ -395,42 +395,49 @@ function Dates({ dateRange }: { dateRange: FilterDateRange }) {
 }
 
 function SearchField({ search, size }: { search: FilterSearch; size: FilterSize }) {
+  const hasSubmit = Boolean(search.onSubmit)
+  const hasValue = search.value.length > 0
   return (
     <form
-      className={cx(
-        'flex w-full items-center rounded-md border border-border bg-bg focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--accent-soft)]',
-        size === 'lg' ? 'h-10' : 'h-8',
-      )}
+      className="relative w-full"
       onSubmit={(event) => {
         event.preventDefault()
         search.onSubmit?.(search.value)
       }}
     >
       <span className="sr-only">{search.label}</span>
-      <span className="pl-2 text-muted" aria-hidden="true">
+      <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden="true">
         <NavIcon name="search" />
       </span>
-      <input
+      <Input
         type="search"
+        size={size}
         value={search.value}
         placeholder={search.placeholder ?? search.label}
-        className="min-w-0 flex-1 bg-transparent px-2 text-sm text-text outline-none placeholder:text-muted"
+        className="[&::-webkit-search-cancel-button]:appearance-none"
+        style={{
+          paddingLeft: '2.5rem',
+          paddingRight: hasSubmit && hasValue ? '5rem' : hasSubmit || hasValue ? '2.5rem' : undefined,
+        }}
         onChange={(event) => search.onChange(event.target.value)}
       />
-      {search.value ? (
+      {hasValue ? (
         <button
           type="button"
-          className="grid h-full place-items-center px-2 text-muted hover:text-text"
+          className={cx(
+            'absolute top-1/2 grid size-8 -translate-y-1/2 place-items-center text-muted hover:text-text',
+            hasSubmit ? 'right-10' : 'right-1',
+          )}
           aria-label="Limpiar búsqueda"
           onClick={() => search.onChange('')}
         >
           <NavIcon name="x" />
         </button>
       ) : null}
-      {search.onSubmit ? (
+      {hasSubmit ? (
         <button
           type="submit"
-          className="grid h-full place-items-center border-l border-border px-2 text-muted hover:text-text"
+          className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 place-items-center text-muted hover:text-text"
           aria-label="Buscar"
         >
           <NavIcon name="search" />
