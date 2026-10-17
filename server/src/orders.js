@@ -715,7 +715,8 @@ function takeOrder(id, user) {
 async function markPickingInPreparation(orderId, nowIso) {
   const picking = await readCollection('picking')
   if (!Array.isArray(picking)) return
-  let changed = false
+  const orders = await readOrders()
+  let changed = linkUniquePickingRows(picking, orders, orderId)
   for (const row of picking) {
     if (!row || row.orderId !== orderId || row.status !== 'pendiente') continue
     row.status = 'en_preparacion'

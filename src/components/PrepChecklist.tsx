@@ -28,8 +28,8 @@ export function PrepChecklist({
   emptyExtra?: ReactNode
 }) {
   const { lines, patchLine } = usePicking()
-  const { refresh } = useOrders()
-  const rows = linesForOrderPrep(lines, order)
+  const { orders, refresh } = useOrders()
+  const rows = linesForOrderPrep(lines, order, orders)
   const done = rows.filter((line) => lineIsPicked(line)).length
   const total = rows.length
   const [busyId, setBusyId] = useState('')

@@ -209,7 +209,7 @@ export function MiPreparacion() {
       setDetailError('Indicá la cantidad de bultos.')
       return
     }
-    const check = checklistOf(lines, order)
+    const check = checklistOf(lines, order, orders)
     if (check.total > 0 && check.done < check.total) {
       const accepted = await confirm(
         'Marcar armado',

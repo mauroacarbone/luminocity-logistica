@@ -154,6 +154,16 @@ function updateRow(id, body, user) {
     ) {
       row.pickedQty = Math.floor(row.cantidad)
     }
+    if (!(typeof row.orderId === 'string' && row.orderId)) {
+      const orders = await readCollection('orders')
+      const orderList = Array.isArray(orders) ? orders : []
+      const candidate = { ...list[index] }
+      if (linkUniquePickingRows([candidate], orderList)) {
+        list[index] = { ...list[index], orderId: candidate.orderId }
+        row.orderId = candidate.orderId
+        await writePicking(list)
+      }
+    }
     const linked = await guardLinkedOrder(row.orderId, user)
     if (linked.error) return linked
     list[index] = row

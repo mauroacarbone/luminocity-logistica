@@ -1,5 +1,6 @@
 import { normalizeName } from './access.js'
-import { readCollection } from './db/store.js'
+import { readCollection, writeCollection } from './db/store.js'
+import { linkUniquePickingRows } from './invoiceKey.js'
 import {
   TAKE_STALE_MS,
   activeHolder,
@@ -383,8 +384,14 @@ async function finishPreparation(next, current, input, user) {
   const sent = readChecklist(input)
   if (sent.error) return sent
 
+  const orders = await readCollection('orders')
+  const orderList = Array.isArray(orders) ? orders : []
   const picking = await readCollection('picking')
-  const rows = Array.isArray(picking) ? picking.filter((row) => row && row.orderId === current.id) : []
+  const list = Array.isArray(picking) ? picking : []
+  if (linkUniquePickingRows(list, orderList, current.id)) {
+    await writeCollection('picking', list)
+  }
+  const rows = list.filter((row) => row && row.orderId === current.id)
   let incomplete = false
   let checklist
   if (rows.length > 0) {
