@@ -625,6 +625,7 @@ const TRANSITION_VIAS = new Set([
   'picking',
   'panel',
   'retiros',
+  'preparacion',
 ])
 const PATCH_VIAS = new Set(['despacho', 'pedidos'])
 

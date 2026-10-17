@@ -54,3 +54,35 @@ export function activeHolder(order, nowMs = Date.now()) {
   if (!takenAt || isTakeStale(takenAt, nowMs)) return undefined
   return holder
 }
+
+export function closeOpenSessions(sessions, end) {
+  for (const session of sessions) {
+    if (!session.end) session.end = end
+  }
+}
+
+export function sumPrepMs(sessions) {
+  let sum = 0
+  let any = false
+  for (const session of sessions) {
+    const start = Date.parse(session.start)
+    const end = Date.parse(session.end ?? '')
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) continue
+    sum += end - start
+    any = true
+  }
+  return any ? sum : null
+}
+
+export function formatPrepMs(ms) {
+  const totalMin = Math.round(ms / 60000)
+  if (totalMin < 60) return `${totalMin} min`
+  const hours = Math.floor(totalMin / 60)
+  const minutes = String(totalMin % 60).padStart(2, '0')
+  return `${hours} h ${minutes} min`
+}
+
+export function rowIsPicked(row) {
+  if (row?.status === 'preparado') return true
+  return typeof row?.pickedQty === 'number' && typeof row?.cantidad === 'number' && row.pickedQty >= row.cantidad && row.cantidad > 0
+}

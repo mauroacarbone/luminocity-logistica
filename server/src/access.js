@@ -140,6 +140,13 @@ export function assertPatch(user, current, changes) {
     ) {
       return deny('Solo podés pasar un pendiente a preparado.')
     }
+    if (Object.prototype.hasOwnProperty.call(changes, 'packages')) {
+      const ownPrepared =
+        current.status === 'preparado' && current.preparedBy && current.preparedBy.id === user.id
+      if (current.status !== 'pendiente' && !ownPrepared) {
+        return deny('Solo quien armó el pedido corrige los bultos.')
+      }
+    }
     return { ok: true }
   }
 

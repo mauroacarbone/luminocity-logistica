@@ -1,4 +1,18 @@
 import { normalizeName } from './access.js'
+import { readCollection } from './db/store.js'
+import {
+  TAKE_STALE_MS,
+  activeHolder,
+  actorOf,
+  closeOpenSessions,
+  formatPrepMs,
+  isTakeStale,
+  rowIsPicked,
+  sessionsOf,
+  sumPrepMs,
+  takenAtOf,
+  takenByOf,
+} from './preparation.js'
 import {
   checkDriver,
   checkSlot,
@@ -209,13 +223,17 @@ export async function applyTransition(orders, current, input, user, via, options
     updatedAt: new Date().toISOString(),
   }
 
+  let armedReason
   if (rule.direction === 'forward' && to === 'preparado') {
     const packages = readPackages(input, current)
     if (packages.error) return packages
     next.packages = packages.value
+    const armed = await finishPreparation(next, current, input, user)
+    if (armed.error) return armed
+    armedReason = armed.reason
   }
 
-  let historyReason = reason.value
+  let historyReason = armedReason ?? reason.value
   if (
     reason.value &&
     isOwnDelivery(current) &&
@@ -279,6 +297,15 @@ export async function applyTransition(orders, current, input, user, via, options
     delete next.receiverDni
   }
 
+  if (current.status === 'preparado' && to === 'pendiente') {
+    delete next.preparedBy
+    delete next.preparedAt
+    delete next.prepMs
+    delete next.prepIncomplete
+    delete next.prepChecklist
+    delete next.preparation
+  }
+
   stampStatus(next, current)
 
   if (options.fromSheet !== true && current.status === 'asignado' && to === 'en-viaje') {
@@ -327,6 +354,64 @@ function readTrackingNumber(input, current) {
   const trimmed = value.trim()
   if (trimmed.length > 80) return fail('El tracking es demasiado largo.')
   return { value: trimmed }
+}
+
+async function finishPreparation(next, current, input, user) {
+  const nowMs = Date.parse(next.updatedAt)
+  const holder = activeHolder(current, nowMs)
+  if (user.role === 'deposito' && holder && holder.id !== user.id) {
+    return fail(`Lo está armando ${holder.name || 'otro operario'}`, 409)
+  }
+  const sessions = sessionsOf(current)
+  const takenAt = takenAtOf(current)
+  const stale = Boolean(takenByOf(current)) && (!takenAt || isTakeStale(takenAt, nowMs))
+  const end =
+    stale && takenAt && Number.isFinite(Date.parse(takenAt))
+      ? new Date(Date.parse(takenAt) + TAKE_STALE_MS).toISOString()
+      : next.updatedAt
+  closeOpenSessions(sessions, end)
+  const prepMs = sumPrepMs(sessions)
+  next.preparedBy = actorOf(user)
+  next.preparedAt = next.updatedAt
+  next.prepMs = prepMs
+  next.preparation = sessions.length > 0 ? { sessions } : undefined
+  if (!next.preparation) delete next.preparation
+
+  const picking = await readCollection('picking')
+  const rows = Array.isArray(picking) ? picking.filter((row) => row && row.orderId === current.id) : []
+  let incomplete = false
+  let checklist
+  if (rows.length > 0) {
+    const total = rows.length
+    const done = rows.filter((row) => rowIsPicked(row)).length
+    const sent = readChecklist(input)
+    if (sent.error) return sent
+    if (sent.value && (sent.value.done !== done || sent.value.total !== total)) {
+      return fail('El checklist no coincide con los artículos.')
+    }
+    checklist = { done, total }
+    incomplete = done < total
+    next.prepChecklist = checklist
+    next.prepIncomplete = incomplete
+  }
+
+  const packages = next.packages
+  let reason = incomplete
+    ? `Armado incompleto (${packages} bultos, ${checklist.done} de ${checklist.total} artículos)`
+    : `Armado (${packages} bultos)`
+  if (prepMs != null) reason += ` · ${formatPrepMs(prepMs)}`
+  return { reason }
+}
+
+function readChecklist(input) {
+  if (!Object.prototype.hasOwnProperty.call(input, 'checklist')) return { value: undefined }
+  const value = input.checklist
+  if (!isRecord(value)) return fail('El checklist no es válido.')
+  const { done, total } = value
+  if (!Number.isInteger(done) || done < 0 || !Number.isInteger(total) || total < 1 || done > total) {
+    return fail('El checklist no es válido.')
+  }
+  return { value: { done, total } }
 }
 
 function readPackages(input, current) {
