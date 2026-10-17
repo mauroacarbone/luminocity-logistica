@@ -18,6 +18,7 @@ import {
   type InvoiceMatch,
 } from '../lib/invoiceKey'
 import { statusPillFor } from '../lib/orderFlow'
+import { pickedStatus } from '../lib/preparation'
 import type { PickingStatus } from '../lib/pickingApi'
 import {
   batchRowsFromPreview,
@@ -779,7 +780,7 @@ export function PendientesEntregas() {
       clearQtyDraft(line.id)
       return
     }
-    const nextStatus: PickingStatus = parsed > 0 ? 'en_preparacion' : 'pendiente'
+    const nextStatus = pickedStatus(parsed, line.quantity)
     setSavingId(line.id)
     const result = await patchLine(line.id, { pickedQty: parsed, status: nextStatus })
     setSavingId(null)

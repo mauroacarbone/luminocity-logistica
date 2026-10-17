@@ -8,6 +8,7 @@ export type PickingLine = {
   client: string
   seller: string
   product: string
+  code?: string
   quantity: number
   ready: boolean
   date?: string
@@ -22,6 +23,7 @@ export type PickingPreviewRow = {
   cliente: string
   comprobante: string
   articulo: string
+  code?: string
   cantidad: number
   vendedor: string
   raw: Record<string, string | number | boolean>
@@ -38,7 +40,7 @@ export type PickingPreview = {
   discarded: PickingDiscardedRow[]
 }
 
-const FIELD_BY_HEADER: Record<string, 'invoice' | 'client' | 'seller' | 'product' | 'quantity' | 'date'> = {
+const FIELD_BY_HEADER: Record<string, 'invoice' | 'client' | 'seller' | 'product' | 'quantity' | 'date' | 'code'> = {
   factura: 'invoice',
   comprobante: 'invoice',
   documento: 'invoice',
@@ -49,6 +51,13 @@ const FIELD_BY_HEADER: Record<string, 'invoice' | 'client' | 'seller' | 'product
   producto: 'product',
   descripcion: 'product',
   articulo: 'product',
+  codigo: 'code',
+  cod: 'code',
+  'cod articulo': 'code',
+  sku: 'code',
+  item: 'code',
+  'numero articulo': 'code',
+  'nro articulo': 'code',
   cantidad: 'quantity',
   cant: 'quantity',
   fecha: 'date',
@@ -141,6 +150,7 @@ export function previewPickingWorkbook(data: ArrayBuffer): PickingPreview {
     const comprobante = cellText(valueOf('invoice'))
     const cliente = cellText(valueOf('client'))
     const articulo = cellText(valueOf('product'))
+    const code = cellText(valueOf('code'))
     const vendedor = cellText(valueOf('seller'))
     const quantity = parseQuantity(valueOf('quantity'))
 
@@ -175,6 +185,7 @@ export function previewPickingWorkbook(data: ArrayBuffer): PickingPreview {
       existing.excelRows.push(excelRow)
       existing.combinedFrom += 1
       if (!existing.vendedor && vendedor) existing.vendedor = vendedor
+      if (!existing.code && code) existing.code = code
       if (!existing.cliente && cliente) existing.cliente = cliente
       existing.raw = raw
       return
@@ -184,6 +195,7 @@ export function previewPickingWorkbook(data: ArrayBuffer): PickingPreview {
       cliente,
       comprobante,
       articulo,
+      ...(code ? { code } : {}),
       cantidad: quantity.value,
       vendedor,
       raw,
@@ -203,6 +215,7 @@ export function batchRowsFromPreview(valid: PickingPreviewRow[]): PickingBatchRo
     cliente: row.cliente,
     comprobante: row.comprobante,
     articulo: row.articulo,
+    ...(row.code ? { codigo: row.code } : {}),
     cantidad: row.cantidad,
     vendedor: row.vendedor,
     raw: row.raw,

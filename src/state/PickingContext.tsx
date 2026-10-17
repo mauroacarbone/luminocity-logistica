@@ -84,6 +84,7 @@ function lineFromRow(row: PickingRow): PickingLine {
     client: row.cliente,
     seller: row.vendedor,
     product: row.articulo,
+    code: row.codigo?.trim() || undefined,
     quantity: row.cantidad,
     ready,
     status: row.status,

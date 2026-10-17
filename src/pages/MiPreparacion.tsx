@@ -35,6 +35,32 @@ function invoiceNumbers(order: Order) {
   return (order.invoices ?? []).map((invoice) => invoice.trim()).filter(Boolean)
 }
 
+function armingText(order: Order, now: number, mineId: string) {
+  if (takeState(order, now) === 'en-preparacion') {
+    const duration = now ? formatPrepMs(prepDuration(order, now)) : '—'
+    if (order.preparation?.takenBy?.id === mineId) return `Armando · ${duration}`
+    const name = takenByName(order) || 'otro operario'
+    return `Armando · ${name} · ${duration}`
+  }
+  const elapsed = prepDuration(order, now)
+  if (elapsed != null) return `Sin empezar · ${formatPrepMs(elapsed)}`
+  return 'Sin empezar'
+}
+
+function InvoiceFile({ order }: { order: Order }) {
+  if (order.attachmentDataUrl) {
+    return (
+      <OrderAttachmentLink
+        name={order.attachmentName}
+        dataUrl={order.attachmentDataUrl}
+        label="Ver FC / nota de pedido"
+      />
+    )
+  }
+  if (isPickup(order)) return <Badge tone="warning">Sin PDF adjunto</Badge>
+  return <p className="text-sm text-muted">Sin PDF adjunto</p>
+}
+
 function isOverdue(order: Order, today: string) {
   return Boolean(order.deliveryDate?.trim()) && order.deliveryDate < today && order.status !== 'entregado'
 }
@@ -138,7 +164,7 @@ export function MiPreparacion() {
       setDetailError('Indicá la cantidad de bultos.')
       return
     }
-    const check = checklistOf(lines, order.id)
+    const check = checklistOf(lines, order)
     if (check.total > 0 && check.done < check.total) {
       const accepted = await confirm(
         'Marcar armado',
@@ -248,6 +274,11 @@ export function MiPreparacion() {
               >
                 {openHeldByOther ? `Lo está armando ${takenByName(open)}` : 'Marcar armado'}
               </Button>
+              {!openMine && !openHeldByOther ? (
+                <Button variant="secondary" size="lg" fullWidth disabled={busy === open.id} onClick={() => void take(open)}>
+                  Tomar
+                </Button>
+              ) : null}
               {openMine ? (
                 <Button variant="secondary" size="lg" fullWidth disabled={busy === open.id} onClick={() => void release(open)}>
                   Liberar
@@ -259,6 +290,7 @@ export function MiPreparacion() {
       >
         {open ? (
           <div className="flex flex-col gap-4">
+            <p className="text-lg font-semibold tabular-nums">{armingText(open, now, mineId)}</p>
             <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-muted">Zona</dt>
@@ -284,30 +316,30 @@ export function MiPreparacion() {
                     : 'Sin FC / nota de pedido'}
                 </dd>
                 <div className="mt-2">
-                  {open.attachmentDataUrl ? (
-                    <OrderAttachmentLink
-                      name={open.attachmentName}
-                      dataUrl={open.attachmentDataUrl}
-                      label="Ver FC / nota de pedido"
-                    />
-                  ) : isPickup(open) ? (
-                    <Badge tone="warning">Sin PDF adjunto</Badge>
-                  ) : (
-                    <p className="text-sm text-muted">Sin PDF adjunto</p>
-                  )}
+                  <InvoiceFile order={open} />
                 </div>
               </div>
             </dl>
             {open.notes ? <p className="text-sm text-text">{open.notes}</p> : null}
-            {openMine ? (
-              <p className="text-lg font-semibold tabular-nums">{now ? formatPrepMs(prepDuration(open, now)) : '—'}</p>
-            ) : null}
-            <PrepChecklist order={open} userId={user?.id} role={user?.role} />
-            {open.status === 'pendiente' && !openHeldByOther ? (
+            <PrepChecklist
+              order={open}
+              userId={user?.id}
+              role={user?.role}
+              countLocked={user?.role === 'deposito' && open.status === 'pendiente' && !openMine}
+              emptyExtra={<InvoiceFile order={open} />}
+            />
+            {open.status === 'pendiente' ? (
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-semibold">Bultos</span>
                 <div className="flex items-center gap-2">
-                  <Button variant="secondary" size="lg" className="size-11 shrink-0" aria-label="Menos un bulto" onClick={() => changePackages(Number(packages) - 1)}>
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    className="size-11 shrink-0"
+                    aria-label="Menos un bulto"
+                    disabled={user?.role === 'deposito' && !openMine}
+                    onClick={() => changePackages(Number(packages) - 1)}
+                  >
                     −
                   </Button>
                   <Input
@@ -316,9 +348,17 @@ export function MiPreparacion() {
                     inputMode="numeric"
                     min={1}
                     value={packages}
+                    disabled={user?.role === 'deposito' && !openMine}
                     onChange={(event) => setPackages(event.target.value)}
                   />
-                  <Button variant="secondary" size="lg" className="size-11 shrink-0" aria-label="Más un bulto" onClick={() => changePackages(Number(packages) + 1)}>
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    className="size-11 shrink-0"
+                    aria-label="Más un bulto"
+                    disabled={user?.role === 'deposito' && !openMine}
+                    onClick={() => changePackages(Number(packages) + 1)}
+                  >
                     +
                   </Button>
                 </div>

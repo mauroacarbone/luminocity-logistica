@@ -267,7 +267,7 @@ export function PedidosPreparacion() {
 
   async function markPrepared(packages: number) {
     if (!preparing) return
-    const check = checklistOf(lines, preparing.id)
+    const check = checklistOf(lines, preparing)
     const incomplete = check.total > 0 && check.done < check.total
     const accepted = await confirm(
       'Marcar preparado',

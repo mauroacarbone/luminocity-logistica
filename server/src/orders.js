@@ -13,6 +13,7 @@ import {
 import { saveAuthorizations, stageAuthorization } from './authorizations.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { geocodeAddress } from './geocode.js'
+import { linkUniquePickingRows, normalizeInvoiceKey } from './invoiceKey.js'
 import { locked } from './lock.js'
 import { forgetUsers, putLocation, readLocations } from './locations.js'
 import { requireAuth, requireRole } from './middleware.js'
@@ -348,6 +349,7 @@ function createOrder(body, user) {
     }
     orders.push(order)
     await writeOrders(orders)
+    await linkPickingIfInvoicesChanged(orders, order, null)
     if (staged) {
       try {
         await saveAuthorizations(staged)
@@ -514,6 +516,7 @@ function patchOrder(id, body, user) {
     orders[index] = order
     await syncSheetFreshness(orders)
     await writeOrders(orders)
+    await linkPickingIfInvoicesChanged(orders, order, current)
     await closeFinishedSheets(orders)
     if (nextPriority === 'inmediata' && prevPriority !== 'inmediata') {
       await notifyWarehouse({
@@ -923,6 +926,7 @@ function reviewEdit(orderId, editId, body, user) {
     if (synced.error) return synced
     orders[index] = order
     await writeOrders(orders)
+    await linkPickingIfInvoicesChanged(orders, order, current)
     await closeFinishedSheets(orders)
     await notifyEditReview(pending, user, current.id, decision)
     return { order }
@@ -1332,6 +1336,22 @@ function readOrderFields(body, current) {
 
 const PDF_DATA_PREFIX = 'data:application/pdf;base64,'
 const PDF_MAX_BYTES = 2 * 1024 * 1024
+
+function invoiceSignature(order) {
+  const list = Array.isArray(order?.invoices) ? order.invoices : []
+  return list
+    .map((item) => normalizeInvoiceKey(typeof item === 'string' ? item : ''))
+    .filter(Boolean)
+    .sort()
+    .join('\0')
+}
+
+async function linkPickingIfInvoicesChanged(orders, order, previous) {
+  if (previous && invoiceSignature(previous) === invoiceSignature(order)) return
+  const picking = await readCollection('picking')
+  if (!linkUniquePickingRows(picking, orders, order.id)) return
+  await writeCollection('picking', picking)
+}
 
 function readPickupPdf(body, current, order) {
   // TODO CRM: cuando esté la API key, la FC/nota de pedido y sus artículos vienen del CRM y este PDF deja de ser obligatorio

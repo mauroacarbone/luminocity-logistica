@@ -1,6 +1,6 @@
 import type { Order } from '../data/orders'
 
-/**
+/** Misma lógica que server/src/invoiceKey.js. Mantenerlas iguales.
  * Compara comprobantes: minúsculas, letras y números por grupo,
  * sin ceros a la izquierda en cada número, unidos con "-".
  */

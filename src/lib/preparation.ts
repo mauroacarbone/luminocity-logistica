@@ -1,6 +1,7 @@
 import { isPickup } from '../data/catalog'
 import type { Order } from '../data/orders'
 import type { Role } from './authStore'
+import { normalizeInvoiceKey } from './invoiceKey'
 import type { PickingLine } from './pickingSheet'
 
 export const TAKE_STALE_MS = 4 * 60 * 60 * 1000
@@ -45,8 +46,38 @@ export function lineIsPicked(line: PickingLine) {
   return line.status === 'preparado' || (typeof line.pickedQty === 'number' && line.pickedQty >= line.quantity && line.quantity > 0)
 }
 
-export function checklistOf(lines: PickingLine[], orderId: string) {
-  const rows = lines.filter((line) => line.orderId === orderId)
+export function pickedStatus(qty: number, quantity: number): 'pendiente' | 'en_preparacion' | 'preparado' {
+  if (!Number.isFinite(qty) || qty <= 0) return 'pendiente'
+  if (qty < quantity) return 'en_preparacion'
+  return 'preparado'
+}
+
+/** Filas del pedido por `orderId` o, si no tienen otro pedido, por el comprobante. */
+export function linesForOrderPrep(lines: PickingLine[], order: Order) {
+  const seen = new Set<string>()
+  const rows: PickingLine[] = []
+  for (const line of lines) {
+    if (line.orderId !== order.id || seen.has(line.id)) continue
+    seen.add(line.id)
+    rows.push(line)
+  }
+  const keys = new Set(
+    (order.invoices ?? []).map((invoice) => normalizeInvoiceKey(invoice)).filter(Boolean),
+  )
+  if (keys.size === 0) return rows
+  for (const line of lines) {
+    if (seen.has(line.id)) continue
+    if (line.orderId && line.orderId !== order.id) continue
+    const key = normalizeInvoiceKey(line.invoice)
+    if (!key || !keys.has(key)) continue
+    seen.add(line.id)
+    rows.push(line)
+  }
+  return rows
+}
+
+export function checklistOf(lines: PickingLine[], order: Order) {
+  const rows = linesForOrderPrep(lines, order)
   const done = rows.filter((line) => lineIsPicked(line)).length
   return { rows, done, total: rows.length }
 }

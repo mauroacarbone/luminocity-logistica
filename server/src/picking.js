@@ -6,6 +6,7 @@ import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyEncargados } from './notifications.js'
 import { withHistory } from './orderFlow.js'
+import { linkUniquePickingRows } from './invoiceKey.js'
 import { rowIsPicked } from './preparation.js'
 
 const ROLES = ['deposito', 'encargado_deposito', 'admin']
@@ -277,8 +278,11 @@ function batchRows(body) {
     }
     const current = await readPicking()
     const now = new Date().toISOString()
+    const orders = await readCollection('orders')
+    const orderList = Array.isArray(orders) ? orders : []
     if (mode === 'replace') {
       const next = parsed.map((item) => buildNewRow(item, now))
+      linkUniquePickingRows(next, orderList)
       await writePicking(next)
       return {
         summary: {
@@ -317,6 +321,7 @@ function batchRows(body) {
           cantidad: item.cantidad,
           vendedor: item.vendedor,
           raw: item.raw,
+          ...(item.codigo ? { codigo: item.codigo } : existing.codigo ? { codigo: existing.codigo } : {}),
         }
         if (typeof existing.pickedQty === 'number' && existing.pickedQty > item.cantidad) {
           patched.pickedQty = Math.floor(item.cantidad)
@@ -331,6 +336,7 @@ function batchRows(body) {
         created += 1
       }
     }
+    linkUniquePickingRows(next, orderList)
     await writePicking(next)
     return { summary: { created, updated, removed: 0 } }
   })
@@ -355,6 +361,7 @@ function sameMergeFields(left, right) {
     left.articulo === right.articulo &&
     left.cantidad === right.cantidad &&
     left.vendedor === right.vendedor &&
+    (left.codigo || '') === (right.codigo || '') &&
     sameRaw(left.raw, right.raw)
   )
 }
@@ -372,6 +379,7 @@ function buildNewRow(parsed, now) {
     raw: parsed.raw,
     status: parsed.status ?? 'pendiente',
   }
+  if (parsed.codigo) row.codigo = parsed.codigo
   if (parsed.pickedQty !== undefined) row.pickedQty = parsed.pickedQty
   if (parsed.orderId !== undefined) row.orderId = parsed.orderId
   return row
@@ -399,6 +407,8 @@ function readCreateBody(body) {
   if (cantidad.error) return cantidad
   const vendedor = readOptionalText(body.vendedor, 'El vendedor')
   if (vendedor.error) return vendedor
+  const codigo = readOptionalText(body.codigo, 'El código')
+  if (codigo.error) return codigo
   const raw = readRaw(body.raw)
   if (raw.error) return raw
   const result = {
@@ -409,6 +419,7 @@ function readCreateBody(body) {
     vendedor: vendedor.value,
     raw: raw.value,
   }
+  if (codigo.value) result.codigo = codigo.value
   if (Object.prototype.hasOwnProperty.call(body, 'pickedQty')) {
     const pickedQty = readPickedQty(body.pickedQty, cantidad.value)
     if (pickedQty.error) return pickedQty

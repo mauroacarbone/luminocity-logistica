@@ -12,6 +12,7 @@ export type PickingRow = {
   articulo: string
   cantidad: number
   vendedor: string
+  codigo?: string
   raw: Record<string, string | number | boolean>
   status?: PickingStatus
   pickedQty?: number
@@ -24,6 +25,7 @@ export type PickingBatchRow = {
   articulo: string
   cantidad: number
   vendedor: string
+  codigo?: string
   raw: Record<string, string | number | boolean>
   status?: PickingStatus
   pickedQty?: number
