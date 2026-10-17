@@ -3,7 +3,7 @@ import type { Claim } from '../data/claims'
 import { namesMatch } from '../lib/access'
 import type { Session } from '../lib/authStore'
 import { phoneKindAR } from '../lib/phone'
-import { repairReadyText, repairRejectedText, repairReminderText, whatsappLink } from '../lib/whatsapp'
+import { repairQuoteText, repairReadyText, repairRejectedText, repairReminderText, whatsappLink } from '../lib/whatsapp'
 import { error } from '../lib/alerts'
 import { useClaims } from '../state/ClaimsContext'
 import { Badge, Button, Field, Select } from './ui'
@@ -39,6 +39,14 @@ function day(iso: string) {
   return `${match[3]}/${match[2]}/${match[1]}`
 }
 
+function canSendQuote(user: Session, claim: Claim) {
+  const repair = claim.repair
+  if (!repair || repair.step !== 'diagnostico' || repair.coverage !== 'cobro') return false
+  if (!repair.diagnosis.trim() || repair.quote.amount == null || !repair.quote.etaDate) return false
+  if (user.role === 'admin' || user.role === 'encargado_deposito') return true
+  return user.role === 'tecnico' && repair.technician?.id === user.id
+}
+
 function canAnswer(user: Session, claim: Claim) {
   const step = claim.repair?.step
   if (step !== 'presupuesto-enviado' && step !== 'presupuesto-vencido') return false
@@ -49,6 +57,79 @@ function canAnswer(user: Session, claim: Claim) {
   return namesMatch(user.sellerName, claim.seller)
 }
 
+function QuoteNotice({
+  claim,
+  primary,
+  busy,
+  callResult,
+  onCallResult,
+  onContact,
+}: {
+  claim: Claim
+  primary: boolean
+  busy: boolean
+  callResult: string
+  onCallResult: (value: string) => void
+  onContact: (channel: 'whatsapp' | 'llamada', text: string) => void
+}) {
+  const [expiresAt] = useState(() => new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString())
+  const repair = claim.repair
+  if (!repair || repair.quote.amount == null || !repair.quote.etaDate) return null
+  const text = repairQuoteText({
+    client: claim.client,
+    product: repair.product,
+    claimId: claim.id,
+    invoice: claim.invoices[0] ?? '',
+    diagnosis: repair.diagnosis,
+    amount: repair.quote.amount,
+    etaDate: repair.quote.etaDate,
+    expiresAt,
+  })
+  const kind = claim.phoneKind ?? (claim.phone.trim() ? phoneKindAR(claim.phone) : 'desconocido')
+  if (!claim.phone.trim()) return <p className="text-sm text-subtle">Sin teléfono</p>
+  const showWhatsapp = kind === 'movil' || kind === 'desconocido'
+  const showCall = kind === 'fijo' || kind === 'desconocido'
+  return (
+    <div className="flex flex-col gap-2">
+      {showCall && (
+        <Field label="Resultado de la llamada">
+          <Select value={callResult} onChange={(event) => onCallResult(event.target.value)}>
+            <option value="">Elegí el resultado</option>
+            {CALL_RESULTS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {showWhatsapp && (
+          <Button
+            variant={primary ? 'primary' : 'secondary'}
+            size="lg"
+            disabled={busy}
+            onClick={() => onContact('whatsapp', text)}
+          >
+            Avisar por WhatsApp
+          </Button>
+        )}
+        {showCall && (
+          <Button
+            variant={primary && !showWhatsapp ? 'primary' : 'secondary'}
+            size="lg"
+            disabled={busy || !callResult}
+            onClick={() => onContact('llamada', text)}
+          >
+            Llamar
+          </Button>
+        )}
+      </div>
+      {showCall && <p className="whitespace-pre-wrap text-sm text-subtle">{text}</p>}
+    </div>
+  )
+}
+
 export function RepairFollowUp({
   claim,
   user,
@@ -56,7 +137,7 @@ export function RepairFollowUp({
 }: {
   claim: Claim
   user: Session
-  primaryKind?: 'reenvio' | 'listo' | 'rechazo'
+  primaryKind?: 'presupuesto' | 'reenvio' | 'listo' | 'rechazo'
 }) {
   const { answerRepair, recordRepairContact } = useClaims()
   const repair = claim.repair
@@ -77,7 +158,11 @@ export function RepairFollowUp({
     if (!result.ok) await error(result.message)
   }
 
-  async function contact(channel: 'whatsapp' | 'llamada', contactKind: 'reenvio' | 'listo' | 'rechazo', text: string) {
+  async function contact(
+    channel: 'whatsapp' | 'llamada',
+    contactKind: 'presupuesto' | 'reenvio' | 'listo' | 'rechazo',
+    text: string,
+  ) {
     if (channel === 'llamada' && !callResult) return
     setBusy(true)
     const result = await recordRepairContact(claim.id, {
@@ -99,7 +184,7 @@ export function RepairFollowUp({
     if (claim.phone.trim()) window.open(`tel:${claim.phone.trim()}`, '_self')
   }
 
-  function messageButtons(contactKind: 'reenvio' | 'listo' | 'rechazo', text: string) {
+  function messageButtons(contactKind: 'presupuesto' | 'reenvio' | 'listo' | 'rechazo', text: string) {
     if (!claim.phone.trim()) return <p className="text-sm text-subtle">Sin teléfono</p>
     const primary = primaryKind === contactKind
     return (
@@ -174,6 +259,19 @@ export function RepairFollowUp({
         <Badge tone="warning" className="mt-2">
           Presupuesto vencido
         </Badge>
+      )}
+      {canSendQuote(user, claim) && (
+        <div className="mt-3">
+          <QuoteNotice
+            key={claim.id}
+            claim={claim}
+            primary={primaryKind === 'presupuesto'}
+            busy={busy}
+            callResult={callResult}
+            onCallResult={setCallResult}
+            onContact={(channel, text) => void contact(channel, 'presupuesto', text)}
+          />
+        </div>
       )}
       {canAnswer(user, claim) && (
         <div className="mt-3">

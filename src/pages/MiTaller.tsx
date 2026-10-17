@@ -6,10 +6,6 @@ import { Badge, Button, Drawer, Field, Input, LoadState, Page, PageHeader, Selec
 import type { Claim, RepairStep } from '../data/claims'
 import { error } from '../lib/alerts'
 import { businessToday } from '../lib/schedule'
-import {
-  repairQuoteText,
-  whatsappLink,
-} from '../lib/whatsapp'
 import { useAuth } from '../state/AuthContext'
 import { useClaims } from '../state/ClaimsContext'
 
@@ -64,10 +60,6 @@ function deskOf(claim: Claim, userId: string): Desk | null {
   return null
 }
 
-function quoteExpiry() {
-  return new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
-}
-
 function sortRepairs(list: Claim[]) {
   return [...list].sort((left, right) => {
     const leftExpired = left.repair?.step === 'presupuesto-vencido' ? 0 : 1
@@ -81,8 +73,7 @@ function sortRepairs(list: Claim[]) {
 
 export function MiTaller() {
   const { user } = useAuth()
-  const { claims, loading, error: loadError, refresh, takeRepair, updateRepair, moveRepair, recordRepairContact } =
-    useClaims()
+  const { claims, loading, error: loadError, refresh, takeRepair, updateRepair, moveRepair } = useClaims()
   const [params] = useSearchParams()
   const asked = params.get('reclamo')
   const [desk, setDesk] = useState<Desk>('por-levantar')
@@ -145,29 +136,6 @@ export function MiTaller() {
     )
   }
 
-  async function sendQuote() {
-    if (!selected?.repair || !user) return
-    const quote = selected.repair.quote
-    if (quote.amount == null || !quote.etaDate || !selected.repair.diagnosis.trim()) {
-      await error('Cargá el diagnóstico y el presupuesto antes de avisar.')
-      return
-    }
-    const expires = quoteExpiry()
-    const text = repairQuoteText({
-      client: selected.client,
-      product: selected.repair.product,
-      claimId: selected.id,
-      invoice: selected.invoices[0] ?? '',
-      diagnosis: selected.repair.diagnosis,
-      amount: quote.amount,
-      etaDate: quote.etaDate,
-      expiresAt: expires,
-    })
-    const link = whatsappLink(selected.phone, text)
-    if (link) window.open(link, '_blank', 'noopener')
-    await run(() => recordRepairContact(selected.id, { channel: 'whatsapp', kind: 'presupuesto', phoneKind: selected.phoneKind }))
-  }
-
   function primary() {
     const repair = selected?.repair
     if (!selected || !repair) return null
@@ -187,13 +155,7 @@ export function MiTaller() {
           </Button>
         )
       }
-      if (ready) {
-        return (
-          <Button variant="primary" size="lg" fullWidth disabled={busy} onClick={() => void sendQuote()}>
-            Enviar presupuesto
-          </Button>
-        )
-      }
+      if (ready) return null
       return (
         <Button variant="primary" size="lg" fullWidth disabled={busy} onClick={() => void saveDiagnosis()}>
           Guardar diagnóstico
@@ -362,7 +324,13 @@ export function MiTaller() {
             <RepairFollowUp
               claim={{ ...selected, phoneKind: phoneKind || selected.phoneKind }}
               user={user}
-              primaryKind={selected.repair.step === 'presupuesto-vencido' ? 'reenvio' : undefined}
+              primaryKind={
+                selected.repair.step === 'presupuesto-vencido'
+                  ? 'reenvio'
+                  : selected.repair.step === 'diagnostico' && selected.repair.coverage === 'cobro'
+                    ? 'presupuesto'
+                    : undefined
+              }
             />
             <div>
               <p className="text-sm font-semibold">Historial</p>
