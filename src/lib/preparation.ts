@@ -1,8 +1,14 @@
+import { isPickup } from '../data/catalog'
 import type { Order } from '../data/orders'
 import type { Role } from './authStore'
 import type { PickingLine } from './pickingSheet'
 
 export const TAKE_STALE_MS = 4 * 60 * 60 * 1000
+
+// TODO CRM: cuando esté la API key, la FC/nota de pedido y sus artículos vienen del CRM y este PDF deja de ser obligatorio
+export function requiresInvoicePdf(order: { dispatchType?: string } | null | undefined) {
+  return isPickup(order)
+}
 
 export type TakeState = 'libre' | 'en-preparacion' | 'vencida'
 

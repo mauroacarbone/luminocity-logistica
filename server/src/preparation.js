@@ -1,5 +1,10 @@
 export const TAKE_STALE_MS = 4 * 60 * 60 * 1000
 
+// TODO CRM: cuando esté la API key, la FC/nota de pedido y sus artículos vienen del CRM y este PDF deja de ser obligatorio
+export function requiresInvoicePdf(order) {
+  return order?.dispatchType === 'retiro'
+}
+
 const TAKE_ROLES = new Set(['deposito', 'encargado_deposito', 'admin'])
 
 export function canTake(user) {

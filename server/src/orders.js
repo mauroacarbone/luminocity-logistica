@@ -30,6 +30,7 @@ import {
   canTake,
   hasOpenSession,
   isTakeStale,
+  requiresInvoicePdf,
   sessionsOf,
   takenAtOf,
   takenByOf,
@@ -1323,8 +1324,41 @@ function readOrderFields(body, current) {
   if (Array.isArray(current?.slotOverrides)) {
     order.slotOverrides = current.slotOverrides.map((item) => ({ ...item }))
   }
+  const pickupPdf = readPickupPdf(body, current, order)
+  if (pickupPdf.error) return pickupPdf
   stampStatus(order, current)
   return { order }
+}
+
+const PDF_DATA_PREFIX = 'data:application/pdf;base64,'
+const PDF_MAX_BYTES = 2 * 1024 * 1024
+
+function readPickupPdf(body, current, order) {
+  // TODO CRM: cuando esté la API key, la FC/nota de pedido y sus artículos vienen del CRM y este PDF deja de ser obligatorio
+  if (!requiresInvoicePdf(order)) return { ok: true }
+  const touchesDispatch = Object.prototype.hasOwnProperty.call(body, 'dispatchType')
+  const touchesAttachment =
+    Object.prototype.hasOwnProperty.call(body, 'attachmentDataUrl') ||
+    Object.prototype.hasOwnProperty.call(body, 'attachmentName')
+  if (current && !touchesDispatch && !touchesAttachment) return { ok: true }
+  const url = typeof order.attachmentDataUrl === 'string' ? order.attachmentDataUrl : ''
+  if (!url) return fail('Los retiros necesitan la FC o nota de pedido en PDF.')
+  if (!url.startsWith(PDF_DATA_PREFIX)) return fail('El adjunto tiene que ser un PDF.')
+  const bytes = pdfByteLength(url)
+  if (bytes == null) return fail('El adjunto tiene que ser un PDF.')
+  if (bytes > PDF_MAX_BYTES) return fail('El archivo supera los 2 MB.')
+  const invoices = Array.isArray(order.invoices)
+    ? order.invoices.filter((item) => typeof item === 'string' && item.trim())
+    : []
+  if (invoices.length === 0) return fail('Cargá el N° de nota de pedido o factura.')
+  return { ok: true }
+}
+
+function pdfByteLength(dataUrl) {
+  const payload = dataUrl.slice(PDF_DATA_PREFIX.length).replace(/\s/g, '')
+  if (!payload || /[^A-Za-z0-9+/=]/.test(payload)) return null
+  const pad = payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0
+  return Math.floor((payload.length * 3) / 4) - pad
 }
 
 function readRequiredText(value) {

@@ -16,6 +16,7 @@ import {
   ATTACHMENT_SAVE_ERROR,
   attachmentKind,
   attachmentRejection,
+  pdfAttachmentRejection,
   openAttachment,
   readAttachmentFile,
 } from '../lib/attachment'
@@ -33,6 +34,7 @@ import {
   type OrderDraftFields,
   type OrderDraftRecord,
 } from '../lib/orderDraft'
+import { requiresInvoicePdf } from '../lib/preparation'
 import { isOrderPriority, PRIORITIES, PRIORITY_LABEL, priorityOf } from '../lib/priority'
 import type { OrderPriority } from '../data/orders'
 import { slotQuestion } from '../lib/slot'
@@ -73,6 +75,7 @@ type ErrorKey =
   | 'doorbell'
   | 'deliveryDate'
   | 'amount'
+  | 'invoices'
   | 'file'
 
 type Errors = Partial<Record<ErrorKey, string>>
@@ -82,6 +85,7 @@ const FIELD_ORDER: ErrorKey[] = [
   'seller',
   'client',
   'phone',
+  'invoices',
   'amount',
   'address',
   'between',
@@ -97,6 +101,7 @@ const FIELD_LABELS: Record<ErrorKey, string> = {
   seller: 'Vendedor',
   client: 'Nombre',
   phone: 'Teléfono',
+  invoices: 'N° de nota de pedido o factura',
   amount: 'Monto',
   address: 'Dirección',
   between: 'Entre calle',
@@ -118,6 +123,11 @@ const SERVER_FIELD_MESSAGES: { message: string; field: ErrorKey }[] = [
   { message: 'Elegí la fecha de entrega.', field: 'deliveryDate' },
   { message: 'Elegí la fecha de retiro.', field: 'deliveryDate' },
   { message: 'Ingresá el monto a cobrar.', field: 'amount' },
+  { message: 'Los retiros necesitan la FC o nota de pedido en PDF.', field: 'file' },
+  { message: 'El adjunto tiene que ser un PDF.', field: 'file' },
+  { message: 'El archivo supera los 2 MB.', field: 'file' },
+  { message: 'Adjuntá la FC o nota de pedido en PDF.', field: 'file' },
+  { message: 'Cargá el N° de nota de pedido o factura.', field: 'invoices' },
 ]
 
 function fieldFromServerMessage(message: string): ErrorKey | undefined {
@@ -966,7 +976,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
   function onFile(file: File | undefined) {
     if (!file) return
-    const problem = attachmentRejection(file)
+    const problem = (dispatchType === 'retiro' ? pdfAttachmentRejection : attachmentRejection)(file)
     if (problem) {
       fileRequest.current += 1
       readCancel.current?.()
@@ -1029,6 +1039,16 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     }
     if (readingFile) {
       nextErrors.file = 'Esperá a que se termine de leer el archivo.'
+    }
+    // TODO CRM: cuando esté la API key, la FC/nota de pedido y sus artículos vienen del CRM y este PDF deja de ser obligatorio
+    if (requiresInvoicePdf({ dispatchType })) {
+      const numbers = invoices.map((invoice) => invoice.trim()).filter(Boolean)
+      if (numbers.length === 0) {
+        nextErrors.invoices = 'Cargá el N° de nota de pedido o factura.'
+      }
+      if (!readingFile && !attachmentDataUrl.startsWith('data:application/pdf')) {
+        nextErrors.file = 'Adjuntá la FC o nota de pedido en PDF.'
+      }
     }
     setSaveError('')
     setErrors(nextErrors)
@@ -1101,6 +1121,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     const result = await addOrder(draft)
     setSaving(false)
     if (result.status === 'saved-without-attachment') {
+      if (requiresInvoicePdf({ dispatchType })) {
+        setSaveError('Los retiros necesitan la FC o nota de pedido en PDF.')
+        setErrors({ file: 'Los retiros necesitan la FC o nota de pedido en PDF.' })
+        attachmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
       setStoredId(result.order.id)
       setAttachmentName(result.order.attachmentName ?? '')
       setAttachmentDataUrl(result.order.attachmentDataUrl ?? '')
@@ -1145,6 +1171,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     }
     setSaving(false)
     if (result.status === 'saved-without-attachment') {
+      if (requiresInvoicePdf(draft)) {
+        setReasonOpen(false)
+        setSaveError('Los retiros necesitan la FC o nota de pedido en PDF.')
+        setErrors({ file: 'Los retiros necesitan la FC o nota de pedido en PDF.' })
+        attachmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
       setReasonOpen(false)
       setStoredId(result.order.id)
       setAttachmentName(result.order.attachmentName ?? '')
@@ -1218,6 +1251,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     markDirty()
     setDispatchType(next)
     if (next === 'retiro') {
+      if (attachmentDataUrl && attachmentKind(attachmentName, attachmentDataUrl) !== 'pdf') {
+        setErrors((current) => ({
+          ...current,
+          file: 'Para retiros adjuntá la FC o nota de pedido en PDF.',
+        }))
+      }
       setTransporter('')
       setTimeWindow('')
       setAddress('')
@@ -1469,8 +1508,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                 />
               </Field>
             </div>
-            <div className="field full">
-              <span>N° Nota de Pedido / Factura</span>
+            <div className="field full" data-field="invoices">
+              <span>N° Nota de Pedido / Factura{pickup ? ' *' : ''}</span>
+              {errors.invoices ? (
+                <small className="field-error" role="alert">
+                  {errors.invoices}
+                </small>
+              ) : null}
               {invoices.map((invoice, index) => (
                 <div className="inline-field" key={index}>
                   <Input
@@ -1847,17 +1891,21 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         </section>
 
         <section className="form-card" ref={attachmentSectionRef} data-field="file">
-          <h2>Documentación</h2>
+          <h2>{pickup ? 'FC o nota de pedido (PDF)' : 'Documentación'}</h2>
           <Field
-            label="Adjuntar remito, factura u otro archivo (imagen, PDF o Word, opcional)"
-            hint="Imagen, PDF o Word (.doc, .docx). Máximo 2 MB."
+            label={
+              pickup
+                ? 'FC o nota de pedido (PDF) *'
+                : 'Adjuntar remito, factura u otro archivo (imagen, PDF o Word, opcional)'
+            }
+            hint={pickup ? 'PDF. Máximo 2 MB.' : 'Imagen, PDF o Word (.doc, .docx). Máximo 2 MB.'}
             error={errors.file || undefined}
           >
             <Input
               ref={fileRef}
               size="lg"
               type="file"
-              accept={ATTACHMENT_ACCEPT}
+              accept={pickup ? 'application/pdf,.pdf' : ATTACHMENT_ACCEPT}
               onChange={(event) => onFile(event.target.files?.[0])}
             />
           </Field>
