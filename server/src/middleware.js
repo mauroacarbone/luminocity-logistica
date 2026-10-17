@@ -48,6 +48,14 @@ export function denyGerencia(req, res, next) {
   next()
 }
 
+export function denyTecnico(req, res, next) {
+  if (req.user?.role === 'tecnico') {
+    res.status(403).json({ message: 'No tenés permiso para esto.' })
+    return
+  }
+  next()
+}
+
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {

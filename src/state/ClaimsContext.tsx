@@ -23,7 +23,7 @@ import { loadList } from '../lib/localStore'
 import { useAuth } from './AuthContext'
 
 const CLAIMS_KEY = 'luminocity.claims.v1'
-const CLAIMS_ROLES = new Set(['vendedor', 'encargado_deposito', 'admin'])
+const CLAIMS_ROLES = new Set(['vendedor', 'deposito', 'tecnico', 'encargado_deposito', 'admin'])
 const IMPORT_MAX = 200
 const IMPORT_BYTES = 10 * 1024 * 1024
 

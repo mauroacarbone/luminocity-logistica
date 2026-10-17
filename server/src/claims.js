@@ -15,7 +15,7 @@ const STATUS_LABEL = {
   cancelado: 'Cancelado',
 }
 
-const ROLES = ['vendedor', 'encargado_deposito', 'admin']
+const ROLES = ['vendedor', 'deposito', 'tecnico', 'encargado_deposito', 'admin']
 const STATUSES = new Set([
   'nuevo',
   'recepcion',
@@ -127,12 +127,28 @@ function writeClaims(list) {
 }
 
 function canAccessClaim(user, claim) {
-  if (user.role === 'admin' || user.role === 'encargado_deposito') return true
+  if (
+    user.role === 'admin' ||
+    user.role === 'encargado_deposito' ||
+    user.role === 'tecnico' ||
+    user.role === 'deposito'
+  ) {
+    return true
+  }
   if (user.role !== 'vendedor') return false
   if (claim.createdBy === user.id) return true
   const sellerName = normalizeName(user.sellerName)
   if (!sellerName) return false
   return normalizeName(claim.seller) === sellerName
+}
+
+function repairOnly(user) {
+  return user?.role === 'deposito' || user?.role === 'tecnico'
+}
+
+function denyRepairWriter(user) {
+  if (repairOnly(user)) return fail('Solo podés cargar la reparación.', 403)
+  return null
 }
 
 function actorOf(user) {
@@ -159,6 +175,7 @@ function toListItem(claim) {
 
 function createClaim(user, body) {
   return locked(async () => {
+    if (user.role === 'tecnico') return fail('Solo podés cargar la reparación.', 403)
     const parsed = readCreateBody(body, user)
     if (parsed.error) return parsed
     const list = await readClaims()
@@ -200,6 +217,8 @@ function getClaim(user, id) {
 
 function importClaims(user, body) {
   return locked(async () => {
+    const blocked = denyRepairWriter(user)
+    if (blocked) return blocked
     if (!isRecord(body)) return fail('La importación no es válida.')
     if (!Array.isArray(body.claims)) return fail('Mandá la lista de reclamos en claims.')
     if (body.claims.length > IMPORT_MAX) {
@@ -287,6 +306,8 @@ function readImportEvents(value) {
 
 function patchStatus(user, id, body) {
   return locked(async () => {
+    const blocked = denyRepairWriter(user)
+    if (blocked) return blocked
     if (typeof id !== 'string' || !id.trim()) return fail('Reclamo no encontrado', 404)
     if (!isRecord(body)) return fail('El estado no es válido.')
     const status = readStatus(body.status)

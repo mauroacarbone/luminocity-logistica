@@ -5,7 +5,7 @@ import { collectionFileExists, readCollection, usingDatabase, writeCollection } 
 import { forgetUsers } from './locations.js'
 import { locked } from './lock.js'
 
-export const ROLES = ['vendedor', 'deposito', 'encargado_deposito', 'chofer', 'gerencia', 'admin']
+export const ROLES = ['vendedor', 'deposito', 'encargado_deposito', 'chofer', 'gerencia', 'tecnico', 'admin']
 
 /** El admin administra a todos. El encargado, a cualquiera que no sea admin, y no puede dar ese rol. */
 export function canManageUser(actor, target, changes = {}) {

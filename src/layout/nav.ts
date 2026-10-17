@@ -190,6 +190,7 @@ export function homePathForRole(role: Role) {
   if (role === 'chofer' && paths.includes('/mis-entregas')) return '/mis-entregas'
   if (role === 'deposito') return '/preparacion'
   if (role === 'gerencia') return '/reportes'
+  if (role === 'tecnico') return '/post-venta'
   return '/'
 }
 

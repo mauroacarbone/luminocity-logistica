@@ -13,7 +13,8 @@ const MENU: Record<Role, readonly string[]> = {
     '/pendientes',
     '/post-venta',
   ],
-  deposito: ['/', '/preparacion', '/pedidos', '/despacho', '/retiros', '/seguimiento', '/pendientes'],
+  deposito: ['/', '/preparacion', '/pedidos', '/despacho', '/retiros', '/seguimiento', '/pendientes', '/post-venta'],
+  tecnico: ['/post-venta'],
   encargado_deposito: [
     '/',
     '/preparacion',

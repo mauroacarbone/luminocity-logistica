@@ -228,7 +228,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setLegacyOrders([])
     setError('')
     setImportError('')
-    setStatus(!userId ? 'idle' : role === 'gerencia' ? 'ready' : 'loading')
+    setStatus(!userId ? 'idle' : role === 'gerencia' || role === 'tecnico' ? 'ready' : 'loading')
   }
 
   const loading = Boolean(user) && status !== 'ready' && status !== 'error'
@@ -237,7 +237,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     const id = ++generation.current
     ordersRef.current = []
     legacyRef.current = []
-    if (!userId || role === 'gerencia') return
+    if (!userId || role === 'gerencia' || role === 'tecnico') return
 
     let cancelled = false
     void listOrders().then((result) => {
@@ -281,7 +281,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         reload()
         return Promise.resolve()
       }
-      if (!userId || role === 'gerencia') return Promise.resolve()
+      if (!userId || role === 'gerencia' || role === 'tecnico') return Promise.resolve()
       const id = generation.current
       const seq = writeSeq.current
       return listOrders().then((result) => {

@@ -45,6 +45,7 @@ function Home() {
   const { user } = useAuth()
   if (user?.role === 'chofer') return <Navigate to="/mis-entregas" replace />
   if (user?.role === 'gerencia') return <Navigate to="/reportes" replace />
+  if (user?.role === 'tecnico') return <Navigate to="/post-venta" replace />
   return <PanelOperativo />
 }
 
