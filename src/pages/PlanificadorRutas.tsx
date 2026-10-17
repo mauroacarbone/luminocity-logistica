@@ -274,17 +274,36 @@ export function PlanificadorRutas() {
       return canChooseUnplanned(order, driverId)
     })
     .sort(sortListed)
-  const unplannedGroups = [...unplanned.reduce((groups, order) => {
+  const late =
+    iso === businessToday()
+      ? orders
+          .filter((order) => {
+            if (!order.deliveryDate || order.deliveryDate >= iso) return false
+            if (!isOwnDelivery(order) || isPickup(order)) return false
+            if (order.routeId || order.sheetPlanned) return false
+            if (!normalizeTimeWindow(order.timeWindow)) return false
+            if (order.status !== 'preparado' && order.status !== 'asignado') return false
+            return canChooseUnplanned(order, driverId)
+          })
+          .sort(sortListed)
+      : []
+  const unplannedGroups = [
+    ...(late.length > 0
+      ? [{ slot: 'Atrasados', label: '', orders: late, late: true as const }]
+      : []),
+    ...unplanned.reduce((groups, order) => {
     const key = normalizeTimeWindow(order.timeWindow) || order.timeWindow || ''
     const current = groups.get(key)
     if (current) current.orders.push(order)
     else groups.set(key, { slot: key, label: slotPeriod(key), orders: [order] })
     return groups
-  }, new Map<string, { slot: string; label: string; orders: Order[] }>()).values()]
+  }, new Map<string, { slot: string; label: string; orders: Order[]; late?: boolean }>()).values(),
+  ]
   const unplannedSummary = [...unplannedGroups.reduce((counts, group) => {
     counts.set(group.label, (counts.get(group.label) ?? 0) + group.orders.length)
     return counts
   }, new Map<string, number>()).entries()]
+    .filter(([label]) => label)
     .map(([label, count]) => `${label} ${count}`)
     .join(' · ')
 
@@ -761,10 +780,10 @@ export function PlanificadorRutas() {
         ) : (
           unplannedGroups.map((group) => (
             <div key={group.slot} className="mt-3">
-              <h3 className="text-sm font-semibold text-text">
-                {group.slot}
-                <span className="ml-2 font-normal text-muted">{group.label}</span>
-                <span className="ml-2 font-normal text-muted">{group.orders.length}</span>
+              <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-text">
+                {group.late ? <Badge tone="warning">Atrasados</Badge> : group.slot}
+                {group.label ? <span className="font-normal text-muted">{group.label}</span> : null}
+                <span className="font-normal text-muted">{group.orders.length}</span>
               </h3>
               <div className="mt-2 overflow-hidden rounded-md border border-border">
                 {group.orders.map((order) => {
@@ -776,6 +795,7 @@ export function PlanificadorRutas() {
                       {order.zone ? <span className="text-sm text-muted">{order.zone}</span> : null}
                       <PriorityChip order={order} />
                       {waiting ? <Badge tone="warning">Falta preparar</Badge> : null}
+                      {group.late ? <Badge tone="warning">Atrasado</Badge> : null}
                       <span className="ml-auto text-sm text-muted">{group.slot}</span>
                     </>
                   )

@@ -126,7 +126,14 @@ function saveSheet(body, user) {
           409,
         )
       }
-      if (order.deliveryDate !== parsed.date || normalizeTimeWindow(order.timeWindow) !== parsed.slot) {
+      const sameSlot = normalizeTimeWindow(order.timeWindow) === parsed.slot
+      const lateToday =
+        parsed.date === businessToday() &&
+        typeof order.deliveryDate === 'string' &&
+        order.deliveryDate < parsed.date &&
+        sameSlot &&
+        OPEN_ORDER.has(order.status)
+      if (!sameSlot || (order.deliveryDate !== parsed.date && !lateToday)) {
         return fail(`El pedido ${id} no es de esa fecha y franja.`)
       }
       if (!OPEN_ORDER.has(order.status)) {
@@ -143,8 +150,10 @@ function saveSheet(body, user) {
     if (existing && existing.status !== 'planificada') {
       return fail('Esa hoja ya está en curso', 409)
     }
+    const rescheduled = []
     for (const id of parsed.orderIds) {
       const order = byId.get(id)
+      const previousDate = typeof order.deliveryDate === 'string' ? order.deliveryDate : ''
       const next = {
         ...order,
         driverId: parsed.driverId,
@@ -168,11 +177,19 @@ function saveSheet(body, user) {
           { fromSheet: true },
         )
         if (transition.error) return transition
+        if (previousDate && previousDate !== parsed.date) {
+          transition.order.deliveryDate = parsed.date
+          rescheduled.push(transition.order)
+        }
         byId.set(id, transition.order)
         continue
       }
       if (slot.authorized) rememberOverride(order, user)
       order.driverId = parsed.driverId
+      if (previousDate && previousDate !== parsed.date) {
+        order.deliveryDate = parsed.date
+        rescheduled.push(order)
+      }
       if (next.slotOverrides) order.slotOverrides = next.slotOverrides
     }
     const now = new Date().toISOString()
@@ -211,6 +228,21 @@ function saveSheet(body, user) {
       order.routeId = sheet.id
       order.routeSeq = index + 1
     })
+    for (const order of rescheduled) {
+      const history = Array.isArray(order.history) ? order.history : []
+      history.push({
+        at: now,
+        by: {
+          id: typeof user?.id === 'string' ? user.id : '',
+          name: typeof user?.name === 'string' ? user.name : '',
+        },
+        from: order.status,
+        to: order.status,
+        reason: `Reprogramado al ${parsed.date} desde la hoja ${sheet.id}`,
+        via: 'hoja',
+      })
+      order.history = history
+    }
     const nextSheets = existing
       ? sheets.map((item) => (item.id === sheet.id ? sheet : item))
       : [...sheets, sheet]
