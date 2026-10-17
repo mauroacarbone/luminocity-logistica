@@ -45,6 +45,20 @@ export type OrderHistoryEntry = {
   via: OrderHistoryVia
 }
 
+export type PrepActor = { id: string; name: string }
+
+export type PrepSession = {
+  by: PrepActor
+  start: string
+  end?: string
+}
+
+export type OrderPreparation = {
+  takenBy?: PrepActor
+  takenAt?: string
+  sessions: PrepSession[]
+}
+
 export type Order = {
   id: string
   client: string
@@ -95,6 +109,12 @@ export type Order = {
   createdBy?: string
   createdAt?: string
   updatedAt?: string
+  preparation?: OrderPreparation
+  preparedBy?: PrepActor
+  preparedAt?: string
+  prepMs?: number | null
+  prepIncomplete?: boolean
+  prepChecklist?: { done: number; total: number }
 }
 
 export function isSlotOverride(value: unknown): value is SlotOverride {

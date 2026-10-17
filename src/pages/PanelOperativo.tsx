@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { PrepChip } from '../components/PrepChip'
 import { Badge, Button, Drawer, EmptyState, KpiCard, ListBox, Menu, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
@@ -233,6 +234,7 @@ function OrderCard({
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <OrderStepper order={order} variant="compact" />
+        <PrepChip order={order} />
         <OverdueChip order={order} today={today} />
       </div>
       <p className="order-client">
@@ -669,7 +671,12 @@ export function PanelOperativo() {
     {
       key: 'status',
       header: 'Estado',
-      cell: (order) => <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>,
+      cell: (order) => (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>
+          <PrepChip order={order} />
+        </span>
+      ),
     },
     {
       key: 'carrier',

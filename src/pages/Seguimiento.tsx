@@ -3,6 +3,7 @@ import { Button, EmptyState, FilterBar, ListBox, Page, PageHeader } from '../com
 import { NavIcon } from '../layout/NavIcon'
 import { Link } from 'react-router-dom'
 import { OrderStepper } from '../components/OrderStepper'
+import { PrepChip } from '../components/PrepChip'
 import { PriorityChip } from '../components/PriorityChip'
 import { Spinner } from '../components/LoadState'
 import { DISPATCH_LABEL, isOwnDelivery, isPickup } from '../data/catalog'
@@ -263,6 +264,7 @@ export function Seguimiento() {
                       <span className={`status-pill status-${order.status}`}>
                         {statusPillFor(order, order.status)}
                       </span>
+                      <PrepChip order={order} />
                     </div>
                     <p className="mt-2 font-semibold uppercase">
                       <Link className="order-link" to={`/pedidos/${order.id}`}>

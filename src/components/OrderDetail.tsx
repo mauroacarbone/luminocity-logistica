@@ -1,3 +1,4 @@
+import { PrepChip } from './PrepChip'
 import { Badge, statusTone } from './ui'
 import { OrderAttachmentLink } from './OrderAttachmentLink'
 import { PriorityChip } from './PriorityChip'
@@ -93,7 +94,10 @@ export function OrderDetail({ order, compact = false }: OrderDetailProps) {
           <div>
             <dt>Estado</dt>
             <dd>
-              <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>
+              <span className="inline-flex flex-wrap items-center gap-2">
+                <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>
+                <PrepChip order={order} />
+              </span>
             </dd>
           </div>
           <div>

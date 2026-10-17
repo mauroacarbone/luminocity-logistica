@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { PrepChip } from '../components/PrepChip'
 import { Badge, Button, Drawer, EmptyState, ListBox, Modal, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
 import { OrderDetail } from '../components/OrderDetail'
@@ -254,7 +255,12 @@ export function PedidosPreparacion() {
     {
       key: 'status',
       header: 'Estado',
-      cell: (order) => <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>,
+      cell: (order) => (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>
+          <PrepChip order={order} />
+        </span>
+      ),
     },
     { key: 'zone', header: 'Zona', cell: (order) => order.zone || '—' },
     {
@@ -369,6 +375,7 @@ export function PedidosPreparacion() {
                   </button>
                   <PriorityChip order={order} />
                   <Badge tone={statusTone(order.status)}>{statusPillFor(order, order.status)}</Badge>
+                  <PrepChip order={order} />
                 </div>
                 <p className="mt-2 font-semibold uppercase">{order.client}</p>
                 {order.zone ? <p className="mt-1 text-sm text-muted">{order.zone}</p> : null}
