@@ -1,6 +1,7 @@
 export const TAKE_STALE_MS = 4 * 60 * 60 * 1000
 
 // TODO CRM: cuando esté la API key, la FC/nota de pedido y sus artículos vienen del CRM y este PDF deja de ser obligatorio
+// Con el CRM activo, los artículos llegan con source 'crm' (ver crmItems.js) y la carga manual queda como corrección.
 export function requiresInvoicePdf(order) {
   return order?.dispatchType === 'retiro'
 }
