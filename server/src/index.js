@@ -12,6 +12,7 @@ import { alignOwnDriverCarrier, ordersRouter } from './orders.js'
 import { claimsRouter } from './claims.js'
 import { pickingRouter } from './picking.js'
 import { releaseClosedSheetOrders, routeSheetsRouter } from './routeSheets.js'
+import { reportsRouter } from './reports.js'
 import { tripRatesRouter } from './tripRates.js'
 import { usersRouter } from './usersRoute.js'
 import { ensureDemoUser } from './users.js'
@@ -108,6 +109,7 @@ app.use('/api/claims', claimsRouter)
 app.use('/api/route-sheets', routeSheetsRouter)
 app.use('/api/trip-rates', tripRatesRouter)
 app.use('/api/drivers', driversRouter)
+app.use('/api/reports', reportsRouter)
 app.use('/api', (_req, res) => {
   res.status(404).json({ message: 'No existe esa ruta de la API' })
 })
