@@ -1179,45 +1179,6 @@ p {
   text-decoration: underline;
 }
 
-.view-toggle {
-  display: flex;
-  background: var(--surface);
-  border-radius: var(--r-lg);
-  padding: 4px;
-  box-shadow: var(--shadow-sm);
-}
-
-.view-toggle button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  border-radius: var(--r-md);
-  padding: 8px 12px;
-  cursor: pointer;
-}
-
-.view-toggle button.active {
-  background: var(--accent);
-  color: var(--accent-fg);
-  font-weight: 600;
-}
-
-.view-toggle button.active:hover {
-  background: var(--accent-hover);
-}
-
-.view-toggle button.active:focus-visible {
-  box-shadow: 0 0 0 2px var(--ring);
-}
-
-.view-toggle svg {
-  width: 16px;
-  height: 16px;
-}
-
 .board-scroll {
   overflow-x: auto;
   padding-bottom: 8px;
@@ -1993,16 +1954,6 @@ p {
 
   .main {
     padding-bottom: 32px;
-  }
-
-  .view-toggle {
-    flex-wrap: wrap;
-    width: 100%;
-  }
-
-  .view-toggle button {
-    flex: 1;
-    justify-content: center;
   }
 
   .field-grid,

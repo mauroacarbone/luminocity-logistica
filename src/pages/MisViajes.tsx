@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { ChoiceGroup } from '../components/ChoiceGroup'
 import { Badge, Button, EmptyState, FilterBar, KpiCard, ListBox, Page, PageHeader } from '../components/ui'
 import { isSession, type Session } from '../lib/authStore'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
@@ -285,26 +286,19 @@ export function MisViajes() {
 
       {error && <p className="mt-4 text-sm font-semibold text-danger">{error}</p>}
 
-      <ListBox
-        className="mt-4"
-        headerClassName="no-print"
-        counters={[
-          {
-            key: 'pendientes',
-            label: 'Pendientes',
-            count: pending.length,
-            active: tab === 'pendientes',
-            onClick: () => setTab('pendientes'),
-          },
-          {
-            key: 'finalizados',
-            label: 'Finalizados',
-            count: finished.length,
-            active: tab === 'finalizados',
-            onClick: () => setTab('finalizados'),
-          },
-        ]}
-      >
+      <div className="mt-4">
+        <ChoiceGroup
+          label="Viajes"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'pendientes', label: 'Pendientes', count: pending.length },
+            { value: 'finalizados', label: 'Finalizados', count: finished.length },
+          ]}
+        />
+      </div>
+
+      <ListBox className="mt-4">
         {manager && !driverId ? (
           <EmptyState variant="plain" title="Elegí un chofer para ver sus viajes." />
         ) : loading ? (

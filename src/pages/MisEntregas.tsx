@@ -4,6 +4,7 @@ import { OrderStepper } from '../components/OrderStepper'
 import { StopRouteMap, type MapStop } from '../components/StopRouteMap'
 import { PriorityChip } from '../components/PriorityChip'
 import { FinishTripDialog } from '../components/FinishTripDialog'
+import { ChoiceGroup } from '../components/ChoiceGroup'
 import { Badge, Button, EmptyState, KpiCard, Page, PageHeader } from '../components/ui'
 import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
@@ -468,27 +469,16 @@ export function MisEntregas() {
           onConfirm={(reasons) => void finishSheet(reasons)}
         />
       ) : null}
-      <div className="view-toggle no-print mt-4" role="tablist" aria-label="Entregas">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'asignados'}
-          className={tab === 'asignados' ? 'active' : undefined}
-          onClick={() => setTab('asignados')}
-        >
-          Asignados
-          <span>{assignedCount}</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'en-viaje'}
-          className={tab === 'en-viaje' ? 'active' : undefined}
-          onClick={() => setTab('en-viaje')}
-        >
-          En viaje
-          <span>{travelingCount}</span>
-        </button>
+      <div className="mt-4">
+        <ChoiceGroup
+          label="Entregas"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'asignados', label: 'Asignados', count: assignedCount },
+            { value: 'en-viaje', label: 'En viaje', count: travelingCount },
+          ]}
+        />
       </div>
       {visible.length === 0 ? (
         <EmptyState

@@ -16,21 +16,15 @@ type ListBoxProps = {
   view?: ReactNode
   children: ReactNode
   className?: string
-  headerClassName?: string
 }
 
-export function ListBox({ counters, filters, view, children, className, headerClassName }: ListBoxProps) {
+export function ListBox({ counters, filters, view, children, className }: ListBoxProps) {
   const hasHeader = Boolean(counters?.length || filters || view)
 
   return (
     <div className={cx('overflow-hidden rounded-md border border-border bg-bg', className)}>
       {hasHeader ? (
-        <div
-          className={cx(
-            'flex flex-col border-b border-border bg-surface min-[480px]:h-12 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between',
-            headerClassName,
-          )}
-        >
+        <div className="flex flex-col border-b border-border bg-surface min-[480px]:h-12 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between">
           <div className="flex min-w-0 gap-1 overflow-x-auto px-2 py-2 min-[480px]:py-0">
             {counters?.map((counter) => (
               <button
