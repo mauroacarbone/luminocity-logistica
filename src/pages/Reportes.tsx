@@ -500,13 +500,10 @@ function ReportTables({
         countCol('antes', 'Entregado antes', (row) => row.antes),
         countCol('en', 'En horario', (row) => row.enHorario),
         countCol('demora', 'Entregado con demora', (row) => row.conDemora),
-        {
-          key: 'pct',
-          header: '% en horario',
-          align: 'right',
-          text: (row) => formatPct(row.pctOnTime),
-          cell: (row) => formatPct(row.pctOnTime),
-        },
+        pctCol('pctAntes', '% antes', (row) => row.pctAntes),
+        pctCol('pct', '% en horario', (row) => row.pctOnTime),
+        pctCol('pctDemora', '% con demora', (row) => row.pctConDemora),
+        countCol('sin', 'Sin franja', (row) => row.sinFranja),
       ])}
     />
   )
@@ -748,5 +745,15 @@ function countCol<T>(key: string, header: string, value: (row: T) => number): Co
     align: 'right',
     text: (row) => formatCount(value(row)),
     cell: (row) => formatCount(value(row)),
+  }
+}
+
+function pctCol<T>(key: string, header: string, value: (row: T) => number | null): Column<T> {
+  return {
+    key,
+    header,
+    align: 'right',
+    text: (row) => formatPct(value(row)),
+    cell: (row) => formatPct(value(row)),
   }
 }
