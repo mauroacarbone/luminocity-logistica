@@ -387,7 +387,7 @@ function PanelViewSwitch({ view, onChange }: { view: View; onChange: (next: View
   }
   return (
     <div
-      className="flex w-full gap-1 sm:w-auto"
+      className="mt-4 flex w-full gap-1 sm:mt-0 sm:w-auto"
       role="radiogroup"
       aria-label="Vista"
       onKeyDown={(event) => onRadioKey(event, VIEW_OPTIONS, view, onChange)}
@@ -726,7 +726,7 @@ export function PanelOperativo() {
         title="Panel Operativo"
         subtitle="Resumen de la operación en tiempo real"
         actions={
-          <div className="flex w-full flex-wrap justify-end gap-2">
+          <div className="flex w-full flex-wrap justify-end gap-3 sm:gap-2">
             {user && canExportPanel(user.role) ? (
               <Menu
                 label="Exportar"
@@ -757,12 +757,12 @@ export function PanelOperativo() {
         }
       />
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between sm:gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <div
             role="radiogroup"
             aria-label="Entregas para"
-            className="flex flex-wrap gap-1"
+            className="flex w-full flex-wrap gap-2 sm:w-auto sm:gap-1"
             onKeyDown={(event) => onRadioKey(event, FECHA_VALUES, dateFilter, selectFecha)}
           >
           {FECHA_CHIPS.map((chip) => {
@@ -776,7 +776,7 @@ export function PanelOperativo() {
                 tabIndex={active ? 0 : -1}
                 data-option={chip.value}
                 onClick={() => selectFecha(chip.value)}
-                className={`h-9 rounded-md px-3 text-sm ${
+                className={`inline-flex h-11 items-center rounded-md px-3 text-sm sm:h-9 ${
                   active
                     ? 'border border-accent bg-accent-soft font-semibold text-text'
                     : 'border border-border bg-transparent text-text'
@@ -800,7 +800,7 @@ export function PanelOperativo() {
         <p className="mt-3 text-sm text-muted">No se pudieron cargar las hojas de ruta</p>
       )}
 
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-7">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-4 md:grid-cols-3 lg:grid-cols-7">
         {SUMMARY.map((item) => {
           const pressed = item.key === 'total' ? statusFilter === null : statusFilter === item.key
           return (
@@ -822,7 +822,7 @@ export function PanelOperativo() {
       </div>
 
       {view === 'kanban' && useAdvanceList ? (
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="mt-6 flex flex-col gap-3 sm:mt-4">
           <h2 className="text-base font-semibold text-text">Para avanzar</h2>
           {advanceOrders.length === 0 ? (
             <p className="empty">No hay pedidos.</p>
