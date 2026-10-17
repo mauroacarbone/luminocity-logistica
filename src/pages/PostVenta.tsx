@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
-import { Button, Card, Field, FilterBar, Input, KpiCard, LoadState, Page, PageHeader } from '../components/ui'
+import { Button, Card, Field, FilterBar, Input, KpiCard, LoadState, Page, PageHeader, Select } from '../components/ui'
 import { withExtras } from '../data/catalog'
 import {
   CLAIM_STATUS_LABEL,
@@ -13,6 +13,7 @@ import {
 } from '../data/claims'
 import { attachmentKind, openAttachment } from '../lib/attachment'
 import { confirm, error } from '../lib/alerts'
+import { businessToday } from '../lib/schedule'
 import { useAuth } from '../state/AuthContext'
 import { RepairFollowUp } from '../components/RepairFollowUp'
 import { useCatalog } from '../state/CatalogContext'
@@ -512,6 +513,16 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
             </Button>
           )}
           {user && <RepairFollowUp claim={claim} user={user} />}
+          {claim.repair && (
+            <p className="mt-3 text-sm">
+              Reparación · {claim.repair.product} · {claim.repair.coverage === 'garantia' ? 'Garantía' : 'Cobro'} ·{' '}
+              ingreso {claim.repair.intakeAt.split('-').reverse().join('/')}
+            </p>
+          )}
+          {!claim.repair &&
+            (user?.role === 'deposito' || user?.role === 'encargado_deposito' || user?.role === 'admin') && (
+              <OpenRepair claim={claim} />
+            )}
           {notes.map((event, index) => (
             <p key={`${event.at}-${index}`} className="mt-1 text-sm text-subtle">
               Nota · {formatWhen(event.at)} · {event.note}
@@ -565,6 +576,59 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
         </div>
       )}
     </Card>
+  )
+}
+
+function OpenRepair({ claim }: { claim: Claim }) {
+  const { openRepair } = useClaims()
+  const [open, setOpen] = useState(false)
+  const [coverage, setCoverage] = useState<'garantia' | 'cobro'>('garantia')
+  const [intakeAt, setIntakeAt] = useState(businessToday)
+  const [busy, setBusy] = useState(false)
+  const product = claim.products[0]?.name ?? ''
+  const invoice = claim.invoices[0] ?? ''
+
+  async function save() {
+    if (!invoice || !product) {
+      await error('El reclamo necesita factura y producto.')
+      return
+    }
+    setBusy(true)
+    const result = await openRepair(claim.id, {
+      invoice,
+      client: claim.client,
+      product,
+      coverage,
+      intakeAt: intakeAt || businessToday(),
+    })
+    setBusy(false)
+    if (!result.ok) await error(result.message)
+    else setOpen(false)
+  }
+
+  if (!open) {
+    return (
+      <Button variant="secondary" className="mt-3" onClick={() => setOpen(true)}>
+        Abrir reparación
+      </Button>
+    )
+  }
+
+  return (
+    <div className="mt-3 grid gap-2">
+      <Field label="Cobertura">
+        <Select size="lg" value={coverage} onChange={(event) => setCoverage(event.target.value as 'garantia' | 'cobro')}>
+          <option value="garantia">Garantía</option>
+          <option value="cobro">Cobro</option>
+        </Select>
+      </Field>
+      <Field label="Fecha de ingreso">
+        <Input size="lg" type="date" value={intakeAt} max={businessToday()} onChange={(event) => setIntakeAt(event.target.value)} />
+      </Field>
+      <Button variant="secondary" size="lg" disabled={busy} onClick={() => void save()}>
+        Confirmar ingreso
+      </Button>
+    </div>
   )
 }
 

@@ -11,6 +11,7 @@ import { DatosMaestros } from './pages/DatosMaestros'
 import { Despacho } from './pages/Despacho'
 import { Login } from './pages/Login'
 import { NuevoPedido } from './pages/NuevoPedido'
+import { MiTaller } from './pages/MiTaller'
 import { NuevoReclamo } from './pages/NuevoReclamo'
 import { PlanificadorRutas } from './pages/PlanificadorRutas'
 import { MisEntregas } from './pages/MisEntregas'
@@ -46,7 +47,7 @@ function Home() {
   const { user } = useAuth()
   if (user?.role === 'chofer') return <Navigate to="/mis-entregas" replace />
   if (user?.role === 'gerencia') return <Navigate to="/reportes" replace />
-  if (user?.role === 'tecnico') return <Navigate to="/post-venta" replace />
+  if (user?.role === 'tecnico') return <Navigate to="/taller" replace />
   return <PanelOperativo />
 }
 
@@ -168,6 +169,14 @@ export default function App() {
           element={
             <Gate path="/pendientes">
               <PendientesEntregas />
+            </Gate>
+          }
+        />
+        <Route
+          path="/taller"
+          element={
+            <Gate path="/taller">
+              <MiTaller />
             </Gate>
           }
         />

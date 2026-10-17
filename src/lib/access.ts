@@ -25,7 +25,7 @@ const MENU: Record<Role, readonly string[]> = {
     '/post-venta/nuevo',
     '/post-venta',
   ],
-  tecnico: ['/post-venta'],
+  tecnico: ['/taller', '/post-venta'],
   encargado_deposito: [
     '/',
     '/preparacion',

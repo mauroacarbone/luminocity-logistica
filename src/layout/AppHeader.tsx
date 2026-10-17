@@ -31,6 +31,7 @@ export function AppHeader({
   const activeId = user ? activeTabId(user.role, location.pathname) : null
   const area = tabs.find((tab) => tab.id === activeId)?.label ?? 'Operación'
   const home = user ? homePathForRole(user.role) : '/'
+  const hideSearch = user?.role === 'gerencia' || user?.role === 'tecnico'
   const gerencia = user?.role === 'gerencia'
   const activeRef = useRef<HTMLAnchorElement>(null)
   const [userOpen, setUserOpen] = useState(false)
@@ -66,7 +67,7 @@ export function AppHeader({
             </span>
           </Link>
         </div>
-        {gerencia ? null : (
+        {hideSearch ? null : (
           <div className="app-header-search">
             <SearchTrigger onOpen={onOpenSearch} />
           </div>

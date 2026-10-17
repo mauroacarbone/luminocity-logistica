@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { type Claim, type ClaimFile, type ClaimProduct, type ClaimStatus } from '../data/claims'
+import { type Claim, type ClaimFile, type ClaimProduct, type ClaimStatus, type RepairStep } from '../data/claims'
 import {
   addClaimNote as apiAddNote,
   asClaim,
@@ -17,8 +17,11 @@ import {
   importClaims,
   isClaim,
   listClaims,
+  openRepair as apiOpenRepair,
   repairContact as apiRepairContact,
   repairStep as apiRepairStep,
+  takeRepair as apiTakeRepair,
+  updateRepair as apiUpdateRepair,
   patchClaimStatus,
 } from '../lib/claimsApi'
 import { loadList } from '../lib/localStore'
@@ -71,6 +74,23 @@ type ClaimsContextValue = {
       channel: 'whatsapp' | 'llamada'
       kind: 'presupuesto' | 'reenvio' | 'listo' | 'rechazo'
       result?: string
+      phoneKind?: 'movil' | 'fijo'
+    },
+  ) => Promise<ClaimActionResult>
+  openRepair: (
+    id: string,
+    body: { invoice: string; client: string; product: string; coverage: 'garantia' | 'cobro'; intakeAt: string },
+  ) => Promise<ClaimActionResult>
+  takeRepair: (id: string) => Promise<ClaimActionResult>
+  moveRepair: (id: string, to: RepairStep) => Promise<ClaimActionResult>
+  updateRepair: (
+    id: string,
+    body: {
+      product?: string
+      coverage?: 'garantia' | 'cobro'
+      diagnosis?: string
+      amount?: number
+      etaDate?: string
       phoneKind?: 'movil' | 'fijo'
     },
   ) => Promise<ClaimActionResult>
@@ -380,6 +400,35 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     return adoptClaim(await apiRepairContact(id, body), 'No se pudo registrar el aviso.')
   }
 
+  async function openRepair(
+    id: string,
+    body: { invoice: string; client: string; product: string; coverage: 'garantia' | 'cobro'; intakeAt: string },
+  ) {
+    return adoptClaim(await apiOpenRepair(id, body), 'No se pudo abrir la reparación.')
+  }
+
+  async function takeRepair(id: string) {
+    return adoptClaim(await apiTakeRepair(id), 'No se pudo levantar la reparación.')
+  }
+
+  async function moveRepair(id: string, to: RepairStep) {
+    return adoptClaim(await apiRepairStep(id, to), 'No se pudo actualizar la reparación.')
+  }
+
+  async function updateRepair(
+    id: string,
+    body: {
+      product?: string
+      coverage?: 'garantia' | 'cobro'
+      diagnosis?: string
+      amount?: number
+      etaDate?: string
+      phoneKind?: 'movil' | 'fijo'
+    },
+  ) {
+    return adoptClaim(await apiUpdateRepair(id, body), 'No se pudo guardar la reparación.')
+  }
+
   return (
     <ClaimsContext.Provider
       value={{
@@ -395,6 +444,10 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
         addNote,
         answerRepair,
         recordRepairContact,
+        openRepair,
+        takeRepair,
+        moveRepair,
+        updateRepair,
         ensureClaimFiles,
         uploadLegacy,
         dismissLegacy,

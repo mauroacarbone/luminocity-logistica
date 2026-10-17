@@ -14,6 +14,7 @@ export const NAV = [
   { to: '/seguimiento', label: 'Seguimiento', icon: 'search' },
   { to: '/rutas', label: 'Planificador de Rutas', icon: 'route' },
   { to: '/choferes', label: 'Choferes en ruta', icon: 'map' },
+  { to: '/taller', label: 'Mi taller', icon: 'box' },
   { to: '/post-venta/nuevo', label: 'Nuevo reclamo', icon: 'plus' },
   { to: '/post-venta', label: 'Post Venta', end: true, icon: 'refresh' },
   { to: '/usuarios', label: 'Usuarios', icon: 'users' },
@@ -60,7 +61,7 @@ const GROUP_DEFS: { id: GroupId; title: string; icon: NavIconName; sections: Nav
     id: 'post-venta',
     title: 'Post Venta',
     icon: 'refresh',
-    sections: [{ paths: ['/post-venta/nuevo', '/post-venta'] }],
+    sections: [{ paths: ['/taller', '/post-venta/nuevo', '/post-venta'] }],
   },
   {
     id: 'admin',
@@ -135,6 +136,12 @@ export function tabsFor(role: Role): AppTab[] {
     const item = itemByPath('/reportes')
     return item ? [{ id: item.to, label: item.label, icon: item.icon, to: item.to }] : []
   }
+  if (role === 'tecnico') {
+    return ['/taller', '/post-venta'].flatMap((path) => {
+      const item = itemByPath(path)
+      return item ? [{ id: item.to, label: item.label, icon: item.icon, to: item.to }] : []
+    })
+  }
   if (role === 'chofer') {
     return standalone.map((item) => ({
       id: item.to,
@@ -157,7 +164,7 @@ export function tabsFor(role: Role): AppTab[] {
 export type SidebarSection = { label?: string; items: NavItem[] }
 
 export function sidebarFor(role: Role, pathname: string): SidebarSection[] | null {
-  if (role === 'chofer' || role === 'gerencia') return null
+  if (role === 'chofer' || role === 'gerencia' || role === 'tecnico') return null
   const { groups } = visibleNav(role)
   const groupId = activeGroupId(pathname, groups)
   const group = groups.find((entry) => entry.id === groupId)
@@ -178,7 +185,7 @@ export function sidebarFor(role: Role, pathname: string): SidebarSection[] | nul
 }
 
 export function activeTabId(role: Role, pathname: string): string | null {
-  if (role === 'chofer' || role === 'gerencia') {
+  if (role === 'chofer' || role === 'gerencia' || role === 'tecnico') {
     const tab = tabsFor(role).find((entry) => pathMatches(pathname, entry.to))
     return tab?.id ?? null
   }
@@ -191,7 +198,7 @@ export function homePathForRole(role: Role) {
   if (role === 'chofer' && paths.includes('/mis-entregas')) return '/mis-entregas'
   if (role === 'deposito') return '/preparacion'
   if (role === 'gerencia') return '/reportes'
-  if (role === 'tecnico') return '/post-venta'
+  if (role === 'tecnico') return '/taller'
   return '/'
 }
 

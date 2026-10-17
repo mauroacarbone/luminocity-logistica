@@ -188,6 +188,46 @@ export function repairContact(
   )
 }
 
+export function openRepair(
+  id: string,
+  body: { invoice: string; client: string; product: string; coverage: 'garantia' | 'cobro'; intakeAt: string },
+) {
+  return apiRequest(
+    `/api/claims/${encodeURIComponent(id)}/repair`,
+    'POST',
+    body,
+    'No se pudo abrir la reparación.',
+  )
+}
+
+export function takeRepair(id: string) {
+  return apiRequest(
+    `/api/claims/${encodeURIComponent(id)}/repair/take`,
+    'POST',
+    {},
+    'No se pudo levantar la reparación.',
+  )
+}
+
+export function updateRepair(
+  id: string,
+  body: {
+    product?: string
+    coverage?: 'garantia' | 'cobro'
+    diagnosis?: string
+    amount?: number
+    etaDate?: string
+    phoneKind?: 'movil' | 'fijo'
+  },
+) {
+  return apiRequest(
+    `/api/claims/${encodeURIComponent(id)}/repair`,
+    'PATCH',
+    body,
+    'No se pudo guardar la reparación.',
+  )
+}
+
 export function patchClaimStatus(id: string, status: ClaimStatus) {
   return apiRequest(
     `/api/claims/${encodeURIComponent(id)}/status`,
