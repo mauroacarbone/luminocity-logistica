@@ -10,11 +10,13 @@ import { readUsersList } from './users.js'
 import {
   checkDriver,
   checkSlot,
+  driverDisplayName,
   isOwnDelivery,
   isPickup,
   normalizeTimeWindow,
   releaseIdleDrivers,
   rememberOverride,
+  stampOwnDriver,
 } from './orders.js'
 
 const OPEN_ORDER = new Set(['preparado', 'asignado'])
@@ -156,6 +158,7 @@ function saveSheet(body, user) {
       return fail('Esa hoja ya está en curso', 409)
     }
     const existing = openSheets.find((sheet) => sheet.status === 'planificada') ?? null
+    const driverName = await driverDisplayName(parsed.driverId)
     const rescheduled = []
     for (const id of parsed.orderIds) {
       const order = byId.get(id)
@@ -192,6 +195,7 @@ function saveSheet(body, user) {
       }
       if (slot.authorized) rememberOverride(order, user)
       order.driverId = parsed.driverId
+      stampOwnDriver(order, driverName)
       if (previousDate && previousDate !== parsed.date) {
         order.deliveryDate = parsed.date
         rescheduled.push(order)

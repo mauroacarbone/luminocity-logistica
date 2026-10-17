@@ -458,6 +458,7 @@ function patchOrder(id, body, user) {
         via: historyVia,
       })
       order.history = history
+      stampOwnDriver(order, nextName === order.driverId ? '' : nextName)
     }
     const prevPriority = current.priority ?? 'normal'
     const nextPriority = order.priority ?? 'normal'
@@ -519,6 +520,42 @@ function driverLabel(users, driverId) {
   const driver = users.find((item) => item.id === driverId)
   const name = driver && typeof driver.name === 'string' ? driver.name.trim() : ''
   return name || driverId
+}
+
+export async function driverDisplayName(driverId) {
+  if (typeof driverId !== 'string' || !driverId) return ''
+  const users = await readUsersList()
+  const driver = users.find((item) => item.id === driverId)
+  return driver && typeof driver.name === 'string' ? driver.name.trim() : ''
+}
+
+export function stampOwnDriver(order, name) {
+  const trimmed = typeof name === 'string' ? name.trim() : ''
+  if (!trimmed || !order || !isOwnDelivery(order)) return
+  order.transporter = trimmed
+  order.driverName = trimmed
+}
+
+/** Pedidos propios: el transportista queda igual al nombre del chofer. */
+export async function alignOwnDriverCarrier() {
+  return locked(async () => {
+    const orders = await readCollection('orders')
+    const users = await readUsersList()
+    let changed = false
+    for (const order of orders) {
+      if (!order || !isOwnDelivery(order)) continue
+      const driverId = typeof order.driverId === 'string' ? order.driverId : ''
+      const driver = driverId ? users.find((item) => item.id === driverId) : undefined
+      const live = driver && typeof driver.name === 'string' ? driver.name.trim() : ''
+      const stored = typeof order.driverName === 'string' ? order.driverName.trim() : ''
+      const name = live || stored
+      if (!name || order.transporter === name) continue
+      order.transporter = name
+      order.driverName = name
+      changed = true
+    }
+    if (changed) await writeCollection('orders', orders)
+  })
 }
 
 async function withDriverName(order) {

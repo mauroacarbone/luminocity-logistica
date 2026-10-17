@@ -8,7 +8,7 @@ import { authRouter } from './auth.js'
 import { checkDatabase, ensureSchema } from './db/store.js'
 import { driversRouter } from './drivers.js'
 import { notificationsRouter } from './notifications.js'
-import { ordersRouter } from './orders.js'
+import { alignOwnDriverCarrier, ordersRouter } from './orders.js'
 import { claimsRouter } from './claims.js'
 import { pickingRouter } from './picking.js'
 import { releaseClosedSheetOrders, routeSheetsRouter } from './routeSheets.js'
@@ -145,6 +145,7 @@ try {
 
 await ensureDemoUser()
 await releaseClosedSheetOrders()
+await alignOwnDriverCarrier()
 
 const port = Number(process.env.PORT) || 3001
 app.listen(port, () => {

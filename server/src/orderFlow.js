@@ -2,10 +2,12 @@ import { normalizeName } from './access.js'
 import {
   checkDriver,
   checkSlot,
+  driverDisplayName,
   isOwnDelivery,
   isPickup,
   normalizeTimeWindow,
   rememberOverride,
+  stampOwnDriver,
 } from './orders.js'
 import {
   blockPlannedDeparture,
@@ -256,6 +258,7 @@ export async function applyTransition(orders, current, input, user, via, options
       }
       const driver = await checkDriver(next.driverId, current.driverId)
       if (driver.error) return driver
+      stampOwnDriver(next, await driverDisplayName(next.driverId))
       const slot = await checkSlot(orders, current, next, user, input.override === true)
       if (slot.error) return slot
       if (slot.authorized) rememberOverride(next, user)
