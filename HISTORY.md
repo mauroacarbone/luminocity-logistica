@@ -141,6 +141,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 35.2 | Porcentajes de puntualidad, no entregas y filas de Atrasados | Hecho |
 | 35.3 | Exportación de Reportes y del Panel, y totales | Hecho |
 | 35.4 | Sin gráficos en Reportes | Hecho |
+| 34 | Operarios de depósito: Mi preparación | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -400,6 +401,8 @@ El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pe
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
 
+El Brief 34 le da al operario de depósito la pantalla Mi preparación, que pasa a ser su inicio. Tomar un pedido pendiente muestra la etiqueta «En preparación» con su nombre; el estado sigue siendo pendiente. Puede armarlo directo o después de tomarlo: quedan el autor, los bultos y la duración, que es la suma de las sesiones (una toma vencida se cierra a las 4 h). Si faltan artículos, queda armado incompleto y el checklist se puede completar después. Al armar se avisa al encargado; si el encargado deshace el armado o libera la toma de otro, se avisa al operario. En Pedidos y Preparación el encargado ve quién arma, cuánto tardó y los incompletos, y puede liberar. Reportes suma la preparación por operario. El alta de Nuevo pedido guarda el borrador en la sesión y lo recupera al recargar.
+
 El Brief 35.4 quita los gráficos de Reportes y el interruptor Tabla / Gráfico. Cada sección vuelve a mostrar su tabla con la fila Total, y el PDF queda con los KPIs y las tablas.
 
 El Brief 35.3 deja las columnas de Reportes en un modelo compartido para la pantalla, el CSV, el Excel y el PDF. Las tablas numéricas cierran con una fila Total; Atrasados, reclamos abiertos y retiros vencidos cierran con la cantidad. Encargado, admin y Gerencia exportan desde un menú secundario: CSV por sección, Excel con una hoja por sección y PDF en A4 horizontal. Excel y PDF se cargan recién al exportar y quedan en chunks aparte del resto de las pantallas. El layout usa container queries de 360px a escritorio. En Viajes del chofer, Exportar CSV pasa a secundario. El Panel operativo, para encargado y admin, exporta a Excel o PDF los pedidos visibles según el filtro de fecha y de estado.
@@ -423,6 +426,7 @@ En este orden. No adelantar el siguiente.
 | — | Datos maestros siguen en localStorage. Este brief no los pasa a Postgres. | **Pendiente** |
 | — | Los tiles de OpenStreetMap y el OSRM demo no son para producción. Revisar más adelante. | **Pendiente** |
 | — | Autorizar un cuarto pedido en la franja con el permiso de un solo uso del Brief 15. Esa autorización es para cargar a nombre de otro vendedor y no encaja acá: hoy solo el encargado o el admin lo confirman en el momento. | **Pendiente** |
+| — | Sincronización de stock en tiempo real con el CRM de la empresa, por API key. | **Pendiente** |
 
 ## Decisiones
 
