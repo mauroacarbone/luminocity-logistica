@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { queryRows, readCollection, usingDatabase } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
+import { describeTrip } from './routeSheets.js'
 import { deliveredTimeliness, slotRange } from './timeliness.js'
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
@@ -75,6 +76,178 @@ reportsRouter.get('/deliveries', async (req, res) => {
     res.json(report)
   })
 })
+
+reportsRouter.get('/drivers', async (req, res) => {
+  await send(res, async () => {
+    const period = readPeriod(req.query ?? {})
+    if (period.error) {
+      res.status(period.status).json({ message: period.error })
+      return
+    }
+    const report = await locked(() => loadDrivers(period))
+    res.json(report)
+  })
+})
+
+async function loadDrivers(period) {
+  const sheets = await sheetsInPeriod(period)
+  const names = await driverNames()
+  const pendingIds = []
+  for (const sheet of sheets) {
+    if (sheet.status !== 'en_curso') continue
+    const ids = Array.isArray(sheet.orderIds) ? sheet.orderIds : []
+    for (const id of ids) if (typeof id === 'string' && id) pendingIds.push(id)
+  }
+  const byId = await ordersById([...new Set(pendingIds)])
+  const rates = await readCollection('tripRates')
+  const byDriver = new Map()
+  for (const sheet of sheets) {
+    if (sheet.status !== 'cerrada' && sheet.status !== 'en_curso') continue
+    const driverId = typeof sheet.driverId === 'string' ? sheet.driverId : ''
+    if (!driverId) continue
+    const name = names.get(driverId) || driverId
+    const trip = describeTrip(sheet, byId, name, rates)
+    const current = byDriver.get(driverId) ?? emptyDriver(driverId, name)
+    if (sheet.status === 'cerrada') {
+      current.closedTrips += 1
+      current.deliveries += trip.delivered
+      current.undelivered += trip.undelivered
+      current.km = roundKm(current.km + (Number(trip.km) || 0))
+      if (trip.kmEstimated) current.kmEstimated = roundKm(current.kmEstimated + (Number(trip.km) || 0))
+      if (trip.amountSealed) {
+        current.amount = roundMoney((current.amount ?? 0) + trip.amount)
+        current.sealedTrips += 1
+      } else current.unsealed += 1
+    } else {
+      current.pendingTrips += 1
+      current.pendingKm = roundKm(current.pendingKm + (Number(trip.km) || 0))
+      if (typeof trip.amount === 'number') {
+        current.pendingEstimated = roundMoney((current.pendingEstimated ?? 0) + trip.amount)
+      }
+    }
+    byDriver.set(driverId, current)
+  }
+  const drivers = [...byDriver.values()].sort((left, right) => left.driverName.localeCompare(right.driverName, 'es'))
+  const totals = emptyDriver('', '')
+  for (const driver of drivers) {
+    totals.closedTrips += driver.closedTrips
+    totals.deliveries += driver.deliveries
+    totals.km = roundKm(totals.km + driver.km)
+    totals.kmEstimated = roundKm(totals.kmEstimated + driver.kmEstimated)
+    totals.unsealed += driver.unsealed
+    totals.sealedTrips += driver.sealedTrips
+    if (driver.amount != null) totals.amount = roundMoney((totals.amount ?? 0) + driver.amount)
+    totals.pendingTrips += driver.pendingTrips
+    totals.pendingKm = roundKm(totals.pendingKm + driver.pendingKm)
+    if (driver.pendingEstimated != null) {
+      totals.pendingEstimated = roundMoney((totals.pendingEstimated ?? 0) + driver.pendingEstimated)
+    }
+  }
+  if (!totals.sealedTrips) totals.amount = null
+  return {
+    period,
+    drivers: drivers.map(publicDriver),
+    totals: publicDriver(totals),
+  }
+}
+
+function emptyDriver(driverId, driverName) {
+  return {
+    driverId,
+    driverName,
+    closedTrips: 0,
+    deliveries: 0,
+    undelivered: 0,
+    km: 0,
+    kmEstimated: 0,
+    amount: null,
+    sealedTrips: 0,
+    unsealed: 0,
+    pendingTrips: 0,
+    pendingKm: 0,
+    pendingEstimated: null,
+  }
+}
+
+function publicDriver(driver) {
+  return {
+    driverId: driver.driverId,
+    driverName: driver.driverName,
+    closedTrips: driver.closedTrips,
+    deliveries: driver.deliveries,
+    undelivered: driver.undelivered,
+    km: driver.km,
+    kmEstimated: driver.kmEstimated,
+    amount: driver.sealedTrips ? driver.amount : null,
+    unsealed: driver.unsealed,
+    pendingTrips: driver.pendingTrips,
+    pendingKm: driver.pendingKm,
+    pendingEstimated: driver.pendingEstimated,
+  }
+}
+
+async function sheetsInPeriod(period) {
+  if (!usingDatabase()) {
+    const sheets = await readCollection('routeSheets')
+    return sheets.filter(
+      (sheet) => sheet && typeof sheet.date === 'string' && sheet.date >= period.from && sheet.date <= period.to,
+    )
+  }
+  const rows = await queryRows(
+    `SELECT id, data
+     FROM routeSheets
+     WHERE data->>'date' BETWEEN $1 AND $2
+       AND data->>'status' IN ('cerrada', 'en_curso')`,
+    [period.from, period.to],
+  )
+  return rows.map((row) => ({ ...row.data, id: row.data?.id || row.id }))
+}
+
+async function driverNames() {
+  const map = new Map()
+  if (!usingDatabase()) {
+    const users = await readCollection('users')
+    for (const user of users) {
+      if (user && user.role === 'chofer' && typeof user.id === 'string') {
+        map.set(user.id, text(user.name) || user.id)
+      }
+    }
+    return map
+  }
+  const rows = await queryRows(
+    `SELECT COALESCE(data->>'id', id) AS id, COALESCE(data->>'name', '') AS name
+     FROM users
+     WHERE data->>'role' = 'chofer'`,
+  )
+  for (const row of rows) map.set(row.id, text(row.name) || row.id)
+  return map
+}
+
+async function ordersById(ids) {
+  const map = new Map()
+  if (ids.length === 0) return map
+  if (!usingDatabase()) {
+    const orders = await readCollection('orders')
+    for (const order of orders) {
+      if (order && ids.includes(order.id)) map.set(order.id, order)
+    }
+    return map
+  }
+  const rows = await queryRows(`SELECT id, data FROM orders WHERE id = ANY($1::text[])`, [ids])
+  for (const row of rows) {
+    const order = row.data
+    if (order) map.set(order.id || row.id, order)
+  }
+  return map
+}
+
+function roundKm(value) {
+  return Math.round(value * 10) / 10
+}
+
+function roundMoney(value) {
+  return Math.round(value * 100) / 100
+}
 
 async function loadDeliveries(period) {
   const now = Date.now()

@@ -781,24 +781,67 @@ function listTrips(user, query) {
     const rates = await readCollection('tripRates')
     const byId = new Map(orders.map((order) => [order.id, order]))
     const name = typeof driver.name === 'string' && driver.name.trim() ? driver.name.trim() : driverId
-    const trips = sheets
-      .filter(
-        (sheet) =>
-          sheet &&
-          sheet.driverId === driverId &&
-          typeof sheet.date === 'string' &&
-          sheet.date >= from.value &&
-          sheet.date <= to.value &&
-          (sheet.status === 'planificada' || sheet.status === 'en_curso' || sheet.status === 'cerrada'),
-      )
-      .map((sheet) => toTrip(sheet, byId, name, rates))
-      .sort((left, right) => {
-        if (left.date !== right.date) return right.date.localeCompare(left.date)
-        if (left.slot !== right.slot) return right.slot.localeCompare(left.slot)
-        return left.id.localeCompare(right.id, 'es')
-      })
+    const trips = collectTrips(sheets, {
+      from: from.value,
+      to: to.value,
+      driverId,
+      byId,
+      driverName: name,
+      rates,
+    })
     return { trips }
   })
+}
+
+/** Viajes de un rango, sin el chequeo de rol de listTrips. */
+export function collectTrips(sheets, { from, to, driverId, byId, driverName, rates }) {
+  return sheets
+    .filter(
+      (sheet) =>
+        sheet &&
+        (!driverId || sheet.driverId === driverId) &&
+        typeof sheet.date === 'string' &&
+        sheet.date >= from &&
+        sheet.date <= to &&
+        (sheet.status === 'planificada' || sheet.status === 'en_curso' || sheet.status === 'cerrada'),
+    )
+    .map((sheet) => toTrip(sheet, byId, driverName, rates))
+    .sort(byTripDate)
+}
+
+function byTripDate(left, right) {
+  if (left.date !== right.date) return right.date.localeCompare(left.date)
+  if (left.slot !== right.slot) return right.slot.localeCompare(left.slot)
+  return left.id.localeCompare(right.id, 'es')
+}
+
+/**
+ * Viaje para reportes. Uno cerrado usa el monto sellado y las paradas selladas.
+ * No vuelve a cotizar una hoja cerrada.
+ */
+export function describeTrip(sheet, byId, driverName, rates) {
+  if (sheet.status === 'cerrada') {
+    const stored = readStoredTrip(sheet)
+    const sealed = storedAmount(sheet)
+    const kmFromSheet = typeof sheet.km === 'number' && Number.isFinite(sheet.km) && sheet.km > 0 ? Math.round(sheet.km * 10) / 10 : 0
+    return {
+      id: sheet.id,
+      driverId: sheet.driverId,
+      driverName,
+      date: sheet.date,
+      slot: sheet.slot,
+      status: sheet.status,
+      delivered: stored?.delivered ?? 0,
+      undelivered: stored?.undelivered ?? 0,
+      zones: stored?.zones ?? [],
+      km: stored ? stored.km : kmFromSheet,
+      kmEstimated: stored ? stored.kmEstimated : false,
+      amount: sealed === undefined || sealed === null ? null : sealed,
+      amountSealed: typeof sealed === 'number',
+    }
+  }
+  const trip = toTrip(sheet, byId, driverName, rates)
+  return { ...trip, amountSealed: false }
 }
 
 function storedAmount(sheet) {
