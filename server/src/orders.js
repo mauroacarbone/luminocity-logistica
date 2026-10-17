@@ -25,6 +25,16 @@ import {
 } from './notifications.js'
 import { applyTransition, stampStatus, withHistory } from './orderFlow.js'
 import {
+  TAKE_STALE_MS,
+  actorOf,
+  canTake,
+  hasOpenSession,
+  isTakeStale,
+  sessionsOf,
+  takenAtOf,
+  takenByOf,
+} from './preparation.js'
+import {
   blockPlannedDeparture,
   closeFinishedSheets,
   pullOrderFromSheets,
@@ -165,6 +175,26 @@ ordersRouter.patch('/:id/edits/:editId', async (req, res) => {
     }
     res.json(withHistory(result.order))
     queueGeo(result.order)
+  })
+})
+ordersRouter.post('/:id/take', async (req, res) => {
+  await send(res, async () => {
+    const result = await takeOrder(req.params.id, req.user)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(withHistory(result.order))
+  })
+})
+ordersRouter.post('/:id/release', async (req, res) => {
+  await send(res, async () => {
+    const result = await releaseOrder(req.params.id, req.user)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(withHistory(result.order))
   })
 })
 ordersRouter.post('/:id/transition', async (req, res) => {
@@ -610,6 +640,109 @@ function withDefaultDispatch(order) {
     return order
   }
   return { ...order, dispatchType: 'propia' }
+}
+
+function historyCopy(order) {
+  return withHistory(order).history.map((entry) => ({
+    ...entry,
+    by: entry.by ? { ...entry.by } : entry.by,
+  }))
+}
+
+function takeOrder(id, user) {
+  return locked(async () => {
+    if (!canTake(user)) return fail('No tenés permiso para tomar este pedido.', 403)
+    const orders = await readOrders()
+    const index = orders.findIndex((item) => item.id === id)
+    if (index < 0) return fail('No existe ese pedido.', 404)
+    const current = orders[index]
+    if (!canSeeOrder(user, current)) return fail('No tenés permiso para modificar este pedido.', 403)
+    if (current.status !== 'pendiente') return fail('Solo se puede tomar un pedido pendiente.', 409)
+    const now = new Date()
+    const nowIso = now.toISOString()
+    const holder = takenByOf(current)
+    const takenAt = takenAtOf(current)
+    const stale = Boolean(holder) && (!takenAt || isTakeStale(takenAt, now.getTime()))
+    if (holder && holder.id === user.id && !stale) return { order: current }
+    if (holder && holder.id !== user.id && !stale) {
+      return fail(`Lo está armando ${holder.name || 'otro operario'}`, 409)
+    }
+    const sessions = sessionsOf(current)
+    const by = actorOf(user)
+    let reason = 'Tomado para armar'
+    if (stale) {
+      const end =
+        takenAt && Number.isFinite(Date.parse(takenAt))
+          ? new Date(Date.parse(takenAt) + TAKE_STALE_MS).toISOString()
+          : nowIso
+      for (const session of sessions) {
+        if (!session.end) session.end = end
+      }
+      reason = `Toma vencida, tomado por ${by.name}`
+    } else {
+      for (const session of sessions) {
+        if (!session.end) session.end = nowIso
+      }
+    }
+    sessions.push({ by, start: nowIso })
+    const history = historyCopy(current)
+    history.push({
+      at: nowIso,
+      by,
+      from: current.status,
+      to: current.status,
+      reason,
+      via: 'preparacion',
+    })
+    const order = {
+      ...current,
+      preparation: { takenBy: by, takenAt: nowIso, sessions },
+      history,
+      updatedAt: nowIso,
+    }
+    orders[index] = order
+    await writeOrders(orders)
+    return { order }
+  })
+}
+
+function releaseOrder(id, user) {
+  return locked(async () => {
+    const orders = await readOrders()
+    const index = orders.findIndex((item) => item.id === id)
+    if (index < 0) return fail('No existe ese pedido.', 404)
+    const current = orders[index]
+    if (!canSeeOrder(user, current)) return fail('No tenés permiso para modificar este pedido.', 403)
+    const holder = takenByOf(current)
+    if (!holder && !hasOpenSession(current)) return fail('Nadie está armando este pedido.', 409)
+    const mine = Boolean(holder && holder.id === user.id)
+    const supervisor = user.role === 'encargado_deposito' || user.role === 'admin'
+    if (!mine && !supervisor) return fail('No podés liberar este pedido.', 403)
+    const nowIso = new Date().toISOString()
+    const sessions = sessionsOf(current)
+    for (const session of sessions) {
+      if (!session.end) session.end = nowIso
+    }
+    const by = actorOf(user)
+    const history = historyCopy(current)
+    history.push({
+      at: nowIso,
+      by,
+      from: current.status,
+      to: current.status,
+      reason: 'Liberado',
+      via: 'preparacion',
+    })
+    const order = {
+      ...current,
+      preparation: { sessions },
+      history,
+      updatedAt: nowIso,
+    }
+    orders[index] = order
+    await writeOrders(orders)
+    return { order }
+  })
 }
 
 function transitionOrder(id, body, user) {
