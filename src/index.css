@@ -2100,7 +2100,7 @@ p {
 
 .planner-line {
   gap: 8px;
-  padding: 8px 12px;
+  padding: 12px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -2190,7 +2190,7 @@ p {
 
   .planner-map {
     position: sticky;
-    top: 16px;
+    top: calc(var(--header-top-h) + var(--tabs-h) + 16px);
     height: min(70vh, 640px);
     min-height: 320px;
   }
