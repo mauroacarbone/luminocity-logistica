@@ -10,7 +10,7 @@ import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
 import { mapsLink, onTheWayText, whatsappLink } from '../lib/whatsapp'
 import { placeLine } from '../lib/place'
 import { finishRouteSheet, listRouteSheets, startRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
-import { sheetIsReady, WAITING_SHEET } from '../lib/routeReady'
+import { departureBlock, sheetIsReady, WAITING_SHEET } from '../lib/routeReady'
 import { businessOffset, businessToday, googleNavigate, mapsRouteLegs, stopPoint, wazeNavigate } from '../lib/schedule'
 import { compareDriverQueue, deliveryTimeliness, TIMELINESS_LABEL, timelinessTone } from '../lib/timeliness'
 import { formatIsoDate } from '../lib/week'
@@ -450,7 +450,8 @@ export function MisEntregas() {
                   done={order.status === 'entregado'}
                   highlight={order.id === nextId}
                   allowLeave={sheet.status === 'en_curso'}
-                  routeReady={sheetIsReady(sheet, orders)}
+                  routeReady={!departureBlock(order, sheets, orders)}
+                  sheetNotice={departureBlock(order, sheets, orders)}
                   onLeave={() => void changeStatus(order, 'en-viaje')}
                   onDelivered={() => void changeStatus(order, 'entregado')}
                 />
@@ -528,6 +529,8 @@ export function MisEntregas() {
                 order={order}
                 distance={place && position ? formatDistance(haversine(position, place)) : ''}
                 busy={busy === order.id}
+                routeReady={!departureBlock(order, sheets, orders)}
+                sheetNotice={departureBlock(order, sheets, orders)}
                 onLeave={() => void changeStatus(order, 'en-viaje')}
                 onDelivered={() => void changeStatus(order, 'entregado')}
               />
@@ -549,6 +552,7 @@ function DeliveryCard({
   highlight = false,
   allowLeave = false,
   routeReady = false,
+  sheetNotice = '',
   onLeave,
   onDelivered,
 }: {
@@ -561,6 +565,7 @@ function DeliveryCard({
   highlight?: boolean
   allowLeave?: boolean
   routeReady?: boolean
+  sheetNotice?: string
   onLeave: () => void
   onDelivered: () => void
 }) {
@@ -641,8 +646,10 @@ function DeliveryCard({
               En hoja de ruta planificada para el {formatIsoDate(order.deliveryDate)}
             </p>
           )}
-          {canLeave && !routeReady && !inSheet && !order.sheetPlanned && (
-            <p className="rounded-md border border-border px-3 py-2 text-sm font-semibold">{WAITING_SHEET}</p>
+          {canLeave && !routeReady && !order.sheetPlanned && (
+            <p className="rounded-md border border-border px-3 py-2 text-sm font-semibold">
+              {sheetNotice || WAITING_SHEET}
+            </p>
           )}
           {showLeave && (
             <Button

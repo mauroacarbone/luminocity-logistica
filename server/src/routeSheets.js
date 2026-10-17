@@ -568,24 +568,34 @@ export async function syncSheetFreshness(orders) {
   if (changed) await writeCollection('routeSheets', sheets)
 }
 
-/** El chofer solo sale si la hoja de esa fecha y franja incluye todos sus asignados. */
-export async function requireFreshSheet(orders, order) {
+function sheetDepartureBlock(orders, order, sheet) {
+  if (!sheet || sheet.status === 'cerrada') return 'No está en ninguna hoja abierta'
   const driverId = typeof order?.driverId === 'string' ? order.driverId : ''
-  const date = typeof order?.deliveryDate === 'string' ? order.deliveryDate : ''
-  const slot = normalizeTimeWindow(order?.timeWindow)
+  if (sheet.driverId !== driverId) return 'La hoja es de otro chofer'
+  const ids = Array.isArray(sheet.orderIds) ? sheet.orderIds : []
+  if (!ids.includes(order.id)) return 'No está en ninguna hoja abierta'
+  if (sheet.stale === true || assignedMissing(orders, sheet)) return 'La hoja está desactualizada'
+  return ''
+}
+
+/** El chofer sale por la hoja del pedido. Sin routeId, se busca por fecha y franja. */
+export async function requireFreshSheet(orders, order) {
   const sheets = await readCollection('routeSheets')
-  const sheet = sheets.find(
-    (item) =>
-      item &&
-      item.driverId === driverId &&
-      item.date === date &&
-      normalizeTimeWindow(item.slot) === slot &&
-      item.status !== 'cerrada',
-  )
-  const ids = sheet && Array.isArray(sheet.orderIds) ? sheet.orderIds : []
-  if (!sheet || sheet.stale === true || !ids.includes(order.id) || assignedMissing(orders, sheet)) {
-    return fail('Esperando hoja de ruta del encargado', 409)
-  }
+  const routeId = typeof order?.routeId === 'string' ? order.routeId : ''
+  const sheet = routeId
+    ? sheets.find((item) => item && item.id === routeId)
+    : sheets.find((item) => {
+        if (!item || item.status === 'cerrada') return false
+        const driverId = typeof order?.driverId === 'string' ? order.driverId : ''
+        const date = typeof order?.deliveryDate === 'string' ? order.deliveryDate : ''
+        return (
+          item.driverId === driverId &&
+          item.date === date &&
+          normalizeTimeWindow(item.slot) === normalizeTimeWindow(order?.timeWindow)
+        )
+      })
+  const message = sheetDepartureBlock(orders, order, sheet)
+  if (message) return fail(message, 409)
   return null
 }
 
