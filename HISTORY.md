@@ -139,6 +139,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 35 | Reportes de entregas, choferes, reclamos y retiros | Hecho |
 | 35.1 | PDF de viajes y pestañas de Mis viajes | Hecho |
 | 35.2 | Porcentajes de puntualidad, no entregas y filas de Atrasados | Hecho |
+| 35.3 | Exportación de Reportes y del Panel, totales y gráficos | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -397,6 +398,8 @@ El Brief 32f.2 deja Borrar hoja con borde de peligro y el planificador entra en 
 El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pedido se abrió desde la lista. En el celular, el número del pedido es un botón con foco. En el Panel, el detalle se cierra si el pedido deja de verse, y Atrasados cuenta todos los pedidos abiertos, sin el filtro de fecha.
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
+
+El Brief 35.3 deja las columnas de Reportes en un modelo compartido para la pantalla, el CSV, el Excel y el PDF. Las tablas numéricas cierran con una fila Total; Atrasados, reclamos abiertos y retiros vencidos cierran con la cantidad. Encargado, admin y Gerencia exportan desde un menú secundario: CSV por sección, Excel con una hoja por sección y PDF en A4 horizontal. Excel y PDF se cargan recién al exportar y quedan en chunks aparte del resto de las pantallas. Las secciones con números muestran un gráfico accesible y el interruptor Tabla / Gráfico, recordado por sección. El layout usa container queries de 360px a escritorio. En Viajes del chofer, Exportar CSV pasa a secundario. El Panel operativo, para encargado y admin, exporta a Excel o PDF los pedidos visibles según el filtro de fecha y de estado.
 
 El Brief 35.2 agrega en Por vendedor, Por zona y Por prioridad las columnas «% antes», «% con demora» y «Sin franja», también en el celular y en el CSV. El total del reporte de choferes suma las no entregas. En el celular, la fila de un atrasado es un botón de ancho completo: se enfoca y se abre con Enter. Gerencia sigue viendo esa fila como texto.
 
