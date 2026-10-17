@@ -13,6 +13,17 @@ export const TIMELINESS_LABEL: Record<Timeliness, string> = {
 const ZONE = 'America/Argentina/Buenos_Aires'
 const HOUR_MS = 60 * 60 * 1000
 
+export type DeliveredTimeliness = 'antes' | 'en-horario' | 'con-demora'
+
+/** Tolerancia después del fin de la franja. Entregar antes no es incumplimiento. */
+export const DELIVERY_GRACE_MS = 30 * 60 * 1000
+
+export const DELIVERED_TIMELINESS_LABEL: Record<DeliveredTimeliness, string> = {
+  antes: 'Entregado antes',
+  'en-horario': 'En horario',
+  'con-demora': 'Entregado con demora',
+}
+
 /** Fecha calendario en Buenos Aires para un instante. */
 export function businessDate(now = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {
@@ -38,6 +49,24 @@ export function slotRange(deliveryDate: string | undefined, timeWindow: string |
   const end = slotInstant(deliveryDate, match[3], match[4])
   if (start == null || end == null) return null
   return { start, end }
+}
+
+/**
+ * Puntualidad de un pedido ya entregado respecto de su franja.
+ * null si no está entregado, no tiene franja o no tiene deliveredAt.
+ * En horario incluye hasta 30 minutos después del fin.
+ */
+export function deliveredTimeliness(
+  order: Pick<Order, 'status' | 'deliveryDate' | 'timeWindow' | 'deliveredAt'>,
+): DeliveredTimeliness | null {
+  if (order.status !== 'entregado' || !order.deliveredAt) return null
+  const at = Date.parse(order.deliveredAt)
+  if (!Number.isFinite(at)) return null
+  const range = slotRange(order.deliveryDate, order.timeWindow)
+  if (!range) return null
+  if (at < range.start) return 'antes'
+  if (at <= range.end + DELIVERY_GRACE_MS) return 'en-horario'
+  return 'con-demora'
 }
 
 /**
