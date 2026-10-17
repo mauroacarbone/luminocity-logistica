@@ -127,6 +127,24 @@ export function transitionOrder(id: string, body: Record<string, unknown>) {
   )
 }
 
+export function takeOrder(id: string) {
+  return request(
+    `/api/orders/${encodeURIComponent(id)}/take`,
+    'POST',
+    {},
+    'No se pudo tomar el pedido.',
+  )
+}
+
+export function releaseOrder(id: string) {
+  return request(
+    `/api/orders/${encodeURIComponent(id)}/release`,
+    'POST',
+    {},
+    'No se pudo liberar el pedido.',
+  )
+}
+
 export function sendPickupNotice(id: string) {
   return request(
     `/api/orders/${encodeURIComponent(id)}/pickup-notice`,

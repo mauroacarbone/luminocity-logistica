@@ -11,6 +11,8 @@ import {
   orderBody,
   patchOrder,
   reviewOrderEdit,
+  releaseOrder as releaseOrderRequest,
+  takeOrder as takeOrderRequest,
   transitionOrder as transitionOrderRequest,
   withoutNewAttachment,
   type ApiResult,
@@ -80,6 +82,8 @@ type OrdersContextValue = {
   updateOrder: (order: Order, reason?: string, override?: boolean) => Promise<OrderSaveResult>
   patchFields: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
   transitionOrder: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
+  takeOrder: (id: string) => Promise<OrderSaveResult>
+  releaseOrder: (id: string) => Promise<OrderSaveResult>
   reviewEdit: (
     orderId: string,
     editId: string,
@@ -407,6 +411,24 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return { status: 'saved', order: saved }
   }
 
+  async function saveAction(request: Promise<Awaited<ReturnType<typeof takeOrderRequest>>>): Promise<OrderSaveResult> {
+    noteWrite()
+    const result = await request
+    if (!result.ok) return fail(result)
+    const saved = asOrder(result.data)
+    if (!saved) return { status: 'not-saved', message: 'El servidor no devolvió un pedido válido.' }
+    adopt(saved)
+    return { status: 'saved', order: saved }
+  }
+
+  function takeOrder(id: string) {
+    return saveAction(takeOrderRequest(id))
+  }
+
+  function releaseOrder(id: string) {
+    return saveAction(releaseOrderRequest(id))
+  }
+
   async function reviewEdit(
     orderId: string,
     editId: string,
@@ -481,6 +503,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         updateOrder,
         patchFields,
         transitionOrder,
+        takeOrder,
+        releaseOrder,
         reviewEdit,
         removeOrder,
       }}
