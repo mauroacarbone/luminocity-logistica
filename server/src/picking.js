@@ -4,6 +4,9 @@ import { normalizeName } from './access.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
+import { notifyEncargados } from './notifications.js'
+import { withHistory } from './orderFlow.js'
+import { rowIsPicked } from './preparation.js'
 
 const ROLES = ['deposito', 'encargado_deposito', 'admin']
 const READ_ROLES = ['vendedor', ...ROLES]
@@ -62,7 +65,7 @@ pickingRouter.post('/batch', requireRole(...ROLES), async (req, res) => {
 
 pickingRouter.patch('/:id', requireRole(...ROLES), async (req, res) => {
   await send(res, async () => {
-    const result = await updateRow(req.params.id, req.body)
+    const result = await updateRow(req.params.id, req.body, req.user)
     if (result.error) {
       sendError(res, result)
       return
@@ -120,7 +123,7 @@ function createRow(body) {
   })
 }
 
-function updateRow(id, body) {
+function updateRow(id, body, user) {
   return locked(async () => {
     if (typeof id !== 'string' || !id.trim()) return fail('No existe esa fila de picking.', 404)
     if (!isRecord(body)) return fail('La fila de picking no es válida.')
@@ -150,10 +153,77 @@ function updateRow(id, body) {
     ) {
       row.pickedQty = Math.floor(row.cantidad)
     }
+    const linked = await guardLinkedOrder(row.orderId, user)
+    if (linked.error) return linked
     list[index] = row
     await writePicking(list)
+    if (linked.order) await syncChecklist(linked.orders, linked.index, user)
     return { row }
   })
+}
+
+async function guardLinkedOrder(orderId, user) {
+  if (typeof orderId !== 'string' || !orderId) return { order: null }
+  const orders = await readCollection('orders')
+  const index = orders.findIndex((item) => item && item.id === orderId)
+  if (index < 0) return { order: null }
+  const order = orders[index]
+  if (order.status !== 'pendiente' && order.status !== 'preparado') {
+    return fail('El pedido ya salió de preparación.', 409)
+  }
+  if (user?.role === 'deposito') {
+    const own = order.status === 'preparado' && order.preparedBy && order.preparedBy.id === user.id
+    if (order.status !== 'pendiente' && !own) {
+      return fail('No podés completar el checklist de este pedido.', 403)
+    }
+  }
+  return { order, orders, index }
+}
+
+async function syncChecklist(orders, index, user) {
+  const order = orders[index]
+  const picking = await readCollection('picking')
+  const rows = Array.isArray(picking) ? picking.filter((item) => item && item.orderId === order.id) : []
+  if (rows.length === 0) return
+  const total = rows.length
+  const done = rows.filter((item) => rowIsPicked(item)).length
+  const wasIncomplete = order.prepIncomplete === true
+  const next = {
+    ...order,
+    prepChecklist: { done, total },
+    prepIncomplete: done < total,
+    updatedAt: new Date().toISOString(),
+  }
+  if (order.status === 'preparado' && wasIncomplete && done === total) {
+    const history = withHistory(next).history.map((entry) => ({
+      ...entry,
+      by: entry.by ? { ...entry.by } : entry.by,
+    }))
+    const name = typeof user?.name === 'string' ? user.name.trim() : ''
+    history.push({
+      at: next.updatedAt,
+      by: { id: user?.id ?? '', name },
+      from: 'preparado',
+      to: 'preparado',
+      reason: `Armado completado (${total} artículos)`,
+      via: 'preparacion',
+    })
+    next.history = history
+    orders[index] = next
+    await writeCollection('orders', orders)
+    try {
+      await notifyEncargados({
+        text: `${name} completó el pedido ${order.id} (${total} artículos)`,
+        orderId: order.id,
+        whatsapp: false,
+      })
+    } catch (error) {
+      console.error('No se pudo avisar el armado completado', error)
+    }
+    return
+  }
+  orders[index] = next
+  await writeCollection('orders', orders)
 }
 
 function deleteRow(id) {

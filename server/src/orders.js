@@ -703,8 +703,22 @@ function takeOrder(id, user) {
     }
     orders[index] = order
     await writeOrders(orders)
+    await markPickingInPreparation(id, nowIso)
     return { order }
   })
+}
+
+async function markPickingInPreparation(orderId, nowIso) {
+  const picking = await readCollection('picking')
+  if (!Array.isArray(picking)) return
+  let changed = false
+  for (const row of picking) {
+    if (!row || row.orderId !== orderId || row.status === 'en_preparacion') continue
+    row.status = 'en_preparacion'
+    row.updatedAt = nowIso
+    changed = true
+  }
+  if (changed) await writeCollection('picking', picking)
 }
 
 function releaseOrder(id, user) {

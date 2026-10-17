@@ -3,6 +3,7 @@ import type { Order } from '../data/orders'
 import type { Role } from '../lib/authStore'
 import { canTickChecklist, lineIsPicked } from '../lib/preparation'
 import type { PickingLine } from '../lib/pickingSheet'
+import { useOrders } from '../state/OrdersContext'
 import { usePicking } from '../state/PickingContext'
 
 export function PrepChecklist({
@@ -15,6 +16,7 @@ export function PrepChecklist({
   role?: Role
 }) {
   const { lines, patchLine } = usePicking()
+  const { refresh } = useOrders()
   const rows = lines.filter((line) => line.orderId === order.id)
   const done = rows.filter((line) => lineIsPicked(line)).length
   const total = rows.length
@@ -34,7 +36,11 @@ export function PrepChecklist({
       status: next ? 'preparado' : 'pendiente',
     })
     setBusyId('')
-    if (!result.ok) setMessage(result.message)
+    if (!result.ok) {
+      setMessage(result.message)
+      return
+    }
+    await refresh({ silent: true })
   }
 
   return (

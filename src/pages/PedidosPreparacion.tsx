@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { PrepChecklist } from '../components/PrepChecklist'
 import { PrepChip } from '../components/PrepChip'
 import { Badge, Button, Drawer, EmptyState, ListBox, Modal, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
@@ -469,6 +470,7 @@ export function PedidosPreparacion() {
               Abrir página completa
             </Link>
             <OrderDetail order={openOrder} compact />
+            <PrepChecklist order={openOrder} userId={user?.id} role={user?.role} />
           </div>
         ) : null}
       </Drawer>
