@@ -174,14 +174,15 @@ export function MisViajes() {
         title={manager ? 'Viajes del chofer' : 'Mis viajes'}
         subtitle="Pendientes, finalizados y kilómetros del período"
         actions={
-          <div className="no-print flex w-full flex-wrap justify-end gap-2">
-            <Button variant="secondary" size="lg" disabled={trips.length === 0} onClick={() => window.print()}>
+          <div className="no-print flex w-full flex-col gap-2 min-[480px]:flex-row min-[480px]:flex-wrap min-[480px]:justify-end">
+            <Button variant="secondary" size="lg" className="w-full min-[480px]:w-auto" disabled={trips.length === 0} onClick={() => window.print()}>
               Descargar PDF
             </Button>
             {manager ? (
               <Button
-                variant="primary"
+                variant="secondary"
                 size="lg"
+                className="w-full min-[480px]:w-auto"
                 disabled={finished.length === 0}
                 onClick={() => exportFinished(finished, from, to)}
               >
