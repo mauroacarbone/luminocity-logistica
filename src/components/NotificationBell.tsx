@@ -219,7 +219,8 @@ export function NotificationBell() {
     setToastItems(null)
     if (!item.read) void markRead(item.id)
     if (item.claimId) {
-      navigate(`/post-venta?reclamo=${encodeURIComponent(item.claimId)}`)
+      const base = user?.role === 'tecnico' ? '/taller' : '/post-venta'
+      navigate(`${base}?reclamo=${encodeURIComponent(item.claimId)}`)
       return
     }
     if (item.orderId) navigate(`/pedidos/${encodeURIComponent(item.orderId)}`)

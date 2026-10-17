@@ -1,9 +1,9 @@
 import { Router } from 'express'
-import { normalizeName } from './access.js'
+import { businessToday, normalizeName } from './access.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
-import { notifyClaimOwner } from './notifications.js'
+import { notifyClaimOwner, notifyRole } from './notifications.js'
 
 const STATUS_LABEL = {
   nuevo: 'Nuevo',
@@ -114,6 +114,39 @@ claimsRouter.post('/:id/notes', async (req, res) => {
   })
 })
 
+claimsRouter.post('/:id/repair', async (req, res) => {
+  await send(res, async () => {
+    const result = await openRepair(req.user, req.params.id, req.body)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.status(201).json(result.claim)
+  })
+})
+
+claimsRouter.post('/:id/repair/take', async (req, res) => {
+  await send(res, async () => {
+    const result = await takeRepair(req.user, req.params.id)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(result.claim)
+  })
+})
+
+claimsRouter.patch('/:id/repair', async (req, res) => {
+  await send(res, async () => {
+    const result = await updateRepair(req.user, req.params.id, req.body)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(result.claim)
+  })
+})
+
 function byNewest(list) {
   return [...list].sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
 }
@@ -199,8 +232,15 @@ function createClaim(user, body) {
       events: [{ at: now, status: 'nuevo', by: actorOf(user) }],
     }
     if (parsed.attachment) claim.attachment = parsed.attachment
+    let notice = null
+    if (isRecord(body.intake)) {
+      const opened = applyIntake(claim, user, body.intake, now)
+      if (opened.error) return opened
+      notice = opened.notify
+    }
     list.push(claim)
     await writeClaims(list)
+    if (notice) await notifyRole('tecnico', notice)
     return { claim }
   })
 }
@@ -543,6 +583,197 @@ function fileBytes(dataUrl) {
   } catch {
     return -1
   }
+}
+
+const COVERAGE = new Set(['garantia', 'cobro'])
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
+const moneyFormat = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 })
+
+function canOpenRepair(user) {
+  return user?.role === 'deposito' || user?.role === 'encargado_deposito' || user?.role === 'admin'
+}
+
+function canEditRepair(user, repair) {
+  if (user?.role === 'encargado_deposito' || user?.role === 'admin') return true
+  return user?.role === 'tecnico' && repair?.technician?.id === user.id
+}
+
+function readDay(value, label, { required = true, notFuture = false, notPast = false } = {}) {
+  const day = typeof value === 'string' ? value.trim() : ''
+  if (!day) {
+    if (!required) return { value: '' }
+    return fail(`Cargá ${label}.`)
+  }
+  if (!DAY_RE.test(day)) return fail(`La ${label} no es válida.`)
+  const today = businessToday()
+  if (notFuture && day > today) return fail(`La ${label} no puede ser futura.`)
+  if (notPast && day < today) return fail(`La ${label} tiene que ser hoy o después.`)
+  return { value: day }
+}
+
+function readAmount(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return fail('El importe tiene que ser mayor a 0.')
+  }
+  const cents = Math.round(value * 100)
+  if (Math.abs(value * 100 - cents) > 0.001) return fail('El importe puede tener hasta 2 decimales.')
+  return { value: cents / 100 }
+}
+
+function formatDay(iso) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!match) return iso
+  return `${match[3]}/${match[2]}`
+}
+
+function repairNotice(claim) {
+  const product = claim.repair?.product || 'un producto'
+  return {
+    text: `Ingresó una reparación: ${product} de ${claim.client} (reclamo ${claim.id})`,
+    claimId: claim.id,
+  }
+}
+
+function applyIntake(claim, user, body, now) {
+  if (!canOpenRepair(user)) return fail('Solo podés cargar la reparación.', 403)
+  if (claim.repair) return fail('Este reclamo ya tiene una reparación.', 409)
+  const invoice = typeof body.invoice === 'string' ? body.invoice.trim() : ''
+  if (!invoice || invoice.length > TEXT_MAX) return fail('Cargá la factura.')
+  const client = typeof body.client === 'string' ? body.client.trim() : claim.client
+  if (!client || client.length > TEXT_MAX) return fail('Cargá el cliente.')
+  const fallback = claim.products?.[0]?.name ?? ''
+  const product = typeof body.product === 'string' && body.product.trim() ? body.product.trim() : fallback
+  if (!product || product.length > TEXT_MAX) return fail('Cargá el producto.')
+  const coverage = body.coverage
+  if (!COVERAGE.has(coverage)) return fail('Elegí si es garantía o cobro.')
+  const intake = readDay(body.intakeAt || businessToday(), 'fecha de ingreso', { notFuture: true })
+  if (intake.error) return intake
+  if (!claim.invoices.includes(invoice)) claim.invoices = [invoice, ...claim.invoices]
+  claim.client = client
+  claim.status = 'recepcion'
+  claim.repair = {
+    intakeAt: intake.value,
+    product,
+    coverage,
+    diagnosis: '',
+    quote: {},
+    step: 'por-levantar',
+    contacts: [],
+    receivedBy: { id: user.id, name: user.name },
+  }
+  claim.events.push({
+    at: now,
+    status: 'recepcion',
+    note: `Producto recibido por ${user.name}`,
+    by: actorOf(user),
+  })
+  return { notify: repairNotice(claim) }
+}
+
+function openRepair(user, id, body) {
+  return locked(async () => {
+    const found = await findClaim(user, id)
+    if (found.error) return found
+    const now = new Date().toISOString()
+    const opened = applyIntake(found.claim, user, isRecord(body) ? body : {}, now)
+    if (opened.error) return opened
+    await writeClaims(found.list)
+    await notifyRole('tecnico', opened.notify)
+    return { claim: found.claim }
+  })
+}
+
+function takeRepair(user, id) {
+  return locked(async () => {
+    if (user.role !== 'tecnico' && user.role !== 'admin') {
+      return fail('Solo podés cargar la reparación.', 403)
+    }
+    const found = await findClaim(user, id)
+    if (found.error) return found
+    const repair = found.claim.repair
+    if (!repair) return fail('Este reclamo no tiene una reparación.', 409)
+    const current = repair.technician
+    if (current && current.id !== user.id && user.role !== 'admin') {
+      return fail(`Lo tiene ${current.name}`, 409)
+    }
+    repair.technician = { id: user.id, name: user.name }
+    repair.step = 'diagnostico'
+    found.claim.status = 'reparacion'
+    found.claim.events.push({
+      at: new Date().toISOString(),
+      status: 'reparacion',
+      note: `Levantado por ${user.name}`,
+      by: actorOf(user),
+    })
+    await writeClaims(found.list)
+    return { claim: found.claim }
+  })
+}
+
+function updateRepair(user, id, body) {
+  return locked(async () => {
+    const found = await findClaim(user, id)
+    if (found.error) return found
+    const repair = found.claim.repair
+    if (!repair) return fail('Este reclamo no tiene una reparación.', 409)
+    if (!canEditRepair(user, repair)) return fail('Solo podés cargar la reparación.', 403)
+    if (!isRecord(body)) return fail('Revisá los datos de la reparación.')
+    const notes = []
+    if (body.product !== undefined) {
+      const product = typeof body.product === 'string' ? body.product.trim() : ''
+      if (!product || product.length > TEXT_MAX) return fail('Cargá el producto.')
+      repair.product = product
+    }
+    if (body.coverage !== undefined) {
+      if (!COVERAGE.has(body.coverage)) return fail('Elegí si es garantía o cobro.')
+      repair.coverage = body.coverage
+    }
+    if (body.diagnosis !== undefined) {
+      const diagnosis = typeof body.diagnosis === 'string' ? body.diagnosis.trim() : ''
+      if (diagnosis.length > NOTE_MAX) return fail(`El diagnóstico puede tener hasta ${NOTE_MAX} caracteres.`)
+      repair.diagnosis = diagnosis
+      if (diagnosis) notes.push('Diagnóstico cargado')
+    }
+    const quote = { ...(repair.quote ?? {}) }
+    let quoteChanged = false
+    if (body.amount !== undefined) {
+      const amount = readAmount(body.amount)
+      if (amount.error) return amount
+      quote.amount = amount.value
+      quoteChanged = true
+    }
+    if (body.etaDate !== undefined) {
+      const eta = readDay(body.etaDate, 'fecha aproximada', { notPast: true })
+      if (eta.error) return eta
+      quote.etaDate = eta.value
+      quoteChanged = true
+    }
+    if (quoteChanged) {
+      repair.quote = quote
+      const amount = typeof quote.amount === 'number' ? `$ ${moneyFormat.format(quote.amount)}` : ''
+      const eta = quote.etaDate ? `, entrega aprox. ${formatDay(quote.etaDate)}` : ''
+      notes.push(`Presupuesto ${amount}${eta}`.trim())
+    }
+    const at = new Date().toISOString()
+    for (const note of notes) {
+      found.claim.events.push({
+        at,
+        status: found.claim.status,
+        note,
+        by: actorOf(user),
+      })
+    }
+    await writeClaims(found.list)
+    return { claim: found.claim }
+  })
+}
+
+async function findClaim(user, id) {
+  if (typeof id !== 'string' || !id.trim()) return fail('Reclamo no encontrado', 404)
+  const list = await readClaims()
+  const claim = list.find((item) => item.id === id)
+  if (!claim || !canAccessClaim(user, claim)) return fail('Reclamo no encontrado', 404)
+  return { list, claim }
 }
 
 function isRecord(value) {

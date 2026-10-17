@@ -140,8 +140,15 @@ export async function notifyWarehouse({ text, orderId, actorId }) {
 }
 
 /** Se llama dentro del lock de pedidos. */
-export async function notifyUser(userId, { text, orderId }) {
-  await pushNotifications([buildNote({ to: userId, text, orderId, channel: 'app' })])
+export async function notifyUser(userId, { text, orderId, claimId }) {
+  await pushNotifications([buildNote({ to: userId, text, orderId, claimId, channel: 'app' })])
+}
+
+export async function notifyRole(role, { text, claimId, orderId }) {
+  const users = (await readUsersList()).filter((user) => user.role === role && isActive(user))
+  await pushNotifications(
+    users.map((user) => buildNote({ to: user.id, text, claimId, orderId, channel: 'app' })),
+  )
 }
 
 /** Se llama dentro del lock de pedidos. Avisa al vendedor del pedido. */
