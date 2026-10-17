@@ -849,7 +849,6 @@ function forwardTargets(repair) {
     return []
   }
   if (step === 'por-levantar') return ['diagnostico']
-  if (step === 'diagnostico') return ['presupuesto-enviado']
   if (step === 'presupuesto-enviado' || step === 'presupuesto-vencido') return ['aceptado', 'rechazado']
   if (step === 'aceptado') return ['en-reparacion']
   if (step === 'en-reparacion') return ['listo']
@@ -914,6 +913,12 @@ function contactRepair(user, id, body) {
     if ((body.kind === 'presupuesto' || body.kind === 'reenvio') && repair.coverage !== 'cobro') {
       return fail('La garantía no lleva presupuesto.')
     }
+    if (body.kind === 'presupuesto' && repair.step !== 'diagnostico' && repair.step !== 'presupuesto-enviado') {
+      return fail('El presupuesto se envía desde el diagnóstico.', 409)
+    }
+    if (body.kind === 'reenvio' && repair.step !== 'presupuesto-enviado' && repair.step !== 'presupuesto-vencido') {
+      return fail('No hay un presupuesto pendiente para reenviar.', 409)
+    }
     if (body.kind === 'presupuesto' || body.kind === 'reenvio') {
       if (!repair.diagnosis?.trim() || typeof repair.quote?.amount !== 'number' || !repair.quote?.etaDate) {
         return fail('Cargá el diagnóstico y el presupuesto antes de avisar.')
@@ -927,9 +932,10 @@ function contactRepair(user, id, body) {
     else if (body.kind === 'reenvio') note = 'Presupuesto reenviado por WhatsApp'
     else if (body.kind === 'listo') note = 'Aviso de listo por WhatsApp'
     else note = 'Aviso de rechazo por WhatsApp'
-    if (body.kind === 'presupuesto' && !quote.sentAt) {
+    if (body.kind === 'presupuesto' && repair.step === 'diagnostico') {
       quote.sentAt = now
       quote.expiresAt = new Date(Date.parse(now) + QUOTE_TTL_MS).toISOString()
+      delete quote.expiredNotifiedAt
       repair.quote = quote
       repair.step = 'presupuesto-enviado'
       found.claim.status = 'reparacion'
@@ -984,6 +990,9 @@ function stepRepair(user, id, body) {
     const toRank = stepRank(repair.coverage, to)
     const forward = forwardTargets(repair).includes(to)
     const goingBack = !forward && fromRank >= 0 && toRank >= 0 && toRank < fromRank && flowOf(repair.coverage).includes(to)
+    if (to === 'presupuesto-enviado' && !goingBack) {
+      return fail('El presupuesto se envía con el aviso al cliente.', 409)
+    }
     if (!forward && !goingBack) return fail('No se puede pasar a ese paso.', 409)
     if (goingBack && note.length < 5) return fail('El motivo tiene que tener al menos 5 caracteres.')
     if (!canRepairStep(user, found.claim, to, goingBack)) return fail('Solo podés cargar la reparación.', 403)
@@ -1003,6 +1012,13 @@ function stepRepair(user, id, body) {
       }
     } else if (goingBack) {
       delete repair.answer
+      if (to === 'diagnostico' || to === 'por-levantar') {
+        const quote = { ...(repair.quote ?? {}) }
+        delete quote.sentAt
+        delete quote.expiresAt
+        delete quote.expiredNotifiedAt
+        repair.quote = quote
+      }
     }
     found.claim.status = statusForRepairStep(to)
     if (to === 'entregado') found.claim.resolvedAt = now
