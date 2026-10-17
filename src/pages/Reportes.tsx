@@ -84,6 +84,60 @@ const SECTIONS = [
   { id: 'retiros', label: 'Retiros' },
 ] as const
 
+function totalFooter(section: ReportSectionModel) {
+  if (section.total.mode === 'caption') {
+    return (
+      <tr>
+        <td colSpan={section.columns.length} className="border-t border-border px-4 py-3 text-sm font-semibold text-text">
+          {section.total.text}
+        </td>
+      </tr>
+    )
+  }
+  return section.total.lines.map((line) => (
+    <tr key={line.label}>
+      {line.cells.map((cell) => {
+        const column = section.columns.find((item) => item.key === cell.key)
+        const align = column?.align === 'right' ? 'text-right tabular-nums' : ''
+        return (
+          <td key={cell.key} className={`border-t border-border px-4 py-3 text-[15px] font-semibold text-text ${align}`}>
+            {cell.text}
+          </td>
+        )
+      })}
+    </tr>
+  ))
+}
+
+function TotalCards({ section }: { section: ReportSectionModel }) {
+  if (section.total.mode === 'caption') {
+    return <p className="border-t border-border px-4 py-3 text-sm font-semibold text-text">{section.total.text}</p>
+  }
+  return section.total.lines.map((line) => (
+    <article key={line.label} className="border-t border-border px-4 py-3 font-semibold">
+      {line.cells.map((cell) => {
+        const column = section.columns.find((item) => item.key === cell.key)
+        if (!column || cell.text === '') return null
+        return (
+          <p
+            key={cell.key}
+            className={column.align === 'right' ? 'text-right text-sm tabular-nums text-text' : 'text-sm text-text'}
+          >
+            {column.key === section.columns[0]?.key ? (
+              cell.text
+            ) : (
+              <>
+                <span className="font-normal text-muted">{column.header}: </span>
+                {cell.text}
+              </>
+            )}
+          </p>
+        )
+      })}
+    </article>
+  ))
+}
+
 function cellNode(section: ReportSectionModel, row: ModelRow, key: string) {
   const column = section.columns.find((item) => item.key === key)
   if (!column) return null
@@ -130,6 +184,7 @@ function ReportSection({
                 rows={section.rows}
                 rowKey={(row) => row.rowId}
                 onRowClick={onRowClick}
+                footer={totalFooter(section)}
               />
             </div>
             <div className="flex flex-col lg:hidden">
@@ -166,6 +221,7 @@ function ReportSection({
                   </button>
                 )
               })}
+              <TotalCards section={section} />
             </div>
           </>
         )}

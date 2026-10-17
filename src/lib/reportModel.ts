@@ -43,6 +43,12 @@ export type ModelRow = {
   pct?: Record<string, { part: number; whole: number }>
 }
 
+export type TotalCell = { key: string; value: RawValue; text: string }
+
+export type TotalLine = { label: string; cells: TotalCell[] }
+
+export type SectionTotal = { mode: 'rows'; lines: TotalLine[] } | { mode: 'caption'; text: string }
+
 export type ReportSectionModel = {
   id: string
   title: string
@@ -50,7 +56,7 @@ export type ReportSectionModel = {
   csvId: string
   columns: ModelColumn[]
   rows: ModelRow[]
-  total: null
+  total: SectionTotal
 }
 
 export type ReportKpi = {
@@ -118,7 +124,84 @@ export function cellText(column: ModelColumn, row: ModelRow) {
 export function sectionCsv(section: ReportSectionModel) {
   const header = section.columns.map((column) => column.header)
   const body = section.rows.map((row) => section.columns.map((column) => cellText(column, row)))
-  return [header, ...body]
+  const lines = [header, ...body]
+  if (section.total.mode === 'caption') {
+    lines.push([section.total.text, ...section.columns.slice(1).map(() => '')])
+    return lines
+  }
+  for (const line of section.total.lines) lines.push(line.cells.map((cell) => cell.text))
+  return lines
+}
+
+function round1(value: number) {
+  return Math.round(value * 10) / 10
+}
+
+function round2(value: number) {
+  return Math.round(value * 100) / 100
+}
+
+export function totalRow(columns: ModelColumn[], rows: ModelRow[], label = 'Total'): TotalLine {
+  const cells = columns.map((column, index) => {
+    if (index === 0) return { key: column.key, value: label, text: label }
+    if (column.kind === 'text' || column.kind === 'date') return { key: column.key, value: '', text: '' }
+    if (column.kind === 'pct' && column.pct) {
+      const part = rows.reduce((sum, row) => sum + column.pct!.part(row), 0)
+      const whole = rows.reduce((sum, row) => sum + column.pct!.whole(row), 0)
+      const value = whole ? Math.round((part / whole) * 1000) / 10 : null
+      return { key: column.key, value, text: column.format(value) }
+    }
+    if (column.kind !== 'count' && column.kind !== 'money' && column.kind !== 'km') {
+      return { key: column.key, value: '', text: '' }
+    }
+    let sum = 0
+    let any = false
+    let estimated = 0
+    for (const row of rows) {
+      const raw = column.value(row)
+      if (typeof raw === 'number') {
+        sum += raw
+        any = true
+      }
+      if (column.kind === 'km') estimated += row.kmEstimated ?? 0
+    }
+    if (!any) {
+      if (column.kind === 'money') {
+        return { key: column.key, value: null, text: rows.length === 0 ? formatMoney(null) : '' }
+      }
+      if (rows.length > 0) return { key: column.key, value: null, text: '—' }
+      return { key: column.key, value: 0, text: column.format(0) }
+    }
+    if (column.kind === 'money') {
+      const value = round2(sum)
+      return { key: column.key, value, text: column.format(value) }
+    }
+    if (column.kind === 'km') {
+      const value = round1(sum)
+      const estimatedKm = round1(estimated)
+      const text = estimatedKm > 0 ? `${formatKm(value)} (${formatKm(estimatedKm)} estimados)` : formatKm(value)
+      return { key: column.key, value, text }
+    }
+    return { key: column.key, value: sum, text: column.format(sum) }
+  })
+  return { label, cells }
+}
+
+function sectionTotal(id: string, columns: ModelColumn[], rows: ModelRow[]): SectionTotal {
+  if (id === 'atrasados' || id === 'retiros-vencidos') {
+    const noun = rows.length === 1 ? 'pedido' : 'pedidos'
+    return { mode: 'caption', text: `${countFormat.format(rows.length)} ${noun}` }
+  }
+  if (id === 'reclamos-abiertos') {
+    const noun = rows.length === 1 ? 'reclamo' : 'reclamos'
+    return { mode: 'caption', text: `${countFormat.format(rows.length)} ${noun}` }
+  }
+  const lines = [totalRow(columns, rows.filter((row) => !row.pending))]
+  if (id === 'choferes') {
+    const pending = rows.filter((row) => row.pending)
+    if (pending.length > 0) lines.push(totalRow(columns, pending, 'Pendientes'))
+  }
+  return { mode: 'rows', lines }
 }
 
 function column(
@@ -392,13 +475,12 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
   const hours = data.claims.averageCloseHours
   const claimsNote =
     hours == null ? 'Sin cierres en el período' : `Tiempo promedio hasta el cierre: ${formatKm(hours)} h`
-  const sections: ReportSectionModel[] = [
+  const drafts: Omit<ReportSectionModel, 'total'>[] = [
     {
       id: 'entregas',
       title: 'Entregas por día',
       sheet: 'Entregas por día',
       csvId: 'entregas',
-      total: null,
       columns: [
         column('date', 'Fecha', 'date', formatDate),
         column('pendiente', 'Pendiente', 'count', formatCount),
@@ -417,7 +499,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Cumplimiento de franja',
       sheet: 'Franja',
       csvId: 'franja',
-      total: null,
       columns: [
         column('date', 'Fecha', 'date', formatDate),
         column('antes', 'Entregado antes', 'count', formatCount),
@@ -433,7 +514,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Atrasados',
       sheet: 'Atrasados',
       csvId: 'atrasados',
-      total: null,
       columns: [
         column('id', 'Pedido', 'text', formatText),
         column('client', 'Cliente', 'text', formatText),
@@ -450,7 +530,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Por vendedor',
       sheet: 'Vendedores',
       csvId: 'vendedores',
-      total: null,
       columns: groupColumns('Vendedor'),
       rows: data.deliveries.bySeller.map((row) => groupRow(row, row.key)),
     },
@@ -459,7 +538,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Por zona',
       sheet: 'Zonas',
       csvId: 'zonas',
-      total: null,
       columns: groupColumns('Zona'),
       rows: data.deliveries.byZone.map((row) => groupRow(row, row.key)),
     },
@@ -468,7 +546,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Por prioridad',
       sheet: 'Prioridad',
       csvId: 'prioridad',
-      total: null,
       columns: groupColumns('Prioridad'),
       rows: data.deliveries.byPriority.map((row) => groupRow(row, priorityLabel(row.key))),
     },
@@ -477,7 +554,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Por chofer',
       sheet: 'Choferes',
       csvId: 'choferes',
-      total: null,
       columns: [
         column('name', 'Chofer', 'text', formatText),
         column('estado', 'Estado', 'text', formatText),
@@ -494,7 +570,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Por estado',
       sheet: 'Reclamos estado',
       csvId: 'reclamos-estado',
-      total: null,
       columns: [column('label', 'Estado', 'text', formatText), column('count', 'Cantidad', 'count', formatCount)],
       rows: data.claims.byStatus.map(claimStatusRow),
     },
@@ -503,7 +578,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Por tipo',
       sheet: 'Reclamos tipo',
       csvId: 'reclamos-motivo',
-      total: null,
       columns: [column('motive', 'Tipo', 'text', formatText), column('count', 'Cantidad', 'count', formatCount)],
       rows: data.claims.byMotive.map(claimMotiveRow),
     },
@@ -512,7 +586,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Abiertos con más de 7 días',
       sheet: 'Reclamos abiertos',
       csvId: 'reclamos-abiertos',
-      total: null,
       columns: [
         column('id', 'Reclamo', 'text', formatText),
         column('client', 'Cliente', 'text', formatText),
@@ -527,7 +600,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Por día',
       sheet: 'Retiros día',
       csvId: 'retiros',
-      total: null,
       columns: [
         column('date', 'Fecha', 'date', formatDate),
         column('total', 'Total', 'count', formatCount),
@@ -544,7 +616,6 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       title: 'Pendientes de retiro vencidos',
       sheet: 'Retiros vencidos',
       csvId: 'retiros-vencidos',
-      total: null,
       columns: [
         column('id', 'Pedido', 'text', formatText),
         column('client', 'Cliente', 'text', formatText),
@@ -555,5 +626,9 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
       rows: data.pickups.overdue.map(overdueRow),
     },
   ]
+  const sections = drafts.map((draft) => ({
+    ...draft,
+    total: sectionTotal(draft.id, draft.columns, draft.rows),
+  }))
   return { period, kpis: kpis(data), claimsNote, sections }
 }

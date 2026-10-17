@@ -20,6 +20,8 @@ type TableProps<T> = {
   /** Alto máximo del recuadro. El encabezado queda fijo dentro de ese scroll. */
   maxHeight?: string
   onRowClick?: (row: T) => void
+  /** Filas de <tfoot>, por ejemplo un total. */
+  footer?: ReactNode
   /** Sin marco propio: la tabla vive dentro de otra caja. */
   bare?: boolean
   className?: string
@@ -126,6 +128,7 @@ export function Table<T>({
   empty,
   maxHeight = '70vh',
   onRowClick,
+  footer,
   bare = false,
   className,
 }: TableProps<T>) {
@@ -169,6 +172,7 @@ export function Table<T>({
             <tr>{headerCells(columns, density)}</tr>
           </thead>
           <tbody>{bodyRows(columns, rows, rowKey, density, onRowClick)}</tbody>
+          {footer ? <tfoot>{footer}</tfoot> : null}
         </table>
       </div>
       <EdgeShadows left={edges.left} right={edges.right} />
