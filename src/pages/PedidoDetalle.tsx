@@ -169,7 +169,7 @@ function PedidoDetalleView({ id }: { id: string }) {
         <OrderStepper order={order} variant="full" />
       </Card>
 
-      <OrderDetail order={order} onOrderChange={setOrder} />
+      <OrderDetail order={order} />
     </Page>
   )
 }

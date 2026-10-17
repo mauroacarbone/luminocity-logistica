@@ -1,16 +1,11 @@
-import { useState } from 'react'
 import { Badge, statusTone } from './ui'
 import { OrderAttachmentLink } from './OrderAttachmentLink'
 import { PriorityChip } from './PriorityChip'
 import { DISPATCH_LABEL } from '../data/catalog'
-import { type Order, type OrderHistoryEntry, type OrderPriority, type OrderStatus } from '../data/orders'
-import { confirm, error as showError } from '../lib/alerts'
+import { type Order, type OrderHistoryEntry, type OrderStatus } from '../data/orders'
 import { placeLine } from '../lib/place'
 import { statusPillFor } from '../lib/orderFlow'
-import { PRIORITIES, PRIORITY_LABEL, priorityOf } from '../lib/priority'
 import { formatIsoDate } from '../lib/week'
-import { useAuth } from '../state/AuthContext'
-import { useOrders } from '../state/OrdersContext'
 import { cx } from './ui/cx'
 
 const VIA_LABEL: Record<string, string> = {
@@ -50,34 +45,10 @@ function statusText(order: Order, status: OrderStatus | null) {
 type OrderDetailProps = {
   order: Order
   compact?: boolean
-  onOrderChange?: (order: Order) => void
 }
 
-export function OrderDetail({ order, compact = false, onOrderChange }: OrderDetailProps) {
-  const { user } = useAuth()
-  const { updateOrder } = useOrders()
-  const [priorityBusy, setPriorityBusy] = useState(false)
+export function OrderDetail({ order, compact = false }: OrderDetailProps) {
   const history = historyOf(order)
-  const currentPriority = priorityOf(order)
-  const canEditPriority =
-    (user?.role === 'encargado_deposito' || user?.role === 'admin') && order.status !== 'entregado'
-
-  async function changePriority(next: OrderPriority) {
-    if (next === priorityOf(order)) return
-    const accepted = await confirm(
-      'Cambiar prioridad',
-      `Pasar de ${PRIORITY_LABEL[priorityOf(order)]} a ${PRIORITY_LABEL[next]}.`,
-    )
-    if (!accepted) return
-    setPriorityBusy(true)
-    const result = await updateOrder({ ...order, priority: next })
-    setPriorityBusy(false)
-    if (result.status === 'not-saved') {
-      await showError('No se pudo cambiar la prioridad', result.message)
-      return
-    }
-    onOrderChange?.(result.order)
-  }
 
   return (
     <div className={cx('flex flex-col gap-4', !compact && 'mt-4')}>
@@ -116,24 +87,7 @@ export function OrderDetail({ order, compact = false, onOrderChange }: OrderDeta
           <div>
             <dt>Prioridad</dt>
             <dd>
-              {canEditPriority ? (
-                <select
-                  className="mt-1"
-                  value={currentPriority}
-                  disabled={priorityBusy}
-                  onChange={(event) => {
-                    void changePriority(event.target.value as OrderPriority)
-                  }}
-                >
-                  {PRIORITIES.map((value) => (
-                    <option key={value} value={value}>
-                      {PRIORITY_LABEL[value]}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                PRIORITY_LABEL[currentPriority]
-              )}
+              <PriorityChip order={order} showNormal />
             </dd>
           </div>
           <div>
