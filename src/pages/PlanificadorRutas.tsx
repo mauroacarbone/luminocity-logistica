@@ -19,7 +19,7 @@ import { deleteRouteSheet, isRouteSheet, listRouteSheets, saveRouteSheet, type R
 import { driverSlotCount, normalizeTimeWindow, slotQuestion } from '../lib/slot'
 import { cssVar } from '../lib/theme'
 import { labelDrivers } from '../lib/driverLabel'
-import { businessToday } from '../lib/schedule'
+import { businessToday, clockTime } from '../lib/schedule'
 import { DAY_SHORT, MONTH_SHORT, formatDayLabel, parseIso, toIso, weekDays, weekOffsetForIso } from '../lib/week'
 import { listUsers } from '../lib/usersApi'
 import { isSession } from '../lib/authStore'
@@ -215,6 +215,7 @@ export function PlanificadorRutas() {
   const [driverId, setDriverId] = useState(presetDriver)
   const [slot, setSlot] = useState('')
   const [sheet, setSheet] = useState<RouteSheet | null>(null)
+  const [finishedSheets, setFinishedSheets] = useState<RouteSheet[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [origin, setOrigin] = useState(DEFAULT_ORIGIN)
   const [stops, setStops] = useState<Stop[]>([])
@@ -402,10 +403,16 @@ export function PlanificadorRutas() {
         else setError(result.message)
         return
       }
+      const sameSlot = result.data.filter(
+        (item) => item.driverId === driverId && normalizeTimeWindow(item.slot) === timeWindow,
+      )
       const found =
-        result.data.find(
-          (item) => item.driverId === driverId && normalizeTimeWindow(item.slot) === timeWindow,
-        ) ?? null
+        sameSlot.find((item) => item.status === 'planificada' || item.status === 'en_curso') ?? null
+      setFinishedSheets(
+        sameSlot
+          .filter((item) => item.status === 'cerrada')
+          .sort((left, right) => (right.closedAt ?? '').localeCompare(left.closedAt ?? '')),
+      )
       const extra = queuedId
       const base = found?.orderIds ?? []
       const canAdd = Boolean(extra) && (!found || found.status === 'planificada') && !base.includes(extra ?? '')
@@ -442,7 +449,10 @@ export function PlanificadorRutas() {
         if (cancelled || !result.ok) return
         const found =
           result.data.find(
-            (item) => item.driverId === driverId && normalizeTimeWindow(item.slot) === timeWindow,
+            (item) =>
+              item.driverId === driverId &&
+              normalizeTimeWindow(item.slot) === timeWindow &&
+              (item.status === 'planificada' || item.status === 'en_curso'),
           ) ?? null
         setSheet(found)
       })
@@ -1054,6 +1064,30 @@ export function PlanificadorRutas() {
           Limpiar
         </Button>
       </div>
+      {driverId && timeWindow && finishedSheets.length > 0 ? (
+        <section className="no-print mt-4">
+          <h2 className="text-sm font-semibold text-text">Viajes finalizados de esta franja</h2>
+          {finishedSheets.map((item) => (
+            <details key={item.id} className="mt-2 rounded-md border border-border bg-surface">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">
+                {item.id} · {clockTime(item.closedAt) || 'sin hora'} · {item.orderIds.length}{' '}
+                {item.orderIds.length === 1 ? 'parada' : 'paradas'} · {formatKm(item.km)}
+              </summary>
+              <ul className="border-t border-border">
+                {item.orderIds.map((id) => {
+                  const order = orders.find((candidate) => candidate.id === id)
+                  return (
+                    <li key={id} className="border-b border-border px-3 py-2 text-sm last:border-b-0">
+                      <span className="font-medium">{id}</span>
+                      {order ? ` — ${order.client}` : ''}
+                    </li>
+                  )
+                })}
+              </ul>
+            </details>
+          ))}
+        </section>
+      ) : null}
       </div>
 
       <div className="planner-map no-print overflow-hidden rounded-md border border-border bg-surface">
