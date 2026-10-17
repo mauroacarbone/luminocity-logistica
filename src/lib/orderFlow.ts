@@ -148,7 +148,7 @@ export function nextAction(
   order: Pick<Order, 'status' | 'dispatchType' | 'sheetPlanned'>,
 ): FlowAction | null {
   const forwards = allowedTransitions(role, order, 'forward').filter((rule) => {
-    if (rule.to === 'en-viaje' && order.sheetPlanned) return false
+    if (role === 'chofer' && rule.to === 'en-viaje') return false
     return true
   })
   if (forwards.length === 0) return null
