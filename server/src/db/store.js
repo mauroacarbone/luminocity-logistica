@@ -269,6 +269,13 @@ async function withClient(fn) {
   return runTransaction(() => fn(context().client))
 }
 
+/** Consulta parametrizada. Solo con DATABASE_URL. */
+export async function queryRows(sql, params = []) {
+  if (!usingDatabase()) throw new Error('No hay DATABASE_URL.')
+  const result = await queryable().query(sql, params)
+  return result.rows
+}
+
 export async function readCollection(name) {
   specOf(name)
   if (!usingDatabase()) return readFileCollection(name)
