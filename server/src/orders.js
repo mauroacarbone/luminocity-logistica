@@ -742,8 +742,47 @@ function releaseOrder(id, user) {
     }
     orders[index] = order
     await writeOrders(orders)
+    if ((user.role === 'encargado_deposito' || user.role === 'admin') && holder && holder.id !== user.id) {
+      const name = typeof user.name === 'string' ? user.name.trim() : ''
+      await safeNotify(() =>
+        notifyUser(holder.id, {
+          text: `${name} liberó el pedido ${current.id}`,
+          orderId: current.id,
+        }),
+      )
+    }
     return { order }
   })
+}
+
+async function notifyPreparation(current, result, user) {
+  const name = typeof user.name === 'string' ? user.name.trim() : ''
+  if (current.status === 'pendiente' && result.order.status === 'preparado') {
+    const checklist = result.order.prepChecklist
+    const text =
+      result.order.prepIncomplete && checklist
+        ? `${name} armó incompleto el pedido ${result.order.id} (${checklist.done} de ${checklist.total} artículos)`
+        : `${name} armó el pedido ${result.order.id} (${result.order.packages} bultos)`
+    await safeNotify(() => notifyEncargados({ text, orderId: result.order.id, whatsapp: false }))
+    return
+  }
+  if (current.status === 'preparado' && result.order.status === 'pendiente' && current.preparedBy?.id) {
+    const motive = typeof result.reason === 'string' ? result.reason : ''
+    await safeNotify(() =>
+      notifyUser(current.preparedBy.id, {
+        text: `${name} devolvió el pedido ${current.id} a pendiente: ${motive}`,
+        orderId: current.id,
+      }),
+    )
+  }
+}
+
+async function safeNotify(task) {
+  try {
+    await task()
+  } catch (error) {
+    console.error('No se pudo enviar el aviso de preparación', error)
+  }
 }
 
 function transitionOrder(id, body, user) {
@@ -763,6 +802,7 @@ function transitionOrder(id, body, user) {
     if (result.order.status === 'entregado' && current.status !== 'entregado') {
       await notifyDelivered(result.order)
     }
+    await notifyPreparation(current, result, user)
     await releaseIfIdle(orders, current, result.order)
     return { order: result.order }
   })
