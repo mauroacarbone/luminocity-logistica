@@ -1,0 +1,559 @@
+import { CLAIM_STATUS_LABEL, type ClaimStatus } from '../data/claims'
+import { STATUS_PILL, type OrderStatus } from '../data/orders'
+import { isOrderPriority, PRIORITY_LABEL } from './priority'
+import type {
+  ClaimsReport,
+  DayReport,
+  DeliveriesReport,
+  DriverReport,
+  DriversReport,
+  GroupReport,
+  LateOrder,
+  OpenClaimRow,
+  OverduePickup,
+  PickupDay,
+  PickupsReport,
+  SlotDay,
+} from './reportsApi'
+import { formatIsoDate } from './week'
+
+export type ColumnKind = 'text' | 'count' | 'money' | 'km' | 'pct' | 'date'
+
+export type RawValue = string | number | null
+
+export type ModelColumn = {
+  key: string
+  header: string
+  kind: ColumnKind
+  align: 'left' | 'right'
+  value: (row: ModelRow) => RawValue
+  format: (value: RawValue) => string
+  pct?: {
+    part: (row: ModelRow) => number
+    whole: (row: ModelRow) => number
+  }
+}
+
+export type ModelRow = {
+  rowId: string
+  pending?: boolean
+  values: Record<string, RawValue>
+  text?: Record<string, string>
+  kmEstimated?: number
+  pct?: Record<string, { part: number; whole: number }>
+}
+
+export type ReportSectionModel = {
+  id: string
+  title: string
+  sheet: string
+  csvId: string
+  columns: ModelColumn[]
+  rows: ModelRow[]
+  total: null
+}
+
+export type ReportKpi = {
+  id: string
+  title: string
+  value: string
+  detail?: string
+  detailTone?: 'danger' | 'neutral'
+}
+
+export type ReportSource = {
+  deliveries: DeliveriesReport
+  drivers: DriversReport
+  claims: ClaimsReport
+  pickups: PickupsReport
+}
+
+export type ReportModel = {
+  period: { from: string; to: string }
+  kpis: ReportKpi[]
+  claimsNote: string
+  sections: ReportSectionModel[]
+}
+
+const countFormat = new Intl.NumberFormat('es-AR')
+const kmFormat = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 })
+const moneyFormat = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' })
+
+export function formatCount(value: RawValue) {
+  if (typeof value !== 'number') return '—'
+  return countFormat.format(value)
+}
+
+export function formatKm(value: RawValue) {
+  if (typeof value !== 'number') return '—'
+  return kmFormat.format(value)
+}
+
+export function formatMoney(value: RawValue) {
+  if (typeof value !== 'number') return 'Sin monto sellado'
+  return moneyFormat.format(value)
+}
+
+export function formatPct(value: RawValue) {
+  if (typeof value !== 'number') return '—'
+  return `${value.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`
+}
+
+export function formatDate(value: RawValue) {
+  if (typeof value !== 'string' || !value) return '—'
+  return formatIsoDate(value)
+}
+
+export function formatText(value: RawValue) {
+  if (value == null || value === '') return '—'
+  return String(value)
+}
+
+export function cellText(column: ModelColumn, row: ModelRow) {
+  const custom = row.text?.[column.key]
+  if (custom != null) return custom
+  return column.format(column.value(row))
+}
+
+export function sectionCsv(section: ReportSectionModel) {
+  const header = section.columns.map((column) => column.header)
+  const body = section.rows.map((row) => section.columns.map((column) => cellText(column, row)))
+  return [header, ...body]
+}
+
+function column(
+  key: string,
+  header: string,
+  kind: ColumnKind,
+  format: (value: RawValue) => string,
+  pctKey?: string,
+): ModelColumn {
+  const align = kind === 'text' || kind === 'date' ? 'left' : 'right'
+  return {
+    key,
+    header,
+    kind,
+    align,
+    value: (row) => (key in row.values ? row.values[key] : null),
+    format,
+    pct: pctKey
+      ? {
+          part: (row) => row.pct?.[pctKey]?.part ?? 0,
+          whole: (row) => row.pct?.[pctKey]?.whole ?? 0,
+        }
+      : undefined,
+  }
+}
+
+function orderStatusLabel(status: string) {
+  return status in STATUS_PILL ? STATUS_PILL[status as OrderStatus] : status
+}
+
+function claimStatusLabel(status: string) {
+  return status in CLAIM_STATUS_LABEL ? CLAIM_STATUS_LABEL[status as ClaimStatus] : status
+}
+
+function priorityLabel(key: string) {
+  return isOrderPriority(key) ? PRIORITY_LABEL[key] : key
+}
+
+function withSlot(antes: number, enHorario: number, conDemora: number) {
+  return antes + enHorario + conDemora
+}
+
+function dayRow(day: DayReport): ModelRow {
+  return {
+    rowId: day.date,
+    values: {
+      date: day.date,
+      pendiente: day.status.pendiente,
+      preparado: day.status.preparado,
+      asignado: day.status.asignado,
+      viaje: day.status['en-viaje'],
+      entregado: day.status.entregado,
+      propia: day.dispatch.propia,
+      correo: day.dispatch.correo,
+      retiro: day.dispatch.retiro,
+    },
+  }
+}
+
+function slotRow(day: SlotDay): ModelRow {
+  const whole = withSlot(day.antes, day.enHorario, day.conDemora)
+  return {
+    rowId: day.date,
+    values: {
+      date: day.date,
+      antes: day.antes,
+      en: day.enHorario,
+      demora: day.conDemora,
+      sin: day.sinFranja,
+      pct: day.pctOnTime,
+    },
+    pct: {
+      pct: { part: day.antes + day.enHorario, whole },
+    },
+  }
+}
+
+function lateRow(row: LateOrder): ModelRow {
+  return {
+    rowId: row.id,
+    values: {
+      id: row.id,
+      client: row.client,
+      seller: row.seller,
+      zone: row.zone,
+      date: row.date,
+      slot: row.timeWindow,
+      status: orderStatusLabel(row.status),
+    },
+  }
+}
+
+function groupRow(row: GroupReport, label: string): ModelRow {
+  const whole = withSlot(row.antes, row.enHorario, row.conDemora)
+  return {
+    rowId: row.key,
+    values: {
+      key: label,
+      total: row.total,
+      entregados: row.entregados,
+      cancelados: row.cancelados,
+      antes: row.antes,
+      en: row.enHorario,
+      demora: row.conDemora,
+      pctAntes: row.pctAntes,
+      pct: row.pctOnTime,
+      pctDemora: row.pctConDemora,
+      sin: row.sinFranja,
+    },
+    pct: {
+      pctAntes: { part: row.antes, whole },
+      pct: { part: row.antes + row.enHorario, whole },
+      pctDemora: { part: row.conDemora, whole },
+    },
+  }
+}
+
+function groupColumns(label: string): ModelColumn[] {
+  return [
+    column('key', label, 'text', formatText),
+    column('total', 'Total', 'count', formatCount),
+    column('entregados', 'Entregados', 'count', formatCount),
+    column('cancelados', 'Cancelados', 'count', formatCount),
+    column('antes', 'Entregado antes', 'count', formatCount),
+    column('en', 'En horario', 'count', formatCount),
+    column('demora', 'Entregado con demora', 'count', formatCount),
+    column('pctAntes', '% antes', 'pct', formatPct, 'pctAntes'),
+    column('pct', '% en horario', 'pct', formatPct, 'pct'),
+    column('pctDemora', '% con demora', 'pct', formatPct, 'pctDemora'),
+    column('sin', 'Sin franja', 'count', formatCount),
+  ]
+}
+
+function moneyLabel(amount: number | null, unsealed: number) {
+  if (amount == null) return 'Sin monto sellado'
+  if (unsealed > 0) return `${formatMoney(amount)} · ${unsealed} sin monto sellado`
+  return formatMoney(amount)
+}
+
+function driverLines(driver: DriverReport): ModelRow[] {
+  const lines: ModelRow[] = []
+  if (driver.closedTrips > 0 || driver.pendingTrips === 0) {
+    const text: Record<string, string> = {}
+    if (driver.kmEstimated > 0) {
+      text.km = `${formatKm(driver.km)} (${formatKm(driver.kmEstimated)} estimados)`
+    }
+    text.amount = moneyLabel(driver.amount, driver.unsealed)
+    lines.push({
+      rowId: `${driver.driverId}-cerrado`,
+      values: {
+        name: driver.driverName,
+        estado: 'Cerrado',
+        trips: driver.closedTrips,
+        deliveries: driver.deliveries,
+        undelivered: driver.undelivered,
+        km: driver.km,
+        amount: driver.amount,
+      },
+      text,
+      kmEstimated: driver.kmEstimated,
+    })
+  }
+  if (driver.pendingTrips > 0) {
+    const estimated =
+      driver.pendingEstimated == null ? 'Estimado' : `Estimado ${formatMoney(driver.pendingEstimated)}`
+    lines.push({
+      rowId: `${driver.driverId}-curso`,
+      pending: true,
+      values: {
+        name: driver.driverName,
+        estado: 'En curso',
+        trips: driver.pendingTrips,
+        deliveries: null,
+        undelivered: null,
+        km: driver.pendingKm,
+        amount: null,
+      },
+      text: { amount: estimated },
+    })
+  }
+  return lines
+}
+
+function claimStatusRow(row: { status: string; label: string; count: number }): ModelRow {
+  return { rowId: row.status, values: { label: row.label, count: row.count } }
+}
+
+function claimMotiveRow(row: { motive: string; count: number }): ModelRow {
+  return { rowId: row.motive, values: { motive: row.motive, count: row.count } }
+}
+
+function openClaimRow(row: OpenClaimRow): ModelRow {
+  return {
+    rowId: row.id,
+    values: {
+      id: row.id,
+      client: row.client,
+      motive: row.motive,
+      status: claimStatusLabel(row.status),
+      days: row.days,
+    },
+  }
+}
+
+function pickupRow(row: PickupDay): ModelRow {
+  return {
+    rowId: row.date,
+    values: {
+      date: row.date,
+      total: row.total,
+      pendiente: row.status.pendiente,
+      preparado: row.status.preparado,
+      asignado: row.status.asignado,
+      viaje: row.status['en-viaje'],
+      entregado: row.status.entregado,
+    },
+  }
+}
+
+function overdueRow(row: OverduePickup): ModelRow {
+  return {
+    rowId: row.id,
+    values: {
+      id: row.id,
+      client: row.client,
+      seller: row.seller,
+      date: row.date,
+      status: orderStatusLabel(row.status),
+    },
+  }
+}
+
+function kpis(data: ReportSource): ReportKpi[] {
+  const delivered = data.deliveries.byDay.reduce((sum, day) => sum + day.status.entregado, 0)
+  const slot = data.deliveries.slot
+  const totals = data.drivers.totals
+  return [
+    { id: 'entregados', title: 'Entregados', value: countFormat.format(delivered) },
+    {
+      id: 'horario',
+      title: '% en horario',
+      value: formatPct(slot.pctOnTime),
+      detail: `${slot.conDemora} con demora`,
+      detailTone: slot.conDemora > 0 ? 'danger' : 'neutral',
+    },
+    { id: 'atrasados', title: 'Atrasados abiertos', value: countFormat.format(data.deliveries.late.length) },
+    { id: 'viajes', title: 'Viajes cerrados', value: countFormat.format(totals.closedTrips) },
+    {
+      id: 'km',
+      title: 'Km',
+      value: formatKm(totals.km),
+      detail: totals.kmEstimated > 0 ? `${formatKm(totals.kmEstimated)} estimados` : undefined,
+      detailTone: 'neutral',
+    },
+    {
+      id: 'monto',
+      title: 'Monto a pagar',
+      value: totals.amount == null ? 'Sin monto sellado' : formatMoney(totals.amount),
+    },
+    {
+      id: 'pendientes',
+      title: 'Viajes pendientes',
+      value: countFormat.format(totals.pendingTrips),
+      detail: 'sin monto',
+      detailTone: 'neutral',
+    },
+  ]
+}
+
+export function buildReportModel(data: ReportSource, period: { from: string; to: string }): ReportModel {
+  const hours = data.claims.averageCloseHours
+  const claimsNote =
+    hours == null ? 'Sin cierres en el período' : `Tiempo promedio hasta el cierre: ${formatKm(hours)} h`
+  const sections: ReportSectionModel[] = [
+    {
+      id: 'entregas',
+      title: 'Entregas por día',
+      sheet: 'Entregas por día',
+      csvId: 'entregas',
+      total: null,
+      columns: [
+        column('date', 'Fecha', 'date', formatDate),
+        column('pendiente', 'Pendiente', 'count', formatCount),
+        column('preparado', 'Preparado', 'count', formatCount),
+        column('asignado', 'Asignado', 'count', formatCount),
+        column('viaje', 'En viaje', 'count', formatCount),
+        column('entregado', 'Entregado', 'count', formatCount),
+        column('propia', 'Propia', 'count', formatCount),
+        column('correo', 'Correo', 'count', formatCount),
+        column('retiro', 'Retiro', 'count', formatCount),
+      ],
+      rows: data.deliveries.byDay.map(dayRow),
+    },
+    {
+      id: 'franja',
+      title: 'Cumplimiento de franja',
+      sheet: 'Franja',
+      csvId: 'franja',
+      total: null,
+      columns: [
+        column('date', 'Fecha', 'date', formatDate),
+        column('antes', 'Entregado antes', 'count', formatCount),
+        column('en', 'En horario', 'count', formatCount),
+        column('demora', 'Entregado con demora', 'count', formatCount),
+        column('sin', 'Sin franja', 'count', formatCount),
+        column('pct', '% en horario', 'pct', formatPct, 'pct'),
+      ],
+      rows: data.deliveries.slotByDay.map(slotRow),
+    },
+    {
+      id: 'atrasados',
+      title: 'Atrasados',
+      sheet: 'Atrasados',
+      csvId: 'atrasados',
+      total: null,
+      columns: [
+        column('id', 'Pedido', 'text', formatText),
+        column('client', 'Cliente', 'text', formatText),
+        column('seller', 'Vendedor', 'text', formatText),
+        column('zone', 'Zona', 'text', formatText),
+        column('date', 'Fecha', 'date', formatDate),
+        column('slot', 'Franja', 'text', formatText),
+        column('status', 'Estado', 'text', formatText),
+      ],
+      rows: data.deliveries.late.map(lateRow),
+    },
+    {
+      id: 'vendedores',
+      title: 'Por vendedor',
+      sheet: 'Vendedores',
+      csvId: 'vendedores',
+      total: null,
+      columns: groupColumns('Vendedor'),
+      rows: data.deliveries.bySeller.map((row) => groupRow(row, row.key)),
+    },
+    {
+      id: 'zonas',
+      title: 'Por zona',
+      sheet: 'Zonas',
+      csvId: 'zonas',
+      total: null,
+      columns: groupColumns('Zona'),
+      rows: data.deliveries.byZone.map((row) => groupRow(row, row.key)),
+    },
+    {
+      id: 'prioridad',
+      title: 'Por prioridad',
+      sheet: 'Prioridad',
+      csvId: 'prioridad',
+      total: null,
+      columns: groupColumns('Prioridad'),
+      rows: data.deliveries.byPriority.map((row) => groupRow(row, priorityLabel(row.key))),
+    },
+    {
+      id: 'choferes',
+      title: 'Por chofer',
+      sheet: 'Choferes',
+      csvId: 'choferes',
+      total: null,
+      columns: [
+        column('name', 'Chofer', 'text', formatText),
+        column('estado', 'Estado', 'text', formatText),
+        column('trips', 'Viajes', 'count', formatCount),
+        column('deliveries', 'Entregas', 'count', formatCount),
+        column('undelivered', 'No entregas', 'count', formatCount),
+        column('km', 'Km', 'km', formatKm),
+        column('amount', 'Monto', 'money', formatMoney),
+      ],
+      rows: data.drivers.drivers.flatMap(driverLines),
+    },
+    {
+      id: 'reclamos-estado',
+      title: 'Por estado',
+      sheet: 'Reclamos estado',
+      csvId: 'reclamos-estado',
+      total: null,
+      columns: [column('label', 'Estado', 'text', formatText), column('count', 'Cantidad', 'count', formatCount)],
+      rows: data.claims.byStatus.map(claimStatusRow),
+    },
+    {
+      id: 'reclamos-motivo',
+      title: 'Por tipo',
+      sheet: 'Reclamos tipo',
+      csvId: 'reclamos-motivo',
+      total: null,
+      columns: [column('motive', 'Tipo', 'text', formatText), column('count', 'Cantidad', 'count', formatCount)],
+      rows: data.claims.byMotive.map(claimMotiveRow),
+    },
+    {
+      id: 'reclamos-abiertos',
+      title: 'Abiertos con más de 7 días',
+      sheet: 'Reclamos abiertos',
+      csvId: 'reclamos-abiertos',
+      total: null,
+      columns: [
+        column('id', 'Reclamo', 'text', formatText),
+        column('client', 'Cliente', 'text', formatText),
+        column('motive', 'Tipo', 'text', formatText),
+        column('status', 'Estado', 'text', formatText),
+        column('days', 'Días', 'count', formatCount),
+      ],
+      rows: data.claims.openAged.map(openClaimRow),
+    },
+    {
+      id: 'retiros-dia',
+      title: 'Por día',
+      sheet: 'Retiros día',
+      csvId: 'retiros',
+      total: null,
+      columns: [
+        column('date', 'Fecha', 'date', formatDate),
+        column('total', 'Total', 'count', formatCount),
+        column('pendiente', 'Pendiente', 'count', formatCount),
+        column('preparado', 'Preparado', 'count', formatCount),
+        column('asignado', 'Asignado', 'count', formatCount),
+        column('viaje', 'En viaje', 'count', formatCount),
+        column('entregado', 'Entregado', 'count', formatCount),
+      ],
+      rows: data.pickups.byDay.map(pickupRow),
+    },
+    {
+      id: 'retiros-vencidos',
+      title: 'Pendientes de retiro vencidos',
+      sheet: 'Retiros vencidos',
+      csvId: 'retiros-vencidos',
+      total: null,
+      columns: [
+        column('id', 'Pedido', 'text', formatText),
+        column('client', 'Cliente', 'text', formatText),
+        column('seller', 'Vendedor', 'text', formatText),
+        column('date', 'Fecha', 'date', formatDate),
+        column('status', 'Estado', 'text', formatText),
+      ],
+      rows: data.pickups.overdue.map(overdueRow),
+    },
+  ]
+  return { period, kpis: kpis(data), claimsNote, sections }
+}
