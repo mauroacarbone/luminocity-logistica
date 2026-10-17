@@ -260,7 +260,7 @@ function ReportSection({
   }
   const showChart = Boolean(chart && view === 'grafico')
   return (
-    <section id={section.id} className="flex scroll-mt-24 flex-col gap-2">
+    <section id={section.id} className="report-section flex scroll-mt-24 flex-col gap-2">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <h2 className="text-lg font-semibold text-text">{section.title}</h2>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -298,9 +298,10 @@ function ReportSection({
           <EmptyState variant="plain" title="Sin datos" />
         ) : (
           <>
-            <div className="hidden lg:block">
+            <div className="report-table-wrap">
               <Table
                 bare
+                className="report-table"
                 columns={section.columns.map((column) => ({
                   key: column.key,
                   header: column.header,
@@ -313,7 +314,7 @@ function ReportSection({
                 footer={totalFooter(section)}
               />
             </div>
-            <div className="flex flex-col lg:hidden">
+            <div className="report-cards">
               {section.rows.map((row) => {
                 const cells = (as: 'p' | 'span') =>
                   section.columns.map((column) => {
@@ -480,32 +481,10 @@ export function Reportes() {
   }
 
   return (
-    <Page>
-      <PageHeader
-        title="Reportes"
-        subtitle="Entregas, choferes y post venta del período"
-        actions={
-          model ? (
-            <Menu
-              label="Exportar"
-              icon={<DownloadIcon />}
-              open={menuOpen}
-              onOpenChange={setMenuOpen}
-              items={exportItems({
-                model,
-                busy,
-                onExcel: () => void runExport('excel', () => exportExcel(model, fileMeta(from, to, user))),
-                onPdf: () => void runExport('pdf', () => exportPdf(model, fileMeta(from, to, user))),
-                onCsv: (section) =>
-                  void runExport(section.id, async () => {
-                    downloadCsvFile(toCsv(sectionCsv(section)), `reporte-${section.csvId}-${from}_${to}.csv`)
-                  }),
-              })}
-            />
-          ) : undefined
-        }
-      />
-      <FilterBar
+    <Page className="report-screen">
+      <PageHeader title="Reportes" subtitle="Entregas, choferes y post venta del período" />
+      <div className="report-toolbar">
+        <FilterBar
         chips={[
           {
             id: 'periodo',
@@ -517,6 +496,25 @@ export function Reportes() {
           },
         ]}
       />
+        {model ? (
+          <Menu
+            label="Exportar"
+            icon={<DownloadIcon />}
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+            items={exportItems({
+              model,
+              busy,
+              onExcel: () => void runExport('excel', () => exportExcel(model, fileMeta(from, to, user))),
+              onPdf: () => void runExport('pdf', () => exportPdf(model, fileMeta(from, to, user))),
+              onCsv: (section) =>
+                void runExport(section.id, async () => {
+                  downloadCsvFile(toCsv(sectionCsv(section)), `reporte-${section.csvId}-${from}_${to}.csv`)
+                }),
+            })}
+          />
+        ) : null}
+      </div>
       {preset === 'personalizado' ? (
         <div className="grid grid-cols-2 gap-3">
           <label className="flex min-w-0 flex-col gap-1 text-sm font-medium text-text">
@@ -543,7 +541,7 @@ export function Reportes() {
         />
       ) : null}
       {!loading && !error && model && !empty ? (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="report-kpis">
           {model.kpis.map((kpi) => (
             <KpiCard
               key={kpi.id}
@@ -618,6 +616,22 @@ function ReportTables({
 }) {
   const byId = new Map(model.sections.map((section) => [section.id, section]))
   const charts = new Map(reportCharts(model).map((chart) => [chart.id, chart]))
+  const [active, setActive] = useState<string>(SECTIONS[0].id)
+  useEffect(() => {
+    const nodes = SECTIONS.map((item) => document.getElementById(item.id)).filter((node) => node instanceof HTMLElement)
+    if (nodes.length === 0) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0]
+        if (visible?.target.id) setActive(visible.target.id)
+      },
+      { rootMargin: '-20% 0px -55% 0px', threshold: [0.15, 0.4] },
+    )
+    for (const node of nodes) observer.observe(node)
+    return () => observer.disconnect()
+  }, [model])
   function block(id: string) {
     const section = byId.get(id)
     if (!section) return null
@@ -634,12 +648,15 @@ function ReportTables({
   }
   return (
     <div className="flex flex-col gap-6">
-      <nav className="flex gap-2 overflow-x-auto lg:hidden" aria-label="Secciones">
+      <nav className="report-section-nav" aria-label="Secciones">
         {SECTIONS.map((section) => (
           <a
             key={section.id}
             href={`#${section.id}`}
-            className="shrink-0 rounded-md border border-border bg-surface px-3 py-2 text-sm text-text"
+            aria-current={active === section.id ? 'true' : undefined}
+            className={`shrink-0 rounded-md border px-3 py-2 text-sm text-text ${
+              active === section.id ? 'border-accent bg-accent-soft font-semibold' : 'border-border bg-surface'
+            }`}
           >
             {section.label}
           </a>

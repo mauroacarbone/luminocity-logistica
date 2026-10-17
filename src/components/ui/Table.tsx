@@ -164,7 +164,7 @@ export function Table<T>({
 
   return (
     <div className={cx('relative', className)}>
-      <div ref={scrollerRef} className="overflow-auto" style={bare ? undefined : { maxHeight }}>
+      <div ref={scrollerRef} className="overflow-auto" data-scrolled={edges.left ? '' : undefined} style={bare ? undefined : { maxHeight }}>
         <table className={cx(TABLE, fixed && 'table-fixed')}>
           {caption ? <caption className="mb-2 text-left text-sm text-muted">{caption}</caption> : null}
           {columnsOf(columns)}
