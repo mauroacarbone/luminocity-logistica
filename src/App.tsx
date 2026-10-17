@@ -20,6 +20,7 @@ import { PedidosPreparacion } from './pages/PedidosPreparacion'
 import { PendientesEntregas } from './pages/PendientesEntregas'
 import { PostVenta } from './pages/PostVenta'
 import { Registro } from './pages/Registro'
+import { Reportes } from './pages/Reportes'
 import { Retiros } from './pages/Retiros'
 import { Seguimiento } from './pages/Seguimiento'
 import { TarifasViaje } from './pages/TarifasViaje'
@@ -195,6 +196,14 @@ export default function App() {
           element={
             <Gate path="/usuarios">
               <Usuarios />
+            </Gate>
+          }
+        />
+        <Route
+          path="/reportes"
+          element={
+            <Gate path="/reportes">
+              <Reportes />
             </Gate>
           }
         />

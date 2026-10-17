@@ -27,6 +27,7 @@ const MENU: Record<Role, readonly string[]> = {
     '/bandeja',
     '/usuarios',
     '/tarifas',
+    '/reportes',
   ],
   chofer: ['/mis-entregas', '/mis-viajes'],
   admin: [
@@ -44,6 +45,7 @@ const MENU: Record<Role, readonly string[]> = {
     '/tarifas',
     '/bandeja',
     '/usuarios',
+    '/reportes',
   ],
 }
 

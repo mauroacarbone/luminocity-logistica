@@ -18,6 +18,7 @@ export const NAV = [
   { to: '/datos-maestros', label: 'Datos maestros', icon: 'settings' },
   { to: '/tarifas', label: 'Tarifas de viaje', icon: 'settings' },
   { to: '/bandeja', label: 'Bandeja', icon: 'inbox' },
+  { to: '/reportes', label: 'Reportes', icon: 'chart' },
 ] as const
 
 export type NavItem = (typeof NAV)[number]
@@ -66,6 +67,7 @@ const GROUP_DEFS: { id: GroupId; title: string; icon: NavIconName; sections: Nav
     sections: [
       { paths: ['/usuarios', '/bandeja'] },
       { paths: ['/datos-maestros', '/tarifas'] },
+      { paths: ['/reportes'] },
     ],
   },
 ]

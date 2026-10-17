@@ -81,6 +81,12 @@ export function NavIcon({ name }: { name: NavIconName }) {
         </>
       )}
       {name === 'filter' && <path d="M4 6h16l-6 7v5l-4-2v-3L4 6z" {...common} />}
+      {name === 'chart' && (
+        <>
+          <path d="M4 19V5M4 19h16" {...common} />
+          <path d="M8 16v-5M12 16V8M16 16v-3" {...common} />
+        </>
+      )}
       {name === 'list' && (
         <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" {...common} />
       )}
