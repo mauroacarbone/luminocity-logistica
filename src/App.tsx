@@ -14,6 +14,7 @@ import { NuevoPedido } from './pages/NuevoPedido'
 import { PlanificadorRutas } from './pages/PlanificadorRutas'
 import { MisEntregas } from './pages/MisEntregas'
 import { MisViajes } from './pages/MisViajes'
+import { MiPreparacion } from './pages/MiPreparacion'
 import { PanelOperativo } from './pages/PanelOperativo'
 import { PedidoDetalle } from './pages/PedidoDetalle'
 import { PedidosPreparacion } from './pages/PedidosPreparacion'
@@ -104,6 +105,14 @@ export default function App() {
           }
         />
         <Route path="/pedidos/:id" element={<PedidoDetalle />} />
+        <Route
+          path="/preparacion"
+          element={
+            <Gate path="/preparacion">
+              <MiPreparacion />
+            </Gate>
+          }
+        />
         <Route
           path="/pedidos"
           element={

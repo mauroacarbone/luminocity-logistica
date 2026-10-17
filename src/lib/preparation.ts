@@ -1,4 +1,6 @@
 import type { Order } from '../data/orders'
+import type { Role } from './authStore'
+import type { PickingLine } from './pickingSheet'
 
 export const TAKE_STALE_MS = 4 * 60 * 60 * 1000
 
@@ -31,6 +33,25 @@ export function prepDuration(order: Order, now = Date.now()) {
     any = true
   }
   return any ? sum : null
+}
+
+export function lineIsPicked(line: PickingLine) {
+  return line.status === 'preparado' || (typeof line.pickedQty === 'number' && line.pickedQty >= line.quantity && line.quantity > 0)
+}
+
+export function checklistOf(lines: PickingLine[], orderId: string) {
+  const rows = lines.filter((line) => line.orderId === orderId)
+  const done = rows.filter((line) => lineIsPicked(line)).length
+  return { rows, done, total: rows.length }
+}
+
+export function canTickChecklist(role: Role | undefined, order: Order, userId: string | undefined) {
+  if (!role || !userId) return false
+  if (order.status !== 'pendiente' && order.status !== 'preparado') return false
+  if (role === 'encargado_deposito' || role === 'admin') return true
+  if (role !== 'deposito') return false
+  if (order.status === 'pendiente') return true
+  return order.preparedBy?.id === userId
 }
 
 export function formatPrepMs(ms: number | null | undefined) {

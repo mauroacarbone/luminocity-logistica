@@ -10,6 +10,7 @@ import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { canCancelOrder, canEditOrder, canPrepare } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
+import { checklistOf, takeState, takenByName } from '../lib/preparation'
 import { compareOpenPriority } from '../lib/priority'
 import { businessToday } from '../lib/schedule'
 import {
@@ -21,6 +22,7 @@ import {
 } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
+import { usePicking } from '../state/PickingContext'
 
 function readPackages(raw: string) {
   const trimmed = raw.trim()
@@ -119,6 +121,7 @@ export function PedidosPreparacion() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { orders, loading, removeOrder, transitionOrder } = useOrders()
+  const { lines } = usePicking()
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => businessToday())
   const [preparing, setPreparing] = useState<Order | null>(null)
@@ -189,11 +192,22 @@ export function PedidosPreparacion() {
     if (openId) closePedido()
   }
 
+  function heldBy(order: Order) {
+    if (!user) return ''
+    if (takeState(order) !== 'en-preparacion') return ''
+    if (order.preparation?.takenBy?.id === user.id) return ''
+    return takenByName(order) || 'otro operario'
+  }
+
   async function markPrepared(packages: number) {
     if (!preparing) return
+    const check = checklistOf(lines, preparing.id)
+    const incomplete = check.total > 0 && check.done < check.total
     const accepted = await confirm(
       'Marcar preparado',
-      `El pedido ${preparing.id} queda preparado con ${packages} bulto${packages === 1 ? '' : 's'}.`,
+      incomplete
+        ? `Queda como armado incompleto (${check.done} de ${check.total} artículos). Se puede completar después.`
+        : `El pedido ${preparing.id} queda preparado con ${packages} bulto${packages === 1 ? '' : 's'}.`,
     )
     if (!accepted) return
     setSaving(true)
@@ -201,6 +215,7 @@ export function PedidosPreparacion() {
       to: 'preparado',
       packages,
       via: 'pedidos',
+      ...(check.total > 0 ? { checklist: { done: check.done, total: check.total } } : {}),
     })
     setSaving(false)
     if (result.status === 'not-saved') {
@@ -284,13 +299,13 @@ export function PedidosPreparacion() {
           <Button
             variant="ghost"
             size="lg"
-            disabled={busyId === order.id}
+            disabled={busyId === order.id || Boolean(heldBy(order))}
             onClick={(event) => {
               event.stopPropagation()
               setPreparing(order)
             }}
           >
-            Marcar preparado
+            {heldBy(order) ? `Lo está armando ${heldBy(order)}` : 'Marcar preparado'}
           </Button>
         ) : null,
     },
@@ -384,14 +399,21 @@ export function PedidosPreparacion() {
                   variant="ghost"
                   size="lg"
                   className="mt-3"
-                  disabled={Boolean(user && canPrepare(user.role) && order.status === 'pendiente' && busyId === order.id)}
+                  disabled={Boolean(
+                    user && canPrepare(user.role) && order.status === 'pendiente' && (busyId === order.id || heldBy(order)),
+                  )}
                   onClick={(event) => {
                     event.stopPropagation()
+                    if (heldBy(order)) return
                     if (user && canPrepare(user.role) && order.status === 'pendiente') setPreparing(order)
                     else openPedido(order.id)
                   }}
                 >
-                  {user && canPrepare(user.role) && order.status === 'pendiente' ? 'Marcar preparado' : 'Ver pedido'}
+                  {user && canPrepare(user.role) && order.status === 'pendiente'
+                    ? heldBy(order)
+                      ? `Lo está armando ${heldBy(order)}`
+                      : 'Marcar preparado'
+                    : 'Ver pedido'}
                 </Button>
               </article>
             ))}
@@ -409,8 +431,13 @@ export function PedidosPreparacion() {
           openOrder ? (
             <>
               {user && canPrepare(user.role) && openOrder.status === 'pendiente' ? (
-                <Button variant="primary" size="lg" disabled={busyId === openOrder.id} onClick={() => setPreparing(openOrder)}>
-                  Marcar preparado
+                <Button
+                  variant="primary"
+                  size="lg"
+                  disabled={busyId === openOrder.id || Boolean(heldBy(openOrder))}
+                  onClick={() => setPreparing(openOrder)}
+                >
+                  {heldBy(openOrder) ? `Lo está armando ${heldBy(openOrder)}` : 'Marcar preparado'}
                 </Button>
               ) : null}
               {user && canEditOrder(user, openOrder) ? (

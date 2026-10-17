@@ -11,6 +11,7 @@ type DrawerProps = {
   children: ReactNode
   footer?: ReactNode
   width?: string
+  mobileFull?: boolean
 }
 
 export function Drawer({
@@ -21,6 +22,7 @@ export function Drawer({
   children,
   footer,
   width = 'min(520px, 100vw)',
+  mobileFull = false,
 }: DrawerProps) {
   const titleId = useId()
   if (!open) return null
@@ -28,14 +30,15 @@ export function Drawer({
   return (
     <Modal onClose={onClose} labelledBy={titleId} className="bg-overlay">
       <div
-        className="flex h-full items-end justify-center sm:items-stretch sm:justify-end"
+        className={cx('flex h-full justify-center sm:items-stretch sm:justify-end', mobileFull ? 'items-stretch' : 'items-end')}
         onClick={(event) => {
           if (event.target === event.currentTarget) onClose()
         }}
       >
         <div
           className={cx(
-            'drawer-panel relative flex max-h-[90dvh] w-full flex-col rounded-t-[10px] border border-border bg-surface',
+            'drawer-panel relative flex w-full flex-col border border-border bg-surface',
+            mobileFull ? 'h-dvh max-h-none rounded-none' : 'max-h-[90dvh] rounded-t-[10px]',
             'sm:h-full sm:max-h-none sm:rounded-none sm:border-y-0 sm:border-r-0 sm:border-l',
           )}
           style={{ width }}
