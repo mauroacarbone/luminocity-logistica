@@ -210,23 +210,39 @@ function ReportSection<T>({
               />
             </div>
             <div className="flex flex-col lg:hidden">
-              {rows.map((row) => (
-                <article
-                  key={rowKey(row)}
-                  className={`border-b border-border px-4 py-3 last:border-b-0 ${onRowClick ? 'cursor-pointer' : ''}`}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                >
-                  {columns.map((column) => (
-                    <p
-                      key={column.key}
-                      className={column.align === 'right' ? 'text-right text-sm tabular-nums text-text' : 'text-sm text-text'}
-                    >
-                      <span className="text-muted">{column.header}: </span>
-                      {column.cell(row)}
-                    </p>
-                  ))}
-                </article>
-              ))}
+              {rows.map((row) => {
+                const cells = (as: 'p' | 'span') =>
+                  columns.map((column) => {
+                    const Tag = as
+                    return (
+                      <Tag
+                        key={column.key}
+                        className={`block ${column.align === 'right' ? 'text-right text-sm tabular-nums text-text' : 'text-sm text-text'}`}
+                      >
+                        <span className="text-muted">{column.header}: </span>
+                        {column.cell(row)}
+                      </Tag>
+                    )
+                  })
+                if (!onRowClick) {
+                  return (
+                    <article key={rowKey(row)} className="border-b border-border px-4 py-3 last:border-b-0">
+                      {cells('p')}
+                    </article>
+                  )
+                }
+                return (
+                  <button
+                    key={rowKey(row)}
+                    type="button"
+                    className="w-full cursor-pointer border-b border-border px-4 py-3 text-left last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                    aria-label={`Abrir pedido ${rowKey(row)}`}
+                    onClick={() => onRowClick(row)}
+                  >
+                    {cells('span')}
+                  </button>
+                )
+              })}
             </div>
           </>
         )}
