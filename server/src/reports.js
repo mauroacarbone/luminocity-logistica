@@ -7,6 +7,17 @@ import { deliveredTimeliness, slotRange } from './timeliness.js'
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
 const DISPATCHES = ['propia', 'correo', 'retiro']
+const CLAIM_LABEL = {
+  nuevo: 'Nuevo',
+  recepcion: 'Recepción de producto',
+  'pendiente-retiro': 'Pendiente de retiro cliente',
+  'enviado-proveedor': 'Enviado al proveedor para verificación',
+  reparacion: 'Reparación',
+  entregado: 'Entregado al cliente',
+  cancelado: 'Cancelado',
+}
+const CLAIM_DAY = `to_char((data->>'createdAt')::timestamptz AT TIME ZONE 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD')`
+const OPEN_CLAIM_MS = 7 * 24 * 60 * 60 * 1000
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 const MAX_DAYS = 366
@@ -239,6 +250,220 @@ async function ordersById(ids) {
     if (order) map.set(order.id || row.id, order)
   }
   return map
+}
+
+reportsRouter.get('/claims', async (req, res) => {
+  await send(res, async () => {
+    const period = readPeriod(req.query ?? {})
+    if (period.error) {
+      res.status(period.status).json({ message: period.error })
+      return
+    }
+    const report = await locked(() => loadClaims(period))
+    res.json(report)
+  })
+})
+
+reportsRouter.get('/pickups', async (req, res) => {
+  await send(res, async () => {
+    const period = readPeriod(req.query ?? {})
+    if (period.error) {
+      res.status(period.status).json({ message: period.error })
+      return
+    }
+    const report = await locked(() => loadPickups(period))
+    res.json(report)
+  })
+})
+
+async function loadClaims(period) {
+  const now = Date.now()
+  const rows = await claimsInPeriod(period)
+  const byStatus = new Map()
+  const byMotive = new Map()
+  let closeMs = 0
+  let closed = 0
+  const openAged = []
+  for (const row of rows) {
+    const status = text(row.status) || 'nuevo'
+    const motive = text(row.motive) || 'Sin motivo'
+    byStatus.set(status, (byStatus.get(status) ?? 0) + 1)
+    byMotive.set(motive, (byMotive.get(motive) ?? 0) + 1)
+    const created = Date.parse(row.createdAt)
+    const ended = claimClosedAt(row)
+    if (Number.isFinite(created) && ended != null && ended >= created) {
+      closeMs += ended - created
+      closed += 1
+    }
+    if (isOpenClaim(status) && Number.isFinite(created) && now - created > OPEN_CLAIM_MS) {
+      openAged.push({
+        id: text(row.id),
+        client: text(row.client),
+        motive,
+        status,
+        createdAt: text(row.createdAt),
+        days: Math.floor((now - created) / 86400000),
+      })
+    }
+  }
+  openAged.sort((left, right) => right.days - left.days || left.id.localeCompare(right.id, 'es'))
+  return {
+    period,
+    total: rows.length,
+    averageCloseHours: closed ? Math.round((closeMs / closed / 3600000) * 10) / 10 : null,
+    byStatus: [...byStatus.entries()]
+      .map(([status, count]) => ({ status, label: CLAIM_LABEL[status] ?? status, count }))
+      .sort((left, right) => left.label.localeCompare(right.label, 'es')),
+    byMotive: [...byMotive.entries()]
+      .map(([motive, count]) => ({ motive, count }))
+      .sort((left, right) => right.count - left.count || left.motive.localeCompare(right.motive, 'es')),
+    openAged,
+  }
+}
+
+async function claimsInPeriod(period) {
+  if (!usingDatabase()) {
+    const claims = await readCollection('claims')
+    return claims.filter((claim) => {
+      const day = claimDay(claim?.createdAt)
+      return day && day >= period.from && day <= period.to
+    })
+  }
+  const rows = await queryRows(
+    `SELECT COALESCE(data->>'id', id) AS id,
+            COALESCE(data->>'client', '') AS client,
+            COALESCE(data->>'motive', '') AS motive,
+            COALESCE(data->>'status', '') AS status,
+            COALESCE(data->>'createdAt', '') AS "createdAt",
+            data->>'resolvedAt' AS "resolvedAt",
+            data->'events' AS events
+     FROM claims
+     WHERE data->>'createdAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
+       AND ${CLAIM_DAY} BETWEEN $1 AND $2`,
+    [period.from, period.to],
+  )
+  return rows
+}
+
+function claimDay(iso) {
+  if (typeof iso !== 'string' || !iso) return ''
+  const at = Date.parse(iso)
+  if (!Number.isFinite(at)) return ''
+  return businessDate(at)
+}
+
+function claimClosedAt(claim) {
+  const status = text(claim.status)
+  if (status !== 'entregado' && status !== 'cancelado') return null
+  if (typeof claim.resolvedAt === 'string' && claim.resolvedAt) {
+    const at = Date.parse(claim.resolvedAt)
+    if (Number.isFinite(at)) return at
+  }
+  const events = Array.isArray(claim.events) ? claim.events : []
+  let best = null
+  for (const event of events) {
+    if (!event || (event.status !== 'entregado' && event.status !== 'cancelado')) continue
+    const at = Date.parse(event.at)
+    if (!Number.isFinite(at)) continue
+    if (best == null || at > best) best = at
+  }
+  return best
+}
+
+function isOpenClaim(status) {
+  return status !== 'entregado' && status !== 'cancelado'
+}
+
+async function loadPickups(period) {
+  const today = businessDate()
+  if (!usingDatabase()) {
+    const orders = await readCollection('orders')
+    const rows = orders.filter(
+      (order) =>
+        order &&
+        order.dispatchType === 'retiro' &&
+        typeof order.deliveryDate === 'string' &&
+        order.deliveryDate >= period.from &&
+        order.deliveryDate <= period.to,
+    )
+    return buildPickups(period, groupedCounts(rows.map(orderRow)), rows, today)
+  }
+  const counts = await queryRows(
+    `SELECT data->>'deliveryDate' AS date,
+            COALESCE(data->>'status', '') AS status,
+            COUNT(*)::int AS count
+     FROM orders
+     WHERE data->>'dispatchType' = 'retiro'
+       AND data->>'deliveryDate' BETWEEN $1 AND $2
+     GROUP BY 1, 2
+     ORDER BY 1`,
+    [period.from, period.to],
+  )
+  const overdue = await queryRows(
+    `SELECT COALESCE(data->>'id', id) AS id,
+            COALESCE(data->>'client', '') AS client,
+            COALESCE(data->>'seller', '') AS seller,
+            COALESCE(data->>'status', '') AS status,
+            COALESCE(data->>'deliveryDate', '') AS date
+     FROM orders
+     WHERE data->>'dispatchType' = 'retiro'
+       AND data->>'deliveryDate' BETWEEN $1 AND $2
+       AND data->>'deliveryDate' < $3
+       AND COALESCE(data->>'status', '') NOT IN ('entregado', 'cancelado')
+     ORDER BY data->>'deliveryDate', id`,
+    [period.from, period.to, today],
+  )
+  const days = new Map()
+  for (const item of counts) {
+    const date = text(item.date)
+    const current = days.get(date) ?? { ...emptyDay(date), total: 0 }
+    const count = Number(item.count) || 0
+    if (STATUSES.includes(item.status)) current.status[item.status] += count
+    current.total += count
+    days.set(date, current)
+  }
+  return {
+    period,
+    byDay: [...days.values()].sort((left, right) => left.date.localeCompare(right.date)),
+    overdue: overdue.map((row) => ({
+      id: text(row.id),
+      client: text(row.client),
+      seller: text(row.seller),
+      date: text(row.date),
+      status: text(row.status),
+    })),
+  }
+}
+
+function buildPickups(period, counts, rows, today) {
+  const days = new Map()
+  for (const item of counts) {
+    const date = text(item.date)
+    const current = days.get(date) ?? { ...emptyDay(date), total: 0 }
+    const count = Number(item.count) || 0
+    if (STATUSES.includes(item.status)) current.status[item.status] += count
+    current.total += count
+    days.set(date, current)
+  }
+  const overdue = []
+  for (const row of rows) {
+    const date = text(row.deliveryDate)
+    const status = text(row.status)
+    if (!date || date >= today || !status || status === 'entregado' || status === 'cancelado') continue
+    overdue.push({
+      id: text(row.id),
+      client: text(row.client),
+      seller: text(row.seller),
+      date,
+      status,
+    })
+  }
+  overdue.sort((left, right) => left.date.localeCompare(right.date) || left.id.localeCompare(right.id, 'es'))
+  return {
+    period,
+    byDay: [...days.values()].sort((left, right) => left.date.localeCompare(right.date)),
+    overdue,
+  }
 }
 
 function roundKm(value) {
