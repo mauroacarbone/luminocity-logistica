@@ -173,16 +173,21 @@ export function MisViajes() {
         title={manager ? 'Viajes del chofer' : 'Mis viajes'}
         subtitle="Pendientes, finalizados y kilómetros del período"
         actions={
-          manager ? (
-            <Button
-              variant="primary"
-              size="lg"
-              disabled={finished.length === 0}
-              onClick={() => exportFinished(finished, from, to)}
-            >
-              Exportar CSV
+          <div className="no-print flex w-full flex-wrap justify-end gap-2">
+            <Button variant="secondary" size="lg" disabled={trips.length === 0} onClick={() => window.print()}>
+              Descargar PDF
             </Button>
-          ) : undefined
+            {manager ? (
+              <Button
+                variant="primary"
+                size="lg"
+                disabled={finished.length === 0}
+                onClick={() => exportFinished(finished, from, to)}
+              >
+                Exportar CSV
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
@@ -242,6 +247,10 @@ export function MisViajes() {
         }}
       />
 
+      <p className="route-print mt-4 text-sm text-text">
+        {formatIsoDate(from)} – {formatIsoDate(to)} · {tab === 'pendientes' ? 'Pendientes' : 'Finalizados'}
+      </p>
+
       <div className={`mt-4 grid grid-cols-2 gap-2 ${summary.priced ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
         <KpiCard title="Viajes realizados" value={summary.count} />
         <KpiCard
@@ -278,6 +287,7 @@ export function MisViajes() {
 
       <ListBox
         className="mt-4"
+        headerClassName="no-print"
         counters={[
           {
             key: 'pendientes',

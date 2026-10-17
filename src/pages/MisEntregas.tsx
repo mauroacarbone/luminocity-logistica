@@ -372,14 +372,9 @@ export function MisEntregas() {
         })
         return (
           <section key={sheet.id} className="driver-sheet mt-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-xl font-semibold">
-                Hoja de ruta · {sheetDateLabel} · Franja {sheet.slot}
-              </h2>
-              <Button variant="secondary" size="lg" className="no-print" onClick={() => window.print()}>
-                Descargar PDF
-              </Button>
-            </div>
+            <h2 className="text-xl font-semibold">
+              Hoja de ruta · {sheetDateLabel} · Franja {sheet.slot}
+            </h2>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
               <KpiCard title="Paradas" value={stops.length} />
               <KpiCard title="Entregadas" value={deliveredCount} />
