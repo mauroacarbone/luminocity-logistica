@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { OrderDetail } from '../components/OrderDetail'
 import { ServerDown } from '../components/LoadState'
-import { Badge, Button, Drawer, EmptyState, FilterBar, Input, KpiCard, ListBox, Page, PageHeader, Spinner, Table } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, FilterBar, Input, KpiCard, ListBox, Menu, Page, PageHeader, Spinner, Table, type MenuItem } from '../components/ui'
 import { STATUS_PILL, type OrderStatus } from '../data/orders'
 import { canOpen } from '../lib/access'
+import { error as showError } from '../lib/alerts'
+import { ROLE_LABEL, type Session } from '../lib/authStore'
 import { downloadCsvFile, toCsv } from '../lib/csv'
 import { buildReportModel, cellText, sectionCsv, type ModelRow, type ReportModel, type ReportSectionModel, type ReportSource } from '../lib/reportModel'
 import { businessOffset, businessToday } from '../lib/schedule'
@@ -70,6 +72,80 @@ function periodEmpty(data: ReportData) {
     data.pickups.byDay.length === 0 &&
     data.pickups.overdue.length === 0
   )
+}
+
+function DownloadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M12 4v10M8 10l4 4 4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function fileMeta(from: string, to: string, user: Session | null) {
+  const stamp = new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date())
+  return {
+    title: 'Reportes Luminocity',
+    filters: [`Período: ${formatIsoDate(from)} – ${formatIsoDate(to)}`],
+    generatedAt: `${stamp} (hora de Buenos Aires)`,
+    user: user ? `${user.name} (${ROLE_LABEL[user.role]})` : '',
+  }
+}
+
+async function exportExcel(model: ReportModel, meta: ReturnType<typeof fileMeta>) {
+  const { downloadReportXlsx } = await import('../lib/reportXlsx')
+  await downloadReportXlsx(model, meta)
+}
+
+async function exportPdf(model: ReportModel, meta: ReturnType<typeof fileMeta>) {
+  const { downloadReportPdf } = await import('../lib/reportPdf')
+  await downloadReportPdf(model, meta)
+}
+
+function exportItems({
+  model,
+  busy,
+  onExcel,
+  onPdf,
+  onCsv,
+}: {
+  model: ReportModel
+  busy: string | null
+  onExcel: () => void
+  onPdf: () => void
+  onCsv: (section: ReportSectionModel) => void
+}): MenuItem[] {
+  return [
+    {
+      id: 'excel',
+      label: busy === 'excel' ? 'Generando…' : 'Excel (.xlsx) — todo el período',
+      disabled: busy != null,
+      onSelect: onExcel,
+    },
+    {
+      id: 'pdf',
+      label: busy === 'pdf' ? 'Generando…' : 'PDF — todo el período',
+      disabled: busy != null,
+      onSelect: onPdf,
+    },
+    {
+      id: 'csv',
+      label: 'CSV — sección…',
+      items: model.sections.map((section) => ({
+        id: section.id,
+        label: busy === section.id ? 'Generando…' : section.title,
+        disabled: busy != null,
+        onSelect: () => onCsv(section),
+      })),
+    },
+  ]
 }
 
 const SECTIONS = [
@@ -163,7 +239,14 @@ function ReportSection({
       <h2 className="text-lg font-semibold text-text">{section.title}</h2>
       <ListBox
         view={
-          <Button variant="secondary" onClick={() => downloadCsvFile(toCsv(sectionCsv(section)), file)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            iconOnly
+            aria-label={`Exportar ${section.title} a CSV`}
+            leftIcon={<DownloadIcon />}
+            onClick={() => downloadCsvFile(toCsv(sectionCsv(section)), file)}
+          >
             Exportar CSV
           </Button>
         }
@@ -238,6 +321,8 @@ export function Reportes() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
   const from = searchParams.get('desde') ?? ''
   const to = searchParams.get('hasta') ?? ''
   const requestKey = from && to ? `${from}|${to}|${attempt}` : ''
@@ -336,9 +421,46 @@ export function Reportes() {
   const empty = data ? periodEmpty(data) : false
   const model = data && from && to ? buildReportModel(data, { from, to }) : null
 
+  async function runExport(id: string, task: () => Promise<void>) {
+    setBusy(id)
+    try {
+      await task()
+      setMenuOpen(false)
+    } catch (err) {
+      setMenuOpen(false)
+      const message = err instanceof Error && err.message ? err.message : 'No se pudo exportar.'
+      await showError(message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <Page>
-      <PageHeader title="Reportes" subtitle="Entregas, choferes y post venta del período" />
+      <PageHeader
+        title="Reportes"
+        subtitle="Entregas, choferes y post venta del período"
+        actions={
+          model ? (
+            <Menu
+              label="Exportar"
+              icon={<DownloadIcon />}
+              open={menuOpen}
+              onOpenChange={setMenuOpen}
+              items={exportItems({
+                model,
+                busy,
+                onExcel: () => void runExport('excel', () => exportExcel(model, fileMeta(from, to, user))),
+                onPdf: () => void runExport('pdf', () => exportPdf(model, fileMeta(from, to, user))),
+                onCsv: (section) =>
+                  void runExport(section.id, async () => {
+                    downloadCsvFile(toCsv(sectionCsv(section)), `reporte-${section.csvId}-${from}_${to}.csv`)
+                  }),
+              })}
+            />
+          ) : undefined
+        }
+      />
       <FilterBar
         chips={[
           {
