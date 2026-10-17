@@ -133,6 +133,46 @@ export function clearOrderDraftsForUser(userId: string) {
   }
 }
 
+export function newOrderSessionKey(userId: string) {
+  return `luminocity.nuevoPedido.borrador.${userId}`
+}
+
+export function readSessionDraft(userId: string): OrderDraftFields | null {
+  try {
+    const raw = sessionStorage.getItem(newOrderSessionKey(userId))
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!isOrderDraftRecord(parsed)) {
+      sessionStorage.removeItem(newOrderSessionKey(userId))
+      return null
+    }
+    return { ...parsed.fields, attachmentDataUrl: '' }
+  } catch {
+    return null
+  }
+}
+
+export function writeSessionDraft(userId: string, fields: OrderDraftFields) {
+  const payload: OrderDraftRecord = {
+    v: 1,
+    savedAt: new Date().toISOString(),
+    fields: { ...fields, attachmentDataUrl: '', attachmentNeedsReupload: false },
+  }
+  try {
+    sessionStorage.setItem(newOrderSessionKey(userId), JSON.stringify(payload))
+  } catch {
+    /* el alta sigue sin el borrador */
+  }
+}
+
+export function clearSessionDraft(userId: string) {
+  try {
+    sessionStorage.removeItem(newOrderSessionKey(userId))
+  } catch {
+    /* ignore */
+  }
+}
+
 function prepareFieldsForStorage(fields: OrderDraftFields): OrderDraftFields {
   const dataUrl = fields.attachmentDataUrl ?? ''
   if (!dataUrl) {

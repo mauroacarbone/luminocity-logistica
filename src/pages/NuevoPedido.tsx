@@ -23,10 +23,13 @@ import { canEditOrder, namesMatch } from '../lib/access'
 import { confirm, error } from '../lib/alerts'
 import {
   clearOrderDraft,
+  clearSessionDraft,
   formatDraftAgo,
   orderDraftKey,
   readOrderDraft,
+  readSessionDraft,
   writeOrderDraft,
+  writeSessionDraft,
   type OrderDraftFields,
   type OrderDraftRecord,
 } from '../lib/orderDraft'
@@ -186,50 +189,106 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     useCatalog()
   const transporterLists = { ownTransporters, courierTransporters }
   const existing = orders.find((order) => order.id === editingId)
-  const [seller, setSeller] = useState(
-    existing?.seller ?? (user?.role === 'vendedor' ? (user.sellerName ?? '') : ''),
+  const [sessionSeed] = useState<OrderDraftFields | null>(() =>
+    editingId || !user ? null : readSessionDraft(user.id),
   )
-  const [client, setClient] = useState(existing?.client ?? '')
-  const [phone, setPhone] = useState(existing?.phone ?? '')
-  const [invoices, setInvoices] = useState(
-    existing?.invoices && existing.invoices.length > 0 ? existing.invoices : [''],
+  const seedPickup = sessionSeed?.dispatchType === 'retiro'
+  const [seller, setSeller] = useState(() => {
+    if (!sessionSeed) {
+      return existing?.seller ?? (user?.role === 'vendedor' ? (user.sellerName ?? '') : '')
+    }
+    if (user?.role === 'vendedor') return user.sellerName ?? ''
+    return sessionSeed.seller && sellers.includes(sessionSeed.seller) ? sessionSeed.seller : ''
+  })
+  const [client, setClient] = useState(sessionSeed?.client ?? existing?.client ?? '')
+  const [phone, setPhone] = useState(sessionSeed?.phone ?? existing?.phone ?? '')
+  const [invoices, setInvoices] = useState(() => {
+    if (sessionSeed?.invoices && sessionSeed.invoices.length > 0) return sessionSeed.invoices
+    return existing?.invoices && existing.invoices.length > 0 ? existing.invoices : ['']
+  })
+  const [collectOnDelivery, setCollectOnDelivery] = useState(
+    sessionSeed?.collectOnDelivery ?? existing?.collectOnDelivery ?? false,
   )
-  const [collectOnDelivery, setCollectOnDelivery] = useState(existing?.collectOnDelivery ?? false)
-  const [amount, setAmount] = useState(existing?.amount ?? '')
+  const [amount, setAmount] = useState(sessionSeed?.amount ?? existing?.amount ?? '')
   const savedZone = existing?.zone ?? ''
-  const [address, setAddress] = useState(existing?.address ?? '')
+  const [address, setAddress] = useState(
+    seedPickup ? '' : (sessionSeed?.address ?? existing?.address ?? ''),
+  )
   const [lookup, setLookup] = useState('')
   const [suggestions, setSuggestions] = useState<GeocodeHit[]>([])
   const [suggestOpen, setSuggestOpen] = useState(false)
   const [activeSuggestion, setActiveSuggestion] = useState(0)
-  const [deliveryZone, setDeliveryZone] = useState(savedZone ?? '')
-  const [zoneManual, setZoneManual] = useState(Boolean(savedZone))
+  const [deliveryZone, setDeliveryZone] = useState(() => {
+    if (seedPickup) return ''
+    if (sessionSeed) {
+      return zones.some((item) => item.name === sessionSeed.deliveryZone)
+        ? sessionSeed.deliveryZone
+        : ''
+    }
+    return savedZone ?? ''
+  })
+  const [zoneManual, setZoneManual] = useState(() => {
+    if (seedPickup || !sessionSeed) return Boolean(savedZone)
+    return Boolean(sessionSeed.zoneManual) && zones.some((item) => item.name === sessionSeed.deliveryZone)
+  })
   const [zoneHint, setZoneHint] = useState<ZoneQuery | null>(null)
   const [zonePending, setZonePending] = useState(false)
-  const [betweenStreet1, setBetweenStreet1] = useState(existing?.betweenStreet1 ?? '')
-  const [betweenStreet2, setBetweenStreet2] = useState(existing?.betweenStreet2 ?? '')
-  const [propertyType, setPropertyType] = useState(existing?.propertyType ?? '')
-  const [floor, setFloor] = useState(existing?.floor ?? '')
-  const [unit, setUnit] = useState(existing?.unit ?? '')
-  const [doorbell, setDoorbell] = useState(existing?.doorbell ?? '')
-  const [deliveryDate, setDeliveryDate] = useState(existing?.deliveryDate ?? '')
-  const [timeWindow, setTimeWindow] = useState(existing?.timeWindow ?? timeWindows[0] ?? '')
-  const [requiresPickup, setRequiresPickup] = useState(existing?.requiresPickup ?? false)
-  const initialDispatch: DispatchType = isDispatchType(existing?.dispatchType)
-    ? existing.dispatchType
+  const [betweenStreet1, setBetweenStreet1] = useState(
+    seedPickup ? '' : (sessionSeed?.betweenStreet1 ?? existing?.betweenStreet1 ?? ''),
+  )
+  const [betweenStreet2, setBetweenStreet2] = useState(
+    seedPickup ? '' : (sessionSeed?.betweenStreet2 ?? existing?.betweenStreet2 ?? ''),
+  )
+  const [propertyType, setPropertyType] = useState(() => {
+    if (seedPickup) return ''
+    if (!sessionSeed) return existing?.propertyType ?? ''
+    return propertyTypes.includes(sessionSeed.propertyType) ? sessionSeed.propertyType : ''
+  })
+  const [floor, setFloor] = useState(seedPickup ? '' : (sessionSeed?.floor ?? existing?.floor ?? ''))
+  const [unit, setUnit] = useState(seedPickup ? '' : (sessionSeed?.unit ?? existing?.unit ?? ''))
+  const [doorbell, setDoorbell] = useState(
+    seedPickup ? '' : (sessionSeed?.doorbell ?? existing?.doorbell ?? ''),
+  )
+  const [deliveryDate, setDeliveryDate] = useState(
+    sessionSeed?.deliveryDate ?? existing?.deliveryDate ?? '',
+  )
+  const [timeWindow, setTimeWindow] = useState(() => {
+    if (seedPickup) return ''
+    const value = sessionSeed?.timeWindow ?? existing?.timeWindow ?? timeWindows[0] ?? ''
+    if (sessionSeed && !timeWindows.includes(sessionSeed.timeWindow)) return ''
+    return value
+  })
+  const [requiresPickup, setRequiresPickup] = useState(
+    seedPickup ? false : (sessionSeed?.requiresPickup ?? existing?.requiresPickup ?? false),
+  )
+  const initialDispatch: DispatchType = isDispatchType(sessionSeed?.dispatchType ?? existing?.dispatchType)
+    ? ((sessionSeed?.dispatchType ?? existing?.dispatchType) as DispatchType)
     : 'propia'
   const [dispatchType, setDispatchType] = useState<DispatchType>(initialDispatch)
-  const [priority, setPriority] = useState<OrderPriority>(() => priorityOf(existing))
-  const [transporter, setTransporter] = useState(
-    () => existing?.transporter ?? listForDispatch(initialDispatch, transporterLists)[0] ?? '',
+  const [priority, setPriority] = useState<OrderPriority>(() =>
+    sessionSeed && isOrderPriority(sessionSeed.priority) ? sessionSeed.priority : priorityOf(existing),
   )
-  const [notes, setNotes] = useState(existing?.notes ?? '')
+  const [transporter, setTransporter] = useState(() => {
+    if (seedPickup) return ''
+    const list = listForDispatch(initialDispatch, transporterLists)
+    if (sessionSeed) return list.includes(sessionSeed.transporter) ? sessionSeed.transporter : ''
+    return existing?.transporter ?? list[0] ?? ''
+  })
+  const [notes, setNotes] = useState(sessionSeed?.notes ?? existing?.notes ?? '')
   const [storedId, setStoredId] = useState<string | undefined>(existing?.id)
-  const [attachmentName, setAttachmentName] = useState(existing?.attachmentName ?? '')
-  const [attachmentDataUrl, setAttachmentDataUrl] = useState(existing?.attachmentDataUrl ?? '')
+  const [attachmentName, setAttachmentName] = useState(
+    sessionSeed ? '' : (existing?.attachmentName ?? ''),
+  )
+  const [attachmentDataUrl, setAttachmentDataUrl] = useState(
+    sessionSeed ? '' : (existing?.attachmentDataUrl ?? ''),
+  )
   const [readingFile, setReadingFile] = useState(false)
-  const [receiverName, setReceiverName] = useState(existing?.receiverName ?? '')
-  const [receiverDni, setReceiverDni] = useState(existing?.receiverDni ?? '')
+  const [receiverName, setReceiverName] = useState(
+    sessionSeed?.receiverName ?? existing?.receiverName ?? '',
+  )
+  const [receiverDni, setReceiverDni] = useState(
+    sessionSeed?.receiverDni ?? existing?.receiverDni ?? '',
+  )
   const [locating, setLocating] = useState(false)
   const [locateAttempt, setLocateAttempt] = useState(0)
   const [locateError, setLocateError] = useState('')
@@ -244,8 +303,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [authError, setAuthError] = useState('')
   const [askingAuth, setAskingAuth] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const [sessionNotice, setSessionNotice] = useState(Boolean(sessionSeed))
   const [draftOffer, setDraftOffer] = useState<OrderDraftRecord | null>(() => {
-    if (!user) return null
+    if (!user || !editingId) return null
     const stored = readOrderDraft(orderDraftKey(user.id, editingId))
     if (!stored) return null
     if (editingId && existing?.updatedAt) {
@@ -307,7 +367,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
   function wipeLocalDraft() {
     if (storageKey) clearOrderDraft(storageKey)
+    if (user && !editingId) clearSessionDraft(user.id)
     setDraftOffer(null)
+    setSessionNotice(false)
     setDirty(false)
   }
 
@@ -415,6 +477,40 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     setReattachName('')
   }
 
+  function discardSessionDraft() {
+    if (user) clearSessionDraft(user.id)
+    setSessionNotice(false)
+    setDirty(false)
+    applyDraftFields({
+      seller: user?.role === 'vendedor' ? (user.sellerName ?? '') : '',
+      client: '',
+      phone: '',
+      invoices: [''],
+      collectOnDelivery: false,
+      amount: '',
+      address: '',
+      deliveryZone: '',
+      zoneManual: false,
+      betweenStreet1: '',
+      betweenStreet2: '',
+      propertyType: '',
+      floor: '',
+      unit: '',
+      doorbell: '',
+      deliveryDate: '',
+      timeWindow: timeWindows[0] ?? '',
+      requiresPickup: false,
+      dispatchType: 'propia',
+      priority: 'normal',
+      transporter: '',
+      notes: '',
+      attachmentName: '',
+      attachmentDataUrl: '',
+      receiverName: '',
+      receiverDni: '',
+    })
+  }
+
   useEffect(() => {
     if (user?.role !== 'vendedor') return
     let cancelled = false
@@ -446,7 +542,13 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   useEffect(() => {
     if (!user || !dirty || draftOffer || !storageKey) return
     const handle = window.setTimeout(() => {
-      writeOrderDraft(storageKey, collectDraftFields())
+      const fields = collectDraftFields()
+      if (!editingId) {
+        writeSessionDraft(user.id, fields)
+        clearOrderDraft(storageKey)
+        return
+      }
+      writeOrderDraft(storageKey, fields)
     }, 500)
     return () => window.clearTimeout(handle)
     // Campos del formulario: el debounce escribe el snapshot actual.
@@ -1149,6 +1251,18 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         title={storedId ? 'Editar Pedido' : 'Nuevo Pedido'}
         subtitle={storedId ? 'Actualizá los datos del pedido.' : 'Cargá un nuevo pedido de logística.'}
       />
+
+      {sessionNotice && !storedId ? (
+        <p
+          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md bg-accent-soft px-4 py-3 text-sm"
+          role="status"
+        >
+          <span>Recuperamos tu borrador</span>
+          <Button variant="secondary" onClick={discardSessionDraft}>
+            Descartar
+          </Button>
+        </p>
+      ) : null}
 
       {draftOffer && (
         <p
