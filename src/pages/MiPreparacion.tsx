@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { PrepChecklist } from '../components/PrepChecklist'
 import { PrepChip } from '../components/PrepChip'
 import { PriorityChip } from '../components/PriorityChip'
 import { ChoiceGroup } from '../components/ChoiceGroup'
 import { Badge, Button, Drawer, EmptyState, Input, Page, PageHeader } from '../components/ui'
-import { DISPATCH_LABEL } from '../data/catalog'
+import { DISPATCH_LABEL, isPickup } from '../data/catalog'
 import type { Order } from '../data/orders'
 import { confirm, error as showError } from '../lib/alerts'
 import { checklistOf, formatPrepMs, prepDuration, takeState, takenByName } from '../lib/preparation'
@@ -28,6 +29,10 @@ function baDay(iso: string | undefined) {
     month: '2-digit',
     day: '2-digit',
   }).format(date)
+}
+
+function invoiceNumbers(order: Order) {
+  return (order.invoices ?? []).map((invoice) => invoice.trim()).filter(Boolean)
 }
 
 function isOverdue(order: Order, today: string) {
@@ -181,6 +186,7 @@ export function MiPreparacion() {
             const heldByOther = takeState(order, now) === 'en-preparacion' && order.preparation?.takenBy?.id !== mineId
             const own = order.preparation?.takenBy?.id === mineId && takeState(order, now) === 'en-preparacion'
             const canTake = queue === 'armar' && !heldByOther && order.status === 'pendiente'
+            const invoices = invoiceNumbers(order)
             return (
               <li key={order.id} className="rounded-md border border-border bg-surface">
                 <button type="button" className="flex w-full min-h-11 flex-col gap-2 px-4 py-3 text-left" onClick={() => openOrder(order)}>
@@ -191,6 +197,9 @@ export function MiPreparacion() {
                     <PrepChip order={order} now={now || undefined} />
                   </span>
                   <span className="font-semibold">{order.client}</span>
+                  <span className={invoices.length > 0 ? 'text-sm text-text' : 'text-sm text-muted'}>
+                    {invoices.length > 0 ? `FC / NP ${invoices.join(', ')}` : 'Sin FC / nota de pedido'}
+                  </span>
                   <span className="text-sm text-muted">
                     {[order.zone, normalizeTimeWindow(order.timeWindow) || order.timeWindow, order.deliveryDate ? formatIsoDate(order.deliveryDate) : '']
                       .filter(Boolean)
@@ -266,6 +275,27 @@ export function MiPreparacion() {
               <div>
                 <dt className="text-muted">Vendedor</dt>
                 <dd>{open.seller || '—'}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-muted">FC / Nota de pedido</dt>
+                <dd className={invoiceNumbers(open).length > 0 ? undefined : 'text-muted'}>
+                  {invoiceNumbers(open).length > 0
+                    ? invoiceNumbers(open).join(', ')
+                    : 'Sin FC / nota de pedido'}
+                </dd>
+                <div className="mt-2">
+                  {open.attachmentDataUrl ? (
+                    <OrderAttachmentLink
+                      name={open.attachmentName}
+                      dataUrl={open.attachmentDataUrl}
+                      label="Ver FC / nota de pedido"
+                    />
+                  ) : isPickup(open) ? (
+                    <Badge tone="warning">Sin PDF adjunto</Badge>
+                  ) : (
+                    <p className="text-sm text-muted">Sin PDF adjunto</p>
+                  )}
+                </div>
               </div>
             </dl>
             {open.notes ? <p className="text-sm text-text">{open.notes}</p> : null}
