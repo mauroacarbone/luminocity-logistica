@@ -1318,7 +1318,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               )
             })}
           </div>
-          <h2 className="mt-4">Prioridad</h2>
+          <div className="mt-6 border-t border-border pt-4">
+          <h2>Prioridad</h2>
           <div
             className="flex flex-wrap gap-2"
             role="radiogroup"
@@ -1361,6 +1362,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           {storedId && user?.role === 'vendedor' && (
             <small className="hint mt-2 block">Solo el encargado cambia la prioridad.</small>
           )}
+          </div>
           {!pickup && (
             <Field
               label="Transportista"
