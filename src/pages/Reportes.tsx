@@ -8,7 +8,9 @@ import { canOpen } from '../lib/access'
 import { error as showError } from '../lib/alerts'
 import { ROLE_LABEL, type Session } from '../lib/authStore'
 import { downloadCsvFile, toCsv } from '../lib/csv'
+import { SectionChart } from '../components/charts/SectionChart'
 import { buildReportModel, cellText, sectionCsv, type ModelRow, type ReportModel, type ReportSectionModel, type ReportSource } from '../lib/reportModel'
+import { reportCharts, type ChartSpec } from '../lib/reportCharts'
 import { businessOffset, businessToday } from '../lib/schedule'
 import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
@@ -222,23 +224,63 @@ function cellNode(section: ReportSectionModel, row: ModelRow, key: string) {
   return text
 }
 
+function loadSectionView(id: string): 'tabla' | 'grafico' {
+  try {
+    const raw = localStorage.getItem(`luminocity.reportes.vista.${id}`)
+    if (raw === 'tabla' || raw === 'grafico') return raw
+  } catch {
+    /* el modo por defecto sigue por el ancho */
+  }
+  return window.matchMedia('(min-width: 720px)').matches ? 'grafico' : 'tabla'
+}
+
 function ReportSection({
   section,
   from,
   to,
+  chart,
   onRowClick,
 }: {
   section: ReportSectionModel
   from: string
   to: string
+  chart?: ChartSpec
   onRowClick?: (row: ModelRow) => void
 }) {
+  const [view, setView] = useState<'tabla' | 'grafico'>(() => (chart ? loadSectionView(section.id) : 'tabla'))
   const file = `reporte-${section.csvId}-${from}_${to}.csv`
+  function changeView(next: string) {
+    const value = next === 'grafico' ? 'grafico' : 'tabla'
+    setView(value)
+    try {
+      localStorage.setItem(`luminocity.reportes.vista.${section.id}`, value)
+    } catch {
+      /* sin almacenamiento, la vista queda en la sesión */
+    }
+  }
+  const showChart = Boolean(chart && view === 'grafico')
   return (
     <section id={section.id} className="flex scroll-mt-24 flex-col gap-2">
-      <h2 className="text-lg font-semibold text-text">{section.title}</h2>
-      <ListBox
-        view={
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <h2 className="text-lg font-semibold text-text">{section.title}</h2>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {chart ? (
+            <FilterBar
+              chips={[
+                {
+                  id: `vista-${section.id}`,
+                  label: 'Vista',
+                  variant: 'segmented',
+                  value: view,
+                  options: [
+                    { value: 'tabla', label: 'Tabla' },
+                    { value: 'grafico', label: 'Gráfico' },
+                  ],
+                  onChange: changeView,
+                },
+              ]}
+            />
+          ) : null}
           <Button
             variant="secondary"
             size="sm"
@@ -246,11 +288,12 @@ function ReportSection({
             aria-label={`Exportar ${section.title} a CSV`}
             leftIcon={<DownloadIcon />}
             onClick={() => downloadCsvFile(toCsv(sectionCsv(section)), file)}
-          >
-            Exportar CSV
-          </Button>
-        }
-      >
+          />
+        </div>
+      </div>
+      {showChart && chart ? <SectionChart chart={chart} /> : null}
+      {showChart ? null : (
+      <ListBox>
         {section.rows.length === 0 ? (
           <EmptyState variant="plain" title="Sin datos" />
         ) : (
@@ -309,6 +352,7 @@ function ReportSection({
           </>
         )}
       </ListBox>
+      )}
     </section>
   )
 }
@@ -573,6 +617,7 @@ function ReportTables({
   onOpenLate?: (id: string) => void
 }) {
   const byId = new Map(model.sections.map((section) => [section.id, section]))
+  const charts = new Map(reportCharts(model).map((chart) => [chart.id, chart]))
   function block(id: string) {
     const section = byId.get(id)
     if (!section) return null
@@ -582,6 +627,7 @@ function ReportTables({
         section={section}
         from={model.period.from}
         to={model.period.to}
+        chart={charts.get(id)}
         onRowClick={id === 'atrasados' && onOpenLate ? (row) => onOpenLate(row.rowId) : undefined}
       />
     )

@@ -9,14 +9,18 @@ export const CHART_PRINT = {
 
 export type Rgb = readonly [number, number, number]
 
+export type ChartSwatch = '--chart-1' | '--chart-2' | '--chart-3' | '--chart-4'
+
 export type ChartSeries = {
   name: string
   color: Rgb
+  swatch: ChartSwatch
   values: number[]
   hatch?: boolean
 }
 
 export type ChartSpec = {
+  id: string
   title: string
   kind: 'line' | 'stacked' | 'hbar' | 'bar' | 'drivers'
   aria: string
@@ -67,13 +71,14 @@ export function reportCharts(model: ReportModel): ChartSpec[] {
     )
     const delivered = days.rows.map((row) => num(row, 'entregado'))
     charts.push({
+      id: 'entregas',
       title: 'Entregas por día',
       kind: 'line',
       aria: `Pedidos por día. El máximo de entregados es ${Math.max(0, ...delivered)}.`,
       labels,
       series: [
-        { name: 'Pedidos', color: CHART_PRINT.gray, values: totals },
-        { name: 'Entregados', color: CHART_PRINT.blue, values: delivered },
+        { name: 'Pedidos', color: CHART_PRINT.gray, swatch: '--chart-3', values: totals },
+        { name: 'Entregados', color: CHART_PRINT.blue, swatch: '--chart-1', values: delivered },
       ],
     })
   }
@@ -81,16 +86,17 @@ export function reportCharts(model: ReportModel): ChartSpec[] {
   if (slots && slots.rows.length > 0) {
     const labels = slots.rows.map((row) => cellText(slots.columns[0], row))
     const series: ChartSeries[] = [
-      { name: 'Entregado antes', color: CHART_PRINT.blue, values: slots.rows.map((row) => num(row, 'antes')) },
-      { name: 'En horario', color: CHART_PRINT.green, values: slots.rows.map((row) => num(row, 'en')) },
-      { name: 'Con demora', color: CHART_PRINT.orange, values: slots.rows.map((row) => num(row, 'demora')), hatch: true },
-      { name: 'Sin franja', color: CHART_PRINT.gray, values: slots.rows.map((row) => num(row, 'sin')) },
+      { name: 'Entregado antes', color: CHART_PRINT.blue, swatch: '--chart-1', values: slots.rows.map((row) => num(row, 'antes')) },
+      { name: 'En horario', color: CHART_PRINT.green, swatch: '--chart-4', values: slots.rows.map((row) => num(row, 'en')) },
+      { name: 'Con demora', color: CHART_PRINT.orange, swatch: '--chart-2', values: slots.rows.map((row) => num(row, 'demora')), hatch: true },
+      { name: 'Sin franja', color: CHART_PRINT.gray, swatch: '--chart-3', values: slots.rows.map((row) => num(row, 'sin')) },
     ]
     const sums = series.map((item) => item.values.reduce((sum, value) => sum + value, 0))
     const withSlot = sums[0] + sums[1] + sums[2]
     const onTime = withSlot ? Math.round(((sums[0] + sums[1]) / withSlot) * 1000) / 10 : 0
     const late = withSlot ? Math.round((sums[2] / withSlot) * 1000) / 10 : 0
     charts.push({
+      id: 'franja',
       title: 'Cumplimiento de franja',
       kind: 'stacked',
       aria: `En horario ${oneDecimal(onTime)}, con demora ${oneDecimal(late)}.`,
@@ -103,11 +109,12 @@ export function reportCharts(model: ReportModel): ChartSpec[] {
     if (!group || group.rows.length === 0) continue
     const top = topGroups(group.rows)
     charts.push({
+      id,
       title: group.title,
       kind: 'hbar',
       aria: top.labels.map((label, index) => `${label} ${formatPct(top.values[index])}`).join(', '),
       labels: top.labels,
-      series: [{ name: '% en horario', color: CHART_PRINT.green, values: top.values }],
+      series: [{ name: '% en horario', color: CHART_PRINT.green, swatch: '--chart-4', values: top.values }],
       notes: top.notes,
     })
   }
@@ -116,13 +123,14 @@ export function reportCharts(model: ReportModel): ChartSpec[] {
     const closed = drivers.rows.filter((row) => !row.pending)
     if (closed.length > 0) {
       charts.push({
+        id: 'choferes',
         title: 'Por chofer',
         kind: 'drivers',
         aria: closed.map((row) => `${row.values.name} ${num(row, 'trips')} viajes`).join(', '),
         labels: closed.map((row) => String(row.values.name ?? '')),
         series: [
-          { name: 'Viajes cerrados', color: CHART_PRINT.blue, values: closed.map((row) => num(row, 'trips')) },
-          { name: 'Km', color: CHART_PRINT.gray, values: closed.map((row) => num(row, 'km')) },
+          { name: 'Viajes cerrados', color: CHART_PRINT.blue, swatch: '--chart-1', values: closed.map((row) => num(row, 'trips')) },
+          { name: 'Km', color: CHART_PRINT.gray, swatch: '--chart-3', values: closed.map((row) => num(row, 'km')) },
         ],
         notes: closed.map((row) => cellText(drivers.columns.find((column) => column.key === 'amount') ?? drivers.columns[0], row)),
       })
@@ -131,21 +139,23 @@ export function reportCharts(model: ReportModel): ChartSpec[] {
   const claims = section(model, 'reclamos-estado')
   if (claims && claims.rows.length > 0) {
     charts.push({
+      id: 'reclamos-estado',
       title: 'Reclamos por estado',
       kind: 'bar',
       aria: claims.rows.map((row) => `${row.values.label} ${num(row, 'count')}`).join(', '),
       labels: claims.rows.map((row) => String(row.values.label ?? '')),
-      series: [{ name: 'Reclamos', color: CHART_PRINT.blue, values: claims.rows.map((row) => num(row, 'count')) }],
+      series: [{ name: 'Reclamos', color: CHART_PRINT.blue, swatch: '--chart-1', values: claims.rows.map((row) => num(row, 'count')) }],
     })
   }
   const pickups = section(model, 'retiros-dia')
   if (pickups && pickups.rows.length > 0) {
     charts.push({
+      id: 'retiros-dia',
       title: 'Retiros por día',
       kind: 'bar',
       aria: `Retiros por día. El máximo es ${Math.max(...pickups.rows.map((row) => num(row, 'total')))}.`,
       labels: pickups.rows.map((row) => cellText(pickups.columns[0], row)),
-      series: [{ name: 'Retiros', color: CHART_PRINT.blue, values: pickups.rows.map((row) => num(row, 'total')) }],
+      series: [{ name: 'Retiros', color: CHART_PRINT.blue, swatch: '--chart-1', values: pickups.rows.map((row) => num(row, 'total')) }],
     })
   }
   return charts
