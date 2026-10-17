@@ -1,12 +1,10 @@
 import { writePdf, type PdfBlock } from './exportPdf'
-import { reportCharts } from './reportCharts'
 import { cellText, type ReportModel } from './reportModel'
 import type { ReportFileMeta } from './reportXlsx'
 
 export async function downloadReportPdf(model: ReportModel, meta: ReportFileMeta) {
   const blocks: PdfBlock[] = [
     { type: 'kpis', items: model.kpis.map((kpi) => ({ title: kpi.title, value: kpi.detail ? `${kpi.value} · ${kpi.detail}` : kpi.value })) },
-    ...reportCharts(model).map((chart) => ({ type: 'chart' as const, chart })),
     ...model.sections.map((section) => {
       const rows = section.rows.map((row) => section.columns.map((column) => cellText(column, row)))
       const total =

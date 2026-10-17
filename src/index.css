@@ -55,10 +55,6 @@
   --info: #4493F8;
   --info-soft: rgba(56, 139, 253, 0.15);
   --info-dot: #4493F8;
-  --chart-1: #4493F8;
-  --chart-2: #F0883E;
-  --chart-3: #9198A1;
-  --chart-4: #3FB950;
   --neutral: #9198A1;
   --neutral-soft: rgba(110, 118, 129, 0.2);
   --purple: var(--info);
@@ -109,10 +105,6 @@
   --color-accent-fg: var(--accent-fg);
   --color-accent-soft: var(--accent-soft);
   --color-accent-ink: var(--accent-ink);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
   --color-btn-primary: var(--btn-primary);
   --color-btn-primary-hover: var(--btn-primary-hover);
   --color-btn-primary-fg: var(--btn-primary-fg);
@@ -2158,10 +2150,6 @@ p {
 @media print {
   :root {
     color-scheme: light;
-    --chart-1: #4493F8;
-    --chart-2: #F0883E;
-    --chart-3: #9198A1;
-    --chart-4: #3FB950;
     --bg: #FFFFFF;
     --surface: #FFFFFF;
     --surface-2: #F6F8FA;
@@ -2238,10 +2226,6 @@ p {
 @media print {
   :root {
     color-scheme: light;
-    --chart-1: #4493F8;
-    --chart-2: #F0883E;
-    --chart-3: #9198A1;
-    --chart-4: #3FB950;
     --bg: #FFFFFF;
     --surface: #FFFFFF;
     --surface-2: #F6F8FA;

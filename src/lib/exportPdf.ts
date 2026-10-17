@@ -1,5 +1,6 @@
 import type { ColumnKind } from './reportModel'
-import type { ChartSpec, Rgb } from './reportCharts'
+
+type Rgb = readonly [number, number, number]
 
 export type PdfTable = {
   type: 'table'
@@ -10,10 +11,7 @@ export type PdfTable = {
   total: string[][]
 }
 
-export type PdfBlock =
-  | { type: 'kpis'; items: { title: string; value: string }[] }
-  | PdfTable
-  | { type: 'chart'; chart: ChartSpec }
+export type PdfBlock = { type: 'kpis'; items: { title: string; value: string }[] } | PdfTable
 
 export type PdfMeta = {
   title: string
@@ -39,11 +37,9 @@ type Doc = {
   setFillColor: (...color: number[]) => void
   setDrawColor: (...color: number[]) => void
   text: (text: string, x: number, y: number, options?: { align?: 'left' | 'right' | 'center' }) => void
-  rect: (x: number, y: number, w: number, h: number, style?: string) => void
   line: (x1: number, y1: number, x2: number, y2: number) => void
   roundedRect: (x: number, y: number, w: number, h: number, rx: number, ry: number, style?: string) => void
   save: (name: string) => void
-  getTextWidth: (text: string) => number
 }
 
 const MARGIN = 12
@@ -108,195 +104,6 @@ function drawKpis(doc: Doc, items: { title: string; value: string }[], y: number
   return cursor + 2
 }
 
-function maxOf(values: number[]) {
-  return Math.max(1, ...values, 0)
-}
-
-function hatch(doc: Doc, x: number, y: number, w: number, h: number) {
-  if (w < 1 || h < 1) return
-  rgb(doc, PAPER, 'draw')
-  for (let offset = 1.6; offset < w + h; offset += 1.6) {
-    const x1 = x + Math.max(0, offset - h)
-    const y1 = y + Math.max(0, h - offset)
-    const x2 = x + Math.min(w, offset)
-    const y2 = y + Math.min(h, w - (x2 - x) + (y1 - y))
-    if (x2 - x1 < 0.4) continue
-    doc.line(x1, y1, x2, Math.min(y + h, Math.max(y, y2)))
-  }
-}
-
-function drawLegend(doc: Doc, chart: ChartSpec, x: number, y: number) {
-  let cursor = x
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7)
-  for (const series of chart.series) {
-    rgb(doc, series.color, 'fill')
-    doc.rect(cursor, y - 2, 3, 3, 'F')
-    if (series.hatch) hatch(doc, cursor, y - 2, 3, 3)
-    rgb(doc, INK, 'text')
-    doc.text(series.name, cursor + 4, y)
-    cursor += doc.getTextWidth(series.name) + 10
-  }
-  return y + 4
-}
-
-function drawLine(doc: Doc, chart: ChartSpec, y: number) {
-  const width = doc.internal.pageSize.getWidth() - MARGIN * 2
-  const height = 36
-  y = ensure(doc, y, height + 12)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  rgb(doc, INK, 'text')
-  doc.text(chart.title, MARGIN, y)
-  y = drawLegend(doc, chart, MARGIN, y + 5)
-  const left = MARGIN + 8
-  const plotW = width - 10
-  const base = y + height
-  rgb(doc, LINE, 'draw')
-  doc.line(left, base, left + plotW, base)
-  const peak = maxOf(chart.series.flatMap((series) => series.values))
-  for (const series of chart.series) {
-    rgb(doc, series.color, 'draw')
-    const step = plotW / Math.max(1, series.values.length - 1)
-    series.values.forEach((value, index) => {
-      if (index === 0) return
-      const x1 = left + (index - 1) * step
-      const x2 = left + index * step
-      const y1 = base - (series.values[index - 1] / peak) * (height - 4)
-      const y2 = base - (value / peak) * (height - 4)
-      doc.line(x1, y1, x2, y2)
-    })
-  }
-  return base + 6
-}
-
-function drawStacked(doc: Doc, chart: ChartSpec, y: number) {
-  const width = doc.internal.pageSize.getWidth() - MARGIN * 2
-  y = ensure(doc, y, 48)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  rgb(doc, INK, 'text')
-  doc.text(chart.title, MARGIN, y)
-  y = drawLegend(doc, chart, MARGIN, y + 5)
-  const count = Math.max(1, chart.labels.length)
-  const gap = 1.2
-  const barW = Math.max(2, Math.min(8, (width - 36) / count - gap))
-  const height = 28
-  const base = y + height
-  chart.labels.forEach((_, index) => {
-    const total = chart.series.reduce((sum, series) => sum + (series.values[index] ?? 0), 0) || 1
-    let cursor = base
-    const x = MARGIN + index * (barW + gap)
-    for (const series of chart.series) {
-      const part = ((series.values[index] ?? 0) / total) * height
-      cursor -= part
-      rgb(doc, series.color, 'fill')
-      if (part > 0) doc.rect(x, cursor, barW, part, 'F')
-      if (series.hatch && part > 0) hatch(doc, x, cursor, barW, part)
-    }
-  })
-  const sums = chart.series.map((series) => series.values.reduce((sum, value) => sum + value, 0))
-  const all = sums.reduce((sum, value) => sum + value, 0) || 1
-  const shareX = MARGIN + count * (barW + gap) + 6
-  const shareW = 10
-  let shareY = base
-  chart.series.forEach((series, index) => {
-    const part = (sums[index] / all) * height
-    shareY -= part
-    rgb(doc, series.color, 'fill')
-    if (part > 0) doc.rect(shareX, shareY, shareW, part, 'F')
-    if (series.hatch && part > 0) hatch(doc, shareX, shareY, shareW, part)
-  })
-  doc.setFontSize(7)
-  rgb(doc, MUTED, 'text')
-  doc.text('Período', shareX, base + 4)
-  return base + 8
-}
-
-function drawBars(doc: Doc, chart: ChartSpec, y: number, horizontal: boolean) {
-  const width = doc.internal.pageSize.getWidth() - MARGIN * 2
-  const rowH = horizontal ? 6 : 0
-  const height = horizontal ? chart.labels.length * rowH + 8 : 36
-  y = ensure(doc, y, height + 10)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  rgb(doc, INK, 'text')
-  doc.text(chart.title, MARGIN, y)
-  y += 5
-  const series = chart.series[0]
-  if (!series) return y
-  const peak = maxOf(series.values)
-  if (!horizontal) {
-    const count = Math.max(1, chart.labels.length)
-    const barW = Math.max(2, Math.min(8, width / count - 1.2))
-    const base = y + 28
-    series.values.forEach((value, index) => {
-      const barH = (value / peak) * 26
-      const x = MARGIN + index * (barW + 1.2)
-      rgb(doc, series.color, 'fill')
-      doc.rect(x, base - barH, barW, barH, 'F')
-    })
-    return base + 6
-  }
-  series.values.forEach((value, index) => {
-    const label = clip(chart.labels[index] ?? '', 22)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7)
-    rgb(doc, INK, 'text')
-    doc.text(label, MARGIN, y + 3)
-    const barX = MARGIN + 38
-    const barW = (value / peak) * (width - 78)
-    rgb(doc, series.color, 'fill')
-    doc.rect(barX, y, Math.max(0.5, barW), 3.5, 'F')
-    rgb(doc, MUTED, 'text')
-    const note = chart.notes?.[index] ? ` ${chart.notes[index]}` : ''
-    doc.text(`${value.toLocaleString('es-AR', { maximumFractionDigits: 1 })}${note}`, barX + barW + 1.5, y + 3)
-    y += rowH
-  })
-  return y + 2
-}
-
-function drawDrivers(doc: Doc, chart: ChartSpec, y: number) {
-  const width = doc.internal.pageSize.getWidth() - MARGIN * 2
-  const height = chart.labels.length * 6 + 12
-  y = ensure(doc, y, height)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  rgb(doc, INK, 'text')
-  doc.text(chart.title, MARGIN, y)
-  y = drawLegend(doc, chart, MARGIN, y + 5)
-  const trips = chart.series[0]
-  const km = chart.series[1]
-  const tripPeak = maxOf(trips?.values ?? [])
-  const kmPeak = maxOf(km?.values ?? [])
-  chart.labels.forEach((label, index) => {
-    doc.setFontSize(7)
-    rgb(doc, INK, 'text')
-    doc.text(clip(label, 18), MARGIN, y + 3)
-    const tripW = ((trips?.values[index] ?? 0) / tripPeak) * 40
-    const kmW = ((km?.values[index] ?? 0) / kmPeak) * 40
-    if (trips) {
-      rgb(doc, trips.color, 'fill')
-      doc.rect(MARGIN + 36, y, Math.max(0.4, tripW), 3, 'F')
-    }
-    if (km) {
-      rgb(doc, km.color, 'fill')
-      doc.rect(MARGIN + 80, y, Math.max(0.4, kmW), 3, 'F')
-    }
-    rgb(doc, MUTED, 'text')
-    doc.text(clip(chart.notes?.[index] ?? '', 36), Math.min(MARGIN + 124, MARGIN + width - 40), y + 3)
-    y += 6
-  })
-  return y + 2
-}
-
-function drawChart(doc: Doc, chart: ChartSpec, y: number) {
-  if (chart.kind === 'line') return drawLine(doc, chart, y)
-  if (chart.kind === 'stacked') return drawStacked(doc, chart, y)
-  if (chart.kind === 'drivers') return drawDrivers(doc, chart, y)
-  return drawBars(doc, chart, y, chart.kind === 'hbar')
-}
-
 export async function writePdf({ fileName, meta, blocks }: { fileName: string; meta: PdfMeta; blocks: PdfBlock[] }) {
   const { jsPDF } = await import('jspdf')
   const autoTable = (await import('jspdf-autotable')).default
@@ -305,10 +112,6 @@ export async function writePdf({ fileName, meta, blocks }: { fileName: string; m
   for (const block of blocks) {
     if (block.type === 'kpis') {
       y = drawKpis(doc, block.items, y)
-      continue
-    }
-    if (block.type === 'chart') {
-      y = drawChart(doc, block.chart, y)
       continue
     }
     y = ensure(doc, y, 20)
