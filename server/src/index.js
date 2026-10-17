@@ -10,7 +10,7 @@ import { driversRouter } from './drivers.js'
 import { denyGerencia, denyTecnico, requireAuth } from './middleware.js'
 import { notificationsRouter } from './notifications.js'
 import { alignOwnDriverCarrier, ordersRouter } from './orders.js'
-import { claimsRouter } from './claims.js'
+import { claimsRouter, sweepExpiredQuotes } from './claims.js'
 import { pickingRouter } from './picking.js'
 import { releaseClosedSheetOrders, routeSheetsRouter } from './routeSheets.js'
 import { reportsRouter } from './reports.js'
@@ -164,6 +164,11 @@ try {
 await ensureDemoUser()
 await releaseClosedSheetOrders()
 await alignOwnDriverCarrier()
+void sweepExpiredQuotes()
+const quoteSweep = setInterval(() => {
+  void sweepExpiredQuotes()
+}, 15 * 60 * 1000)
+quoteSweep.unref()
 
 const port = Number(process.env.PORT) || 3001
 app.listen(port, () => {

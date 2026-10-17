@@ -3,7 +3,7 @@ import { businessToday, normalizeName } from './access.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
-import { notifyClaimOwner, notifyClaimSeller, notifyRole } from './notifications.js'
+import { notifyClaimOwner, notifyClaimSeller, notifyEncargados, notifyRole, notifyUser } from './notifications.js'
 
 const STATUS_LABEL = {
   nuevo: 'Nuevo',
@@ -51,6 +51,7 @@ claimsRouter.use(requireRole(...ROLES))
 
 claimsRouter.get('/', async (req, res) => {
   await send(res, async () => {
+    await sweepExpiredQuotes()
     const list = await locked(async () => {
       const all = await readClaims()
       return all.filter((claim) => canAccessClaim(req.user, claim)).map(toListItem)
@@ -83,6 +84,7 @@ claimsRouter.post('/import', async (req, res) => {
 
 claimsRouter.get('/:id', async (req, res) => {
   await send(res, async () => {
+    await sweepExpiredQuotes()
     const result = await getClaim(req.user, req.params.id)
     if (result.error) {
       sendError(res, result)
@@ -918,6 +920,19 @@ function contactRepair(user, id, body) {
       repair.step = 'presupuesto-enviado'
       found.claim.status = 'reparacion'
     }
+    if (body.kind === 'reenvio') {
+      quote.sentAt = now
+      quote.expiresAt = new Date(Date.parse(now) + QUOTE_TTL_MS).toISOString()
+      delete quote.expiredNotifiedAt
+      repair.quote = quote
+      repair.step = 'presupuesto-enviado'
+      found.claim.status = 'reparacion'
+      const when = baStamp(quote.expiresAt)
+      note =
+        body.channel === 'llamada'
+          ? `Llamado: ${result}. Presupuesto reenviado; vence el ${when}`
+          : `Presupuesto reenviado; vence el ${when}`
+    }
     repair.contacts = [
       ...(repair.contacts ?? []),
       {
@@ -993,6 +1008,54 @@ function stepRepair(user, id, body) {
     await notifyClaimOwner(found.claim, user, text)
     await notifyClaimSeller(found.claim, text, user)
     return { claim: found.claim }
+  })
+}
+
+function baStamp(iso) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const get = (type) => parts.find((part) => part.type === type)?.value ?? ''
+  return `${get('day')}/${get('month')} ${get('hour')}:${get('minute')}`
+}
+
+export async function sweepExpiredQuotes() {
+  return locked(async () => {
+    const list = await readClaims()
+    const nowMs = Date.now()
+    const now = new Date(nowMs).toISOString()
+    const due = []
+    for (const claim of list) {
+      const repair = claim?.repair
+      const quote = repair?.quote
+      if (!repair || repair.step !== 'presupuesto-enviado' || !quote || quote.expiredNotifiedAt) continue
+      const expires = Date.parse(quote.expiresAt ?? '')
+      if (!Number.isFinite(expires) || expires > nowMs) continue
+      repair.step = 'presupuesto-vencido'
+      quote.expiredNotifiedAt = now
+      claim.events.push({
+        at: now,
+        status: claim.status,
+        note: 'Presupuesto vencido',
+        by: { userId: 'sistema', userName: 'Sistema' },
+      })
+      due.push({ id: claim.id, client: claim.client, technicianId: repair.technician?.id })
+    }
+    if (due.length === 0) return 0
+    await writeClaims(list)
+    for (const claim of due) {
+      const text = `Venció el presupuesto del reclamo ${claim.id} (${claim.client}). Reenviar al cliente.`
+      if (claim.technicianId) await notifyUser(claim.technicianId, { text, claimId: claim.id })
+      await notifyEncargados({ text, claimId: claim.id, whatsapp: false })
+    }
+    return due.length
   })
 }
 

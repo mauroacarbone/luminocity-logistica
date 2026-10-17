@@ -111,9 +111,11 @@ function canSendWhatsapp(user) {
 }
 
 /** Se llama dentro del lock de pedidos. */
-export async function notifyEncargados({ text, orderId, whatsapp, phone }) {
+export async function notifyEncargados({ text, orderId, claimId, whatsapp, phone }) {
   const encargados = (await readUsersList()).filter((user) => user.role === 'encargado_deposito')
-  const items = encargados.map((user) => buildNote({ to: user.id, text, orderId, channel: 'app' }))
+  const items = encargados.map((user) =>
+    buildNote({ to: user.id, text, orderId, claimId, channel: 'app' }),
+  )
   if (whatsapp) items.push(whatsappNote({ text, orderId, phone }))
   await pushNotifications(items)
 }
