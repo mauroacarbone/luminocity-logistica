@@ -158,6 +158,17 @@ claimsRouter.post('/:id/repair/step', async (req, res) => {
   })
 })
 
+claimsRouter.post('/:id/repair/contact', async (req, res) => {
+  await send(res, async () => {
+    const result = await contactRepair(req.user, req.params.id, req.body)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(result.claim)
+  })
+})
+
 function byNewest(list) {
   return [...list].sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
 }
@@ -729,6 +740,7 @@ function updateRepair(user, id, body) {
     if (!repair) return fail('Este reclamo no tiene una reparación.', 409)
     if (!canEditRepair(user, repair)) return fail('Solo podés cargar la reparación.', 403)
     if (!isRecord(body)) return fail('Revisá los datos de la reparación.')
+    if (body.phoneKind === 'movil' || body.phoneKind === 'fijo') found.claim.phoneKind = body.phoneKind
     const notes = []
     if (body.product !== undefined) {
       const product = typeof body.product === 'string' ? body.product.trim() : ''
@@ -854,6 +866,77 @@ function statusForRepairStep(step) {
   if (step === 'por-levantar') return 'recepcion'
   if (step === 'entregado') return 'entregado'
   return 'reparacion'
+}
+
+const QUOTE_TTL_MS = 48 * 60 * 60 * 1000
+const CONTACT_CHANNELS = new Set(['whatsapp', 'llamada'])
+const CONTACT_KINDS = new Set(['presupuesto', 'reenvio', 'listo', 'rechazo'])
+const CALL_RESULTS = new Set(['atendió', 'no atendió', 'dejó mensaje'])
+
+function canContactRepair(user, claim, kind) {
+  if (user.role === 'admin' || user.role === 'encargado_deposito') return true
+  if (user.role === 'tecnico' && claim.repair?.technician?.id === user.id) return true
+  if ((kind === 'rechazo' || kind === 'listo') && (isClaimSeller(user, claim) || user.role === 'deposito')) {
+    return true
+  }
+  return false
+}
+
+function contactRepair(user, id, body) {
+  return locked(async () => {
+    const found = await findClaim(user, id)
+    if (found.error) return found
+    const repair = found.claim.repair
+    if (!repair) return fail('Este reclamo no tiene una reparación.', 409)
+    if (!isRecord(body) || !CONTACT_CHANNELS.has(body.channel) || !CONTACT_KINDS.has(body.kind)) {
+      return fail('Revisá el aviso al cliente.')
+    }
+    if (!canContactRepair(user, found.claim, body.kind)) return fail('Solo podés cargar la reparación.', 403)
+    if (body.phoneKind === 'movil' || body.phoneKind === 'fijo') found.claim.phoneKind = body.phoneKind
+    const result = typeof body.result === 'string' ? body.result.trim() : ''
+    if (body.channel === 'llamada' && !CALL_RESULTS.has(result)) return fail('Anotá el resultado de la llamada.')
+    if ((body.kind === 'presupuesto' || body.kind === 'reenvio') && repair.coverage !== 'cobro') {
+      return fail('La garantía no lleva presupuesto.')
+    }
+    if (body.kind === 'presupuesto' || body.kind === 'reenvio') {
+      if (!repair.diagnosis?.trim() || typeof repair.quote?.amount !== 'number' || !repair.quote?.etaDate) {
+        return fail('Cargá el diagnóstico y el presupuesto antes de avisar.')
+      }
+    }
+    const now = new Date().toISOString()
+    const quote = { ...(repair.quote ?? {}) }
+    let note = ''
+    if (body.channel === 'llamada') note = `Llamado: ${result}`
+    else if (body.kind === 'presupuesto') note = 'Presupuesto enviado por WhatsApp'
+    else if (body.kind === 'reenvio') note = 'Presupuesto reenviado por WhatsApp'
+    else if (body.kind === 'listo') note = 'Aviso de listo por WhatsApp'
+    else note = 'Aviso de rechazo por WhatsApp'
+    if (body.kind === 'presupuesto' && !quote.sentAt) {
+      quote.sentAt = now
+      quote.expiresAt = new Date(Date.parse(now) + QUOTE_TTL_MS).toISOString()
+      repair.quote = quote
+      repair.step = 'presupuesto-enviado'
+      found.claim.status = 'reparacion'
+    }
+    repair.contacts = [
+      ...(repair.contacts ?? []),
+      {
+        at: now,
+        channel: body.channel,
+        kind: body.kind,
+        ...(result ? { result } : {}),
+        by: { id: user.id, name: user.name },
+      },
+    ]
+    found.claim.events.push({
+      at: now,
+      status: found.claim.status,
+      note,
+      by: actorOf(user),
+    })
+    await writeClaims(found.list)
+    return { claim: found.claim }
+  })
 }
 
 function stepRepair(user, id, body) {
