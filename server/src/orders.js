@@ -1354,14 +1354,16 @@ async function linkPickingIfInvoicesChanged(orders, order, previous) {
   await writeCollection('picking', picking)
 }
 
-function readPickupPdf(body, current, order) {
+function attachmentUrl(order) {
+  return typeof order?.attachmentDataUrl === 'string' ? order.attachmentDataUrl : ''
+}
+
+function readPickupPdf(_body, current, order) {
   // TODO CRM: cuando esté la API key, la FC/nota de pedido y sus artículos vienen del CRM y este PDF deja de ser obligatorio
   if (!requiresInvoicePdf(order)) return { ok: true }
-  const touchesDispatch = Object.prototype.hasOwnProperty.call(body, 'dispatchType')
-  const touchesAttachment =
-    Object.prototype.hasOwnProperty.call(body, 'attachmentDataUrl') ||
-    Object.prototype.hasOwnProperty.call(body, 'attachmentName')
-  if (current && !touchesDispatch && !touchesAttachment) return { ok: true }
+  const passesToPickup = !current || current.dispatchType !== 'retiro'
+  const attachmentChanged = attachmentUrl(order) !== attachmentUrl(current)
+  if (!passesToPickup && !attachmentChanged) return { ok: true }
   const url = typeof order.attachmentDataUrl === 'string' ? order.attachmentDataUrl : ''
   if (!url) return fail('Los retiros necesitan la FC o nota de pedido en PDF.')
   if (!url.startsWith(PDF_DATA_PREFIX)) return fail('El adjunto tiene que ser un PDF.')
