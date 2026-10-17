@@ -235,18 +235,30 @@ export function PlanificadorRutas() {
   const timeWindow = normalizeTimeWindow(slot)
   const readOnly = Boolean(sheet && sheet.status !== 'planificada')
   const driverName = drivers.find((driver) => driver.id === driverId)?.name ?? ''
-  const used = driverId && timeWindow ? driverSlotCount(orders, driverId, iso, timeWindow) : 0
+  const lateChosen = orders.filter((order) => {
+    if (!selectedIds.includes(order.id)) return false
+    if (!order.deliveryDate || order.deliveryDate >= iso || iso !== businessToday()) return false
+    if (normalizeTimeWindow(order.timeWindow) !== timeWindow) return false
+    if (!isOwnDelivery(order) || order.routeId) return false
+    if (order.status !== 'preparado' && order.status !== 'asignado') return false
+    return canChooseUnplanned(order, driverId)
+  }).length
+  const used = driverId && timeWindow ? driverSlotCount(orders, driverId, iso, timeWindow) + lateChosen : 0
 
   const pool = orders.filter((order) => {
-    if (order.deliveryDate !== iso || normalizeTimeWindow(order.timeWindow) !== timeWindow) return false
-    if (!isOwnDelivery(order)) return false
-    return true
+    if (normalizeTimeWindow(order.timeWindow) !== timeWindow || !isOwnDelivery(order)) return false
+    if (order.deliveryDate === iso) return true
+    if (iso !== businessToday() || !order.deliveryDate || order.deliveryDate >= iso) return false
+    if (order.routeId) return false
+    if (order.status !== 'preparado' && order.status !== 'asignado') return false
+    return canChooseUnplanned(order, driverId)
   })
   const listed = readOnly
     ? (sheet?.orderIds ?? [])
         .map((id) => orders.find((order) => order.id === id))
         .filter((order): order is Order => Boolean(order))
     : pool.filter((order) => {
+        if (order.deliveryDate && order.deliveryDate < iso) return true
         if (order.driverId === driverId) return order.status === 'preparado' || order.status === 'asignado'
         return !order.driverId && order.status === 'preparado'
       })
@@ -872,6 +884,9 @@ export function PlanificadorRutas() {
                               {order.id} — {order.client.toUpperCase()}
                             </span>
                             <PriorityChip order={order} />
+                            {order.deliveryDate && order.deliveryDate < iso ? (
+                              <Badge tone="warning">Atrasado</Badge>
+                            ) : null}
                           </span>
                           {order.address && (
                             <span className="mt-1 block text-sm text-muted">{order.address}</span>
