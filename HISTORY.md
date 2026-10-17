@@ -144,6 +144,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 34 | Operarios de depósito: Mi preparación | Hecho |
 | 34.2 | Ajustes al armado y al alta de pedidos | Hecho |
 | 34.3 | Mi preparación completa y armado solo desde ahí | Hecho |
+| 34.5 | Vínculo de artículos y excepción de retiros viejos | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -402,6 +403,8 @@ El Brief 32f.2 deja Borrar hoja con borde de peligro y el planificador entra en 
 El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pedido se abrió desde la lista. En el celular, el número del pedido es un botón con foco. En el Panel, el detalle se cierra si el pedido deja de verse, y Atrasados cuenta todos los pedidos abiertos, sin el filtro de fecha.
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
+
+El Brief 34.5 vincula en el servidor las filas de picking sin pedido cuando el comprobante coincide con uno solo, al contar, al tomar y al armar. Mi preparación cuenta por comprobante solo esas filas, así cliente y servidor ven las mismas. Un retiro viejo sin PDF se puede editar; el PDF se vuelve a exigir si el pedido pasa a retiro, si cambia el adjunto o si es un alta. El cajón sigue mostrando «Sin PDF adjunto».
 
 El Brief 34.3 muestra en Mi preparación la FC o nota de pedido, el PDF y los artículos, con código si el Excel lo trae y un contador por fila. Al importar el picking, o al crear o editar un pedido, el servidor vincula las filas sin pedido cuando el comprobante coincide con uno solo. En un retiro, el alta exige ese PDF y al menos un número de factura; `requiresInvoicePdf` es el gancho para el día en que el CRM los mande y el PDF deje de ser obligatorio. De pendiente a preparado solo se pasa desde Mi preparación: el resto de las pantallas abre esa cola.
 
