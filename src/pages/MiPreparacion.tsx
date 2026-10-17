@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { OrderAttachmentLink } from '../components/OrderAttachmentLink'
 import { PrepChecklist } from '../components/PrepChecklist'
 import { PrepChip } from '../components/PrepChip'
@@ -90,15 +91,19 @@ function useNow() {
 
 export function MiPreparacion() {
   const { user } = useAuth()
-  const { orders, takeOrder, releaseOrder, transitionOrder, refresh } = useOrders()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { orders, loading, takeOrder, releaseOrder, transitionOrder, refresh } = useOrders()
   const { lines } = usePicking()
   const today = businessToday()
   const now = useNow()
   const [queue, setQueue] = useState<Queue>('armar')
   const [openId, setOpenId] = useState('')
+  const [seenPedido, setSeenPedido] = useState('')
+  const requestedId = searchParams.get('pedido') ?? ''
   const [packages, setPackages] = useState('1')
   const [busy, setBusy] = useState('')
   const [detailError, setDetailError] = useState('')
+  if (!requestedId && seenPedido) setSeenPedido('')
 
   const mineId = user?.id ?? ''
   const pending = orders.filter((order) => order.status === 'pendiente')
@@ -122,6 +127,46 @@ export function MiPreparacion() {
   const openMine = open ? open.preparation?.takenBy?.id === mineId && takeState(open, now) === 'en-preparacion' : false
 
   const subtitle = formatIsoDate(today)
+
+  useEffect(() => {
+    if (!requestedId || loading || seenPedido === requestedId) return
+    const order = orders.find((item) => item.id === requestedId)
+    const handle = window.setTimeout(() => {
+      setSeenPedido(requestedId)
+      if (!order || (order.status !== 'pendiente' && order.status !== 'preparado')) {
+        void showError('Ese pedido no está para armar.')
+        setSearchParams(
+          (current) => {
+            const next = new URLSearchParams(current)
+            next.delete('pedido')
+            return next
+          },
+          { replace: true },
+        )
+        return
+      }
+      setOpenId(order.id)
+      setPackages(String(order.packages && order.packages >= 1 ? order.packages : 1))
+      setDetailError('')
+      if (order.preparedBy?.id === mineId && baDay(order.preparedAt) === today) setQueue('hoy')
+      else if (
+        order.preparation?.takenBy?.id === mineId &&
+        takeState(order, Date.now()) === 'en-preparacion'
+      ) {
+        setQueue('mios')
+      } else setQueue('armar')
+    }, 0)
+    return () => window.clearTimeout(handle)
+  }, [requestedId, loading, seenPedido, orders, mineId, today, setSearchParams])
+
+  function closeDrawer() {
+    setOpenId('')
+    setSeenPedido('')
+    if (!searchParams.get('pedido')) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('pedido')
+    setSearchParams(next, { replace: true })
+  }
 
   function openOrder(order: Order) {
     setOpenId(order.id)
@@ -258,7 +303,7 @@ export function MiPreparacion() {
       )}
       <Drawer
         open={Boolean(open)}
-        onClose={() => setOpenId('')}
+        onClose={closeDrawer}
         title={open?.id ?? 'Pedido'}
         subtitle={open?.client}
         mobileFull

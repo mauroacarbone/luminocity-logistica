@@ -1,8 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { PrepChecklist } from '../components/PrepChecklist'
 import { PrepChip } from '../components/PrepChip'
-import { Badge, Button, Drawer, EmptyState, FilterBar, ListBox, Modal, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, FilterBar, ListBox, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
 import { OrderDetail } from '../components/OrderDetail'
 import { PriorityChip } from '../components/PriorityChip'
@@ -11,7 +11,7 @@ import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { canCancelOrder, canEditOrder, canPrepare } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
-import { checklistOf, formatPrepMs, prepDuration, takeState, takenByName } from '../lib/preparation'
+import { formatPrepMs, prepDuration, takeState, takenByName } from '../lib/preparation'
 import { compareOpenPriority } from '../lib/priority'
 import { businessToday } from '../lib/schedule'
 import {
@@ -23,91 +23,6 @@ import {
 } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 import { useOrders } from '../state/OrdersContext'
-import { usePicking } from '../state/PickingContext'
-
-function readPackages(raw: string) {
-  const trimmed = raw.trim()
-  if (!/^[1-9]\d*$/.test(trimmed)) return null
-  return Number(trimmed)
-}
-
-function PackagesDialog({
-  orderId,
-  saveError,
-  saving,
-  onClose,
-  onConfirm,
-}: {
-  orderId: string
-  saveError: string
-  saving: boolean
-  onClose: () => void
-  onConfirm: (packages: number) => void
-}) {
-  const [value, setValue] = useState('')
-  const [error, setError] = useState('')
-
-  function onSubmit(event: FormEvent) {
-    event.preventDefault()
-    const packages = readPackages(value)
-    if (packages == null) {
-      setError('Ingresá una cantidad entera de bultos (1 o más).')
-      return
-    }
-    onConfirm(packages)
-  }
-
-  return (
-    <Modal
-      onClose={onClose}
-      labelledBy="packages-title"
-      closeOnEscape={!saving}
-      className="grid place-items-center bg-black/40 p-4"
-    >
-      <form
-        noValidate
-        className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-lg"
-        onSubmit={onSubmit}
-      >
-        <h2 id="packages-title" className="text-xl font-semibold">Marcar preparado</h2>
-        <p className="mt-1 text-sm text-muted">
-          Indicá cuántos bultos tiene el pedido {orderId}.
-        </p>
-        <label className="mt-4 block text-sm font-medium">
-          Cantidad de bultos
-          <input
-            autoFocus
-            type="number"
-            inputMode="numeric"
-            min={1}
-            step={1}
-            value={value}
-            onChange={(event) => {
-              setValue(event.target.value)
-              setError('')
-            }}
-            className="mt-1 w-full rounded-xl border border-border px-3 py-2"
-          />
-        </label>
-        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
-        {saveError && (
-          <p className="mt-2 text-sm text-danger" role="alert">
-            {saveError}
-          </p>
-        )}
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" size="lg" disabled={saving} onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" variant="primary" size="lg" disabled={saving}>
-            Confirmar
-          </Button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
 function formatPrepHour(value: string | undefined) {
   if (!value) return '—'
   const date = new Date(value)
@@ -145,13 +60,9 @@ export function PedidosPreparacion() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
-  const { orders, loading, removeOrder, releaseOrder, transitionOrder } = useOrders()
-  const { lines } = usePicking()
+  const { orders, loading, removeOrder, releaseOrder } = useOrders()
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => businessToday())
-  const [preparing, setPreparing] = useState<Order | null>(null)
-  const [prepareError, setPrepareError] = useState('')
-  const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState('')
   const [scope, setScope] = useState<'todos' | 'incompletos'>('todos')
   const [alignedId, setAlignedId] = useState<string | null>(null)
@@ -265,33 +176,8 @@ export function PedidosPreparacion() {
     return `${order.preparedBy.name} · ${formatPrepHour(order.preparedAt)} · ${order.prepMs == null ? '—' : formatPrepMs(order.prepMs)}`
   }
 
-  async function markPrepared(packages: number) {
-    if (!preparing) return
-    const check = checklistOf(lines, preparing)
-    const incomplete = check.total > 0 && check.done < check.total
-    const accepted = await confirm(
-      'Marcar preparado',
-      incomplete
-        ? `Queda como armado incompleto (${check.done} de ${check.total} artículos). Se puede completar después.`
-        : `El pedido ${preparing.id} queda preparado con ${packages} bulto${packages === 1 ? '' : 's'}.`,
-    )
-    if (!accepted) return
-    setSaving(true)
-    const result = await transitionOrder(preparing.id, {
-      to: 'preparado',
-      packages,
-      via: 'pedidos',
-      ...(check.total > 0 ? { checklist: { done: check.done, total: check.total } } : {}),
-    })
-    setSaving(false)
-    if (result.status === 'not-saved') {
-      setPrepareError(result.message)
-      await error(result.message)
-      return
-    }
-    setPrepareError('')
-    setPreparing(null)
-    await success('Pedido preparado')
+  function openPreparation(order: Order) {
+    navigate(`/preparacion?pedido=${encodeURIComponent(order.id)}`)
   }
 
   async function cancelOrder(order: Order) {
@@ -363,17 +249,21 @@ export function PedidosPreparacion() {
       header: '',
       cell: (order) =>
         user && canPrepare(user.role) && order.status === 'pendiente' ? (
-          <Button
-            variant="ghost"
-            size="lg"
-            disabled={busyId === order.id || Boolean(heldBy(order))}
-            onClick={(event) => {
-              event.stopPropagation()
-              setPreparing(order)
-            }}
-          >
-            {heldBy(order) ? `Lo está armando ${heldBy(order)}` : 'Marcar preparado'}
-          </Button>
+          <div className="flex flex-col items-start gap-1">
+            {heldBy(order) ? (
+              <span className="text-sm text-muted">Lo está armando {heldBy(order)}</span>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={(event) => {
+                event.stopPropagation()
+                openPreparation(order)
+              }}
+            >
+              Armar en Mi preparación
+            </Button>
+          </div>
         ) : null,
     },
   ]
@@ -479,26 +369,36 @@ export function PedidosPreparacion() {
                 {order.zone ? <p className="mt-1 text-sm text-muted">{order.zone}</p> : null}
                 {order.timeWindow ? <p className="mt-1 text-sm text-muted">{order.timeWindow}</p> : null}
                 <p className="mt-2 text-sm text-text">{armadoCell(order)}</p>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  className="mt-3"
-                  disabled={Boolean(
-                    user && canPrepare(user.role) && order.status === 'pendiente' && (busyId === order.id || heldBy(order)),
-                  )}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    if (heldBy(order)) return
-                    if (user && canPrepare(user.role) && order.status === 'pendiente') setPreparing(order)
-                    else openPedido(order.id)
-                  }}
-                >
-                  {user && canPrepare(user.role) && order.status === 'pendiente'
-                    ? heldBy(order)
-                      ? `Lo está armando ${heldBy(order)}`
-                      : 'Marcar preparado'
-                    : 'Ver pedido'}
-                </Button>
+                {user && canPrepare(user.role) && order.status === 'pendiente' ? (
+                  <>
+                    {heldBy(order) ? (
+                      <p className="mt-3 text-sm text-muted">Lo está armando {heldBy(order)}</p>
+                    ) : null}
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      className="mt-3"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        openPreparation(order)
+                      }}
+                    >
+                      Armar en Mi preparación
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    className="mt-3"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openPedido(order.id)
+                    }}
+                  >
+                    Ver pedido
+                  </Button>
+                )}
               </article>
             ))}
           </div>
@@ -515,14 +415,14 @@ export function PedidosPreparacion() {
           openOrder ? (
             <>
               {user && canPrepare(user.role) && openOrder.status === 'pendiente' ? (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  disabled={busyId === openOrder.id || Boolean(heldBy(openOrder))}
-                  onClick={() => setPreparing(openOrder)}
-                >
-                  {heldBy(openOrder) ? `Lo está armando ${heldBy(openOrder)}` : 'Marcar preparado'}
-                </Button>
+                <>
+                  {heldBy(openOrder) ? (
+                    <p className="text-sm text-muted">Lo está armando {heldBy(openOrder)}</p>
+                  ) : null}
+                  <Button variant="primary" size="lg" onClick={() => openPreparation(openOrder)}>
+                    Armar en Mi preparación
+                  </Button>
+                </>
               ) : null}
               {user && canEditOrder(user, openOrder) ? (
                 <Button
@@ -558,19 +458,6 @@ export function PedidosPreparacion() {
         ) : null}
       </Drawer>
 
-      {preparing && (
-        <PackagesDialog
-          orderId={preparing.id}
-          saveError={prepareError}
-          saving={saving}
-          onClose={() => {
-            if (saving) return
-            setPrepareError('')
-            setPreparing(null)
-          }}
-          onConfirm={(packages) => void markPrepared(packages)}
-        />
-      )}
     </Page>
   )
 }

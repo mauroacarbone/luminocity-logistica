@@ -14,6 +14,7 @@ import {
   error,
   success,
 } from '../lib/alerts'
+import { canPrepare } from '../lib/access'
 import type { Role } from '../lib/authStore'
 import { isSession } from '../lib/authStore'
 import { labelDrivers } from '../lib/driverLabel'
@@ -208,6 +209,11 @@ export function OrderFlowButtons({
       await offerPlan(result, order.driverId)
       return
     }
+    if (next.to === 'preparado' && order.status === 'pendiente') {
+      if (!canPrepare(role)) return
+      navigate(`/preparacion?pedido=${encodeURIComponent(order.id)}`)
+      return
+    }
     if (next.to === 'preparado') {
       const packages = await askPackages('Marcar preparado', 'Indicá la cantidad de bultos.')
       if (packages == null) return
@@ -257,6 +263,8 @@ export function OrderFlowButtons({
     await runTransition(to, { reason })
   }
 
+  const armInPrep = Boolean(next && next.to === 'preparado' && order.status === 'pendiente')
+  const showNext = Boolean(next) && (!armInPrep || canPrepare(role))
   const backup = isBackupDelivery(role, order)
   const stretch = layout === 'stretch'
   const compact = layout === 'compact'
@@ -271,7 +279,7 @@ export function OrderFlowButtons({
       ref={rootRef}
       className={stretch ? 'flex w-full items-center gap-2' : 'flex flex-wrap items-center gap-2'}
     >
-      {next && (
+      {showNext && next ? (
         <Button
           variant="primary"
           size={compact ? 'sm' : 'lg'}
@@ -279,9 +287,9 @@ export function OrderFlowButtons({
           disabled={busy}
           onClick={() => void onNext()}
         >
-          {next.label}
+          {armInPrep ? 'Armar en Mi preparación' : next.label}
         </Button>
-      )}
+      ) : null}
       {(backs.length > 0 || backup) && (
         <div className="relative shrink-0">
           <button

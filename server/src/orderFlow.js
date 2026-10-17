@@ -225,6 +225,9 @@ export async function applyTransition(orders, current, input, user, via, options
 
   let armedReason
   if (rule.direction === 'forward' && to === 'preparado') {
+    if (current.status === 'pendiente' && via !== 'preparacion') {
+      return fail('Armá el pedido desde Mi preparación.', 409, 'ARMAR_EN_PREPARACION')
+    }
     const packages = readPackages(input, current)
     if (packages.error) return packages
     next.packages = packages.value

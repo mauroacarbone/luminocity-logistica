@@ -10,7 +10,7 @@ import { BRAND } from '../config/brand'
 import { DISPATCH_LABEL, isDispatchType } from '../data/catalog'
 import { STATUS_PILL, type Order, type OrderStatus } from '../data/orders'
 import { normalizeName } from '../lib/access'
-import { askPackages, confirm, error as showError, success } from '../lib/alerts'
+import { confirm, success } from '../lib/alerts'
 import { buildCsv, downloadCsvFile, toCsv } from '../lib/csv'
 import {
   matchOrdersByInvoice,
@@ -18,7 +18,7 @@ import {
   type InvoiceMatch,
 } from '../lib/invoiceKey'
 import { statusPillFor } from '../lib/orderFlow'
-import { pickedStatus } from '../lib/preparation'
+import { pickedStatus, takeState, takenByName } from '../lib/preparation'
 import type { PickingStatus } from '../lib/pickingApi'
 import {
   batchRowsFromPreview,
@@ -803,26 +803,12 @@ export function PendientesEntregas() {
     const { allComplete } = orderPickingState(linesByInvoice, order, group.key)
     if (!allComplete || orderLines.length === 0) return
 
-    let packages: number | null = null
     if (order.status === 'pendiente') {
-      packages = await askPackages('Marcar preparado', 'Indicá la cantidad de bultos.')
-      if (packages == null) return
-      setPreparingKey(group.key)
-      setError('')
-      const result = await transitionOrder(order.id, {
-        to: 'preparado',
-        via: 'picking',
-        packages,
-      })
-      if (result.status === 'not-saved') {
-        setPreparingKey(null)
-        await showError(result.message)
-        return
-      }
-    } else {
-      setPreparingKey(group.key)
-      setError('')
+      navigate(`/preparacion?pedido=${encodeURIComponent(order.id)}`)
+      return
     }
+    setPreparingKey(group.key)
+    setError('')
 
     let failed = 0
     for (const line of orderLines) {
@@ -837,7 +823,7 @@ export function PendientesEntregas() {
       )
       return
     }
-    const bultos = packages ?? order.packages ?? 0
+    const bultos = order.packages ?? 0
     const bultosText = bultos === 1 ? '1 bulto' : `${bultos} bultos`
     await success(`Pedido ${order.id} preparado con ${bultosText}.`)
   }
@@ -882,16 +868,19 @@ export function PendientesEntregas() {
       return null
     }
 
+    const held = order.status === 'pendiente' && takeState(order) === 'en-preparacion'
     return (
-      <Button
-        variant="secondary"
-        size="lg"
-        className="mt-2"
-        disabled={preparingKey === group.key || busy}
-        onClick={() => void markOrderPrepared(group)}
-      >
-        {order.status === 'preparado' ? 'Marcar filas preparadas' : 'Marcar preparado'}
-      </Button>
+      <div className="mt-2 flex flex-col items-start gap-2">
+        {held ? <p className="text-sm text-muted">Lo está armando {takenByName(order)}</p> : null}
+        <Button
+          variant="secondary"
+          size="lg"
+          disabled={order.status === 'preparado' && (preparingKey === group.key || busy)}
+          onClick={() => void markOrderPrepared(group)}
+        >
+          {order.status === 'preparado' ? 'Marcar filas preparadas' : 'Armar en Mi preparación'}
+        </Button>
+      </div>
     )
   }
 
