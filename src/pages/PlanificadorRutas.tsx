@@ -18,6 +18,7 @@ import {
 import { deleteRouteSheet, isRouteSheet, listRouteSheets, saveRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
 import { driverSlotCount, normalizeTimeWindow, slotQuestion } from '../lib/slot'
 import { cssVar } from '../lib/theme'
+import { labelDrivers } from '../lib/driverLabel'
 import { businessToday } from '../lib/schedule'
 import { DAY_SHORT, MONTH_SHORT, formatDayLabel, parseIso, toIso, weekDays, weekOffsetForIso } from '../lib/week'
 import { listUsers } from '../lib/usersApi'
@@ -62,7 +63,7 @@ function emptySelectableMessage(othersCount: number, withoutSlot: number, used: 
   return 'No hay pedidos para esta franja.'
 }
 
-type DriverOption = { id: string; name: string }
+type DriverOption = { id: string; name: string; label: string }
 
 function placeQuery(value: string) {
   const trimmed = value.trim()
@@ -314,11 +315,12 @@ export function PlanificadorRutas() {
         return
       }
       if (!Array.isArray(result.data)) return
-      setDrivers(
-        result.data.flatMap((item) =>
-          isSession(item) && item.role === 'chofer' && item.active ? [{ id: item.id, name: item.name }] : [],
-        ),
-      )
+      const choferes = result.data.flatMap((item) => {
+        if (!isSession(item) || item.role !== 'chofer' || !item.active) return []
+        const phone = 'phone' in item && typeof item.phone === 'string' ? item.phone : ''
+        return [{ id: item.id, name: item.name, phone, email: item.email }]
+      })
+      setDrivers(labelDrivers(choferes))
     })
   }, [logout])
 
@@ -726,7 +728,7 @@ export function PlanificadorRutas() {
             <option value="">Elegir chofer</option>
             {drivers.map((driver) => (
               <option key={driver.id} value={driver.id}>
-                {driver.name}
+                {driver.label}
               </option>
             ))}
           </Select>

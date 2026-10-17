@@ -33,6 +33,24 @@ export function isActive(user) {
   return user.active !== false
 }
 
+function driverNameKey(name) {
+  return normalizeName(name)
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+}
+
+function activeDriverNameTaken(users, name, exceptId) {
+  const key = driverNameKey(name)
+  if (!key) return false
+  return users.some(
+    (user) =>
+      user.id !== exceptId &&
+      user.role === 'chofer' &&
+      isActive(user) &&
+      driverNameKey(user.name) === key,
+  )
+}
+
 function nextTokenVersion(user) {
   const current = user?.tokenVersion
   if (typeof current === 'number' && Number.isInteger(current) && current >= 0) return current + 1
@@ -130,6 +148,9 @@ export function setUserRole(id, role, actor) {
       const admins = users.filter((item) => item.role === 'admin' && isActive(item)).length
       if (admins <= 1) return { error: 'last-admin' }
     }
+    if (role === 'chofer' && isActive(users[index]) && activeDriverNameTaken(users, users[index].name, users[index].id)) {
+      return { error: 'driver-name' }
+    }
     users[index] = { ...users[index], role }
     await writeUsers(users)
     return { user: users[index] }
@@ -151,6 +172,13 @@ export function updateUserDetails(id, fields, actor) {
       )
       if (taken) return { error: 'name' }
       next.name = String(fields.name).trim()
+    }
+    if (
+      next.role === 'chofer' &&
+      isActive(next) &&
+      activeDriverNameTaken(users, next.name, next.id)
+    ) {
+      return { error: 'driver-name' }
     }
     if (Object.prototype.hasOwnProperty.call(fields, 'email')) {
       const normalized = String(fields.email).trim().toLowerCase()
@@ -209,6 +237,13 @@ export function setUserActive(id, active, actor) {
       if (admins <= 1) return { error: 'last-admin' }
     }
     if (active === false && id === actor?.id) return { error: 'self' }
+    if (
+      active === true &&
+      users[index].role === 'chofer' &&
+      activeDriverNameTaken(users, users[index].name, users[index].id)
+    ) {
+      return { error: 'driver-name' }
+    }
     const next = { ...users[index], active: active === true }
     if (active === false) next.tokenVersion = nextTokenVersion(users[index])
     users[index] = next
@@ -235,6 +270,9 @@ export function createUser({
     const nameKey = normalizeName(name)
     if (nameKey && users.some((item) => normalizeName(item.name) === nameKey)) {
       return { error: 'name' }
+    }
+    if (role === 'chofer' && activeDriverNameTaken(users, name)) {
+      return { error: 'driver-name' }
     }
     const user = {
       id: randomUUID(),

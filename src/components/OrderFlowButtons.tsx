@@ -16,6 +16,7 @@ import {
 } from '../lib/alerts'
 import type { Role } from '../lib/authStore'
 import { isSession } from '../lib/authStore'
+import { labelDrivers } from '../lib/driverLabel'
 import { backActions, isBackupDelivery, nextAction, statusPillFor } from '../lib/orderFlow'
 import { normalizeTimeWindow } from '../lib/slot'
 import { listUsers } from '../lib/usersApi'
@@ -151,11 +152,13 @@ export function OrderFlowButtons({
       await error('No se pudieron cargar los choferes.')
       return
     }
-    const drivers = usersResult.data.flatMap((item) =>
-      isSession(item) && item.role === 'chofer' && item.active
-        ? [{ id: item.id, name: item.name }]
-        : [],
-    )
+    const drivers = labelDrivers(
+      usersResult.data.flatMap((item) => {
+        if (!isSession(item) || item.role !== 'chofer' || !item.active) return []
+        const phone = 'phone' in item && typeof item.phone === 'string' ? item.phone : ''
+        return [{ id: item.id, name: item.name, phone, email: item.email }]
+      }),
+    ).map((driver) => ({ id: driver.id, name: driver.label }))
     const windows = withCurrentWindow(timeWindows, order.timeWindow)
     const choice = await askAssignDriver({
       drivers,

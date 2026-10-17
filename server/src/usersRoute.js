@@ -104,6 +104,10 @@ usersRouter.post('/', requireRole('admin', 'encargado_deposito'), async (req, re
     res.status(409).json({ message: 'Ya existe un usuario con ese nombre' })
     return
   }
+  if (result.error === 'driver-name') {
+    res.status(409).json({ message: 'Ya existe un chofer con ese nombre' })
+    return
+  }
   res.status(201).json(toPublicUser(result.user))
 })
 
@@ -124,6 +128,10 @@ usersRouter.patch('/:id/role', requireRole('admin', 'encargado_deposito'), async
   }
   if (result.error === 'last-admin') {
     res.status(409).json({ message: 'Tiene que quedar al menos un administrador activo' })
+    return
+  }
+  if (result.error === 'driver-name') {
+    res.status(409).json({ message: 'Ya existe un chofer con ese nombre' })
     return
   }
   res.json(toPublicUser(result.user))
@@ -150,6 +158,10 @@ usersRouter.patch('/:id/active', requireRole('admin', 'encargado_deposito'), asy
   }
   if (result.error === 'last-admin') {
     res.status(409).json({ message: 'Tiene que quedar al menos un administrador activo' })
+    return
+  }
+  if (result.error === 'driver-name') {
+    res.status(409).json({ message: 'Ya existe un chofer con ese nombre' })
     return
   }
   res.json(toPublicUser(result.user))
@@ -272,6 +284,10 @@ usersRouter.patch('/:id', requireRole('admin', 'encargado_deposito'), async (req
   }
   if (result.error === 'name') {
     res.status(409).json({ message: 'Ya existe un usuario con ese nombre' })
+    return
+  }
+  if (result.error === 'driver-name') {
+    res.status(409).json({ message: 'Ya existe un chofer con ese nombre' })
     return
   }
   res.json(toPublicUser(result.user))
