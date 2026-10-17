@@ -101,6 +101,10 @@ export function canReview(role: Role) {
   return role === 'encargado_deposito' || role === 'admin'
 }
 
+export function canExportPanel(role: Role) {
+  return role === 'encargado_deposito' || role === 'admin'
+}
+
 export function statusChoices(role: Role, order: Pick<Order, 'status' | 'dispatchType'>): OrderStatus[] {
   return choicesFromTable(role, order)
 }

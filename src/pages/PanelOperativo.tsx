@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
-import { Badge, Button, Drawer, EmptyState, KpiCard, ListBox, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, KpiCard, ListBox, Menu, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderDetail } from '../components/OrderDetail'
@@ -15,7 +15,8 @@ import {
   type Order,
   type OrderStatus,
 } from '../data/orders'
-import { canEditOrder, canOpen } from '../lib/access'
+import { canEditOrder, canExportPanel, canOpen } from '../lib/access'
+import { error as showError } from '../lib/alerts'
 import { statusPillFor } from '../lib/orderFlow'
 import { compareOpenPriority } from '../lib/priority'
 import { placeLine } from '../lib/place'
@@ -410,6 +411,8 @@ export function PanelOperativo() {
   )
   const [showDone, setShowDone] = useState(false)
   const [sheetsTick, setSheetsTick] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [exportBusy, setExportBusy] = useState<'excel' | 'pdf' | null>(null)
 
   const dateFilter = parseFecha(searchParams.get('fecha'))
   const openId = searchParams.get('pedido')
@@ -463,6 +466,37 @@ export function PanelOperativo() {
           : datedOrders
     return [...list].sort(sortPanelList)
   }, [datedOrders, statusFilter])
+
+  async function runPanelExport(kind: 'excel' | 'pdf') {
+    if (!user || visibleOrders.length === 0) return
+    setExportBusy(kind)
+    try {
+      const panel = await import('../lib/panelExport')
+      const payload = {
+        orders: visibleOrders,
+        dateFilter,
+        statusFilter,
+        today,
+        tomorrow,
+        weekFrom,
+        weekTo,
+        sheets,
+        canPlan,
+        userName: user.name,
+        role: user.role,
+      }
+      if (kind === 'excel') await panel.downloadPanelXlsx(payload)
+      else await panel.downloadPanelPdf(payload)
+      setMenuOpen(false)
+    } catch (err) {
+      setMenuOpen(false)
+      const message = err instanceof Error && err.message ? err.message : 'No se pudo exportar.'
+      await showError(message)
+    } finally {
+      setExportBusy(null)
+    }
+  }
+
   const columns =
     statusFilter === 'abiertos'
       ? STATUS_ORDER.filter((status) => status !== 'entregado')
@@ -685,11 +719,34 @@ export function PanelOperativo() {
         title="Panel Operativo"
         subtitle="Resumen de la operación en tiempo real"
         actions={
-          user && canOpen(user.role, '/nuevo-pedido') ? (
-            <Button variant="primary" onClick={() => navigate('/nuevo-pedido')}>
-              Nuevo pedido
-            </Button>
-          ) : undefined
+          <div className="flex w-full flex-wrap justify-end gap-2">
+            {user && canExportPanel(user.role) ? (
+              <Menu
+                label="Exportar"
+                open={menuOpen}
+                onOpenChange={setMenuOpen}
+                items={[
+                  {
+                    id: 'excel',
+                    label: visibleOrders.length === 0 ? 'Sin pedidos para exportar' : exportBusy === 'excel' ? 'Generando…' : 'Excel (.xlsx)',
+                    disabled: visibleOrders.length === 0 || exportBusy != null,
+                    onSelect: () => void runPanelExport('excel'),
+                  },
+                  {
+                    id: 'pdf',
+                    label: visibleOrders.length === 0 ? 'Sin pedidos para exportar' : exportBusy === 'pdf' ? 'Generando…' : 'PDF',
+                    disabled: visibleOrders.length === 0 || exportBusy != null,
+                    onSelect: () => void runPanelExport('pdf'),
+                  },
+                ]}
+              />
+            ) : null}
+            {user && canOpen(user.role, '/nuevo-pedido') ? (
+              <Button variant="primary" onClick={() => navigate('/nuevo-pedido')}>
+                Nuevo pedido
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
