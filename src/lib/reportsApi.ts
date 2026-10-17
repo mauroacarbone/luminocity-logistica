@@ -100,6 +100,17 @@ export type OpenClaimRow = {
   days: number
 }
 
+export type RepairReport = {
+  byStep: { step: string; label: string; count: number }[]
+  garantia: number
+  cobro: number
+  sent: number
+  expired: number
+  resent: number
+  accepted: number
+  rejected: number
+}
+
 export type ClaimsReport = {
   period: ReportPeriod
   total: number
@@ -107,6 +118,7 @@ export type ClaimsReport = {
   byStatus: ClaimStatusRow[]
   byMotive: ClaimMotiveRow[]
   openAged: OpenClaimRow[]
+  repairs: RepairReport
 }
 
 export type PickupDay = DayReport & { total: number }
@@ -265,7 +277,19 @@ function isClaims(value: unknown): value is ClaimsReport {
       isText(item.createdAt) &&
       isNum(item.days),
   )
-  return statusOk && motiveOk && openOk
+  const repairs = value.repairs
+  const repairsOk =
+    isRecord(repairs) &&
+    isNum(repairs.garantia) &&
+    isNum(repairs.cobro) &&
+    isNum(repairs.sent) &&
+    isNum(repairs.expired) &&
+    isNum(repairs.resent) &&
+    isNum(repairs.accepted) &&
+    isNum(repairs.rejected) &&
+    Array.isArray(repairs.byStep) &&
+    repairs.byStep.every((item) => isRecord(item) && isText(item.step) && isText(item.label) && isNum(item.count))
+  return statusOk && motiveOk && openOk && repairsOk
 }
 
 function isPickupDay(value: unknown): value is PickupDay {

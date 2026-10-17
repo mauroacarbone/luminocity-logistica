@@ -331,7 +331,65 @@ async function loadClaims(period) {
       .map(([motive, count]) => ({ motive, count }))
       .sort((left, right) => right.count - left.count || left.motive.localeCompare(right.motive, 'es')),
     openAged,
+    repairs: repairStats(rows),
   }
+}
+
+const REPAIR_LABEL = {
+  'por-levantar': 'Por levantar',
+  diagnostico: 'Diagnóstico',
+  'presupuesto-enviado': 'Presupuesto enviado',
+  'presupuesto-vencido': 'Presupuesto vencido',
+  aceptado: 'Aceptado',
+  rechazado: 'Rechazado',
+  'en-reparacion': 'En reparación',
+  listo: 'Lista',
+  entregado: 'Entregado',
+}
+
+function asRepair(value) {
+  if (!value) return null
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value)
+    } catch {
+      return null
+    }
+  }
+  return typeof value === 'object' ? value : null
+}
+
+function repairStats(rows) {
+  const byStep = new Map()
+  let garantia = 0
+  let cobro = 0
+  let sent = 0
+  let expired = 0
+  let resent = 0
+  let accepted = 0
+  let rejected = 0
+  for (const row of rows) {
+    const repair = asRepair(row.repair)
+    if (!repair) continue
+    const step = typeof repair.step === 'string' ? repair.step : ''
+    if (step) byStep.set(step, (byStep.get(step) ?? 0) + 1)
+    if (repair.coverage === 'garantia') garantia += 1
+    else if (repair.coverage === 'cobro') cobro += 1
+    const quote = repair.quote && typeof repair.quote === 'object' ? repair.quote : {}
+    if (quote.sentAt) sent += 1
+    if (step === 'presupuesto-vencido' || quote.expiredNotifiedAt) expired += 1
+    if (Array.isArray(repair.contacts)) {
+      resent += repair.contacts.filter((contact) => contact?.kind === 'reenvio').length
+    }
+    if (repair.answer?.value === 'acepta') accepted += 1
+    else if (repair.answer?.value === 'rechaza' || step === 'rechazado') rejected += 1
+  }
+  const steps = [...byStep.entries()].map(([step, count]) => ({
+    step,
+    label: REPAIR_LABEL[step] ?? step,
+    count,
+  }))
+  return { byStep: steps, garantia, cobro, sent, expired, resent, accepted, rejected }
 }
 
 async function claimsInPeriod(period) {
@@ -349,7 +407,8 @@ async function claimsInPeriod(period) {
             COALESCE(data->>'status', '') AS status,
             COALESCE(data->>'createdAt', '') AS "createdAt",
             data->>'resolvedAt' AS "resolvedAt",
-            data->'events' AS events
+            data->'events' AS events,
+            data->'repair' AS repair
      FROM claims
      WHERE data->>'createdAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
        AND ${CLAIM_DAY} BETWEEN $1 AND $2`,

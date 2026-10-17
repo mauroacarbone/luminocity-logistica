@@ -399,6 +399,33 @@ function driverLines(driver: DriverReport): ModelRow[] {
   return lines
 }
 
+function repairRows(repairs: ClaimsReport['repairs']): ModelRow[] {
+  const decided = repairs.accepted + repairs.rejected
+  const rows: ModelRow[] = repairs.byStep.map((row) => ({
+    rowId: row.step,
+    values: { label: row.label, count: row.count, aceptacion: null },
+    pct: { aceptacion: { part: 0, whole: 0 } },
+  }))
+  const extras = [
+    ['garantia', 'Garantía', repairs.garantia],
+    ['cobro', 'Cobro', repairs.cobro],
+    ['enviados', 'Presupuestos enviados', repairs.sent],
+    ['vencidos', 'Presupuestos vencidos', repairs.expired],
+    ['reenviados', 'Presupuestos reenviados', repairs.resent],
+    ['aceptados', 'Aceptados', repairs.accepted],
+    ['rechazados', 'Rechazados', repairs.rejected],
+  ] as const
+  for (const [id, label, count] of extras) {
+    const rate = id === 'aceptados' && decided > 0 ? Math.round((repairs.accepted / decided) * 1000) / 10 : null
+    rows.push({
+      rowId: id,
+      values: { label, count, aceptacion: rate },
+      pct: { aceptacion: id === 'aceptados' ? { part: repairs.accepted, whole: decided } : { part: 0, whole: 0 } },
+    })
+  }
+  return rows
+}
+
 function claimStatusRow(row: { status: string; label: string; count: number }): ModelRow {
   return { rowId: row.status, values: { label: row.label, count: row.count } }
 }
@@ -608,6 +635,18 @@ export function buildReportModel(data: ReportSource, period: { from: string; to:
         column('days', 'Días', 'count', formatCount),
       ],
       rows: data.claims.openAged.map(openClaimRow),
+    },
+    {
+      id: 'reparaciones',
+      title: 'Reparaciones',
+      sheet: 'Reparaciones',
+      csvId: 'reparaciones',
+      columns: [
+        column('label', 'Indicador', 'text', formatText),
+        column('count', 'Cantidad', 'count', formatCount),
+        column('aceptacion', 'Aceptación', 'pct', formatPct, 'aceptacion'),
+      ],
+      rows: repairRows(data.claims.repairs),
     },
     {
       id: 'retiros-dia',
