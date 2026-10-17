@@ -248,7 +248,11 @@ export function OrderFlowButtons({
 
   async function onBack(to: OrderStatus, label: string) {
     setMenuOpen(false)
-    const reason = await askReason(label, `El pedido ${order.id} vuelve a ${statusPillFor(order, to)}.`)
+    const detail =
+      to === 'pendiente' && order.preparedBy?.name
+        ? `Se devuelve a la cola de armado y se avisa a ${order.preparedBy.name}.`
+        : `El pedido ${order.id} vuelve a ${statusPillFor(order, to)}.`
+    const reason = await askReason(label, detail)
     if (!reason) return
     await runTransition(to, { reason })
   }

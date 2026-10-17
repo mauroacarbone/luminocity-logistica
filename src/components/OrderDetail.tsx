@@ -18,6 +18,7 @@ const VIA_LABEL: Record<string, string> = {
   picking: 'desde picking',
   panel: 'Panel',
   retiros: 'Retiros',
+  preparacion: 'Mi preparación',
 }
 
 function formatWhen(value: string) {

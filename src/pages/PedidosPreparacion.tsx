@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { PrepChecklist } from '../components/PrepChecklist'
 import { PrepChip } from '../components/PrepChip'
-import { Badge, Button, Drawer, EmptyState, ListBox, Modal, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, FilterBar, ListBox, Modal, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
 import { OrderDetail } from '../components/OrderDetail'
 import { PriorityChip } from '../components/PriorityChip'
@@ -11,7 +11,7 @@ import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { canCancelOrder, canEditOrder, canPrepare } from '../lib/access'
 import { statusPillFor } from '../lib/orderFlow'
-import { checklistOf, takeState, takenByName } from '../lib/preparation'
+import { checklistOf, formatPrepMs, prepDuration, takeState, takenByName } from '../lib/preparation'
 import { compareOpenPriority } from '../lib/priority'
 import { businessToday } from '../lib/schedule'
 import {
@@ -108,6 +108,30 @@ function PackagesDialog({
   )
 }
 
+function formatPrepHour(value: string | undefined) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleTimeString('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function PrepTimer({ order }: { order: Order }) {
+  const [now, setNow] = useState(0)
+  useEffect(() => {
+    const start = window.setTimeout(() => setNow(Date.now()), 0)
+    const id = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => {
+      window.clearTimeout(start)
+      window.clearInterval(id)
+    }
+  }, [])
+  return <span className="tabular-nums">{now ? formatPrepMs(prepDuration(order, now)) : '—'}</span>
+}
+
 function isOpenPrep(order: Order) {
   return order.status === 'pendiente' || order.status === 'preparado'
 }
@@ -121,7 +145,7 @@ export function PedidosPreparacion() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
-  const { orders, loading, removeOrder, transitionOrder } = useOrders()
+  const { orders, loading, removeOrder, releaseOrder, transitionOrder } = useOrders()
   const { lines } = usePicking()
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedIso, setSelectedIso] = useState(() => businessToday())
@@ -129,6 +153,7 @@ export function PedidosPreparacion() {
   const [prepareError, setPrepareError] = useState('')
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState('')
+  const [scope, setScope] = useState<'todos' | 'incompletos'>('todos')
   const [alignedId, setAlignedId] = useState<string | null>(null)
   const days = weekDays(weekOffset)
   const weekOrders = orders.filter(isOpenPrep)
@@ -143,6 +168,7 @@ export function PedidosPreparacion() {
       }
       return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
     })
+  const shownOrders = scope === 'incompletos' ? dayOrders.filter((order) => order.prepIncomplete) : dayOrders
   const openId = searchParams.get('pedido')
   const openOrder = dayOrders.find((order) => order.id === openId) ?? null
 
@@ -198,6 +224,45 @@ export function PedidosPreparacion() {
     if (takeState(order) !== 'en-preparacion') return ''
     if (order.preparation?.takenBy?.id === user.id) return ''
     return takenByName(order) || 'otro operario'
+  }
+
+  function canRelease(order: Order) {
+    if (!user) return false
+    if (user.role !== 'encargado_deposito' && user.role !== 'admin') return false
+    return takeState(order) === 'en-preparacion'
+  }
+
+  async function release(order: Order) {
+    setBusyId(order.id)
+    const result = await releaseOrder(order.id)
+    setBusyId('')
+    if (result.status === 'not-saved') await error(result.message)
+  }
+
+  function armadoCell(order: Order) {
+    if (takeState(order) === 'en-preparacion') {
+      return (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <span>En preparación · {takenByName(order) || 'operario'}</span>
+          <PrepTimer order={order} />
+          {canRelease(order) ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={busyId === order.id}
+              onClick={(event) => {
+                event.stopPropagation()
+                void release(order)
+              }}
+            >
+              Liberar
+            </Button>
+          ) : null}
+        </span>
+      )
+    }
+    if (!order.preparedBy) return '—'
+    return `${order.preparedBy.name} · ${formatPrepHour(order.preparedAt)} · ${order.prepMs == null ? '—' : formatPrepMs(order.prepMs)}`
   }
 
   async function markPrepared(packages: number) {
@@ -278,6 +343,7 @@ export function PedidosPreparacion() {
         </span>
       ),
     },
+    { key: 'armado', header: 'Armado', cell: (order) => armadoCell(order) },
     { key: 'zone', header: 'Zona', cell: (order) => order.zone || '—' },
     {
       key: 'dispatch',
@@ -341,6 +407,22 @@ export function PedidosPreparacion() {
         </Button>
       </div>
 
+      <FilterBar
+        chips={[
+          {
+            id: 'incompletos',
+            label: 'Armado',
+            variant: 'segmented',
+            value: scope,
+            options: [
+              { value: 'todos', label: 'Todos' },
+              { value: 'incompletos', label: 'Incompletos' },
+            ],
+            onChange: (next) => setScope(next === 'incompletos' ? 'incompletos' : 'todos'),
+          },
+        ]}
+      />
+
       <ListBox
         className="mt-4"
         counters={days.map((day) => {
@@ -358,7 +440,7 @@ export function PedidosPreparacion() {
           }
         })}
       >
-        {dayOrders.length === 0 ? (
+        {shownOrders.length === 0 ? (
           <EmptyState variant="plain" icon={<NavIcon name="box" />} title="No hay pedidos" />
         ) : (
           <>
@@ -366,13 +448,13 @@ export function PedidosPreparacion() {
               <Table
                 bare
                 columns={columns}
-                rows={dayOrders}
+                rows={shownOrders}
                 rowKey={(order) => order.id}
                 onRowClick={(order) => openPedido(order.id)}
               />
             </div>
             <div className="flex flex-col lg:hidden">
-              {dayOrders.map((order) => (
+              {shownOrders.map((order) => (
                 <article
                   key={order.id}
                   className="cursor-pointer border-b border-border px-4 py-3 text-left last:border-b-0"
@@ -396,6 +478,7 @@ export function PedidosPreparacion() {
                 <p className="mt-2 font-semibold uppercase">{order.client}</p>
                 {order.zone ? <p className="mt-1 text-sm text-muted">{order.zone}</p> : null}
                 {order.timeWindow ? <p className="mt-1 text-sm text-muted">{order.timeWindow}</p> : null}
+                <p className="mt-2 text-sm text-text">{armadoCell(order)}</p>
                 <Button
                   variant="ghost"
                   size="lg"

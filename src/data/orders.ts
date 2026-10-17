@@ -35,6 +35,7 @@ export type OrderHistoryVia =
   | 'picking'
   | 'panel'
   | 'retiros'
+  | 'preparacion'
 
 export type OrderHistoryEntry = {
   at: string
