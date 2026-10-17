@@ -170,6 +170,15 @@ export async function notifyClaimOwner(claim, actor, text) {
   ])
 }
 
+/** Se llama dentro del lock de reclamos. Avisa al vendedor del reclamo. */
+export async function notifyClaimSeller(claim, text, actor) {
+  const target = claimOwnerUser(await readUsersList(), claim)
+  if (!target || target.id === actor?.id) return
+  await pushNotifications([
+    buildNote({ to: target.id, text, claimId: claim.id, channel: 'app' }),
+  ])
+}
+
 function claimOwnerUser(users, claim) {
   if (typeof claim.createdBy === 'string' && claim.createdBy) {
     const byId = users.find((user) => user.id === claim.createdBy && user.role === 'vendedor')

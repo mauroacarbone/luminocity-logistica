@@ -3,7 +3,7 @@ import { businessToday, normalizeName } from './access.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
-import { notifyClaimOwner, notifyRole } from './notifications.js'
+import { notifyClaimOwner, notifyClaimSeller, notifyRole } from './notifications.js'
 
 const STATUS_LABEL = {
   nuevo: 'Nuevo',
@@ -139,6 +139,17 @@ claimsRouter.post('/:id/repair/take', async (req, res) => {
 claimsRouter.patch('/:id/repair', async (req, res) => {
   await send(res, async () => {
     const result = await updateRepair(req.user, req.params.id, req.body)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(result.claim)
+  })
+})
+
+claimsRouter.post('/:id/repair/step', async (req, res) => {
+  await send(res, async () => {
+    const result = await stepRepair(req.user, req.params.id, req.body)
     if (result.error) {
       sendError(res, result)
       return
@@ -764,6 +775,140 @@ function updateRepair(user, id, body) {
       })
     }
     await writeClaims(found.list)
+    return { claim: found.claim }
+  })
+}
+
+const GARANTIA_FLOW = ['por-levantar', 'diagnostico', 'en-reparacion', 'listo', 'entregado']
+const COBRO_FLOW = [
+  'por-levantar',
+  'diagnostico',
+  'presupuesto-enviado',
+  'aceptado',
+  'en-reparacion',
+  'listo',
+  'entregado',
+]
+const STEP_LABEL = {
+  'por-levantar': 'Por levantar',
+  diagnostico: 'Diagnóstico',
+  'presupuesto-enviado': 'Presupuesto enviado',
+  'presupuesto-vencido': 'Presupuesto vencido',
+  aceptado: 'Presupuesto aceptado',
+  rechazado: 'Presupuesto rechazado',
+  'en-reparacion': 'En reparación',
+  listo: 'Lista para retirar',
+  entregado: 'Entregado',
+}
+
+function flowOf(coverage) {
+  return coverage === 'garantia' ? GARANTIA_FLOW : COBRO_FLOW
+}
+
+function stepRank(coverage, step) {
+  if (step === 'presupuesto-vencido') return flowOf(coverage).indexOf('presupuesto-enviado')
+  if (step === 'rechazado') return flowOf(coverage).indexOf('aceptado')
+  return flowOf(coverage).indexOf(step)
+}
+
+function forwardTargets(repair) {
+  const step = repair.step
+  if (repair.coverage === 'garantia') {
+    if (step === 'por-levantar') return ['diagnostico']
+    if (step === 'diagnostico') return ['en-reparacion']
+    if (step === 'en-reparacion') return ['listo']
+    if (step === 'listo') return ['entregado']
+    return []
+  }
+  if (step === 'por-levantar') return ['diagnostico']
+  if (step === 'diagnostico') return ['presupuesto-enviado']
+  if (step === 'presupuesto-enviado' || step === 'presupuesto-vencido') return ['aceptado', 'rechazado']
+  if (step === 'aceptado') return ['en-reparacion']
+  if (step === 'en-reparacion') return ['listo']
+  if (step === 'listo') return ['entregado']
+  return []
+}
+
+function isClaimSeller(user, claim) {
+  if (user?.role !== 'vendedor') return false
+  if (claim.createdBy === user.id) return true
+  const seller = normalizeName(user.sellerName)
+  return seller.length > 0 && seller === normalizeName(claim.seller)
+}
+
+function canRepairStep(user, claim, to, goingBack) {
+  if (goingBack) return user.role === 'encargado_deposito' || user.role === 'admin'
+  if (to === 'entregado') {
+    return ['tecnico', 'deposito', 'vendedor', 'encargado_deposito', 'admin'].includes(user.role)
+  }
+  if (to === 'aceptado' || to === 'rechazado') {
+    if (user.role === 'encargado_deposito' || user.role === 'admin') return true
+    if (claim.repair?.technician?.id === user.id) return true
+    return isClaimSeller(user, claim)
+  }
+  if (user.role === 'admin') return true
+  return user.role === 'tecnico' && claim.repair?.technician?.id === user.id
+}
+
+function statusForRepairStep(step) {
+  if (step === 'por-levantar') return 'recepcion'
+  if (step === 'entregado') return 'entregado'
+  return 'reparacion'
+}
+
+function stepRepair(user, id, body) {
+  return locked(async () => {
+    const found = await findClaim(user, id)
+    if (found.error) return found
+    const repair = found.claim.repair
+    if (!repair) return fail('Este reclamo no tiene una reparación.', 409)
+    if (!isRecord(body) || typeof body.to !== 'string') return fail('Elegí el paso de la reparación.')
+    const to = body.to
+    if (to === 'presupuesto-vencido') return fail('Ese paso lo marca el vencimiento.', 409)
+    if (!STEP_LABEL[to]) return fail('Ese paso no existe.', 400)
+    const note = typeof body.note === 'string' ? body.note.trim() : ''
+    if (note.length > NOTE_MAX) return fail(`El motivo puede tener hasta ${NOTE_MAX} caracteres.`)
+    const fromRank = stepRank(repair.coverage, repair.step)
+    const toRank = stepRank(repair.coverage, to)
+    const forward = forwardTargets(repair).includes(to)
+    const goingBack = !forward && fromRank >= 0 && toRank >= 0 && toRank < fromRank && flowOf(repair.coverage).includes(to)
+    if (!forward && !goingBack) return fail('No se puede pasar a ese paso.', 409)
+    if (goingBack && note.length < 5) return fail('El motivo tiene que tener al menos 5 caracteres.')
+    if (!canRepairStep(user, found.claim, to, goingBack)) return fail('Solo podés cargar la reparación.', 403)
+    if (to === 'presupuesto-enviado' && repair.coverage === 'cobro') {
+      if (!repair.diagnosis?.trim()) return fail('Cargá el diagnóstico antes de avisar.')
+      if (typeof repair.quote?.amount !== 'number' || !repair.quote.etaDate) {
+        return fail('Cargá el presupuesto antes de avisar.')
+      }
+    }
+    const now = new Date().toISOString()
+    repair.step = to
+    if (to === 'aceptado' || to === 'rechazado') {
+      repair.answer = {
+        value: to === 'aceptado' ? 'acepta' : 'rechaza',
+        at: now,
+        by: { id: user.id, name: user.name },
+      }
+    } else if (goingBack) {
+      delete repair.answer
+    }
+    found.claim.status = statusForRepairStep(to)
+    if (to === 'entregado') found.claim.resolvedAt = now
+    else if (found.claim.resolvedAt && to !== 'entregado') delete found.claim.resolvedAt
+    const label = STEP_LABEL[to]
+    found.claim.events.push({
+      at: now,
+      status: found.claim.status,
+      note: note ? `${label}. ${note}` : label,
+      by: actorOf(user),
+    })
+    await writeClaims(found.list)
+    const text =
+      to === 'rechazado'
+        ? `${found.claim.client} rechazó el presupuesto del reclamo ${found.claim.id}`
+        : `La reparación del reclamo ${found.claim.id} pasó a ${label}.`
+    await notifyClaimOwner(found.claim, user, text)
+    await notifyClaimSeller(found.claim, text, user)
     return { claim: found.claim }
   })
 }
