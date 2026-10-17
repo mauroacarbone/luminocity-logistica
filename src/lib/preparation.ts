@@ -89,6 +89,13 @@ export function canTickChecklist(role: Role | undefined, order: Order, userId: s
   return order.preparedBy?.id === userId
 }
 
+export function canEditItems(role: Role | undefined, order: Order, userId: string | undefined, now = Date.now()) {
+  if (!role || !userId || order.status !== 'pendiente') return false
+  if (role === 'encargado_deposito' || role === 'admin') return true
+  if (role !== 'deposito') return false
+  return takeState(order, now) === 'en-preparacion' && order.preparation?.takenBy?.id === userId
+}
+
 export function formatPrepMs(ms: number | null | undefined) {
   if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return '—'
   const totalMin = Math.round(ms / 60000)
