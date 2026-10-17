@@ -1547,7 +1547,10 @@ export function PendientesEntregas() {
                     }`}
                   >
                     <div className="min-w-0">
-                      <p className="font-medium">{line.product}</p>
+                      <p className="flex flex-wrap items-center gap-2 font-medium">
+                        <span>{line.product}</span>
+                        {line.source === 'manual' ? <Badge tone="neutral">Manual</Badge> : null}
+                      </p>
                       <p className="text-sm text-muted">Cantidad pedida: {line.quantity}</p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">

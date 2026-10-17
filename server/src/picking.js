@@ -77,7 +77,7 @@ pickingRouter.patch('/:id', requireRole(...ROLES), async (req, res) => {
 
 pickingRouter.delete('/:id', requireRole('encargado_deposito', 'admin'), async (req, res) => {
   await send(res, async () => {
-    const result = await deleteRow(req.params.id)
+    const result = await deleteRow(req.params.id, req.user)
     if (result.error) {
       sendError(res, result)
       return
@@ -248,14 +248,22 @@ export async function syncChecklist(orders, index, user) {
   await writeCollection('orders', orders)
 }
 
-function deleteRow(id) {
+function deleteRow(id, user) {
   return locked(async () => {
     if (typeof id !== 'string' || !id.trim()) return fail('No existe esa fila de picking.', 404)
     const list = await readPicking()
     const index = list.findIndex((item) => item.id === id)
     if (index < 0) return fail('No existe esa fila de picking.', 404)
+    const orderId = typeof list[index]?.orderId === 'string' ? list[index].orderId : ''
     list.splice(index, 1)
     await writePicking(list)
+    if (orderId) {
+      const orders = await readCollection('orders')
+      if (Array.isArray(orders)) {
+        const orderIndex = orders.findIndex((item) => item && item.id === orderId)
+        if (orderIndex >= 0) await syncChecklist(orders, orderIndex, user)
+      }
+    }
     return { ok: true }
   })
 }
@@ -302,14 +310,19 @@ function batchRows(body) {
     const orders = await readCollection('orders')
     const orderList = Array.isArray(orders) ? orders : []
     if (mode === 'replace') {
-      const next = parsed.map((item) => buildNewRow(item, now))
+      const kept = current.filter((row) => {
+        const source = rowSource(row)
+        return source === 'manual' || source === 'crm'
+      })
+      const createdRows = parsed.map((item) => buildNewRow(item, now))
+      const next = [...createdRows, ...kept]
       linkUniquePickingRows(next, orderList)
       await writePicking(next)
       return {
         summary: {
-          created: next.length,
+          created: createdRows.length,
           updated: 0,
-          removed: current.length,
+          removed: current.filter((row) => rowSource(row) === 'excel').length,
         },
       }
     }
@@ -317,6 +330,7 @@ function batchRows(body) {
     const oldestByKey = new Map()
     for (let index = 0; index < next.length; index += 1) {
       const row = next[index]
+      if (rowSource(row) !== 'excel') continue
       const key = mergeKey(row.comprobante, row.articulo)
       const previous = oldestByKey.get(key)
       if (previous === undefined) {
@@ -405,6 +419,11 @@ function buildNewRow(parsed, now) {
   if (parsed.pickedQty !== undefined) row.pickedQty = parsed.pickedQty
   if (parsed.orderId !== undefined) row.orderId = parsed.orderId
   return row
+}
+
+function rowSource(row) {
+  if (row?.source === 'manual' || row?.source === 'crm' || row?.source === 'excel') return row.source
+  return 'excel'
 }
 
 function mergeKey(comprobante, articulo) {
