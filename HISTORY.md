@@ -142,6 +142,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 35.3 | Exportación de Reportes y del Panel, y totales | Hecho |
 | 35.4 | Sin gráficos en Reportes | Hecho |
 | 34 | Operarios de depósito: Mi preparación | Hecho |
+| 34.2 | Ajustes al armado y al alta de pedidos | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -400,6 +401,8 @@ El Brief 32f.2 deja Borrar hoja con borde de peligro y el planificador entra en 
 El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pedido se abrió desde la lista. En el celular, el número del pedido es un botón con foco. En el Panel, el detalle se cierra si el pedido deja de verse, y Atrasados cuenta todos los pedidos abiertos, sin el filtro de fecha.
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
+
+El Brief 34.2, al tomar un pedido, pasa a en preparación solo las filas de picking que estaban pendientes: una ya preparada no pierde el avance. Al marcar armado el servidor recalcula el checklist y no frena el armado si el conteo que mandó el cliente quedó desactualizado. Nuevo pedido usa el ancho de la página. Desde 900px del formulario, tipo de despacho, prioridad y transportista van a la izquierda, y vendedor, cliente y dirección a la derecha; notas, adjuntos y el envío siguen a ancho completo. Tipo de despacho y Prioridad quedan separados en la tarjeta. En el celular el formulario sigue en una sola columna, en el mismo orden.
 
 El Brief 34 le da al operario de depósito la pantalla Mi preparación, que pasa a ser su inicio. Tomar un pedido pendiente muestra la etiqueta «En preparación» con su nombre; el estado sigue siendo pendiente. Puede armarlo directo o después de tomarlo: quedan el autor, los bultos y la duración, que es la suma de las sesiones (una toma vencida se cierra a las 4 h). Si faltan artículos, queda armado incompleto y el checklist se puede completar después. Al armar se avisa al encargado; si el encargado deshace el armado o libera la toma de otro, se avisa al operario. En Pedidos y Preparación el encargado ve quién arma, cuánto tardó y los incompletos, y puede liberar. Reportes suma la preparación por operario. El alta de Nuevo pedido guarda el borrador en la sesión y lo recupera al recargar.
 
