@@ -4,6 +4,7 @@ import {
   type ClaimFile,
   type ClaimProduct,
   type ClaimStatus,
+  type RepairStep,
 } from '../data/claims'
 import { apiRequest, type ApiResult } from './api'
 import { loadToken, rememberSessionNotice } from './authStore'
@@ -68,6 +69,12 @@ function isProduct(value: unknown): value is ClaimProduct {
   )
 }
 
+function isRepair(value: unknown) {
+  if (!value || typeof value !== 'object') return false
+  const repair = value as Record<string, unknown>
+  return typeof repair.step === 'string' && typeof repair.product === 'string'
+}
+
 function isEvent(value: unknown): value is ClaimEvent {
   if (!value || typeof value !== 'object') return false
   const event = value as Record<string, unknown>
@@ -115,6 +122,8 @@ export function isClaim(value: unknown): value is Claim {
   if (claim.hasAttachment !== undefined && typeof claim.hasAttachment !== 'boolean') return false
   if (claim.createdBy !== undefined && typeof claim.createdBy !== 'string') return false
   if (claim.importedBy !== undefined && typeof claim.importedBy !== 'string') return false
+  if (claim.phoneKind !== undefined && claim.phoneKind !== 'movil' && claim.phoneKind !== 'fijo') return false
+  if (claim.repair !== undefined && !isRepair(claim.repair)) return false
   return true
 }
 
@@ -144,6 +153,32 @@ export function getClaim(id: string) {
 
 export function createClaim(body: NewClaimBody) {
   return apiRequest('/api/claims', 'POST', body, 'No se pudo guardar el reclamo.')
+}
+
+export function repairStep(id: string, to: RepairStep, note?: string) {
+  return apiRequest(
+    `/api/claims/${encodeURIComponent(id)}/repair/step`,
+    'POST',
+    note ? { to, note } : { to },
+    'No se pudo actualizar la reparación.',
+  )
+}
+
+export function repairContact(
+  id: string,
+  body: {
+    channel: 'whatsapp' | 'llamada'
+    kind: 'presupuesto' | 'reenvio' | 'listo' | 'rechazo'
+    result?: string
+    phoneKind?: 'movil' | 'fijo'
+  },
+) {
+  return apiRequest(
+    `/api/claims/${encodeURIComponent(id)}/repair/contact`,
+    'POST',
+    body,
+    'No se pudo registrar el aviso.',
+  )
 }
 
 export function patchClaimStatus(id: string, status: ClaimStatus) {

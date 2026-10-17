@@ -17,6 +17,8 @@ import {
   importClaims,
   isClaim,
   listClaims,
+  repairContact as apiRepairContact,
+  repairStep as apiRepairStep,
   patchClaimStatus,
 } from '../lib/claimsApi'
 import { loadList } from '../lib/localStore'
@@ -55,6 +57,16 @@ type ClaimsContextValue = {
   addClaim: (input: NewClaim) => Promise<ClaimActionResult>
   setStatus: (id: string, status: ClaimStatus) => Promise<ClaimActionResult>
   addNote: (id: string, note: string) => Promise<ClaimActionResult>
+  answerRepair: (id: string, to: 'aceptado' | 'rechazado') => Promise<ClaimActionResult>
+  recordRepairContact: (
+    id: string,
+    body: {
+      channel: 'whatsapp' | 'llamada'
+      kind: 'presupuesto' | 'reenvio' | 'listo' | 'rechazo'
+      result?: string
+      phoneKind?: 'movil' | 'fijo'
+    },
+  ) => Promise<ClaimActionResult>
   ensureClaimFiles: (
     id: string,
   ) => Promise<{ ok: true; id: string; claim: Claim } | { ok: false; message: string }>
@@ -332,6 +344,34 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     setLegacyShown(true)
   }
 
+  async function adoptClaim(result: Awaited<ReturnType<typeof apiRepairStep>>, fallback: string) {
+    if (!result.ok) {
+      if (result.status === 401) logout()
+      return { ok: false as const, message: result.message }
+    }
+    const claim = asClaim(result)
+    if (!claim) return { ok: false as const, message: fallback }
+    bumpLocalChange()
+    setClaims((list) => upsertClaim(list, claim))
+    return { ok: true as const, id: claim.id }
+  }
+
+  async function answerRepair(id: string, to: 'aceptado' | 'rechazado') {
+    return adoptClaim(await apiRepairStep(id, to), 'No se pudo registrar la respuesta.')
+  }
+
+  async function recordRepairContact(
+    id: string,
+    body: {
+      channel: 'whatsapp' | 'llamada'
+      kind: 'presupuesto' | 'reenvio' | 'listo' | 'rechazo'
+      result?: string
+      phoneKind?: 'movil' | 'fijo'
+    },
+  ) {
+    return adoptClaim(await apiRepairContact(id, body), 'No se pudo registrar el aviso.')
+  }
+
   return (
     <ClaimsContext.Provider
       value={{
@@ -345,6 +385,8 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
         addClaim,
         setStatus,
         addNote,
+        answerRepair,
+        recordRepairContact,
         ensureClaimFiles,
         uploadLegacy,
         dismissLegacy,

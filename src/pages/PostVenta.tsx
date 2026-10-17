@@ -23,6 +23,7 @@ import {
 } from '../lib/attachment'
 import { confirm, error } from '../lib/alerts'
 import { useAuth } from '../state/AuthContext'
+import { RepairFollowUp } from '../components/RepairFollowUp'
 import { useCatalog } from '../state/CatalogContext'
 import { useClaims } from '../state/ClaimsContext'
 import { useOrders } from '../state/OrdersContext'
@@ -789,6 +790,7 @@ function ClaimStepper({ status }: { status: Exclude<ClaimStatus, 'cancelado'> })
 
 function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   const { setStatus, addNote } = useClaims()
+  const { user } = useAuth()
   const [openStatus, setOpenStatus] = useState(false)
   const [noting, setNoting] = useState(false)
   const [note, setNote] = useState('')
@@ -1001,6 +1003,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
             {claim.products.map((product) => `${product.name} (x${product.quantity})`).join(' · ')}
           </p>
           <ClaimAttachments claim={claim} />
+          {user && <RepairFollowUp claim={claim} user={user} />}
           {notes.map((event, index) => (
             <p key={`${event.at}-${index}`} className="mt-1 text-sm text-subtle">
               Nota · {formatWhen(event.at)} · {event.note}

@@ -52,6 +52,46 @@ export type ClaimEvent = {
   by?: { userId: string; userName: string }
 }
 
+export type RepairStep =
+  | 'por-levantar'
+  | 'diagnostico'
+  | 'presupuesto-enviado'
+  | 'presupuesto-vencido'
+  | 'aceptado'
+  | 'rechazado'
+  | 'en-reparacion'
+  | 'listo'
+  | 'entregado'
+
+export type RepairCoverage = 'garantia' | 'cobro'
+
+export type RepairContact = {
+  at: string
+  channel: 'whatsapp' | 'llamada'
+  kind: 'presupuesto' | 'reenvio' | 'listo' | 'rechazo'
+  result?: string
+  by?: { id: string; name: string }
+}
+
+export type ClaimRepair = {
+  intakeAt: string
+  product: string
+  coverage: RepairCoverage
+  diagnosis: string
+  quote: {
+    amount?: number
+    etaDate?: string
+    sentAt?: string
+    expiresAt?: string
+    expiredNotifiedAt?: string
+  }
+  step: RepairStep
+  contacts: RepairContact[]
+  answer?: { value: 'acepta' | 'rechaza' | 'sin-respuesta'; at: string; by?: { id: string; name: string } }
+  receivedBy: { id: string; name: string }
+  technician?: { id: string; name: string }
+}
+
 export type Claim = {
   id: string
   client: string
@@ -74,6 +114,8 @@ export type Claim = {
   hasAttachment?: boolean
   createdBy?: string
   importedBy?: string
+  phoneKind?: 'movil' | 'fijo'
+  repair?: ClaimRepair
 }
 
 export function isOpenClaim(status: ClaimStatus) {
