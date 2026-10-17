@@ -294,6 +294,7 @@ export function PlanificadorRutas() {
       ? orders
           .filter((order) => {
             if (!order.deliveryDate || order.deliveryDate >= iso) return false
+            if (listedIds.has(order.id)) return false
             if (!isOwnDelivery(order) || isPickup(order)) return false
             if (order.routeId || order.sheetPlanned) return false
             if (!normalizeTimeWindow(order.timeWindow)) return false
