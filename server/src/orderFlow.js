@@ -40,14 +40,13 @@ const TRANSITIONS = {
   },
   'en-viaje|entregado': {
     direction: 'forward',
-    roles: new Set(['chofer', 'admin']),
+    roles: new Set(['chofer', 'encargado_deposito', 'admin']),
     mustBeDriverOrAdmin: true,
     ownDelivery: true,
   },
   'asignado|entregado': {
     direction: 'forward',
     roles: new Set(['encargado_deposito', 'admin']),
-    courierOnly: true,
   },
   'preparado|pendiente': {
     direction: 'back',
@@ -183,13 +182,20 @@ export async function applyTransition(orders, current, input, user, via, options
   if (rule.mustBeDriver && !isOrderDriver(user, current)) {
     return fail('No tenés permiso para ese cambio de estado.', 403)
   }
-  if (rule.mustBeDriverOrAdmin) {
-    if (user.role !== 'admin' && !isOrderDriver(user, current)) {
-      return fail('No tenés permiso para ese cambio de estado.', 403)
-    }
+  if (rule.mustBeDriverOrAdmin && user.role === 'chofer' && !isOrderDriver(user, current)) {
+    return fail('No tenés permiso para ese cambio de estado.', 403)
+  }
+  if (key === 'asignado|entregado' && !isCourier(current) && !isOwnDelivery(current)) {
+    return invalidTransition(current.status, to)
   }
 
-  const reason = readReason(input, rule.direction === 'back')
+  const backupDelivery =
+    isOwnDelivery(current) &&
+    to === 'entregado' &&
+    (current.status === 'asignado' ||
+      (current.status === 'en-viaje' && user.role === 'encargado_deposito'))
+
+  const reason = readReason(input, rule.direction === 'back' || backupDelivery)
   if (reason.error) return reason
 
   const next = {
@@ -208,6 +214,16 @@ export async function applyTransition(orders, current, input, user, via, options
   }
 
   let historyReason = reason.value
+  if (
+    reason.value &&
+    isOwnDelivery(current) &&
+    to === 'entregado' &&
+    (current.status === 'asignado' || current.status === 'en-viaje') &&
+    (user.role === 'encargado_deposito' || user.role === 'admin')
+  ) {
+    const name = typeof user.name === 'string' ? user.name : ''
+    historyReason = `Entregado por ${name}: ${reason.value}`
+  }
   if (rule.direction === 'forward' && to === 'entregado' && rule.pickupOnly) {
     const receiver = readPickupReceiver(input)
     if (receiver.error) return receiver

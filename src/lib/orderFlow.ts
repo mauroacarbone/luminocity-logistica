@@ -44,7 +44,7 @@ export const TRANSITIONS: TransitionRule[] = [
   {
     from: 'en-viaje',
     to: 'entregado',
-    roles: ['chofer', 'admin'],
+    roles: ['chofer', 'encargado_deposito', 'admin'],
     ownDelivery: true,
   },
   {
@@ -52,6 +52,12 @@ export const TRANSITIONS: TransitionRule[] = [
     to: 'entregado',
     roles: ['encargado_deposito', 'admin'],
     courierOnly: true,
+  },
+  {
+    from: 'asignado',
+    to: 'entregado',
+    roles: ['encargado_deposito', 'admin'],
+    ownDelivery: true,
   },
   { from: 'preparado', to: 'pendiente', roles: ['encargado_deposito', 'admin'] },
   { from: 'asignado', to: 'preparado', roles: ['encargado_deposito', 'admin'] },
@@ -149,6 +155,7 @@ export function nextAction(
 ): FlowAction | null {
   const forwards = allowedTransitions(role, order, 'forward').filter((rule) => {
     if (role === 'chofer' && rule.to === 'en-viaje') return false
+    if (isBackupDelivery(role, order) && rule.to === 'entregado') return false
     return true
   })
   if (forwards.length === 0) return null
@@ -157,6 +164,16 @@ export function nextAction(
   const preferred = index >= 0 ? path[index + 1] : undefined
   const rule = forwards.find((item) => item.to === preferred) ?? forwards[0]
   return { to: rule.to, label: forwardLabel(order, rule.to) }
+}
+
+/** El encargado o el admin marcan entregada una entrega propia, con motivo. */
+export function isBackupDelivery(
+  role: Role,
+  order: Pick<Order, 'status' | 'dispatchType'>,
+) {
+  if (role !== 'encargado_deposito' && role !== 'admin') return false
+  if (!isOwnDelivery(order)) return false
+  return order.status === 'asignado' || order.status === 'en-viaje'
 }
 
 /** Pasos hacia atrás permitidos para este rol. */

@@ -16,7 +16,7 @@ import {
 } from '../lib/alerts'
 import type { Role } from '../lib/authStore'
 import { isSession } from '../lib/authStore'
-import { backActions, nextAction, statusPillFor } from '../lib/orderFlow'
+import { backActions, isBackupDelivery, nextAction, statusPillFor } from '../lib/orderFlow'
 import { normalizeTimeWindow } from '../lib/slot'
 import { listUsers } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
@@ -233,6 +233,16 @@ export function OrderFlowButtons({
     await runTransition(next.to)
   }
 
+  async function onBackupDelivered() {
+    setMenuOpen(false)
+    const reason = await askReason(
+      `¿Marcar ${order.id} como entregado?`,
+      'Queda registrado a tu nombre.',
+    )
+    if (!reason) return
+    await runTransition('entregado', { reason })
+  }
+
   async function onBack(to: OrderStatus, label: string) {
     setMenuOpen(false)
     const reason = await askReason(label, `El pedido ${order.id} vuelve a ${statusPillFor(order, to)}.`)
@@ -240,6 +250,7 @@ export function OrderFlowButtons({
     await runTransition(to, { reason })
   }
 
+  const backup = isBackupDelivery(role, order)
   const stretch = layout === 'stretch'
   const compact = layout === 'compact'
   const moreClass = stretch
@@ -264,7 +275,7 @@ export function OrderFlowButtons({
           {next.label}
         </Button>
       )}
-      {backs.length > 0 && (
+      {(backs.length > 0 || backup) && (
         <div className="relative shrink-0">
           <button
             ref={moreBtnRef}
@@ -290,6 +301,16 @@ export function OrderFlowButtons({
                     : { top: 0, left: 0, visibility: 'hidden', zIndex: 'var(--z-dropdown)' }
                 }
               >
+                {backup && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="block w-full whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-muted"
+                    onClick={() => void onBackupDelivered()}
+                  >
+                    Marcar entregado
+                  </button>
+                )}
                 {backs.map((action) => (
                   <button
                     key={action.to}
