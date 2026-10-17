@@ -14,7 +14,8 @@ export const NAV = [
   { to: '/seguimiento', label: 'Seguimiento', icon: 'search' },
   { to: '/rutas', label: 'Planificador de Rutas', icon: 'route' },
   { to: '/choferes', label: 'Choferes en ruta', icon: 'map' },
-  { to: '/post-venta', label: 'Post Venta', icon: 'refresh' },
+  { to: '/post-venta/nuevo', label: 'Nuevo reclamo', icon: 'plus' },
+  { to: '/post-venta', label: 'Post Venta', end: true, icon: 'refresh' },
   { to: '/usuarios', label: 'Usuarios', icon: 'users' },
   { to: '/datos-maestros', label: 'Datos maestros', icon: 'settings' },
   { to: '/tarifas', label: 'Tarifas de viaje', icon: 'settings' },
@@ -59,7 +60,7 @@ const GROUP_DEFS: { id: GroupId; title: string; icon: NavIconName; sections: Nav
     id: 'post-venta',
     title: 'Post Venta',
     icon: 'refresh',
-    sections: [{ paths: ['/post-venta'] }],
+    sections: [{ paths: ['/post-venta/nuevo', '/post-venta'] }],
   },
   {
     id: 'admin',

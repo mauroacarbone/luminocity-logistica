@@ -40,6 +40,13 @@ export type NewClaim = {
   products: ClaimProduct[]
   photos: ClaimFile[]
   attachment?: ClaimFile
+  intake?: {
+    invoice: string
+    client: string
+    product: string
+    coverage: 'garantia' | 'cobro'
+    intakeAt: string
+  }
 }
 
 export type ClaimActionResult =
@@ -251,6 +258,7 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
       products: input.products,
       photos: input.photos,
       attachment: input.attachment,
+      intake: input.intake,
     })
     if (!result.ok) {
       if (result.status === 401) logout()

@@ -1,42 +1,31 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
-import { Button, Card, Field, FilterBar, Input, KpiCard, LoadState, Page, PageHeader, Select, Textarea } from '../components/ui'
-import { withCurrent, withExtras } from '../data/catalog'
+import { Button, Card, Field, FilterBar, Input, KpiCard, LoadState, Page, PageHeader } from '../components/ui'
+import { withExtras } from '../data/catalog'
 import {
-  CLAIM_MOTIVES,
   CLAIM_STATUS_LABEL,
   CLAIM_STATUS_ORDER,
   isOpenClaim,
   type Claim,
-  type ClaimFile,
   type ClaimStatus,
 } from '../data/claims'
-import type { Order } from '../data/orders'
-import {
-  attachmentKind,
-  claimAttachmentRejection,
-  imageFileRejection,
-  openAttachment,
-  readAttachmentFile,
-} from '../lib/attachment'
+import { attachmentKind, openAttachment } from '../lib/attachment'
 import { confirm, error } from '../lib/alerts'
 import { useAuth } from '../state/AuthContext'
 import { RepairFollowUp } from '../components/RepairFollowUp'
 import { useCatalog } from '../state/CatalogContext'
 import { useClaims } from '../state/ClaimsContext'
-import { useOrders } from '../state/OrdersContext'
 
 const CLAIM_PROGRESS = CLAIM_STATUS_ORDER.filter(
   (status): status is Exclude<ClaimStatus, 'cancelado'> => status !== 'cancelado',
 )
 
-type Tab = 'nuevo' | 'reclamos' | 'finalizados' | 'cancelados' | 'dashboard'
+type Tab = 'reclamos' | 'finalizados' | 'cancelados' | 'dashboard'
 type Period = '7' | '30' | 'mes' | 'todos'
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'nuevo', label: 'Nuevo Reclamo' },
   { id: 'reclamos', label: 'Reclamos' },
   { id: 'finalizados', label: 'Finalizados' },
   { id: 'cancelados', label: 'Cancelados' },
@@ -50,8 +39,6 @@ const PERIODS: { id: Period; label: string }[] = [
   { id: 'todos', label: 'Todos' },
 ]
 
-const MAX_PHOTOS = 5
-
 const STATUS_BADGE: Record<ClaimStatus, string> = {
   nuevo: 'bg-surface-muted text-text',
   recepcion: 'bg-info-soft text-info',
@@ -61,10 +48,6 @@ const STATUS_BADGE: Record<ClaimStatus, string> = {
   entregado: 'bg-success-soft text-success',
   cancelado: 'bg-danger-soft text-danger-deep',
 }
-
-type FormErrors = Partial<
-  Record<'client' | 'motive' | 'description' | 'products' | 'email' | 'photos' | 'file', string>
->
 
 function formatWhen(iso: string) {
   const date = new Date(iso)
@@ -126,31 +109,6 @@ function downloadClaims(claims: Claim[]) {
   const book = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(book, sheet, 'Reclamos')
   XLSX.writeFile(book, 'reclamos-luminocity.xlsx')
-}
-
-function SearchField({
-  value,
-  placeholder,
-  onChange,
-}: {
-  value: string
-  placeholder: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <Field label="Buscar pedido">
-      <Input
-        size="lg"
-        value={value}
-        placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </Field>
-  )
-}
-
-function isAbortError(error: unknown) {
-  return error instanceof DOMException && error.name === 'AbortError'
 }
 
 function fileLabel(kind: 'photo' | 'file', name: string, dataUrl: string) {
@@ -268,463 +226,6 @@ function ClaimAttachments({ claim }: { claim: Claim }) {
   )
 }
 
-function NuevoReclamo({ onCreated }: { onCreated: (id: string) => void }) {
-  const { user } = useAuth()
-  const { orders } = useOrders()
-  const { addClaim } = useClaims()
-  const { sellers } = useCatalog()
-  const sellerLocked = user?.role === 'vendedor'
-  const lockedSeller = sellerLocked ? (user?.sellerName?.trim() ?? '') : ''
-  const [lookup, setLookup] = useState('')
-  const [client, setClient] = useState('')
-  const [invoices, setInvoices] = useState([''])
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
-  const [seller, setSeller] = useState('')
-  const [motive, setMotive] = useState('')
-  const [description, setDescription] = useState('')
-  const [products, setProducts] = useState([{ name: '', quantity: '1' }])
-  const [photos, setPhotos] = useState<ClaimFile[]>([])
-  const [attachment, setAttachment] = useState<ClaimFile | null>(null)
-  const [readingPhotos, setReadingPhotos] = useState(false)
-  const [readingFile, setReadingFile] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [errors, setErrors] = useState<FormErrors>({})
-  const photoRequest = useRef(0)
-  const fileRequest = useRef(0)
-  const fileAbort = useRef<(() => void) | null>(null)
-  const sellerValue = sellerLocked ? lockedSeller : seller
-
-  const needle = lookup.trim().toLowerCase()
-  const matches = needle.length < 2
-    ? []
-    : orders
-        .filter((order) => {
-          const blob = [order.id, order.client, order.phone, ...(order.invoices ?? [])]
-            .join(' ')
-            .toLowerCase()
-          return blob.includes(needle)
-        })
-        .slice(0, 5)
-
-  function applyOrder(order: Order) {
-    setClient(order.client)
-    setPhone(order.phone ?? '')
-    setSeller(order.seller ?? '')
-    const known = (order.invoices ?? []).filter(Boolean)
-    setInvoices(known.length > 0 ? known : [order.id])
-    setLookup('')
-    setErrors((current) => ({ ...current, client: undefined }))
-  }
-
-  function reset() {
-    setLookup('')
-    setClient('')
-    setInvoices([''])
-    setPhone('')
-    setEmail('')
-    setSeller('')
-    setMotive('')
-    setDescription('')
-    setProducts([{ name: '', quantity: '1' }])
-    photoRequest.current += 1
-    fileRequest.current += 1
-    fileAbort.current?.()
-    fileAbort.current = null
-    setPhotos([])
-    setAttachment(null)
-    setReadingPhotos(false)
-    setReadingFile(false)
-    setErrors({})
-  }
-
-  async function onPhotos(files: FileList | null) {
-    if (!files || files.length === 0) return
-    const room = MAX_PHOTOS - photos.length
-    if (room <= 0) {
-      setErrors((current) => ({ ...current, photos: 'Podés adjuntar hasta 5 fotos.' }))
-      return
-    }
-    const incoming = [...files].slice(0, room)
-    const overflow = files.length > room
-    const request = photoRequest.current + 1
-    photoRequest.current = request
-    setReadingPhotos(true)
-    const loaded: ClaimFile[] = []
-    let problem: string | undefined
-    for (const file of incoming) {
-      const rejection = imageFileRejection(file)
-      if (rejection) {
-        problem = rejection
-        continue
-      }
-      const job = readAttachmentFile(file)
-      try {
-        const dataUrl = await job.promise
-        if (photoRequest.current !== request) return
-        loaded.push({ name: file.name, dataUrl })
-      } catch (error) {
-        if (photoRequest.current !== request) return
-        if (!isAbortError(error)) problem = 'No se pudo leer la foto.'
-      }
-    }
-    if (photoRequest.current !== request) return
-    setPhotos((current) => [...current, ...loaded].slice(0, MAX_PHOTOS))
-    setErrors((current) => ({
-      ...current,
-      photos: problem ?? (overflow ? 'Podés adjuntar hasta 5 fotos.' : undefined),
-    }))
-    setReadingPhotos(false)
-  }
-
-  function onAttachment(file: File | undefined) {
-    fileRequest.current += 1
-    const request = fileRequest.current
-    fileAbort.current?.()
-    fileAbort.current = null
-    if (!file) {
-      setAttachment(null)
-      setReadingFile(false)
-      setErrors((current) => ({ ...current, file: undefined }))
-      return
-    }
-    const rejection = claimAttachmentRejection(file)
-    if (rejection) {
-      setAttachment(null)
-      setReadingFile(false)
-      setErrors((current) => ({ ...current, file: rejection }))
-      return
-    }
-    const job = readAttachmentFile(file)
-    fileAbort.current = job.abort
-    setReadingFile(true)
-    setErrors((current) => ({ ...current, file: undefined }))
-    job.promise
-      .then((dataUrl) => {
-        if (fileRequest.current !== request) return
-        setAttachment({ name: file.name, dataUrl })
-        setReadingFile(false)
-      })
-      .catch((error: unknown) => {
-        if (fileRequest.current !== request) return
-        setReadingFile(false)
-        if (isAbortError(error)) return
-        setAttachment(null)
-        setErrors((current) => ({ ...current, file: 'No se pudo leer el archivo.' }))
-      })
-  }
-
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault()
-    const nextErrors: FormErrors = {}
-    if (!client.trim()) nextErrors.client = 'Ingresá el nombre del cliente.'
-    if (!motive) nextErrors.motive = 'Elegí un motivo.'
-    if (!description.trim()) nextErrors.description = 'Contá qué pasó.'
-    const cleaned = products
-      .map((product) => ({
-        name: product.name.trim(),
-        quantity: Math.max(1, Number(product.quantity) || 1),
-      }))
-      .filter((product) => product.name)
-    if (cleaned.length === 0) nextErrors.products = 'Agregá al menos un producto.'
-    if (email.trim() && !email.includes('@')) nextErrors.email = 'El email no parece válido.'
-    if (readingPhotos || readingFile) {
-      nextErrors.file = 'Esperá a que se terminen de leer los archivos.'
-    }
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
-
-    setSaving(true)
-    const result = await addClaim({
-      client: client.trim(),
-      invoices: invoices.map((invoice) => invoice.trim()).filter(Boolean),
-      phone: phone.trim(),
-      email: email.trim(),
-      seller: sellerValue,
-      motive,
-      description: description.trim(),
-      products: cleaned,
-      photos,
-      attachment: attachment ?? undefined,
-    })
-    setSaving(false)
-    if (!result.ok) {
-      setErrors((current) => ({ ...current, file: result.message }))
-      return
-    }
-    reset()
-    onCreated(result.id)
-  }
-
-  return (
-    <form className="form-stack" onSubmit={onSubmit}>
-      <div>
-        <SearchField
-          value={lookup}
-          placeholder="Buscar cliente, factura o producto antes de cargar un nuevo reclamo..."
-          onChange={setLookup}
-        />
-        {needle.length >= 2 && (
-          <div className="mt-2 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-            {matches.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-muted">
-                No hay pedidos que coincidan. Podés cargar el reclamo a mano.
-              </p>
-            ) : (
-              matches.map((order) => (
-                <button
-                  key={order.id}
-                  type="button"
-                  className="block w-full border-b border-border px-3 py-2 text-left text-sm last:border-b-0 hover:bg-surface-muted"
-                  onClick={() => applyOrder(order)}
-                >
-                  <strong>{order.id}</strong> — {order.client}
-                  {order.invoices && order.invoices.length > 0 ? ` · ${order.invoices.join(', ')}` : ''}
-                </button>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-
-      <section className="form-card">
-        <h2>Nuevo reclamo</h2>
-        <div className="field-grid">
-          <div className="field full">
-            <Field label="Nombre del cliente *" error={errors.client}>
-              <Input
-                size="lg"
-                value={client}
-                placeholder="Nombre del cliente"
-                onChange={(event) => setClient(event.target.value)}
-              />
-            </Field>
-          </div>
-          <div className="field full">
-            <span>N° de factura / pedido</span>
-            {invoices.map((invoice, index) => (
-              <div className="inline-field" key={index}>
-                <Input
-                  size="lg"
-                  value={invoice}
-                  placeholder="Ej: 0001-00012345"
-                  aria-label={`Factura ${index + 1}`}
-                  onChange={(event) =>
-                    setInvoices((current) =>
-                      current.map((item, itemIndex) =>
-                        itemIndex === index ? event.target.value : item,
-                      ),
-                    )
-                  }
-                />
-                {invoices.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setInvoices((current) => current.filter((_, itemIndex) => itemIndex !== index))
-                    }
-                  >
-                    Quitar
-                  </Button>
-                )}
-              </div>
-            ))}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="self-center"
-              onClick={() => setInvoices((current) => [...current, ''])}
-            >
-              + Agregar otra factura
-            </Button>
-          </div>
-          <Field label="Teléfono">
-            <Input
-              size="lg"
-              value={phone}
-              placeholder="+54 11..."
-              onChange={(event) => setPhone(event.target.value)}
-            />
-          </Field>
-          <Field label="Email" error={errors.email}>
-            <Input
-              size="lg"
-              type="email"
-              value={email}
-              placeholder="cliente@email.com"
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </Field>
-          <Field label="Vendedor">
-            <Select
-              size="lg"
-              value={sellerValue}
-              disabled={sellerLocked || saving}
-              onChange={(event) => setSeller(event.target.value)}
-            >
-              <option value="">Seleccioná vendedor</option>
-              {withCurrent(sellers, sellerValue).map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Motivo *" error={errors.motive}>
-            <Select
-              size="lg"
-              value={motive}
-              onChange={(event) => setMotive(event.target.value)}
-            >
-              <option value="">Seleccioná un motivo</option>
-              {CLAIM_MOTIVES.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <div className="field full">
-            <Field label="Descripción del problema *" error={errors.description}>
-              <Textarea
-                value={description}
-                rows={4}
-                placeholder="Contá qué pasó..."
-                onChange={(event) => setDescription(event.target.value)}
-              />
-            </Field>
-          </div>
-          <div className="field full">
-            <span>Productos del reclamo *</span>
-            {products.map((product, index) => (
-              <div className="inline-field" key={index}>
-                <Input
-                  size="lg"
-                  value={product.name}
-                  placeholder="Escribí el nombre o código del producto"
-                  aria-label={`Producto ${index + 1}`}
-                  aria-invalid={Boolean(errors.products)}
-                  onChange={(event) =>
-                    setProducts((current) =>
-                      current.map((item, itemIndex) =>
-                        itemIndex === index ? { ...item, name: event.target.value } : item,
-                      ),
-                    )
-                  }
-                />
-                <Input
-                  size="lg"
-                  value={product.quantity}
-                  inputMode="numeric"
-                  aria-label={`Cantidad del producto ${index + 1}`}
-                  className="max-w-[4.5rem] shrink-0"
-                  style={{ width: 72, flex: '0 0 72px' }}
-                  onChange={(event) =>
-                    setProducts((current) =>
-                      current.map((item, itemIndex) =>
-                        itemIndex === index ? { ...item, quantity: event.target.value } : item,
-                      ),
-                    )
-                  }
-                />
-                {products.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setProducts((current) => current.filter((_, itemIndex) => itemIndex !== index))
-                    }
-                  >
-                    Quitar
-                  </Button>
-                )}
-              </div>
-            ))}
-            {errors.products && <small className="field-error">{errors.products}</small>}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="self-center"
-              onClick={() => setProducts((current) => [...current, { name: '', quantity: '1' }])}
-            >
-              + Agregar otro producto
-            </Button>
-          </div>
-          <div className="field full">
-            <span>Foto (hasta 5, opcional)</span>
-            <label
-              className="detect-btn"
-              style={{ display: 'inline-flex', justifyContent: 'center', padding: '10px 14px', cursor: 'pointer' }}
-            >
-              Agregar foto
-              <Input
-                size="lg"
-                type="file"
-                accept="image/*"
-                multiple
-                className="sr-only"
-                onChange={(event) => {
-                  onPhotos(event.target.files)
-                  event.target.value = ''
-                }}
-              />
-            </label>
-            {readingPhotos && <small className="hint">Leyendo fotos…</small>}
-            {photos.length > 0 && (
-              <ul className="mt-1 flex flex-col gap-1">
-                {photos.map((photo, index) => (
-                  <li key={`${photo.name}-${index}`} className="flex items-center justify-between text-sm">
-                    <span className="truncate">{photo.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index))
-                      }
-                    >
-                      Quitar
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {errors.photos && <small className="field-error">{errors.photos}</small>}
-          </div>
-          <div className="field full">
-            <Field
-              label="Adjuntar archivo"
-              hint={
-                readingFile
-                  ? 'Leyendo archivo…'
-                  : attachment
-                    ? `${attachment.name}. PDF, Word, Excel o imagen. Máximo 2 MB.`
-                    : 'PDF, Word, Excel o imagen. Máximo 2 MB.'
-              }
-              error={errors.file}
-            >
-              <Input
-                size="lg"
-                type="file"
-                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                onChange={(event) => onAttachment(event.target.files?.[0])}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className="form-actions mt-4">
-          <Button variant="ghost" disabled={saving} onClick={reset}>
-            Cancelar
-          </Button>
-          <Button type="submit" variant="primary" disabled={saving} loading={saving}>
-            Guardar reclamo
-          </Button>
-        </div>
-      </section>
-    </form>
-  )
-}
-
 function claimStepState(
   index: number,
   currentIndex: number,
@@ -791,12 +292,14 @@ function ClaimStepper({ status }: { status: Exclude<ClaimStatus, 'cancelado'> })
 function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   const { setStatus, addNote } = useClaims()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [openStatus, setOpenStatus] = useState(false)
   const [noting, setNoting] = useState(false)
   const [note, setNote] = useState('')
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [busy, setBusy] = useState(false)
   const invoice = claim.invoices[0]
+  const readOnly = user?.role === 'tecnico'
   const notes = claim.events.filter((event) => event.note)
   const trail = claim.events.filter((event) => !event.note)
   const previous = trail.length > 1 ? trail[trail.length - 2] : null
@@ -907,7 +410,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           </p>
         )}
 
-        {!terminal && nextStatus && (
+        {!readOnly && !terminal && nextStatus && (
           <Button
             variant="secondary"
             size="lg"
@@ -920,7 +423,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           </Button>
         )}
 
-        {claim.status !== 'cancelado' && (
+        {!readOnly && claim.status !== 'cancelado' && (
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
             {prevStatus && (
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => void applyStatus(prevStatus)}>
@@ -1003,6 +506,11 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
             {claim.products.map((product) => `${product.name} (x${product.quantity})`).join(' · ')}
           </p>
           <ClaimAttachments claim={claim} />
+          {readOnly && claim.repair && (
+            <Button variant="secondary" className="mt-3" onClick={() => navigate(`/taller?reclamo=${encodeURIComponent(claim.id)}`)}>
+              Ver en Mi taller
+            </Button>
+          )}
           {user && <RepairFollowUp claim={claim} user={user} />}
           {notes.map((event, index) => (
             <p key={`${event.at}-${index}`} className="mt-1 text-sm text-subtle">
@@ -1023,7 +531,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           >
             Nota
           </Button>
-          {isOpenClaim(claim.status) &&
+          {isOpenClaim(claim.status) && !readOnly &&
             (confirmCancel ? (
               <div className="flex items-center gap-2 text-sm">
                 <Button variant="danger" size="sm" disabled={busy} onClick={() => void cancelClaim()}>
@@ -1207,7 +715,9 @@ export function PostVenta() {
   } = useClaims()
   const { sellers } = useCatalog()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [tab, setTab] = useState<Tab>('nuevo')
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [tab, setTab] = useState<Tab>('reclamos')
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState('todos')
   const [period, setPeriod] = useState<Period>('30')
@@ -1256,14 +766,6 @@ export function PostVenta() {
   const finalizados = listed.filter((claim) => claim.status === 'entregado')
   const cancelados = listed.filter((claim) => claim.status === 'cancelado')
 
-  function openCreated(id: string) {
-    setHighlightId(id)
-    setTab('reclamos')
-    setSeller('todos')
-    setPeriod('30')
-    setQuery('')
-  }
-
   async function onUploadLegacy() {
     setLegacyBusy(true)
     const result = await uploadLegacy()
@@ -1279,6 +781,10 @@ export function PostVenta() {
     )
     if (!accepted) return
     dismissLegacy()
+  }
+
+  if (searchParams.get('tab') === 'nuevo') {
+    return <Navigate to="/post-venta/nuevo" replace />
   }
 
   if (loading && claims.length === 0) {
@@ -1297,9 +803,25 @@ export function PostVenta() {
     )
   }
 
+  const canCreate =
+    user?.role === 'vendedor' ||
+    user?.role === 'deposito' ||
+    user?.role === 'encargado_deposito' ||
+    user?.role === 'admin'
+
   return (
     <Page>
-      <PageHeader title="Post Venta" subtitle="Cargá y seguí los reclamos de clientes" />
+      <PageHeader
+        title="Post Venta"
+        subtitle="Cargá y seguí los reclamos de clientes"
+        actions={
+          canCreate ? (
+            <Button variant="secondary" onClick={() => navigate('/post-venta/nuevo')}>
+              Nuevo reclamo
+            </Button>
+          ) : undefined
+        }
+      />
 
       {linkNotice && (
         <p className="mt-4 flex items-start justify-between gap-3 rounded-md bg-accent-soft px-4 py-2 text-sm text-text">
@@ -1342,39 +864,29 @@ export function PostVenta() {
           srOnly: true,
           placeholder: 'Buscar por cliente, factura o producto...',
         }}
-        selects={
-          tab === 'nuevo'
-            ? undefined
-            : [
-                {
-                  id: 'vendedor',
-                  label: 'Vendedor',
-                  value: seller,
-                  onChange: setSeller,
-                  options: [
-                    { value: 'todos', label: 'Todos los vendedores' },
-                    ...withExtras(
-                      sellers,
-                      claims.map((claim) => claim.seller),
-                    ).map((name) => ({ value: name, label: name })),
-                  ],
-                },
-                {
-                  id: 'periodo',
-                  label: 'Período',
-                  value: period,
-                  onChange: (value) => setPeriod(value as Period),
-                  options: PERIODS.map((item) => ({ value: item.id, label: item.label })),
-                },
-              ]
-        }
-        activeCount={
-          tab === 'nuevo'
-            ? query.trim()
-              ? 1
-              : 0
-            : (query.trim() ? 1 : 0) + (seller !== 'todos' ? 1 : 0) + (period !== '30' ? 1 : 0)
-        }
+        selects={[
+          {
+            id: 'vendedor',
+            label: 'Vendedor',
+            value: seller,
+            onChange: setSeller,
+            options: [
+              { value: 'todos', label: 'Todos los vendedores' },
+              ...withExtras(
+                sellers,
+                claims.map((claim) => claim.seller),
+              ).map((name) => ({ value: name, label: name })),
+            ],
+          },
+          {
+            id: 'periodo',
+            label: 'Período',
+            value: period,
+            onChange: (value) => setPeriod(value as Period),
+            options: PERIODS.map((item) => ({ value: item.id, label: item.label })),
+          },
+        ]}
+        activeCount={(query.trim() ? 1 : 0) + (seller !== 'todos' ? 1 : 0) + (period !== '30' ? 1 : 0)}
         onClear={() => {
           setQuery('')
           setSeller('todos')
@@ -1396,14 +908,12 @@ export function PostVenta() {
               }`}
               onClick={() => setTab(item.id)}
             >
-              {item.id === 'nuevo' ? '+ ' : ''}
               {item.label}
             </button>
           )
         })}
       </div>
 
-      {tab === 'nuevo' && <NuevoReclamo onCreated={openCreated} />}
       {tab === 'reclamos' && (
         <ClaimList
           claims={reclamos}

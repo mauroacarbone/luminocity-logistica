@@ -11,6 +11,7 @@ import { DatosMaestros } from './pages/DatosMaestros'
 import { Despacho } from './pages/Despacho'
 import { Login } from './pages/Login'
 import { NuevoPedido } from './pages/NuevoPedido'
+import { NuevoReclamo } from './pages/NuevoReclamo'
 import { PlanificadorRutas } from './pages/PlanificadorRutas'
 import { MisEntregas } from './pages/MisEntregas'
 import { MisViajes } from './pages/MisViajes'
@@ -167,6 +168,14 @@ export default function App() {
           element={
             <Gate path="/pendientes">
               <PendientesEntregas />
+            </Gate>
+          }
+        />
+        <Route
+          path="/post-venta/nuevo"
+          element={
+            <Gate path="/post-venta/nuevo">
+              <NuevoReclamo />
             </Gate>
           }
         />

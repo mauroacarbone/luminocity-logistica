@@ -30,6 +30,13 @@ export type NewClaimBody = {
   products: ClaimProduct[]
   photos?: ClaimFile[]
   attachment?: ClaimFile
+  intake?: {
+    invoice: string
+    client: string
+    product: string
+    coverage: 'garantia' | 'cobro'
+    intakeAt: string
+  }
 }
 
 export type ClaimsImportSummary = {
