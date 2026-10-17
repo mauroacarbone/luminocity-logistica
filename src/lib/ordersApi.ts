@@ -10,7 +10,14 @@ export type SlotFull = {
   timeWindow: string
   count: number
 }
-export type ApiFailure = { ok: false; status: number; message: string; code?: string; slot?: SlotFull }
+export type ApiFailure = {
+  ok: false
+  status: number
+  message: string
+  code?: string
+  slot?: SlotFull
+  field?: 'code' | 'description' | 'quantity'
+}
 export type ApiResult = ApiSuccess | ApiFailure
 
 const TEXT_FIELDS = [
@@ -40,6 +47,13 @@ function codeFrom(data: unknown) {
   if (!data || typeof data !== 'object' || !('code' in data)) return undefined
   const code = data.code
   return typeof code === 'string' && code.trim() ? code : undefined
+}
+
+function fieldFrom(data: unknown) {
+  if (!data || typeof data !== 'object' || !('field' in data)) return undefined
+  const field = data.field
+  if (field === 'code' || field === 'description' || field === 'quantity') return field
+  return undefined
 }
 
 function slotFrom(data: unknown): SlotFull | undefined {
@@ -92,6 +106,7 @@ async function request(path: string, method: string, body: unknown, fallback: st
       message: messageFrom(data, fallbackFor(response.status, fallback)),
       code: codeFrom(data),
       slot: slotFrom(data),
+      field: fieldFrom(data),
     }
   }
   return { ok: true, data }
@@ -142,6 +157,39 @@ export function releaseOrder(id: string) {
     'POST',
     {},
     'No se pudo liberar el pedido.',
+  )
+}
+
+export type ManualItemInput = {
+  code: string
+  description?: string
+  quantity: number
+}
+
+export function addOrderItem(id: string, body: ManualItemInput) {
+  return request(
+    `/api/orders/${encodeURIComponent(id)}/items`,
+    'POST',
+    body,
+    'No se pudo agregar el artículo.',
+  )
+}
+
+export function updateOrderItem(id: string, itemId: string, body: Partial<ManualItemInput>) {
+  return request(
+    `/api/orders/${encodeURIComponent(id)}/items/${encodeURIComponent(itemId)}`,
+    'PATCH',
+    body,
+    'No se pudo editar el artículo.',
+  )
+}
+
+export function deleteOrderItem(id: string, itemId: string) {
+  return request(
+    `/api/orders/${encodeURIComponent(id)}/items/${encodeURIComponent(itemId)}`,
+    'DELETE',
+    undefined,
+    'No se pudo quitar el artículo.',
   )
 }
 

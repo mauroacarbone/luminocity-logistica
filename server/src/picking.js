@@ -191,11 +191,22 @@ async function guardLinkedOrder(orderId, user) {
   return { order, orders, index }
 }
 
-async function syncChecklist(orders, index, user) {
+export async function syncChecklist(orders, index, user) {
   const order = orders[index]
+  if (!order) return
   const picking = await readCollection('picking')
   const rows = Array.isArray(picking) ? picking.filter((item) => item && item.orderId === order.id) : []
-  if (rows.length === 0) return
+  if (rows.length === 0) {
+    if (!order.prepChecklist && order.prepIncomplete !== true) return
+    orders[index] = {
+      ...order,
+      prepChecklist: { done: 0, total: 0 },
+      prepIncomplete: false,
+      updatedAt: new Date().toISOString(),
+    }
+    await writeCollection('orders', orders)
+    return
+  }
   const total = rows.length
   const done = rows.filter((item) => rowIsPicked(item)).length
   const wasIncomplete = order.prepIncomplete === true
@@ -388,6 +399,7 @@ function buildNewRow(parsed, now) {
     vendedor: parsed.vendedor,
     raw: parsed.raw,
     status: parsed.status ?? 'pendiente',
+    source: 'excel',
   }
   if (parsed.codigo) row.codigo = parsed.codigo
   if (parsed.pickedQty !== undefined) row.pickedQty = parsed.pickedQty
@@ -622,8 +634,62 @@ function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-function fail(error, status = 400) {
-  return { error, status }
+const ITEM_CODE_MAX = 60
+const ITEM_DESCRIPTION_MAX = 200
+
+export function readManualItem(body, partial = false) {
+  if (!isRecord(body)) return fail('El artículo no es válido.')
+  const hasCode = Object.prototype.hasOwnProperty.call(body, 'code')
+  const hasDescription = Object.prototype.hasOwnProperty.call(body, 'description')
+  const hasQuantity = Object.prototype.hasOwnProperty.call(body, 'quantity')
+  const result = {}
+  if (hasCode || !partial) {
+    const code = typeof body.code === 'string' ? body.code.trim() : ''
+    if (!code || code.length > ITEM_CODE_MAX) return fail('Cargá el código del artículo.', 400, 'code')
+    result.code = code
+  }
+  if (hasDescription && body.description != null && body.description !== '') {
+    if (typeof body.description !== 'string' || body.description.trim().length > ITEM_DESCRIPTION_MAX) {
+      return fail('La descripción puede tener hasta 200 caracteres.', 400, 'description')
+    }
+    result.description = body.description.trim()
+  } else if (hasDescription) {
+    result.description = ''
+  }
+  if (hasQuantity || !partial) {
+    const quantity = body.quantity
+    if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > CANTIDAD_MAX) {
+      return fail('La cantidad tiene que ser un entero mayor a 0.', 400, 'quantity')
+    }
+    result.quantity = quantity
+  }
+  return result
+}
+
+export function buildManualRow(order, item, now) {
+  const invoices = Array.isArray(order?.invoices)
+    ? order.invoices.filter((value) => typeof value === 'string' && value.trim())
+    : []
+  const description = typeof item.description === 'string' ? item.description.trim() : ''
+  return {
+    id: randomUUID(),
+    createdAt: now,
+    updatedAt: now,
+    cliente: typeof order?.client === 'string' ? order.client : '',
+    comprobante: invoices[0] || order.id,
+    articulo: description || item.code,
+    cantidad: item.quantity,
+    vendedor: typeof order?.seller === 'string' ? order.seller : '',
+    codigo: item.code,
+    raw: {},
+    status: 'pendiente',
+    orderId: order.id,
+    source: 'manual',
+  }
+}
+
+function fail(error, status = 400, field) {
+  return field ? { error, status, field } : { error, status }
 }
 
 function sendError(res, result) {

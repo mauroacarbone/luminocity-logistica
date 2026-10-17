@@ -2,6 +2,7 @@ import { apiRequest, type ApiResult } from './api'
 import { loadToken, rememberSessionNotice } from './authStore'
 
 export type PickingStatus = 'pendiente' | 'en_preparacion' | 'preparado'
+export type PickingSource = 'excel' | 'manual' | 'crm'
 
 export type PickingRow = {
   id: string
@@ -17,6 +18,7 @@ export type PickingRow = {
   status?: PickingStatus
   pickedQty?: number
   orderId?: string
+  source?: PickingSource
 }
 
 export type PickingBatchRow = {
@@ -86,6 +88,14 @@ export function isPickingRow(value: unknown): value is PickingRow {
   if (typeof row.vendedor !== 'string') return false
   if (!row.raw || typeof row.raw !== 'object' || Array.isArray(row.raw)) return false
   if (row.status !== undefined && (typeof row.status !== 'string' || !STATUSES.has(row.status as PickingStatus))) {
+    return false
+  }
+  if (
+    row.source !== undefined &&
+    row.source !== 'excel' &&
+    row.source !== 'manual' &&
+    row.source !== 'crm'
+  ) {
     return false
   }
   return true

@@ -91,3 +91,22 @@ export function rowIsPicked(row) {
   if (row?.status === 'preparado') return true
   return typeof row?.pickedQty === 'number' && typeof row?.cantidad === 'number' && row.pickedQty >= row.cantidad && row.cantidad > 0
 }
+
+export function pickedStatus(qty, quantity) {
+  if (!Number.isFinite(qty) || qty <= 0) return 'pendiente'
+  if (qty < quantity) return 'en_preparacion'
+  return 'preparado'
+}
+
+export function canEditItems(user, order) {
+  if (!order || order.status !== 'pendiente') {
+    return { error: 'Solo se cargan artículos en pedidos pendientes.', status: 409 }
+  }
+  if (user?.role === 'encargado_deposito' || user?.role === 'admin') return null
+  if (user?.role === 'deposito') {
+    const holder = activeHolder(order)
+    if (holder?.id && holder.id === user.id) return null
+    return { error: 'Tomá el pedido para cargar artículos.', status: 403 }
+  }
+  return { error: 'No tenés permiso para esto.', status: 403 }
+}

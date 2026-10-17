@@ -25,6 +25,7 @@ import {
   notifyWarehouse,
 } from './notifications.js'
 import { applyTransition, stampStatus, withHistory } from './orderFlow.js'
+import { buildManualRow, readManualItem, syncChecklist } from './picking.js'
 import {
   TAKE_STALE_MS,
   actorOf,
@@ -35,6 +36,8 @@ import {
   sessionsOf,
   takenAtOf,
   takenByOf,
+  canEditItems,
+  pickedStatus,
 } from './preparation.js'
 import {
   blockPlannedDeparture,
@@ -199,6 +202,36 @@ ordersRouter.post('/:id/release', async (req, res) => {
     res.json(withHistory(result.order))
   })
 })
+ordersRouter.post('/:id/items', async (req, res) => {
+  await send(res, async () => {
+    const result = await createOrderItem(req.params.id, req.body, req.user)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.status(201).json({ order: withHistory(result.order), rows: result.rows })
+  })
+})
+ordersRouter.patch('/:id/items/:itemId', async (req, res) => {
+  await send(res, async () => {
+    const result = await updateOrderItem(req.params.id, req.params.itemId, req.body, req.user)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json({ order: withHistory(result.order), rows: result.rows })
+  })
+})
+ordersRouter.delete('/:id/items/:itemId', async (req, res) => {
+  await send(res, async () => {
+    const result = await deleteOrderItem(req.params.id, req.params.itemId, req.user)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json({ order: withHistory(result.order), rows: result.rows })
+  })
+})
 ordersRouter.post('/:id/transition', async (req, res) => {
   await send(res, async () => {
     const result = await transitionOrder(req.params.id, req.body, req.user)
@@ -256,6 +289,7 @@ function sendError(res, result) {
     body.timeWindow = result.timeWindow
     body.count = result.count
   }
+  if (result.field) body.field = result.field
   res.status(result.status).json(body)
 }
 
@@ -774,6 +808,91 @@ function releaseOrder(id, user) {
   })
 }
 
+function orderItemRows(list, orderId) {
+  return Array.isArray(list) ? list.filter((row) => row && row.orderId === orderId) : []
+}
+
+async function loadEditableOrder(id, user) {
+  const orders = await readOrders()
+  const index = orders.findIndex((item) => item.id === id)
+  if (index < 0) return fail('No existe ese pedido.', 404)
+  const order = orders[index]
+  if (!canSeeOrder(user, order)) return fail('No tenés permiso para esto.', 403)
+  const blocked = canEditItems(user, order)
+  if (blocked) return blocked
+  return { orders, index, order }
+}
+
+function guardManualRow(row, orderId) {
+  if (!row || row.orderId !== orderId) return fail('No existe ese artículo.', 404)
+  if (row.source !== 'manual') return fail('Ese artículo viene del Excel y no se edita acá.', 409)
+  return null
+}
+
+function createOrderItem(id, body, user) {
+  return locked(async () => {
+    const loaded = await loadEditableOrder(id, user)
+    if (loaded.error) return loaded
+    const parsed = readManualItem(body)
+    if (parsed.error) return parsed
+    const picking = await readCollection('picking')
+    const list = Array.isArray(picking) ? picking : []
+    const now = new Date().toISOString()
+    list.push(buildManualRow(loaded.order, parsed, now))
+    await writeCollection('picking', list)
+    await syncChecklist(loaded.orders, loaded.index, user)
+    return { order: loaded.orders[loaded.index], rows: orderItemRows(list, id) }
+  })
+}
+
+function updateOrderItem(id, itemId, body, user) {
+  return locked(async () => {
+    const loaded = await loadEditableOrder(id, user)
+    if (loaded.error) return loaded
+    const parsed = readManualItem(body, true)
+    if (parsed.error) return parsed
+    const picking = await readCollection('picking')
+    const list = Array.isArray(picking) ? picking : []
+    const index = list.findIndex((row) => row && row.id === itemId)
+    const blocked = guardManualRow(list[index], id)
+    if (blocked) return blocked
+    const row = { ...list[index] }
+    if (parsed.code) row.codigo = parsed.code
+    if (Object.prototype.hasOwnProperty.call(parsed, 'description')) {
+      const code = parsed.code || (typeof row.codigo === 'string' ? row.codigo : '')
+      row.articulo = parsed.description || code
+    }
+    if (parsed.quantity !== undefined) {
+      row.cantidad = parsed.quantity
+      if (typeof row.pickedQty === 'number' && row.pickedQty > parsed.quantity) {
+        row.pickedQty = parsed.quantity
+        row.status = pickedStatus(row.pickedQty, row.cantidad)
+      }
+    }
+    row.updatedAt = new Date().toISOString()
+    list[index] = row
+    await writeCollection('picking', list)
+    await syncChecklist(loaded.orders, loaded.index, user)
+    return { order: loaded.orders[loaded.index], rows: orderItemRows(list, id) }
+  })
+}
+
+function deleteOrderItem(id, itemId, user) {
+  return locked(async () => {
+    const loaded = await loadEditableOrder(id, user)
+    if (loaded.error) return loaded
+    const picking = await readCollection('picking')
+    const list = Array.isArray(picking) ? picking : []
+    const index = list.findIndex((row) => row && row.id === itemId)
+    const blocked = guardManualRow(list[index], id)
+    if (blocked) return blocked
+    list.splice(index, 1)
+    await writeCollection('picking', list)
+    await syncChecklist(loaded.orders, loaded.index, user)
+    return { order: loaded.orders[loaded.index], rows: orderItemRows(list, id) }
+  })
+}
+
 async function notifyPreparation(current, result, user) {
   const name = typeof user.name === 'string' ? user.name.trim() : ''
   if (current.status === 'pendiente' && result.order.status === 'preparado') {
@@ -1128,8 +1247,8 @@ export function rememberOverride(order, user) {
   ]
 }
 
-function fail(error, status = 400) {
-  return { error, status }
+function fail(error, status = 400, field) {
+  return field ? { error, status, field } : { error, status }
 }
 
 function isRecord(value) {

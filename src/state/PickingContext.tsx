@@ -17,6 +17,7 @@ import {
   type PickingRow,
 } from '../lib/pickingApi'
 import { mergeKey, type PickingLine } from '../lib/pickingSheet'
+import { bindOrderPicking } from '../lib/pickingRefresh'
 import { useAuth } from './AuthContext'
 
 const PICKING_KEY = 'luminocity.picking.v1'
@@ -90,6 +91,8 @@ function lineFromRow(row: PickingRow): PickingLine {
     status: row.status,
     pickedQty: typeof row.pickedQty === 'number' ? row.pickedQty : undefined,
     orderId: typeof row.orderId === 'string' ? row.orderId : undefined,
+    source:
+      row.source === 'excel' || row.source === 'manual' || row.source === 'crm' ? row.source : undefined,
     raw: row.raw,
   }
 }
@@ -209,6 +212,18 @@ export function PickingProvider({ children }: { children: ReactNode }) {
     const result = await listPicking()
     return applyPickingResult(result)
   }, [applyPickingResult, trackKey])
+
+  useEffect(() => {
+    bindOrderPicking((orderId, rows) => {
+      const mapped = rows.map(lineFromRow)
+      const ids = new Set(mapped.map((line) => line.id))
+      setLines((current) => [
+        ...current.filter((line) => line.orderId !== orderId && !ids.has(line.id)),
+        ...mapped,
+      ])
+    })
+    return () => bindOrderPicking(null)
+  }, [])
 
   useEffect(() => {
     if (!trackKey) return

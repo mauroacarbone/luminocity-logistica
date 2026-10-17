@@ -7,6 +7,7 @@ import { slotNotice } from '../lib/slot'
 import {
   createOrder,
   deleteOrder,
+  deleteOrderItem as deleteOrderItemRequest,
   listOrders,
   orderBody,
   patchOrder,
@@ -14,11 +15,15 @@ import {
   releaseOrder as releaseOrderRequest,
   takeOrder as takeOrderRequest,
   transitionOrder as transitionOrderRequest,
+  updateOrderItem as updateOrderItemRequest,
+  addOrderItem as addOrderItemRequest,
   withoutNewAttachment,
   type ApiResult,
+  type ManualItemInput,
   type OrderDraft,
   type SlotFull,
 } from '../lib/ordersApi'
+import { publishOrderPicking } from '../lib/pickingRefresh'
 import { useAuth } from './AuthContext'
 
 const ORDERS_KEY = 'luminocity.orders.v1'
@@ -64,7 +69,7 @@ const OPTIONAL_STRINGS = [
 export type OrderSaveResult =
   | { status: 'saved'; order: Order }
   | { status: 'saved-without-attachment'; order: Order }
-  | { status: 'not-saved'; message: string; code?: string; slot?: SlotFull }
+  | { status: 'not-saved'; message: string; code?: string; slot?: SlotFull; field?: 'code' | 'description' | 'quantity' }
 
 export type OrderDeleteResult = { status: 'deleted' } | { status: 'not-saved'; message: string }
 
@@ -84,6 +89,9 @@ type OrdersContextValue = {
   transitionOrder: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
   takeOrder: (id: string) => Promise<OrderSaveResult>
   releaseOrder: (id: string) => Promise<OrderSaveResult>
+  addOrderItem: (id: string, body: ManualItemInput) => Promise<OrderSaveResult>
+  updateOrderItem: (id: string, itemId: string, body: Partial<ManualItemInput>) => Promise<OrderSaveResult>
+  deleteOrderItem: (id: string, itemId: string) => Promise<OrderSaveResult>
   reviewEdit: (
     orderId: string,
     editId: string,
@@ -429,6 +437,33 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return saveAction(releaseOrderRequest(id))
   }
 
+  async function saveOrderItems(result: Awaited<ApiResult>): Promise<OrderSaveResult> {
+    noteWrite()
+    if (!result.ok) {
+      if (result.status === 401) logout()
+      return { status: 'not-saved', message: result.message, field: result.field, code: result.code }
+    }
+    const payload = result.data
+    const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : null
+    const saved = asOrder(record?.order)
+    if (!saved) return { status: 'not-saved', message: 'El servidor no devolvió un pedido válido.' }
+    adopt(saved)
+    publishOrderPicking(saved.id, record?.rows)
+    return { status: 'saved', order: saved }
+  }
+
+  function addOrderItem(id: string, body: ManualItemInput) {
+    return addOrderItemRequest(id, body).then(saveOrderItems)
+  }
+
+  function updateOrderItem(id: string, itemId: string, body: Partial<ManualItemInput>) {
+    return updateOrderItemRequest(id, itemId, body).then(saveOrderItems)
+  }
+
+  function deleteOrderItem(id: string, itemId: string) {
+    return deleteOrderItemRequest(id, itemId).then(saveOrderItems)
+  }
+
   async function reviewEdit(
     orderId: string,
     editId: string,
@@ -505,6 +540,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         transitionOrder,
         takeOrder,
         releaseOrder,
+        addOrderItem,
+        updateOrderItem,
+        deleteOrderItem,
         reviewEdit,
         removeOrder,
       }}

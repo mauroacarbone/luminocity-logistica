@@ -15,6 +15,7 @@ export type PickingLine = {
   status?: 'pendiente' | 'en_preparacion' | 'preparado'
   pickedQty?: number
   orderId?: string
+  source?: 'excel' | 'manual' | 'crm'
   raw?: Record<string, string | number | boolean>
 }
 
