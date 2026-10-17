@@ -145,13 +145,17 @@ function saveSheet(body, user) {
         return fail(`El pedido ${id} ya está asignado a otro chofer`, 409)
       }
     }
-    const existing = sheets.find(
+    const openSheets = sheets.filter(
       (sheet) =>
-        sheet.driverId === parsed.driverId && sheet.date === parsed.date && sheet.slot === parsed.slot,
+        sheet.driverId === parsed.driverId &&
+        sheet.date === parsed.date &&
+        sheet.slot === parsed.slot &&
+        (sheet.status === 'planificada' || sheet.status === 'en_curso'),
     )
-    if (existing && existing.status !== 'planificada') {
+    if (openSheets.some((sheet) => sheet.status === 'en_curso')) {
       return fail('Esa hoja ya está en curso', 409)
     }
+    const existing = openSheets.find((sheet) => sheet.status === 'planificada') ?? null
     const rescheduled = []
     for (const id of parsed.orderIds) {
       const order = byId.get(id)
