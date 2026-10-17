@@ -83,7 +83,7 @@ function draftDirty(draft: Draft, account: Account) {
 function roleChoices(actor: Role | undefined, locked: boolean, current: Role): Role[] {
   if (locked) return [current]
   if (actor === 'admin') return [...ROLES]
-  return ROLES.filter((role) => role !== 'admin')
+  return ROLES.filter((role) => role !== 'admin' && role !== 'gerencia')
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -596,7 +596,8 @@ export function Usuarios() {
           const draft = drafts[account.id] ?? draftFrom(account)
           const sellerOptions = withCurrent(sellers, draft.sellerName)
           const carrierOptions = withCurrent(transporters, draft.carrierName)
-          const locked = user?.role === 'encargado_deposito' && account.role === 'admin'
+          const locked =
+            user?.role === 'encargado_deposito' && (account.role === 'admin' || account.role === 'gerencia')
           const mine = user?.id === account.id
           const dirty = draftDirty(draft, account)
           const choices = roleChoices(user?.role, locked, draft.role)

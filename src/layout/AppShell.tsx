@@ -109,6 +109,7 @@ export function AppShell() {
   }
 
   function openPalette() {
+    if (user?.role === 'gerencia') return
     if (shouldIgnorePaletteShortcut(menuOpen)) return
     paletteOpenerRef.current = document.activeElement as HTMLElement | null
     setPaletteOpen(true)
@@ -122,6 +123,7 @@ export function AppShell() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const mod = event.metaKey || event.ctrlKey
+      if (user?.role === 'gerencia') return
       if (mod && event.key.toLowerCase() === 'k') {
         if (shouldIgnorePaletteShortcut(menuOpen)) return
         event.preventDefault()
@@ -144,7 +146,7 @@ export function AppShell() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [menuOpen, paletteOpen])
+  }, [menuOpen, paletteOpen, user?.role])
 
   useEffect(() => {
     if (!menuOpen || !compact) return

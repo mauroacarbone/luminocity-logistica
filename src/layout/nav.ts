@@ -129,6 +129,10 @@ export type AppTab = { id: string; label: string; icon: NavIconName; to: string 
 
 export function tabsFor(role: Role): AppTab[] {
   const { standalone, groups } = visibleNav(role)
+  if (role === 'gerencia') {
+    const item = itemByPath('/reportes')
+    return item ? [{ id: item.to, label: item.label, icon: item.icon, to: item.to }] : []
+  }
   if (role === 'chofer') {
     return standalone.map((item) => ({
       id: item.to,
@@ -151,7 +155,7 @@ export function tabsFor(role: Role): AppTab[] {
 export type SidebarSection = { label?: string; items: NavItem[] }
 
 export function sidebarFor(role: Role, pathname: string): SidebarSection[] | null {
-  if (role === 'chofer') return null
+  if (role === 'chofer' || role === 'gerencia') return null
   const { groups } = visibleNav(role)
   const groupId = activeGroupId(pathname, groups)
   const group = groups.find((entry) => entry.id === groupId)
@@ -172,7 +176,7 @@ export function sidebarFor(role: Role, pathname: string): SidebarSection[] | nul
 }
 
 export function activeTabId(role: Role, pathname: string): string | null {
-  if (role === 'chofer') {
+  if (role === 'chofer' || role === 'gerencia') {
     const tab = tabsFor(role).find((entry) => pathMatches(pathname, entry.to))
     return tab?.id ?? null
   }
@@ -183,6 +187,7 @@ export function homePathForRole(role: Role) {
   const { standalone, groups } = visibleNav(role)
   const paths = [...standalone.map((i) => i.to), ...groups.flatMap((g) => g.items.map((i) => i.to))]
   if (role === 'chofer' && paths.includes('/mis-entregas')) return '/mis-entregas'
+  if (role === 'gerencia') return '/reportes'
   return '/'
 }
 

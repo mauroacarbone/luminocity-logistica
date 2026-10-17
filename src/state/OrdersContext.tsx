@@ -207,6 +207,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const writeSeq = useRef(0)
   const generation = useRef(0)
   const userId = user?.id ?? null
+  const role = user?.role ?? null
   const [trackedUserId, setTrackedUserId] = useState(userId)
 
   if (userId !== trackedUserId) {
@@ -215,7 +216,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setLegacyOrders([])
     setError('')
     setImportError('')
-    setStatus(userId ? 'loading' : 'idle')
+    setStatus(!userId ? 'idle' : role === 'gerencia' ? 'ready' : 'loading')
   }
 
   const loading = Boolean(user) && status !== 'ready' && status !== 'error'
@@ -224,7 +225,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     const id = ++generation.current
     ordersRef.current = []
     legacyRef.current = []
-    if (!userId) return
+    if (!userId || role === 'gerencia') return
 
     let cancelled = false
     void listOrders().then((result) => {
@@ -254,7 +255,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [userId, logout, attempt])
+  }, [userId, role, logout, attempt])
 
   const reload = useCallback(() => {
     setError('')
@@ -268,7 +269,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         reload()
         return Promise.resolve()
       }
-      if (!userId) return Promise.resolve()
+      if (!userId || role === 'gerencia') return Promise.resolve()
       const id = generation.current
       const seq = writeSeq.current
       return listOrders().then((result) => {
@@ -283,7 +284,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         setOrders(list)
       })
     },
-    [userId, logout, reload],
+    [userId, role, logout, reload],
   )
 
   useEffect(() => {

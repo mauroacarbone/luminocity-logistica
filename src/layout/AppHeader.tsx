@@ -31,6 +31,7 @@ export function AppHeader({
   const activeId = user ? activeTabId(user.role, location.pathname) : null
   const area = tabs.find((tab) => tab.id === activeId)?.label ?? 'Operación'
   const home = user ? homePathForRole(user.role) : '/'
+  const gerencia = user?.role === 'gerencia'
   const activeRef = useRef<HTMLAnchorElement>(null)
   const [userOpen, setUserOpen] = useState(false)
   const expanded = compact ? menuOpen : !sidebarCollapsed
@@ -65,11 +66,13 @@ export function AppHeader({
             </span>
           </Link>
         </div>
-        <div className="app-header-search">
-          <SearchTrigger onOpen={onOpenSearch} />
-        </div>
+        {gerencia ? null : (
+          <div className="app-header-search">
+            <SearchTrigger onOpen={onOpenSearch} />
+          </div>
+        )}
         <div className="app-header-end">
-          {user ? <NotificationBell /> : null}
+          {user && !gerencia ? <NotificationBell /> : null}
           <UserMenu open={userOpen} onOpenChange={setUserOpen} />
         </div>
       </div>

@@ -40,6 +40,14 @@ export async function requireAuth(req, res, next) {
   }
 }
 
+export function denyGerencia(req, res, next) {
+  if (req.user?.role === 'gerencia') {
+    res.status(403).json({ message: 'No tenés permiso para esto.' })
+    return
+  }
+  next()
+}
+
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {

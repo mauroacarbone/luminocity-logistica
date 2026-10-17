@@ -7,6 +7,7 @@ import { authorizationsRouter } from './authorizations.js'
 import { authRouter } from './auth.js'
 import { checkDatabase, ensureSchema } from './db/store.js'
 import { driversRouter } from './drivers.js'
+import { denyGerencia, requireAuth } from './middleware.js'
 import { notificationsRouter } from './notifications.js'
 import { alignOwnDriverCarrier, ordersRouter } from './orders.js'
 import { claimsRouter } from './claims.js'
@@ -99,16 +100,23 @@ app.get('/api/health', async (_req, res) => {
     res.status(503).json({ ok: false })
   }
 })
+function closeGerencia(router) {
+  const gate = express.Router()
+  gate.use(requireAuth, denyGerencia)
+  gate.use(router)
+  return gate
+}
+
 app.use('/api/auth', authRouter)
-app.use('/api/users', usersRouter)
-app.use('/api/authorizations', authorizationsRouter)
-app.use('/api/notifications', notificationsRouter)
-app.use('/api/orders', ordersRouter)
-app.use('/api/picking', pickingRouter)
-app.use('/api/claims', claimsRouter)
-app.use('/api/route-sheets', routeSheetsRouter)
-app.use('/api/trip-rates', tripRatesRouter)
-app.use('/api/drivers', driversRouter)
+app.use('/api/users', closeGerencia(usersRouter))
+app.use('/api/authorizations', closeGerencia(authorizationsRouter))
+app.use('/api/notifications', closeGerencia(notificationsRouter))
+app.use('/api/orders', closeGerencia(ordersRouter))
+app.use('/api/picking', closeGerencia(pickingRouter))
+app.use('/api/claims', closeGerencia(claimsRouter))
+app.use('/api/route-sheets', closeGerencia(routeSheetsRouter))
+app.use('/api/trip-rates', closeGerencia(tripRatesRouter))
+app.use('/api/drivers', closeGerencia(driversRouter))
 app.use('/api/reports', reportsRouter)
 app.use('/api', (_req, res) => {
   res.status(404).json({ message: 'No existe esa ruta de la API' })

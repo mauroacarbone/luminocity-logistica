@@ -24,7 +24,7 @@ const MAX_DAYS = 366
 
 export const reportsRouter = Router()
 reportsRouter.use(requireAuth)
-reportsRouter.use(requireRole('encargado_deposito', 'admin'))
+reportsRouter.use(requireRole('encargado_deposito', 'admin', 'gerencia'))
 
 /** from y to en YYYY-MM-DD, hora de Buenos Aires. Sin fechas, los últimos 30 días. */
 export function readPeriod(query) {

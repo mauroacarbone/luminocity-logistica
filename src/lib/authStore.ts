@@ -1,4 +1,4 @@
-export const ROLES = ['vendedor', 'deposito', 'encargado_deposito', 'chofer', 'admin'] as const
+export const ROLES = ['vendedor', 'deposito', 'encargado_deposito', 'chofer', 'gerencia', 'admin'] as const
 export type Role = (typeof ROLES)[number]
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -6,6 +6,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   deposito: 'Depósito',
   encargado_deposito: 'Encargado de depósito',
   chofer: 'Chofer',
+  gerencia: 'Gerencia',
   admin: 'Admin',
 }
 

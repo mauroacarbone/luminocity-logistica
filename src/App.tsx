@@ -43,6 +43,7 @@ function Gate({ path, children }: { path: string; children: ReactNode }) {
 function Home() {
   const { user } = useAuth()
   if (user?.role === 'chofer') return <Navigate to="/mis-entregas" replace />
+  if (user?.role === 'gerencia') return <Navigate to="/reportes" replace />
   return <PanelOperativo />
 }
 

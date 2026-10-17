@@ -5,7 +5,7 @@ import { collectionFileExists, readCollection, usingDatabase, writeCollection } 
 import { forgetUsers } from './locations.js'
 import { locked } from './lock.js'
 
-export const ROLES = ['vendedor', 'deposito', 'encargado_deposito', 'chofer', 'admin']
+export const ROLES = ['vendedor', 'deposito', 'encargado_deposito', 'chofer', 'gerencia', 'admin']
 
 /** El admin administra a todos. El encargado, a cualquiera que no sea admin, y no puede dar ese rol. */
 export function canManageUser(actor, target, changes = {}) {
@@ -18,6 +18,12 @@ export function canManageUser(actor, target, changes = {}) {
   }
   if (changes.role === 'admin') {
     return { ok: false, status: 403, message: 'No podés asignar el rol administrador' }
+  }
+  if (target && target.role === 'gerencia') {
+    return { ok: false, status: 403, message: 'No podés modificar a gerencia' }
+  }
+  if (changes.role === 'gerencia') {
+    return { ok: false, status: 403, message: 'No podés asignar el rol gerencia' }
   }
   return { ok: true }
 }
