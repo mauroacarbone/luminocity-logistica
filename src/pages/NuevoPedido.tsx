@@ -1404,6 +1404,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           </div>
           {!pickup && (
             <Field
+              className="mt-6 border-t border-border pt-4"
               label="Transportista"
               hint={
                 transporterOptions.length === 0
