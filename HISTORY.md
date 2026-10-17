@@ -130,6 +130,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32i | Formularios, pantallas de admin y limpieza de CSS | Hecho |
 | 32i.1 | Últimas acciones azules y fin de .btn-primary | Hecho |
 | 32i.2 | Radio del tema en el motivo de edición y el aviso | Hecho |
+| 32l | Chofer trabado en hoja de ruta y entrega por el encargado | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -346,6 +347,8 @@ El Brief 32i deja un solo primario en Usuarios («Nuevo usuario») y pasa Guarda
 El Brief 32i.1 pasa la Bandeja, Post venta, los diálogos de QR, el login, el registro, Reintentar y la importación de pedidos al botón del kit. En la Bandeja y en cada reclamo no hay primario: el de Post venta queda en «Guardar reclamo». Se borran `.btn-primary`, `.auth-submit` y el hover de `bg-accent`. El aviso de WhatsApp, el motivo de edición y el atajo de fecha dejan de pintarse de azul. Las tarjetas de Usuarios usan Card.
 
 El Brief 32i.2 deja el motivo de edición y el aviso con `rounded-lg`, el radio del tema.
+
+El Brief 32l suelta de la hoja cerrada los pedidos que no se entregaron, permite planificar los atrasados en la hoja de hoy y valida la salida por la hoja del pedido. El chofer inicia el viaje desde Mis entregas. El encargado puede marcar entregado con motivo, a su nombre. No se repiten choferes activos con el mismo nombre, y si una edición saca un pedido de su hoja se avisa para volver a planificarlo.
 
 El Brief 32h lleva el layout de caja de lista a Despacho, Pendientes de Entregas, el Planificador, Choferes en ruta, Mis entregas y Mis viajes. En el escritorio la lista es una tabla y en el celular son filas; el detalle de un pedido se abre al costado. El día de hoy se calcula en hora de Buenos Aires. En el celular el logo queda visible y el buscador pasa a ser una lupa.
 

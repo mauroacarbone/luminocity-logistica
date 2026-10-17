@@ -4,7 +4,9 @@ import { quoteTrip, quoteTripDetail } from './tripRates.js'
 import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
+import { notifyPlanners } from './notifications.js'
 import { applyTransition, STATUS_RANK } from './orderFlow.js'
+import { readUsersList } from './users.js'
 import {
   checkDriver,
   checkSlot,
@@ -453,6 +455,31 @@ function reprogramFromSheet(next, user, sheetId) {
   return assignBack(next, user, `Reprogramado desde la hoja ${sheetId}`)
 }
 
+async function recordLeftByEdit(next, user, sheet) {
+  const history = Array.isArray(next.history) ? next.history.slice() : []
+  const at = typeof next.updatedAt === 'string' && next.updatedAt ? next.updatedAt : new Date().toISOString()
+  history.push({
+    at,
+    by: {
+      id: typeof user?.id === 'string' ? user.id : '',
+      name: typeof user?.name === 'string' ? user.name : '',
+    },
+    from: next.status,
+    to: next.status,
+    reason: `Salió de la hoja ${sheet.id} por edición`,
+    via: 'hoja',
+  })
+  next.history = history
+  const users = await readUsersList()
+  const driver = users.find((item) => item.id === sheet.driverId)
+  const driverName = typeof driver?.name === 'string' && driver.name.trim() ? driver.name.trim() : 'chofer'
+  const date = typeof sheet.date === 'string' && sheet.date ? sheet.date : 'esa fecha'
+  await notifyPlanners({
+    text: `${next.id} salió de la hoja de ${driverName} del ${date} por una edición. Volvé a planificarlo.`,
+    orderId: next.id,
+  })
+}
+
 export async function syncSheetOnEdit(orders, current, next, user) {
   if (!leavesSheet(current, next)) return { ok: true }
   const sheets = await readCollection('routeSheets')
@@ -488,6 +515,7 @@ export async function syncSheetOnEdit(orders, current, next, user) {
   }
   delete next.routeId
   delete next.routeSeq
+  await recordLeftByEdit(next, user, sheet)
   const orderIds = (Array.isArray(sheet.orderIds) ? sheet.orderIds : []).filter((id) => id !== current.id)
   if (orderIds.length === 0) {
     await writeCollection(

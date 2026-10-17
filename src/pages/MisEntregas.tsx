@@ -542,6 +542,16 @@ export function MisEntregas() {
   )
 }
 
+const LEFT_BY_EDIT = /Salió de la hoja .+ por edición/
+
+function waitingCopy(order: Order, sheetNotice: string) {
+  const recent = (order.history ?? []).slice(-5)
+  if (recent.some((entry) => LEFT_BY_EDIT.test(entry.reason ?? ''))) {
+    return 'El pedido cambió y el encargado tiene que volver a planificarlo'
+  }
+  return sheetNotice || WAITING_SHEET
+}
+
 function DeliveryCard({
   order,
   distance,
@@ -648,7 +658,7 @@ function DeliveryCard({
           )}
           {canLeave && !routeReady && !order.sheetPlanned && (
             <p className="rounded-md border border-border px-3 py-2 text-sm font-semibold">
-              {sheetNotice || WAITING_SHEET}
+              {waitingCopy(order, sheetNotice)}
             </p>
           )}
           {showLeave && (

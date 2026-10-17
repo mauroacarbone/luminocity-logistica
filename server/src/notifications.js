@@ -118,6 +118,14 @@ export async function notifyEncargados({ text, orderId, whatsapp, phone }) {
   await pushNotifications(items)
 }
 
+/** Avisa en la app a encargados y admins activos. Se llama dentro del lock. */
+export async function notifyPlanners({ text, orderId }) {
+  const users = (await readUsersList()).filter(
+    (user) => (user.role === 'encargado_deposito' || user.role === 'admin') && isActive(user),
+  )
+  await pushNotifications(users.map((user) => buildNote({ to: user.id, text, orderId, channel: 'app' })))
+}
+
 /** Avisa en la app a depósito y encargado (activos), sin WhatsApp. Se llama dentro del lock. */
 export async function notifyWarehouse({ text, orderId, actorId }) {
   const users = (await readUsersList()).filter(
