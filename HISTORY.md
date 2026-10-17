@@ -147,6 +147,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 34.5 | Vínculo de artículos y excepción de retiros viejos | Hecho |
 | 34.6 | Artículos manuales en el armado | Hecho |
 | 34.7 | Estado de la fila al cambiar la cantidad | Hecho |
+| 36 | Post Venta: rol Técnico y reparaciones | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -405,6 +406,8 @@ El Brief 32f.2 deja Borrar hoja con borde de peligro y el planificador entra en 
 El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pedido se abrió desde la lista. En el celular, el número del pedido es un botón con foco. En el Panel, el detalle se cierra si el pedido deja de verse, y Atrasados cuenta todos los pedidos abiertos, sin el filtro de fecha.
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
+
+El Brief 36 suma el rol Técnico, que crean el admin o el encargado de depósito. Ve todos los reclamos en lectura y actúa solo sobre las reparaciones; el resto de la API responde 403. El depósito recibe el producto y abre la reparación: todos los técnicos reciben el aviso y uno la levanta. Garantía va de diagnóstico a reparación, lista y entregada. Cobro pasa por presupuesto, respuesta del cliente y, si acepta, la reparación. Los mensajes salen firmados «Luminocity — Servicio Técnico», por WhatsApp si el teléfono es celular o como guion de llamada si es fijo; la detección es conservadora y se puede corregir a mano. El presupuesto vence a las 48 h: se avisa al técnico y al encargado, el reenvío es manual y abre otra ventana de 48 h. Si el cliente rechaza, se avisa al vendedor. Nuevo reclamo es una entrada propia del menú. Reportes suma la sección de reparaciones.
 
 El Brief 34.7, al editar la cantidad de un artículo manual, recalcula el estado de la fila. Si la cantidad sube, las unidades ya contadas se conservan y la fila deja de figurar completa cuando todavía faltan.
 
