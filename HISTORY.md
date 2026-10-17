@@ -131,6 +131,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 32i.1 | Últimas acciones azules y fin de .btn-primary | Hecho |
 | 32i.2 | Radio del tema en el motivo de edición y el aviso | Hecho |
 | 32l | Chofer trabado en hoja de ruta y entrega por el encargado | Hecho |
+| 32l.1 | Atrasados visibles en la hoja y aviso solo por edición | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -349,6 +350,8 @@ El Brief 32i.1 pasa la Bandeja, Post venta, los diálogos de QR, el login, el re
 El Brief 32i.2 deja el motivo de edición y el aviso con `rounded-lg`, el radio del tema.
 
 El Brief 32l suelta de la hoja cerrada los pedidos que no se entregaron, permite planificar los atrasados en la hoja de hoy y valida la salida por la hoja del pedido. El chofer inicia el viaje desde Mis entregas. El encargado puede marcar entregado con motivo, a su nombre. No se repiten choferes activos con el mismo nombre, y si una edición saca un pedido de su hoja se avisa para volver a planificarlo.
+
+El Brief 32l.1 muestra en la franja de hoy los atrasados elegibles, con la marca Atrasado, y los suma al cupo cuando se tildan. El aviso de salir de la hoja queda solo para una edición del pedido; un cambio de estado deja el historial sin avisar.
 
 El Brief 32h lleva el layout de caja de lista a Despacho, Pendientes de Entregas, el Planificador, Choferes en ruta, Mis entregas y Mis viajes. En el escritorio la lista es una tabla y en el celular son filas; el detalle de un pedido se abre al costado. El día de hoy se calcula en hora de Buenos Aires. En el celular el logo queda visible y el buscador pasa a ser una lupa.
 

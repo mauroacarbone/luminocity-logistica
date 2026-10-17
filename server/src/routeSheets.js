@@ -455,7 +455,7 @@ function reprogramFromSheet(next, user, sheetId) {
   return assignBack(next, user, `Reprogramado desde la hoja ${sheetId}`)
 }
 
-async function recordLeftByEdit(next, user, sheet) {
+async function recordLeftByEdit(next, user, sheet, { fromEdit }) {
   const history = Array.isArray(next.history) ? next.history.slice() : []
   const at = typeof next.updatedAt === 'string' && next.updatedAt ? next.updatedAt : new Date().toISOString()
   history.push({
@@ -466,10 +466,11 @@ async function recordLeftByEdit(next, user, sheet) {
     },
     from: next.status,
     to: next.status,
-    reason: `Salió de la hoja ${sheet.id} por edición`,
+    reason: fromEdit ? `Salió de la hoja ${sheet.id} por edición` : `Salió de la hoja ${sheet.id}`,
     via: 'hoja',
   })
   next.history = history
+  if (!fromEdit) return
   const users = await readUsersList()
   const driver = users.find((item) => item.id === sheet.driverId)
   const driverName = typeof driver?.name === 'string' && driver.name.trim() ? driver.name.trim() : 'chofer'
@@ -480,7 +481,7 @@ async function recordLeftByEdit(next, user, sheet) {
   })
 }
 
-export async function syncSheetOnEdit(orders, current, next, user) {
+export async function syncSheetOnEdit(orders, current, next, user, options = {}) {
   if (!leavesSheet(current, next)) return { ok: true }
   const sheets = await readCollection('routeSheets')
   const sheet = sheets.find((item) => item.id === current.routeId)
@@ -515,7 +516,7 @@ export async function syncSheetOnEdit(orders, current, next, user) {
   }
   delete next.routeId
   delete next.routeSeq
-  await recordLeftByEdit(next, user, sheet)
+  await recordLeftByEdit(next, user, sheet, { fromEdit: options.fromEdit === true })
   const orderIds = (Array.isArray(sheet.orderIds) ? sheet.orderIds : []).filter((id) => id !== current.id)
   if (orderIds.length === 0) {
     await writeCollection(
