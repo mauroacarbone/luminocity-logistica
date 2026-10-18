@@ -150,6 +150,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 36 | Post Venta: rol Técnico y reparaciones | Hecho |
 | 36.1 | Integridad del circuito de reparación | Hecho |
 | 36.2 | Llamar y reasignar en la reparación | Hecho |
+| 36.3 | Reparación asignada antes de levantarla | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -408,6 +409,8 @@ El Brief 32f.2 deja Borrar hoja con borde de peligro y el planificador entra en 
 El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pedido se abrió desde la lista. En el celular, el número del pedido es un botón con foco. En el Panel, el detalle se cierra si el pedido deja de verse, y Atrasados cuenta todos los pedidos abiertos, sin el filtro de fecha.
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
+
+El Brief 36.3 no deja que otro técnico levante una reparación que ya tiene técnico, aunque siga en por levantar: el servidor responde que la tiene ese técnico. El asignado la ve en Mías y los demás no la ven en Por levantar. Cancelar cierra el selector de reasignación sin guardar. Al registrar la llamada, el resultado se oculta y el aviso vuelve al estado inicial.
 
 El Brief 36.2 abre el teléfono al tocar Llamar y deja el guion a la vista. El resultado se anota después: hasta entonces no se graba nada, no cambia el paso y no empieza la ventana de 48 h. Esa fecha se calcula al enviar el WhatsApp o al registrar la llamada, y es la misma que usa el servidor. El encargado y el admin pueden reasignar la reparación a otro técnico activo sin cambiar el paso, y ese técnico recibe el aviso.
 
