@@ -728,6 +728,7 @@ function takeRepair(user, id, body) {
     if (assigning) return reassignRepair(found, user, body.technicianId)
     const current = repair.technician
     if (repair.step === 'por-levantar') {
+      if (current && current.id !== user.id) return fail(`Lo tiene ${current.name}`, 409)
       repair.technician = { id: user.id, name: user.name }
       repair.step = 'diagnostico'
       found.claim.status = 'reparacion'

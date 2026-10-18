@@ -51,7 +51,10 @@ function stamp(iso: string) {
 function deskOf(claim: Claim, userId: string): Desk | null {
   const repair = claim.repair
   if (!repair) return null
-  if (repair.step === 'por-levantar') return 'por-levantar'
+  if (repair.step === 'por-levantar') {
+    if (!repair.technician) return 'por-levantar'
+    return repair.technician.id === userId ? 'mias' : null
+  }
   if (repair.step === 'presupuesto-enviado' || repair.step === 'presupuesto-vencido') return 'esperando'
   if (repair.step === 'aceptado' || repair.step === 'en-reparacion') return 'reparacion'
   if (repair.step === 'listo') return 'listas'
