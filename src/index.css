@@ -2017,17 +2017,6 @@ p {
   gap: 16px;
 }
 
-.planner-filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  align-items: end;
-}
-
-.planner-quota-full {
-  grid-column: 1 / -1;
-}
-
 .planner-body {
   display: flex;
   flex-direction: column;

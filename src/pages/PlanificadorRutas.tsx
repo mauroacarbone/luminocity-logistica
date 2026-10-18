@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Badge, Button, EmptyState, Page, PageHeader, Select } from '../components/ui'
+import { Badge, Button, EmptyState, Field, Input, Page, PageHeader, Select } from '../components/ui'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { PriorityChip } from '../components/PriorityChip'
@@ -672,6 +672,7 @@ export function PlanificadorRutas() {
         subtitle="Armá la hoja de un chofer para una fecha y una franja"
       />
 
+      <div className="min-w-0">
       <div className="planner-toolbar">
       <div className="planner-week no-print grid grid-cols-3 items-center gap-2">
         <button
@@ -725,73 +726,65 @@ export function PlanificadorRutas() {
         })}
       </div>
 
-      <div className="planner-filters no-print">
-        <label className="text-sm">
-          Fecha
-          <input
-            readOnly
-            value={iso}
-            className="mt-1 block w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="text-sm">
-          Chofer
-          <Select
-            value={driverId}
-            size="lg"
-            className="mt-1"
-            onChange={(event) => {
-              setDriverId(event.target.value)
-              setQueuedId(null)
-              setSheet(null)
-              setSelectedIds([])
-              setStops([])
-              setRoute(null)
-            }}
-          >
-            <option value="">Elegir chofer</option>
-            {drivers.map((driver) => (
-              <option key={driver.id} value={driver.id}>
-                {driver.label}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="text-sm">
-          Franja
-          <Select
-            value={slot}
-            size="lg"
-            className="mt-1"
-            onChange={(event) => {
-              setSlot(event.target.value)
-              setQueuedId(null)
-              setSheet(null)
-              setSelectedIds([])
-              setStops([])
-              setRoute(null)
-            }}
-          >
-            <option value="">Elegir franja</option>
-            {timeWindows.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </Select>
-        </label>
+      </div>
+
+      <div className="planner-filters no-print mt-4">
+        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-3">
+          <Field label="Fecha">
+            <Input readOnly value={iso} />
+          </Field>
+          <Field label="Chofer">
+            <Select
+              value={driverId}
+              onChange={(event) => {
+                setDriverId(event.target.value)
+                setQueuedId(null)
+                setSheet(null)
+                setSelectedIds([])
+                setStops([])
+                setRoute(null)
+              }}
+            >
+              <option value="">Elegir chofer</option>
+              {drivers.map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  {driver.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Franja">
+            <Select
+              value={slot}
+              onChange={(event) => {
+                setSlot(event.target.value)
+                setQueuedId(null)
+                setSheet(null)
+                setSelectedIds([])
+                setStops([])
+                setRoute(null)
+              }}
+            >
+              <option value="">Elegir franja</option>
+              {timeWindows.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
         {driverId && timeWindow ? (
-          <p className={`text-sm font-semibold ${used >= 3 ? 'planner-quota-full text-danger' : ''}`}>
+          <p className={`mt-3 text-sm font-semibold ${used >= 3 ? 'text-danger' : ''}`}>
             {used}/3 en la franja
           </p>
         ) : null}
         {sheet && (
-          <span className="mb-1 rounded-full bg-surface px-3 py-1 text-xs font-semibold">{SHEET_LABEL[sheet.status]}</span>
+          <span className="mt-3 inline-block rounded-full bg-surface px-3 py-1 text-xs font-semibold">{SHEET_LABEL[sheet.status]}</span>
         )}
       </div>
-      </div>
 
-      <div className="planner-body">
+      <div className="planner-body mt-6">
       <div className="planner-side">
       <div className="planner-side-scroll">
       <section className="no-print">
@@ -1117,6 +1110,7 @@ export function PlanificadorRutas() {
             El mapa aparecerá aquí al calcular la ruta
           </div>
         )}
+      </div>
       </div>
       </div>
 
