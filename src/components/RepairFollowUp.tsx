@@ -118,7 +118,7 @@ function RepairReach({
   preview: string
   buildText: (expiresAt: string) => string
   onWhatsapp: (text: string) => Promise<void>
-  onLogged: (result: string) => Promise<void>
+  onLogged: (result: string) => Promise<boolean>
 }) {
   const [calling, setCalling] = useState(false)
   const [callResult, setCallResult] = useState('')
@@ -136,7 +136,11 @@ function RepairReach({
   async function register() {
     if (!callResult) return
     setScript(buildText(quoteExpiry()))
-    await onLogged(callResult)
+    const saved = await onLogged(callResult)
+    if (!saved) return
+    setCalling(false)
+    setCallResult('')
+    setScript('')
   }
 
   return (
@@ -222,6 +226,11 @@ function ReassignRepair({ claim }: { claim: Claim }) {
     setOpen(false)
   }
 
+  function cancel() {
+    setChosen(claim.repair?.technician?.id ?? '')
+    setOpen(false)
+  }
+
   return (
     <div className="mb-3 flex flex-col gap-2">
       {!open && (
@@ -241,9 +250,14 @@ function ReassignRepair({ claim }: { claim: Claim }) {
               ))}
             </Select>
           </Field>
-          <Button variant="secondary" size="lg" disabled={busy || !chosen} onClick={() => void confirm()}>
-            Confirmar
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="lg" disabled={busy || !chosen} onClick={() => void confirm()}>
+              Confirmar
+            </Button>
+            <Button variant="ghost" size="lg" disabled={busy} onClick={cancel}>
+              Cancelar
+            </Button>
+          </div>
         </>
       )}
     </div>
@@ -303,7 +317,11 @@ export function RepairFollowUp({
       phoneKind: claim.phoneKind,
     })
     setBusy(false)
-    if (!saved.ok) await error(saved.message)
+    if (!saved.ok) {
+      await error(saved.message)
+      return false
+    }
+    return true
   }
 
   function reach(
