@@ -3,6 +3,7 @@ import type { Claim } from '../data/claims'
 import { namesMatch } from '../lib/access'
 import type { Session } from '../lib/authStore'
 import { phoneKindAR } from '../lib/phone'
+import { listUsers } from '../lib/usersApi'
 import {
   REPAIR_SIGNATURE,
   repairQuoteText,
@@ -184,6 +185,71 @@ function RepairReach({
   )
 }
 
+function isActiveTech(value: unknown): value is { id: string; name: string } {
+  if (!value || typeof value !== 'object') return false
+  const item = value as { id?: unknown; name?: unknown; role?: unknown; active?: unknown }
+  return item.role === 'tecnico' && item.active !== false && typeof item.id === 'string' && typeof item.name === 'string'
+}
+
+function ReassignRepair({ claim }: { claim: Claim }) {
+  const { takeRepair } = useClaims()
+  const [open, setOpen] = useState(false)
+  const [techs, setTechs] = useState<{ id: string; name: string }[]>([])
+  const [chosen, setChosen] = useState(claim.repair?.technician?.id ?? '')
+  const [busy, setBusy] = useState(false)
+
+  async function start() {
+    setOpen(true)
+    const result = await listUsers()
+    if (!result.ok || !Array.isArray(result.data)) {
+      await error(result.ok ? 'No se pudieron leer los técnicos.' : result.message)
+      return
+    }
+    const list = result.data.filter(isActiveTech)
+    setTechs(list)
+    if (!list.some((item) => item.id === chosen)) setChosen('')
+  }
+
+  async function confirm() {
+    if (!chosen) return
+    setBusy(true)
+    const result = await takeRepair(claim.id, chosen)
+    setBusy(false)
+    if (!result.ok) {
+      await error(result.message)
+      return
+    }
+    setOpen(false)
+  }
+
+  return (
+    <div className="mb-3 flex flex-col gap-2">
+      {!open && (
+        <Button variant="ghost" size="lg" onClick={() => void start()}>
+          Reasignar
+        </Button>
+      )}
+      {open && (
+        <>
+          <Field label="Técnico">
+            <Select value={chosen} onChange={(event) => setChosen(event.target.value)}>
+              <option value="">Elegí un técnico</option>
+              {techs.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Button variant="secondary" size="lg" disabled={busy || !chosen} onClick={() => void confirm()}>
+            Confirmar
+          </Button>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function RepairFollowUp({
   claim,
   user,
@@ -261,8 +327,12 @@ export function RepairFollowUp({
     )
   }
 
+  const closed = repair.step === 'entregado' || repair.step === 'rechazado'
+  const canReassign = (user.role === 'admin' || user.role === 'encargado_deposito') && !closed
+
   return (
     <div className="mt-4 border-t border-border pt-4">
+      {canReassign && <ReassignRepair claim={claim} />}
       {repair.coverage === 'cobro' && quote.amount != null && (
         <p className="text-sm">
           Presupuesto {money(quote.amount)}

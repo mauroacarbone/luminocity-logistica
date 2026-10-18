@@ -4,6 +4,7 @@ import { readCollection, writeCollection } from './db/store.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyClaimOwner, notifyClaimSeller, notifyEncargados, notifyRole, notifyUser } from './notifications.js'
+import { isActive, readUsersList } from './users.js'
 
 const STATUS_LABEL = {
   nuevo: 'Nuevo',
@@ -129,7 +130,7 @@ claimsRouter.post('/:id/repair', async (req, res) => {
 
 claimsRouter.post('/:id/repair/take', async (req, res) => {
   await send(res, async () => {
-    const result = await takeRepair(req.user, req.params.id)
+    const result = await takeRepair(req.user, req.params.id, req.body)
     if (result.error) {
       sendError(res, result)
       return
@@ -707,9 +708,14 @@ function openRepair(user, id, body) {
   })
 }
 
-function takeRepair(user, id) {
+function takeRepair(user, id, body) {
   return locked(async () => {
-    if (user.role !== 'tecnico' && user.role !== 'admin') {
+    const assigning = isRecord(body) && Object.prototype.hasOwnProperty.call(body, 'technicianId')
+    if (assigning) {
+      if (user.role !== 'encargado_deposito' && user.role !== 'admin') {
+        return fail('No podés reasignar la reparación.', 403)
+      }
+    } else if (user.role !== 'tecnico' && user.role !== 'admin') {
       return fail('Solo podés cargar la reparación.', 403)
     }
     const found = await findClaim(user, id)
@@ -719,6 +725,7 @@ function takeRepair(user, id) {
     if (repair.step === 'entregado' || repair.step === 'rechazado') {
       return fail('La reparación ya está cerrada.', 409)
     }
+    if (assigning) return reassignRepair(found, user, body.technicianId)
     const current = repair.technician
     if (repair.step === 'por-levantar') {
       repair.technician = { id: user.id, name: user.name }
@@ -746,6 +753,28 @@ function takeRepair(user, id) {
     await writeClaims(found.list)
     return { claim: found.claim }
   })
+}
+
+async function reassignRepair(found, user, technicianId) {
+  const requested = typeof technicianId === 'string' ? technicianId.trim() : ''
+  const users = await readUsersList()
+  const target = users.find((item) => item.id === requested && item.role === 'tecnico' && isActive(item))
+  if (!target) return fail('Elegí un técnico activo.', 400)
+  const repair = found.claim.repair
+  if (repair.technician?.id === target.id) return { claim: found.claim }
+  repair.technician = { id: target.id, name: target.name }
+  found.claim.events.push({
+    at: new Date().toISOString(),
+    status: found.claim.status,
+    note: `Reasignado a ${target.name} por ${user.name}`,
+    by: actorOf(user),
+  })
+  await writeClaims(found.list)
+  await notifyUser(target.id, {
+    text: `Te reasignaron la reparación del reclamo ${found.claim.id} (${found.claim.client}).`,
+    claimId: found.claim.id,
+  })
+  return { claim: found.claim }
 }
 
 function updateRepair(user, id, body) {

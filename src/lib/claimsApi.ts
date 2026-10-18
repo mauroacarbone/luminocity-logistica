@@ -200,12 +200,12 @@ export function openRepair(
   )
 }
 
-export function takeRepair(id: string) {
+export function takeRepair(id: string, technicianId?: string) {
   return apiRequest(
     `/api/claims/${encodeURIComponent(id)}/repair/take`,
     'POST',
-    {},
-    'No se pudo levantar la reparación.',
+    technicianId ? { technicianId } : {},
+    technicianId ? 'No se pudo reasignar la reparación.' : 'No se pudo levantar la reparación.',
   )
 }
 
