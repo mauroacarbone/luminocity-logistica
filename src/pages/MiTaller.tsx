@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ChoiceGroup } from '../components/ChoiceGroup'
 import { RepairFollowUp } from '../components/RepairFollowUp'
+import { RepairIntake } from '../components/RepairIntake'
 import { Badge, Button, Drawer, Field, Input, LoadState, Page, PageHeader, Select, Textarea } from '../components/ui'
 import type { Claim, ClaimRepair, RepairStep } from '../data/claims'
 import { error } from '../lib/alerts'
@@ -376,14 +377,12 @@ export function MiTaller() {
               {selected.invoices[0] || 'Sin FC'} · Ingreso {day(selected.repair.intakeAt)} · Recibió{' '}
               {selected.repair.receivedBy.name}
             </p>
-            {selected.repair.intake?.condition ? (
-              <div className="text-sm">
-                <p>Ingresó: {selected.repair.intake.condition}</p>
-                {selected.repair.intake.accessories ? <p>Accesorios: {selected.repair.intake.accessories}</p> : null}
-              </div>
-            ) : (
-              <p className="text-sm">Sin estado de ingreso registrado</p>
-            )}
+            <RepairIntake
+              key={selected.id}
+              claimId={selected.id}
+              repair={selected.repair}
+              canEdit={user.role === 'encargado_deposito' || user.role === 'admin'}
+            />
             <p className="text-sm">{selected.description}</p>
             <Field label="Producto">
               <Input size="lg" value={product} onChange={(event) => setProduct(event.target.value)} />

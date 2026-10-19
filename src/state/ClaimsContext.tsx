@@ -106,6 +106,8 @@ type ClaimsContextValue = {
       amount?: number
       etaDate?: string
       phoneKind?: 'movil' | 'fijo'
+      intakeCondition?: string
+      intakeAccessories?: string
     },
   ) => Promise<ClaimActionResult>
   ensureClaimFiles: (
@@ -449,6 +451,8 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
       amount?: number
       etaDate?: string
       phoneKind?: 'movil' | 'fijo'
+      intakeCondition?: string
+      intakeAccessories?: string
     },
   ) {
     return adoptClaim(await apiUpdateRepair(id, body), 'No se pudo guardar la reparación.')

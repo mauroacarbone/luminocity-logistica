@@ -232,6 +232,8 @@ export function updateRepair(
     amount?: number
     etaDate?: string
     phoneKind?: 'movil' | 'fijo'
+    intakeCondition?: string
+    intakeAccessories?: string
   },
 ) {
   return apiRequest(

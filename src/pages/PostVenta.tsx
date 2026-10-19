@@ -16,6 +16,7 @@ import { confirm, error } from '../lib/alerts'
 import { businessToday } from '../lib/schedule'
 import { useAuth } from '../state/AuthContext'
 import { RepairFollowUp } from '../components/RepairFollowUp'
+import { RepairIntake } from '../components/RepairIntake'
 import { useCatalog } from '../state/CatalogContext'
 import { useClaims } from '../state/ClaimsContext'
 
@@ -538,14 +539,11 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
                 Reparación · {claim.repair.product} · {claim.repair.coverage === 'garantia' ? 'Garantía' : 'Cobro'} ·{' '}
                 ingreso {claim.repair.intakeAt.split('-').reverse().join('/')}
               </p>
-              {claim.repair.intake?.condition ? (
-                <>
-                  <p className="mt-1">Ingresó: {claim.repair.intake.condition}</p>
-                  {claim.repair.intake.accessories ? <p>Accesorios: {claim.repair.intake.accessories}</p> : null}
-                </>
-              ) : (
-                <p className="mt-1">Sin estado de ingreso registrado</p>
-              )}
+              <RepairIntake
+                claimId={claim.id}
+                repair={claim.repair}
+                canEdit={user?.role === 'encargado_deposito' || user?.role === 'admin'}
+              />
               {repairCloseText(claim.repair) ? <p className="mt-1">{repairCloseText(claim.repair)}</p> : null}
             </div>
           )}
