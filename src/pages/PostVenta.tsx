@@ -664,7 +664,7 @@ function ClaimList({
   )
 }
 
-function Dashboard({ claims }: { claims: Claim[] }) {
+function Dashboard({ claims, onSelect }: { claims: Claim[]; onSelect: (status: ClaimStatus) => void }) {
   const abiertos = claims.filter((claim) => claim.status === 'nuevo').length
   const enCurso = claims.filter(
     (claim) => isOpenClaim(claim.status) && claim.status !== 'nuevo',
@@ -708,9 +708,12 @@ function Dashboard({ claims }: { claims: Claim[] }) {
           {byStatus.map((item) => {
             const percent = Math.round((item.count / claims.length) * 100)
             return (
-              <article
+              <button
                 key={item.status}
-                className={`rounded-2xl p-4 shadow-sm ${STATUS_BADGE[item.status]}`}
+                type="button"
+                aria-label={`Ver ${item.count} reclamos en ${item.label}`}
+                className={`rounded-2xl p-4 text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${STATUS_BADGE[item.status]}`}
+                onClick={() => onSelect(item.status)}
               >
                 <p className="text-sm font-medium">{item.label}</p>
                 <p className="mt-2 text-3xl font-semibold tabular-nums">{item.count}</p>
@@ -722,7 +725,7 @@ function Dashboard({ claims }: { claims: Claim[] }) {
                     style={{ width: `${percent}%` }}
                   />
                 </span>
-              </article>
+              </button>
             )
           })}
         </div>
@@ -785,6 +788,7 @@ export function PostVenta() {
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState('todos')
   const [period, setPeriod] = useState<Period>('30')
+  const [statusFilter, setStatusFilter] = useState<ClaimStatus | 'todos'>('todos')
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const [linkNotice, setLinkNotice] = useState<string | null>(null)
   const [legacyBusy, setLegacyBusy] = useState(false)
@@ -804,6 +808,7 @@ export function PostVenta() {
       setQuery('')
       setSeller('todos')
       setPeriod('todos')
+      setStatusFilter('todos')
       if (claim.status === 'entregado') setTab('finalizados')
       else if (claim.status === 'cancelado') setTab('cancelados')
       else setTab('reclamos')
@@ -826,9 +831,26 @@ export function PostVenta() {
     })
   }, [claims, seller, period, needle])
 
-  const reclamos = listed.filter((claim) => isOpenClaim(claim.status))
-  const finalizados = listed.filter((claim) => claim.status === 'entregado')
-  const cancelados = listed.filter((claim) => claim.status === 'cancelado')
+  const visible =
+    statusFilter === 'todos' ? listed : listed.filter((claim) => claim.status === statusFilter)
+  const reclamos = visible.filter((claim) => isOpenClaim(claim.status))
+  const finalizados = visible.filter((claim) => claim.status === 'entregado')
+  const cancelados = visible.filter((claim) => claim.status === 'cancelado')
+
+  function chooseStatus(status: ClaimStatus) {
+    setStatusFilter(status)
+    if (status === 'entregado') setTab('finalizados')
+    else if (status === 'cancelado') setTab('cancelados')
+    else setTab('reclamos')
+  }
+
+  function listEmpty(fallback: string) {
+    if (claims.length === 0) return 'Todavía no hay reclamos cargados.'
+    if (statusFilter !== 'todos') {
+      return `No hay reclamos en ${CLAIM_STATUS_LABEL[statusFilter]} para esos filtros.`
+    }
+    return fallback
+  }
 
   async function onUploadLegacy() {
     setLegacyBusy(true)
@@ -949,12 +971,37 @@ export function PostVenta() {
             onChange: (value) => setPeriod(value as Period),
             options: PERIODS.map((item) => ({ value: item.id, label: item.label })),
           },
+          {
+            id: 'estado',
+            label: 'Estado',
+            value: statusFilter,
+            onChange: (value) => {
+              if (value === 'todos') {
+                setStatusFilter('todos')
+                return
+              }
+              chooseStatus(value as ClaimStatus)
+            },
+            options: [
+              { value: 'todos', label: 'Todos los estados' },
+              ...CLAIM_STATUS_ORDER.map((status) => ({
+                value: status,
+                label: CLAIM_STATUS_LABEL[status],
+              })),
+            ],
+          },
         ]}
-        activeCount={(query.trim() ? 1 : 0) + (seller !== 'todos' ? 1 : 0) + (period !== '30' ? 1 : 0)}
+        activeCount={
+          (query.trim() ? 1 : 0) +
+          (seller !== 'todos' ? 1 : 0) +
+          (period !== '30' ? 1 : 0) +
+          (statusFilter !== 'todos' ? 1 : 0)
+        }
         onClear={() => {
           setQuery('')
           setSeller('todos')
           setPeriod('30')
+          setStatusFilter('todos')
         }}
       />
 
@@ -981,38 +1028,26 @@ export function PostVenta() {
       {tab === 'reclamos' && (
         <ClaimList
           claims={reclamos}
-          empty={
-            claims.length === 0
-              ? 'Todavía no hay reclamos cargados.'
-              : 'No hay reclamos en curso para esos filtros.'
-          }
+          empty={listEmpty('No hay reclamos en curso para esos filtros.')}
           highlightId={highlightId}
         />
       )}
       {tab === 'finalizados' && (
         <ClaimList
           claims={finalizados}
-          empty={
-            claims.length === 0
-              ? 'Todavía no hay reclamos cargados.'
-              : 'No hay reclamos finalizados para esos filtros.'
-          }
+          empty={listEmpty('No hay reclamos finalizados para esos filtros.')}
           highlightId={highlightId}
         />
       )}
       {tab === 'cancelados' && (
         <ClaimList
           claims={cancelados}
-          empty={
-            claims.length === 0
-              ? 'Todavía no hay reclamos cargados.'
-              : 'No hay reclamos cancelados para esos filtros.'
-          }
+          empty={listEmpty('No hay reclamos cancelados para esos filtros.')}
           highlightId={highlightId}
         />
       )}
       {tab === 'dashboard' && (
-        <Dashboard claims={listed} />
+        <Dashboard claims={listed} onSelect={chooseStatus} />
       )}
     </Page>
   )
