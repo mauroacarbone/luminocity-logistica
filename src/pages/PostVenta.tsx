@@ -682,14 +682,11 @@ function Dashboard({ claims }: { claims: Claim[] }) {
     return total / timed.length / 86_400_000
   })()
 
-  const byStatus = CLAIM_STATUS_ORDER.filter((status) => status !== 'cancelado')
-    .map((status) => ({
-      status,
-      label: CLAIM_STATUS_LABEL[status],
-      count: claims.filter((claim) => claim.status === status).length,
-    }))
-    .filter((item) => item.count > 0)
-  const statusMax = Math.max(1, ...byStatus.map((item) => item.count))
+  const byStatus = CLAIM_STATUS_ORDER.map((status) => ({
+    status,
+    label: CLAIM_STATUS_LABEL[status],
+    count: claims.filter((claim) => claim.status === status).length,
+  })).filter((item) => item.count > 0)
 
   const byMotive = [...new Set(claims.map((claim) => claim.motive))]
     .map((motive) => ({
@@ -704,6 +701,33 @@ function Dashboard({ claims }: { claims: Claim[] }) {
       <Button variant="secondary" disabled={claims.length === 0} onClick={() => downloadClaims(claims)}>
         Descargar Excel
       </Button>
+      {byStatus.length === 0 ? (
+        <p className="text-sm text-muted">Cuando cargues reclamos, vas a ver cómo se reparten.</p>
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(158px,1fr))] gap-3">
+          {byStatus.map((item) => {
+            const percent = Math.round((item.count / claims.length) * 100)
+            return (
+              <article
+                key={item.status}
+                className={`rounded-2xl p-4 shadow-sm ${STATUS_BADGE[item.status]}`}
+              >
+                <p className="text-sm font-medium">{item.label}</p>
+                <p className="mt-2 text-3xl font-semibold tabular-nums">{item.count}</p>
+                <p className="mt-1 text-sm tabular-nums">{percent}% del total</p>
+                <span className="relative mt-3 block h-1 overflow-hidden rounded-full">
+                  <span className="absolute inset-0 bg-current opacity-25" />
+                  <span
+                    className="relative block h-full rounded-full bg-current"
+                    style={{ width: `${percent}%` }}
+                  />
+                </span>
+              </article>
+            )
+          })}
+        </div>
+      )}
+
       <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         <KpiCard title="Abiertos" value={abiertos} />
         <KpiCard title="En curso" value={enCurso} />
@@ -713,30 +737,6 @@ function Dashboard({ claims }: { claims: Claim[] }) {
         ) : null}
         <KpiCard title="Tasa de resolución" value={`${rate}%`} />
       </div>
-
-      <Card as="section">
-        <h2 className="text-base font-semibold">Reclamos por estado</h2>
-        {byStatus.length === 0 ? (
-          <p className="mt-4 text-sm text-muted">Cuando cargues reclamos, vas a ver cómo se reparten.</p>
-        ) : (
-          <ul className="mt-4 flex flex-col gap-3">
-            {byStatus.map((item) => (
-              <li key={item.status}>
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="truncate">{item.label}</span>
-                  <span className="tabular-nums">{item.count}</span>
-                </div>
-                <span className="mt-1 block h-2 overflow-hidden rounded-full bg-surface-muted">
-                  <span
-                    className="block h-full rounded-full bg-info"
-                    style={{ width: `${(item.count / statusMax) * 100}%` }}
-                  />
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
 
       <Card as="section">
         <h2 className="text-base font-semibold">Top motivos de reclamo</h2>
