@@ -90,6 +90,7 @@ export type ClaimRepair = {
   answer?: { value: 'acepta' | 'rechaza' | 'sin-respuesta'; at: string; by?: { id: string; name: string } }
   receivedBy: { id: string; name: string }
   technician?: { id: string; name: string }
+  intake?: { condition: string; accessories?: string }
 }
 
 export type Claim = {

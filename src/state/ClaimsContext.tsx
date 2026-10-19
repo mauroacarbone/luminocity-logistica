@@ -49,6 +49,8 @@ export type NewClaim = {
     product: string
     coverage: 'garantia' | 'cobro'
     intakeAt: string
+    intakeCondition: string
+    intakeAccessories?: string
   }
 }
 
@@ -79,7 +81,15 @@ type ClaimsContextValue = {
   ) => Promise<ClaimActionResult>
   openRepair: (
     id: string,
-    body: { invoice: string; client: string; product: string; coverage: 'garantia' | 'cobro'; intakeAt: string },
+    body: {
+      invoice: string
+      client: string
+      product: string
+      coverage: 'garantia' | 'cobro'
+      intakeAt: string
+      intakeCondition: string
+      intakeAccessories?: string
+    },
   ) => Promise<ClaimActionResult>
   takeRepair: (id: string, technicianId?: string) => Promise<ClaimActionResult>
   moveRepair: (id: string, to: RepairStep) => Promise<ClaimActionResult>
@@ -402,7 +412,15 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
 
   async function openRepair(
     id: string,
-    body: { invoice: string; client: string; product: string; coverage: 'garantia' | 'cobro'; intakeAt: string },
+    body: {
+      invoice: string
+      client: string
+      product: string
+      coverage: 'garantia' | 'cobro'
+      intakeAt: string
+      intakeCondition: string
+      intakeAccessories?: string
+    },
   ) {
     return adoptClaim(await apiOpenRepair(id, body), 'No se pudo abrir la reparación.')
   }

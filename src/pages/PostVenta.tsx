@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
-import { Button, Card, Field, FilterBar, Input, KpiCard, LoadState, Page, PageHeader, Select } from '../components/ui'
+import { Button, Card, Field, FilterBar, Input, KpiCard, LoadState, Page, PageHeader, Select, Textarea } from '../components/ui'
 import { withExtras } from '../data/catalog'
 import {
   CLAIM_STATUS_LABEL,
@@ -514,10 +514,20 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           )}
           {user && <RepairFollowUp claim={claim} user={user} />}
           {claim.repair && (
-            <p className="mt-3 text-sm">
-              Reparación · {claim.repair.product} · {claim.repair.coverage === 'garantia' ? 'Garantía' : 'Cobro'} ·{' '}
-              ingreso {claim.repair.intakeAt.split('-').reverse().join('/')}
-            </p>
+            <div className="mt-3 text-sm">
+              <p>
+                Reparación · {claim.repair.product} · {claim.repair.coverage === 'garantia' ? 'Garantía' : 'Cobro'} ·{' '}
+                ingreso {claim.repair.intakeAt.split('-').reverse().join('/')}
+              </p>
+              {claim.repair.intake?.condition ? (
+                <>
+                  <p className="mt-1">Ingresó: {claim.repair.intake.condition}</p>
+                  {claim.repair.intake.accessories ? <p>Accesorios: {claim.repair.intake.accessories}</p> : null}
+                </>
+              ) : (
+                <p className="mt-1">Sin estado de ingreso registrado</p>
+              )}
+            </div>
           )}
           {!claim.repair &&
             (user?.role === 'deposito' || user?.role === 'encargado_deposito' || user?.role === 'admin') && (
@@ -584,6 +594,10 @@ function OpenRepair({ claim }: { claim: Claim }) {
   const [open, setOpen] = useState(false)
   const [coverage, setCoverage] = useState<'garantia' | 'cobro'>('garantia')
   const [intakeAt, setIntakeAt] = useState(businessToday)
+  const [intakeCondition, setIntakeCondition] = useState('')
+  const [intakeAccessories, setIntakeAccessories] = useState('')
+  const [conditionError, setConditionError] = useState('')
+  const [accessoriesError, setAccessoriesError] = useState('')
   const [busy, setBusy] = useState(false)
   const product = claim.products[0]?.name ?? ''
   const invoice = claim.invoices[0] ?? ''
@@ -593,6 +607,15 @@ function OpenRepair({ claim }: { claim: Claim }) {
       await error('El reclamo necesita factura y producto.')
       return
     }
+    const condition = intakeCondition.trim()
+    const accessories = intakeAccessories.trim()
+    const nextConditionError =
+      condition.length < 5 || condition.length > 500 ? 'Contá en qué estado llega el producto.' : ''
+    const nextAccessoriesError =
+      accessories.length > 200 ? 'Los accesorios pueden tener hasta 200 caracteres.' : ''
+    setConditionError(nextConditionError)
+    setAccessoriesError(nextAccessoriesError)
+    if (nextConditionError || nextAccessoriesError) return
     setBusy(true)
     const result = await openRepair(claim.id, {
       invoice,
@@ -600,6 +623,8 @@ function OpenRepair({ claim }: { claim: Claim }) {
       product,
       coverage,
       intakeAt: intakeAt || businessToday(),
+      intakeCondition: condition,
+      intakeAccessories: accessories || undefined,
     })
     setBusy(false)
     if (!result.ok) await error(result.message)
@@ -624,6 +649,27 @@ function OpenRepair({ claim }: { claim: Claim }) {
       </Field>
       <Field label="Fecha de ingreso">
         <Input size="lg" type="date" value={intakeAt} max={businessToday()} onChange={(event) => setIntakeAt(event.target.value)} />
+      </Field>
+      <Field label="Estado en que ingresa" required error={conditionError}>
+        <Textarea
+          rows={3}
+          value={intakeCondition}
+          placeholder="Ej.: carcasa rayada, no enciende, sin tornillos"
+          onChange={(event) => {
+            setIntakeCondition(event.target.value)
+            setConditionError('')
+          }}
+        />
+      </Field>
+      <Field label="Accesorios que deja" error={accessoriesError}>
+        <Input
+          size="lg"
+          value={intakeAccessories}
+          onChange={(event) => {
+            setIntakeAccessories(event.target.value)
+            setAccessoriesError('')
+          }}
+        />
       </Field>
       <Button variant="secondary" size="lg" disabled={busy} onClick={() => void save()}>
         Confirmar ingreso

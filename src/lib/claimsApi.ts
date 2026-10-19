@@ -36,6 +36,8 @@ export type NewClaimBody = {
     product: string
     coverage: 'garantia' | 'cobro'
     intakeAt: string
+    intakeCondition: string
+    intakeAccessories?: string
   }
 }
 
@@ -190,7 +192,15 @@ export function repairContact(
 
 export function openRepair(
   id: string,
-  body: { invoice: string; client: string; product: string; coverage: 'garantia' | 'cobro'; intakeAt: string },
+  body: {
+    invoice: string
+    client: string
+    product: string
+    coverage: 'garantia' | 'cobro'
+    intakeAt: string
+    intakeCondition: string
+    intakeAccessories?: string
+  },
 ) {
   return apiRequest(
     `/api/claims/${encodeURIComponent(id)}/repair`,

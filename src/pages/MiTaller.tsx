@@ -289,6 +289,14 @@ export function MiTaller() {
               {selected.invoices[0] || 'Sin FC'} · Ingreso {day(selected.repair.intakeAt)} · Recibió{' '}
               {selected.repair.receivedBy.name}
             </p>
+            {selected.repair.intake?.condition ? (
+              <div className="text-sm">
+                <p>Ingresó: {selected.repair.intake.condition}</p>
+                {selected.repair.intake.accessories ? <p>Accesorios: {selected.repair.intake.accessories}</p> : null}
+              </div>
+            ) : (
+              <p className="text-sm">Sin estado de ingreso registrado</p>
+            )}
             <p className="text-sm">{selected.description}</p>
             <Field label="Producto">
               <Input size="lg" value={product} onChange={(event) => setProduct(event.target.value)} />

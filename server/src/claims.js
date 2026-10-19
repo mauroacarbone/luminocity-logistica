@@ -636,6 +636,20 @@ function readDay(value, label, { required = true, notFuture = false, notPast = f
   return { value: day }
 }
 
+function readIntakeCondition(value) {
+  const text = typeof value === 'string' ? value.trim() : ''
+  if (text.length < 5 || text.length > NOTE_MAX) return fail('Contá en qué estado llega el producto.')
+  return { value: text }
+}
+
+function readAccessories(value) {
+  if (value == null) return { value: '' }
+  const text = typeof value === 'string' ? value.trim() : ''
+  if (!text) return { value: '' }
+  if (text.length > TEXT_MAX) return fail(`Los accesorios pueden tener hasta ${TEXT_MAX} caracteres.`)
+  return { value: text }
+}
+
 function readAmount(value) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     return fail('El importe tiene que ser mayor a 0.')
@@ -673,6 +687,10 @@ function applyIntake(claim, user, body, now) {
   if (!COVERAGE.has(coverage)) return fail('Elegí si es garantía o cobro.')
   const intake = readDay(body.intakeAt || businessToday(), 'fecha de ingreso', { notFuture: true })
   if (intake.error) return intake
+  const condition = readIntakeCondition(body.intakeCondition)
+  if (condition.error) return condition
+  const accessories = readAccessories(body.intakeAccessories)
+  if (accessories.error) return accessories
   if (!claim.invoices.includes(invoice)) claim.invoices = [invoice, ...claim.invoices]
   claim.client = client
   claim.status = 'recepcion'
@@ -685,11 +703,15 @@ function applyIntake(claim, user, body, now) {
     step: 'por-levantar',
     contacts: [],
     receivedBy: { id: user.id, name: user.name },
+    intake: accessories.value
+      ? { condition: condition.value, accessories: accessories.value }
+      : { condition: condition.value },
   }
+  const accessoryNote = accessories.value ? ` Accesorios: ${accessories.value}` : ''
   claim.events.push({
     at: now,
     status: 'recepcion',
-    note: `Producto recibido por ${user.name}`,
+    note: `Producto recibido por ${user.name}. Estado: ${condition.value}${accessoryNote}`,
     by: actorOf(user),
   })
   return { notify: repairNotice(claim) }
@@ -788,6 +810,27 @@ function updateRepair(user, id, body) {
     if (!isRecord(body)) return fail('Revisá los datos de la reparación.')
     if (body.phoneKind === 'movil' || body.phoneKind === 'fijo') found.claim.phoneKind = body.phoneKind
     const notes = []
+    if (body.intakeCondition !== undefined || body.intakeAccessories !== undefined) {
+      if (user.role !== 'encargado_deposito' && user.role !== 'admin') {
+        return fail('Solo el encargado puede corregir el estado de ingreso.', 403)
+      }
+      const current = isRecord(repair.intake) ? repair.intake : {}
+      let condition = typeof current.condition === 'string' ? current.condition : ''
+      let accessories = typeof current.accessories === 'string' ? current.accessories : ''
+      if (body.intakeCondition !== undefined) {
+        const next = readIntakeCondition(body.intakeCondition)
+        if (next.error) return next
+        condition = next.value
+      }
+      if (body.intakeAccessories !== undefined) {
+        const next = readAccessories(body.intakeAccessories)
+        if (next.error) return next
+        accessories = next.value
+      }
+      if (condition.length < 5) return fail('Contá en qué estado llega el producto.')
+      repair.intake = accessories ? { condition, accessories } : { condition }
+      notes.push('Estado de ingreso corregido')
+    }
     if (body.product !== undefined) {
       const product = typeof body.product === 'string' ? body.product.trim() : ''
       if (!product || product.length > TEXT_MAX) return fail('Cargá el producto.')

@@ -14,7 +14,10 @@ import { useOrders } from '../state/OrdersContext'
 const MAX_PHOTOS = 5
 
 type FormErrors = Partial<
-  Record<'client' | 'motive' | 'description' | 'products' | 'email' | 'photos' | 'file', string>
+  Record<
+    'client' | 'motive' | 'description' | 'products' | 'email' | 'photos' | 'file' | 'intakeCondition' | 'intakeAccessories',
+    string
+  >
 >
 
 function SearchField({
@@ -68,6 +71,8 @@ export function NuevoReclamo() {
   const [workshop, setWorkshop] = useState(user?.role === 'deposito')
   const [coverage, setCoverage] = useState<'garantia' | 'cobro'>('garantia')
   const [intakeAt, setIntakeAt] = useState(businessToday)
+  const [intakeCondition, setIntakeCondition] = useState('')
+  const [intakeAccessories, setIntakeAccessories] = useState('')
   const photoRequest = useRef(0)
   const fileRequest = useRef(0)
   const fileAbort = useRef<(() => void) | null>(null)
@@ -116,6 +121,8 @@ export function NuevoReclamo() {
     setWorkshop(user?.role === 'deposito')
     setCoverage('garantia')
     setIntakeAt(businessToday())
+    setIntakeCondition('')
+    setIntakeAccessories('')
     setErrors({})
   }
 
@@ -218,6 +225,12 @@ export function NuevoReclamo() {
       if (!invoice) nextErrors.file = 'Cargá la factura para el ingreso al taller.'
       if (!productName) nextErrors.products = 'Cargá el producto que ingresa al taller.'
       if (!intakeAt || intakeAt > businessToday()) nextErrors.file = 'La fecha de ingreso no puede ser futura.'
+      const condition = intakeCondition.trim()
+      const accessories = intakeAccessories.trim()
+      if (condition.length < 5 || condition.length > 500) {
+        nextErrors.intakeCondition = 'Contá en qué estado llega el producto.'
+      }
+      if (accessories.length > 200) nextErrors.intakeAccessories = 'Los accesorios pueden tener hasta 200 caracteres.'
     }
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
@@ -241,6 +254,8 @@ export function NuevoReclamo() {
             product: productName,
             coverage,
             intakeAt: intakeAt || businessToday(),
+            intakeCondition: intakeCondition.trim(),
+            intakeAccessories: intakeAccessories.trim() || undefined,
           }
         : undefined,
     })
@@ -540,6 +555,21 @@ export function NuevoReclamo() {
                     value={intakeAt}
                     max={businessToday()}
                     onChange={(event) => setIntakeAt(event.target.value)}
+                  />
+                </Field>
+                <Field label="Estado en que ingresa" required error={errors.intakeCondition}>
+                  <Textarea
+                    rows={3}
+                    value={intakeCondition}
+                    placeholder="Ej.: carcasa rayada, no enciende, sin tornillos"
+                    onChange={(event) => setIntakeCondition(event.target.value)}
+                  />
+                </Field>
+                <Field label="Accesorios que deja" error={errors.intakeAccessories}>
+                  <Input
+                    size="lg"
+                    value={intakeAccessories}
+                    onChange={(event) => setIntakeAccessories(event.target.value)}
                   />
                 </Field>
               </div>
