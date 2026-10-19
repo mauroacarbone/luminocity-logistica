@@ -109,6 +109,8 @@ export type RepairReport = {
   resent: number
   accepted: number
   rejected: number
+  closed: number
+  chargeCost: number
 }
 
 export type ClaimsReport = {
@@ -287,6 +289,8 @@ function isClaims(value: unknown): value is ClaimsReport {
     isNum(repairs.resent) &&
     isNum(repairs.accepted) &&
     isNum(repairs.rejected) &&
+    isNum(repairs.closed) &&
+    isNum(repairs.chargeCost) &&
     Array.isArray(repairs.byStep) &&
     repairs.byStep.every((item) => isRecord(item) && isText(item.step) && isText(item.label) && isNum(item.count))
   return statusOk && motiveOk && openOk && repairsOk

@@ -423,6 +423,12 @@ function repairRows(repairs: ClaimsReport['repairs']): ModelRow[] {
       pct: { aceptacion: id === 'aceptados' ? { part: repairs.accepted, whole: decided } : { part: 0, whole: 0 } },
     })
   }
+  rows.push({
+    rowId: 'costo-cobro',
+    values: { label: 'Costo total cobro', count: null, aceptacion: null },
+    text: { count: formatMoney(repairs.chargeCost) },
+    pct: { aceptacion: { part: 0, whole: 0 } },
+  })
   return rows
 }
 

@@ -368,6 +368,8 @@ function repairStats(rows) {
   let resent = 0
   let accepted = 0
   let rejected = 0
+  let closed = 0
+  let chargeCost = 0
   for (const row of rows) {
     const repair = asRepair(row.repair)
     if (!repair) continue
@@ -383,13 +385,31 @@ function repairStats(rows) {
     }
     if (repair.answer?.value === 'acepta') accepted += 1
     else if (repair.answer?.value === 'rechaza' || step === 'rechazado') rejected += 1
+    const finish = repair.finish && typeof repair.finish === 'object' ? repair.finish : null
+    if (finish && typeof finish.note === 'string' && finish.note) {
+      closed += 1
+      if (repair.coverage === 'cobro' && typeof finish.cost === 'number' && Number.isFinite(finish.cost)) {
+        chargeCost += finish.cost
+      }
+    }
   }
   const steps = [...byStep.entries()].map(([step, count]) => ({
     step,
     label: REPAIR_LABEL[step] ?? step,
     count,
   }))
-  return { byStep: steps, garantia, cobro, sent, expired, resent, accepted, rejected }
+  return {
+    byStep: steps,
+    garantia,
+    cobro,
+    sent,
+    expired,
+    resent,
+    accepted,
+    rejected,
+    closed,
+    chargeCost: Math.round(chargeCost * 100) / 100,
+  }
 }
 
 async function claimsInPeriod(period) {
