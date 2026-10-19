@@ -17,7 +17,7 @@ import {
   tokenExpiresAt,
   type Session,
 } from '../lib/authStore'
-import { clearOrderDraftsForUser } from '../lib/orderDraft'
+import { clearOrderDraftsForUser, clearSessionDraft } from '../lib/orderDraft'
 
 type RegisterInput = {
   name: string
@@ -145,7 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     const current = userRef.current
     if (current?.role === 'chofer') void clearDriverLocation()
-    if (current?.id) clearOrderDraftsForUser(current.id)
+    if (current?.id) {
+      clearOrderDraftsForUser(current.id)
+      clearSessionDraft(current.id)
+    }
     clearToken()
     setUser(null)
   }, [])

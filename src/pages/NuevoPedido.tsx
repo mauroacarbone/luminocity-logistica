@@ -1359,8 +1359,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md bg-accent-soft px-4 py-3 text-sm"
           role="status"
         >
-          <span>Recuperamos tu borrador</span>
-          <Button variant="secondary" onClick={discardSessionDraft}>
+          <span>Recuperamos el pedido que estabas cargando</span>
+          <Button variant="ghost" onClick={discardSessionDraft}>
             Descartar
           </Button>
         </p>

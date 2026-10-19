@@ -140,8 +140,26 @@ export function clearOrderDraftsForUser(userId: string) {
   }
 }
 
+const NEW_ORDER_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
 export function newOrderSessionKey(userId: string) {
   return `luminocity.nuevoPedido.borrador.${userId}`
+}
+
+function readDraftRecord(storage: Storage, key: string): OrderDraftRecord | null {
+  const raw = storage.getItem(key)
+  if (!raw) return null
+  const parsed: unknown = JSON.parse(raw)
+  if (!isOrderDraftRecord(parsed)) {
+    storage.removeItem(key)
+    return null
+  }
+  const age = Date.now() - new Date(parsed.savedAt).getTime()
+  if (!Number.isFinite(age) || age > NEW_ORDER_DRAFT_MAX_AGE_MS) {
+    storage.removeItem(key)
+    return null
+  }
+  return parsed
 }
 
 export function draftArticles(value: unknown): DraftArticle[] {
@@ -168,36 +186,48 @@ export function draftArticles(value: unknown): DraftArticle[] {
 }
 
 export function readSessionDraft(userId: string): OrderDraftFields | null {
+  const key = newOrderSessionKey(userId)
   try {
-    const raw = sessionStorage.getItem(newOrderSessionKey(userId))
-    if (!raw) return null
-    const parsed: unknown = JSON.parse(raw)
-    if (!isOrderDraftRecord(parsed)) {
-      sessionStorage.removeItem(newOrderSessionKey(userId))
-      return null
+    const stored = readDraftRecord(localStorage, key)
+    if (stored) return { ...stored.fields, attachmentDataUrl: '' }
+    const legacy = readDraftRecord(sessionStorage, key)
+    if (!legacy) return null
+    try {
+      localStorage.setItem(key, JSON.stringify(legacy))
+      sessionStorage.removeItem(key)
+    } catch {
+      /* se lee igual en esta visita */
     }
-    return { ...parsed.fields, attachmentDataUrl: '' }
+    return { ...legacy.fields, attachmentDataUrl: '' }
   } catch {
     return null
   }
 }
 
 export function writeSessionDraft(userId: string, fields: OrderDraftFields) {
+  const key = newOrderSessionKey(userId)
   const payload: OrderDraftRecord = {
     v: 1,
     savedAt: new Date().toISOString(),
     fields: { ...fields, attachmentDataUrl: '', attachmentNeedsReupload: false },
   }
   try {
-    sessionStorage.setItem(newOrderSessionKey(userId), JSON.stringify(payload))
+    localStorage.setItem(key, JSON.stringify(payload))
+    sessionStorage.removeItem(key)
   } catch {
     /* el alta sigue sin el borrador */
   }
 }
 
 export function clearSessionDraft(userId: string) {
+  const key = newOrderSessionKey(userId)
   try {
-    sessionStorage.removeItem(newOrderSessionKey(userId))
+    localStorage.removeItem(key)
+  } catch {
+    /* ignore */
+  }
+  try {
+    sessionStorage.removeItem(key)
   } catch {
     /* ignore */
   }
