@@ -92,7 +92,11 @@ type ClaimsContextValue = {
     },
   ) => Promise<ClaimActionResult>
   takeRepair: (id: string, technicianId?: string) => Promise<ClaimActionResult>
-  moveRepair: (id: string, to: RepairStep) => Promise<ClaimActionResult>
+  moveRepair: (
+    id: string,
+    to: RepairStep,
+    extra?: { finalNote?: string; finalCost?: number },
+  ) => Promise<ClaimActionResult>
   updateRepair: (
     id: string,
     body: {
@@ -432,8 +436,8 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  async function moveRepair(id: string, to: RepairStep) {
-    return adoptClaim(await apiRepairStep(id, to), 'No se pudo actualizar la reparación.')
+  async function moveRepair(id: string, to: RepairStep, extra?: { finalNote?: string; finalCost?: number }) {
+    return adoptClaim(await apiRepairStep(id, to, extra), 'No se pudo actualizar la reparación.')
   }
 
   async function updateRepair(

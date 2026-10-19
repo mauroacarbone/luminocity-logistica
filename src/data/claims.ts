@@ -91,6 +91,7 @@ export type ClaimRepair = {
   receivedBy: { id: string; name: string }
   technician?: { id: string; name: string }
   intake?: { condition: string; accessories?: string }
+  finish?: { note: string; cost?: number; at: string; by?: { id: string; name: string } }
 }
 
 export type Claim = {

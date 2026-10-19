@@ -164,11 +164,15 @@ export function createClaim(body: NewClaimBody) {
   return apiRequest('/api/claims', 'POST', body, 'No se pudo guardar el reclamo.')
 }
 
-export function repairStep(id: string, to: RepairStep, note?: string) {
+export function repairStep(
+  id: string,
+  to: RepairStep,
+  extra?: { note?: string; finalNote?: string; finalCost?: number },
+) {
   return apiRequest(
     `/api/claims/${encodeURIComponent(id)}/repair/step`,
     'POST',
-    note ? { to, note } : { to },
+    extra ? { to, ...extra } : { to },
     'No se pudo actualizar la reparación.',
   )
 }

@@ -50,6 +50,25 @@ const STATUS_BADGE: Record<ClaimStatus, string> = {
   cancelado: 'bg-danger-soft text-danger-deep',
 }
 
+function repairCloseText(repair: NonNullable<Claim['repair']>) {
+  const finish = repair.finish
+  if (!finish) return ''
+  const date = new Date(finish.at)
+  const when = Number.isNaN(date.getTime())
+    ? ''
+    : new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        day: '2-digit',
+        month: '2-digit',
+      }).format(date)
+  const whoWhen = [finish.by?.name, when].filter(Boolean).join(', ')
+  if (repair.coverage === 'cobro' && typeof finish.cost === 'number') {
+    const cost = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(finish.cost)
+    return `Cierre: ${finish.note} · Costo $ ${cost} · ${whoWhen}`
+  }
+  return `Cierre: ${finish.note} · ${whoWhen}`
+}
+
 function formatWhen(iso: string) {
   const date = new Date(iso)
   const day = String(date.getDate()).padStart(2, '0')
@@ -527,6 +546,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
               ) : (
                 <p className="mt-1">Sin estado de ingreso registrado</p>
               )}
+              {repairCloseText(claim.repair) ? <p className="mt-1">{repairCloseText(claim.repair)}</p> : null}
             </div>
           )}
           {!claim.repair &&

@@ -1075,8 +1075,38 @@ function stepRepair(user, id, body) {
         return fail('Cargá el presupuesto antes de avisar.')
       }
     }
+    let closing = null
+    if (to === 'listo' && forward) {
+      const finalNote = typeof body.finalNote === 'string' ? body.finalNote.trim() : ''
+      if (finalNote.length < 5 || finalNote.length > NOTE_MAX) {
+        return fail('Contá qué se hizo en la reparación.')
+      }
+      const finish = {
+        note: finalNote,
+        by: { id: user.id, name: user.name },
+      }
+      let eventNote = `Lista para retirar. ${finalNote}`
+      if (repair.coverage === 'cobro') {
+        if (body.finalCost == null || body.finalCost === '') {
+          return fail('Cargá el costo final de la reparación.')
+        }
+        const cost = readAmount(body.finalCost)
+        if (cost.error) return cost
+        finish.cost = cost.value
+        eventNote += ` Costo $ ${moneyFormat.format(cost.value)}`
+        const quoted = repair.quote?.amount
+        if (typeof quoted === 'number' && quoted !== cost.value) {
+          eventNote += ` (presupuesto $ ${moneyFormat.format(quoted)})`
+        }
+      }
+      closing = { finish, eventNote }
+    }
     const now = new Date().toISOString()
     repair.step = to
+    if (closing) {
+      closing.finish.at = now
+      repair.finish = closing.finish
+    }
     if (to === 'aceptado' || to === 'rechazado') {
       repair.answer = {
         value: to === 'aceptado' ? 'acepta' : 'rechaza',
@@ -1085,6 +1115,8 @@ function stepRepair(user, id, body) {
       }
     } else if (goingBack) {
       delete repair.answer
+      const repairRank = stepRank(repair.coverage, 'en-reparacion')
+      if (repairRank >= 0 && toRank <= repairRank) delete repair.finish
       if (to === 'diagnostico' || to === 'por-levantar') {
         const quote = { ...(repair.quote ?? {}) }
         delete quote.sentAt
@@ -1100,7 +1132,7 @@ function stepRepair(user, id, body) {
     found.claim.events.push({
       at: now,
       status: found.claim.status,
-      note: note ? `${label}. ${note}` : label,
+      note: closing ? closing.eventNote : note ? `${label}. ${note}` : label,
       by: actorOf(user),
     })
     await writeClaims(found.list)

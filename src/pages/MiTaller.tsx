@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { ChoiceGroup } from '../components/ChoiceGroup'
 import { RepairFollowUp } from '../components/RepairFollowUp'
 import { Badge, Button, Drawer, Field, Input, LoadState, Page, PageHeader, Select, Textarea } from '../components/ui'
-import type { Claim, RepairStep } from '../data/claims'
+import type { Claim, ClaimRepair, RepairStep } from '../data/claims'
 import { error } from '../lib/alerts'
 import { businessToday } from '../lib/schedule'
 import { useAuth } from '../state/AuthContext'
@@ -31,6 +31,36 @@ function day(iso: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
   if (!match) return iso
   return `${match[3]}/${match[2]}/${match[1]}`
+}
+
+function shortDay(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: '2-digit',
+    month: '2-digit',
+  }).formatToParts(date)
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? ''
+  return `${get('day')}/${get('month')}`
+}
+
+function finishText(repair: ClaimRepair) {
+  const finish = repair.finish
+  if (!finish) return ''
+  const whoWhen = [finish.by?.name, shortDay(finish.at)].filter(Boolean).join(', ')
+  if (repair.coverage === 'cobro' && typeof finish.cost === 'number') {
+    return `Cierre: ${finish.note} · Costo ${money(finish.cost)} · ${whoWhen}`
+  }
+  return `Cierre: ${finish.note} · ${whoWhen}`
+}
+
+function readCost(raw: string) {
+  const value = Number(raw.trim().replace(',', '.'))
+  if (!Number.isFinite(value) || value <= 0) return null
+  const cents = Math.round(value * 100)
+  if (Math.abs(value * 100 - cents) > 0.001) return null
+  return cents / 100
 }
 
 function stamp(iso: string) {
@@ -88,6 +118,11 @@ export function MiTaller() {
   const [etaDate, setEtaDate] = useState('')
   const [product, setProduct] = useState('')
   const [phoneKind, setPhoneKind] = useState<'' | 'movil' | 'fijo'>('')
+  const [closing, setClosing] = useState(false)
+  const [finalNote, setFinalNote] = useState('')
+  const [finalCost, setFinalCost] = useState('')
+  const [closeError, setCloseError] = useState('')
+  const [costError, setCostError] = useState('')
   const [busy, setBusy] = useState(false)
 
   const mine = user?.id ?? ''
@@ -101,6 +136,11 @@ export function MiTaller() {
     setEtaDate(selected.repair?.quote.etaDate ?? '')
     setProduct(selected.repair?.product ?? '')
     setPhoneKind(selected.phoneKind ?? '')
+    setClosing(false)
+    setFinalNote('')
+    setFinalCost('')
+    setCloseError('')
+    setCostError('')
   }
 
   const buckets = {
@@ -173,8 +213,20 @@ export function MiTaller() {
       )
     }
     if (repair.step === 'en-reparacion') {
+      if (closing) {
+        return (
+          <>
+            <Button variant="primary" size="lg" disabled={busy} onClick={() => void confirmClose()}>
+              Confirmar lista
+            </Button>
+            <Button variant="secondary" size="lg" disabled={busy} onClick={() => setClosing(false)}>
+              Cancelar
+            </Button>
+          </>
+        )
+      }
       return (
-        <Button variant="primary" size="lg" fullWidth disabled={busy} onClick={() => void run(() => moveRepair(selected.id, 'listo'))}>
+        <Button variant="primary" size="lg" fullWidth disabled={busy} onClick={openClose}>
           Marcar lista
         </Button>
       )
@@ -187,6 +239,38 @@ export function MiTaller() {
       )
     }
     return null
+  }
+
+  function openClose() {
+    const amount = selected?.repair?.quote.amount
+    setFinalNote('')
+    setFinalCost(amount != null ? String(amount) : '')
+    setCloseError('')
+    setCostError('')
+    setClosing(true)
+  }
+
+  async function confirmClose() {
+    if (!selected?.repair) return
+    const note = finalNote.trim()
+    const noteError = note.length < 5 || note.length > 500 ? 'Contá qué se hizo en la reparación.' : ''
+    const cobro = selected.repair.coverage === 'cobro'
+    const cost = cobro ? readCost(finalCost) : null
+    const nextCostError = cobro && cost == null ? 'Cargá el costo final de la reparación.' : ''
+    setCloseError(noteError)
+    setCostError(nextCostError)
+    if (noteError || nextCostError || (cobro && cost == null)) return
+    setBusy(true)
+    const result = await moveRepair(selected.id, 'listo', {
+      finalNote: note,
+      ...(cobro && cost != null ? { finalCost: cost } : {}),
+    })
+    setBusy(false)
+    if (!result.ok) {
+      await error(result.message)
+      return
+    }
+    setClosing(false)
   }
 
   if (!user) return null
@@ -257,6 +341,9 @@ export function MiTaller() {
                     <p className="text-xs text-subtle">Vence el {stamp(repair.quote.expiresAt)}</p>
                   )}
                   {repair.technician && <p className="mt-1 text-sm text-subtle">{repair.technician.name}</p>}
+                  {(repair.step === 'listo' || repair.step === 'entregado' || desk === 'cerradas') && finishText(repair) ? (
+                    <p className="mt-2 text-sm">{finishText(repair)}</p>
+                  ) : null}
                 </button>
                 {desk === 'por-levantar' && (
                   <Button
@@ -331,6 +418,40 @@ export function MiTaller() {
               <Button variant="secondary" size="lg" disabled={busy} onClick={() => void saveDiagnosis()}>
                 Guardar diagnóstico
               </Button>
+            )}
+            {(selected.repair.step === 'listo' ||
+              selected.repair.step === 'entregado' ||
+              desk === 'cerradas') &&
+            finishText(selected.repair) ? (
+              <p className="text-sm">{finishText(selected.repair)}</p>
+            ) : null}
+            {closing && selected.repair.step === 'en-reparacion' && (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm font-semibold">Cierre de la reparación</p>
+                <Field label="Comentario final" required error={closeError}>
+                  <Textarea
+                    rows={4}
+                    value={finalNote}
+                    onChange={(event) => {
+                      setFinalNote(event.target.value)
+                      setCloseError('')
+                    }}
+                  />
+                </Field>
+                {selected.repair.coverage === 'cobro' && (
+                  <Field label="Costo" required error={costError}>
+                    <Input
+                      size="lg"
+                      inputMode="decimal"
+                      value={finalCost}
+                      onChange={(event) => {
+                        setFinalCost(event.target.value)
+                        setCostError('')
+                      }}
+                    />
+                  </Field>
+                )}
+              </div>
             )}
             <RepairFollowUp
               claim={{ ...selected, phoneKind: phoneKind || selected.phoneKind }}
