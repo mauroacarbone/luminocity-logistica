@@ -152,6 +152,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 36.2 | Llamar y reasignar en la reparación | Hecho |
 | 36.3 | Reparación asignada antes de levantarla | Hecho |
 | 37 | Tarjetas por estado en el Dashboard de Post Venta | Hecho |
+| 38 | Estado de ingreso y cierre de la reparación | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -410,6 +411,8 @@ El Brief 32f.2 deja Borrar hoja con borde de peligro y el planificador entra en 
 El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pedido se abrió desde la lista. En el celular, el número del pedido es un botón con foco. En el Panel, el detalle se cierra si el pedido deja de verse, y Atrasados cuenta todos los pedidos abiertos, sin el filtro de fecha.
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
+
+El Brief 38 deja obligatorio el estado en que el producto ingresa al taller, con accesorios opcionales. El encargado y el admin pueden corregir ese ingreso. Al terminar la reparación hay que cargar un comentario final; en cobro el costo es obligatorio y viene precargado con el presupuesto, y en garantía no se pide ni se guarda. Si la reparación vuelve atrás, el cierre se borra. El reporte de reparaciones suma ese costo de cobro.
 
 El Brief 37 suma en el Dashboard de Post Venta una tarjeta por estado con al menos un reclamo, cancelado incluido. Cada una muestra el nombre completo, la cantidad, el porcentaje del total que ve el Dashboard y una barra de ese porcentaje, con el color de la pastilla del estado. Tocar una tarjeta filtra la lista y abre la pestaña que corresponde. El estado también está en la barra de filtros, cuenta para Limpiar y se borra al abrir un reclamo por link.
 
