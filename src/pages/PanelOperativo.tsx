@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { PrepChip } from '../components/PrepChip'
 import { Badge, Button, Drawer, EmptyState, KpiCard, ListBox, Menu, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
@@ -417,7 +417,6 @@ export function PanelOperativo() {
   const [exportBusy, setExportBusy] = useState<'excel' | 'pdf' | null>(null)
 
   const dateFilter = parseFecha(searchParams.get('fecha'))
-  const fechaRowRef = useRef<HTMLDivElement>(null)
   const openId = searchParams.get('pedido')
   const openOrder = orders.find((order) => order.id === openId) ?? null
   const today = businessToday()
@@ -427,13 +426,6 @@ export function PanelOperativo() {
   const weekTo = toIso(addDays(weekStart, 6))
 
   const canPlan = Boolean(user && canOpen(user.role, '/rutas'))
-
-  useEffect(() => {
-    if (!window.matchMedia('(max-width: 639px)').matches) return
-    fechaRowRef.current
-      ?.querySelector<HTMLButtonElement>('[aria-checked="true"]')
-      ?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
-  }, [dateFilter])
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 800px)')
@@ -768,10 +760,9 @@ export function PanelOperativo() {
       <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between sm:gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <div
-            ref={fechaRowRef}
             role="radiogroup"
             aria-label="Entregas para"
-            className="flex w-full min-w-0 flex-nowrap items-center gap-1 overflow-x-auto rounded-lg border border-border p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto sm:flex-wrap sm:overflow-visible sm:rounded-none sm:border-0 sm:p-0"
+            className="flex w-full min-w-0 overflow-hidden rounded-lg border border-border max-sm:divide-x max-sm:divide-border sm:w-auto sm:flex-wrap sm:gap-1 sm:overflow-visible sm:rounded-none sm:border-0"
             onKeyDown={(event) => onRadioKey(event, FECHA_VALUES, dateFilter, selectFecha)}
           >
           {FECHA_CHIPS.map((chip) => {
@@ -785,13 +776,20 @@ export function PanelOperativo() {
                 tabIndex={active ? 0 : -1}
                 data-option={chip.value}
                 onClick={() => selectFecha(chip.value)}
-                className={`inline-flex h-11 shrink-0 items-center whitespace-nowrap rounded-md px-3 text-sm sm:h-9 ${
+                className={`inline-flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap border-0 px-1 text-sm sm:h-9 sm:flex-none sm:rounded-md sm:px-3 sm:border ${
                   active
-                    ? 'border border-accent bg-accent-soft font-semibold text-text'
-                    : 'border border-border bg-transparent text-text'
+                    ? 'bg-accent-soft font-semibold text-accent sm:border-accent sm:text-text'
+                    : 'bg-transparent text-text sm:border-border'
                 }`}
               >
-                {chip.label}
+                {chip.value === 'semana' ? (
+                  <>
+                    <span className="min-[400px]:hidden">Semana</span>
+                    <span className="hidden min-[400px]:inline">Esta semana</span>
+                  </>
+                ) : (
+                  chip.label
+                )}
               </button>
             )
           })}
