@@ -1348,7 +1348,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const pickup = dispatchType === 'retiro'
 
   return (
-    <Page>
+    <Page width="full" className="!mx-0 !max-w-none">
       <PageHeader
         title={storedId ? 'Editar Pedido' : 'Nuevo Pedido'}
         subtitle={storedId ? 'Actualizá los datos del pedido.' : 'Cargá un nuevo pedido de logística.'}
@@ -1385,10 +1385,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         </p>
       )}
 
-      <form className="form-stack @container !max-w-none" onSubmit={onSubmit} noValidate>
-        <div className="grid grid-cols-1 items-start gap-4 @min-[900px]:grid-cols-2">
-        <div className="flex min-w-0 flex-col gap-4">
-        <section className="form-card">
+      <form className="form-stack @container w-full !max-w-none" onSubmit={onSubmit} noValidate>
+        <div className="grid grid-cols-1 items-stretch gap-4 @min-[900px]:grid-cols-2">
+        <div className="flex h-full min-w-0 flex-col gap-4">
+        <section className="form-card flex flex-1 flex-col">
           <h2>Tipo de despacho</h2>
           <div
             className="flex flex-wrap gap-2"
