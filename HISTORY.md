@@ -154,6 +154,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 37 | Tarjetas por estado en el Dashboard de Post Venta | Hecho |
 | 38 | Estado de ingreso y cierre de la reparación | Hecho |
 | 39 | Puesta en producción: datos maestros, limpieza y permisos | Hecho |
+| 40 | Pedidos unificado en el Panel operativo | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -412,6 +413,8 @@ El Brief 32f.2 deja Borrar hoja con borde de peligro y el planificador entra en 
 El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pedido se abrió desde la lista. En el celular, el número del pedido es un botón con foco. En el Panel, el detalle se cierra si el pedido deja de verse, y Atrasados cuenta todos los pedidos abiertos, sin el filtro de fecha.
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
+
+El Brief 40 unifica Pedidos y preparación en el Panel operativo. `/pedidos` y `/pedidos/:id` redirigen al Panel y conservan el pedido (`?pedido=` o `?id=`). Al Panel se sumaron la búsqueda por cliente, factura o teléfono, el filtro de armado incompleto, cancelar o borrar, liberar un armado, y el checklist con el tiempo de preparación en el detalle. Ya estaban el flujo del pedido, el detalle, el orden por prioridad, los estados y la exportación. Mi preparación no cambia. El vendedor sigue viendo solo sus pedidos.
 
 El Brief 39 deja los datos maestros en el servidor, con una importación única desde el navegador. El script `purge:test` borra los datos de prueba: es un simulacro salvo que se pase `--confirm`, y `--before` corta por fecha. El README explica la app para alguien no técnico y qué hace cada rol. `/api/health` devuelve la versión y el commit. El JSON tiene un tope global de 100kb. Se borraron los assets de la plantilla. El usuario demo no se crea en producción y, si quedó activo, el server avisa. La contraseña mínima queda en 10 caracteres. El estado y la importación de reclamos quedan solo para el encargado y el admin; con una reparación abierta no se saltea el taller, y las notas del técnico se cargan desde ahí. El encargado no ve ni modifica al administrador.
 
