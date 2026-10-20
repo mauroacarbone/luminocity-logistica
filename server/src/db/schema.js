@@ -9,6 +9,7 @@ export const COLLECTION_NAMES = [
   'tripRates',
   'picking',
   'claims',
+  'catalog',
 ]
 
 const IDENT = /^[A-Za-z_]+$/

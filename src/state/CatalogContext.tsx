@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   COURIER_TRANSPORTERS,
   DELIVERY_ZONES,
@@ -8,7 +8,8 @@ import {
   TIME_WINDOWS,
   type DeliveryZone,
 } from '../data/catalog'
-import { saveList } from '../lib/localStore'
+import { fetchCatalog, importCatalog, parseCatalogPayload, saveCatalog } from '../lib/catalogApi'
+import { useAuth } from './AuthContext'
 
 const CATALOG_KEY = 'luminocity.catalog.v1'
 
@@ -21,12 +22,22 @@ export type Catalog = {
   timeWindows: string[]
 }
 
+export type CatalogImportOffer = 'browser' | 'seed'
+
 type CatalogContextValue = Catalog & {
   transporters: string[]
-  save: (patch: Partial<Catalog>) => boolean
+  loading: boolean
+  error: string
+  errorRef: { current: string }
+  importOffer: CatalogImportOffer | null
+  importing: boolean
+  save: (patch: Partial<Catalog>) => Promise<boolean>
+  uploadBrowserCatalog: () => Promise<void>
+  loadSeedCatalog: () => Promise<void>
 }
 
 const CatalogContext = createContext<CatalogContextValue | null>(null)
+const SESSION_DEFAULTS = seedCatalog()
 
 function seedCatalog(): Catalog {
   return {
@@ -94,15 +105,13 @@ function isStoredCatalog(value: unknown): value is Record<string, unknown> {
   )
 }
 
-function loadCatalog(): Catalog {
+/** Lee el catálogo viejo del navegador. No es la fuente de verdad. */
+function readBrowserCatalog(): Catalog | null {
   try {
     const raw = localStorage.getItem(CATALOG_KEY)
-    if (!raw) return seedCatalog()
+    if (!raw) return null
     const parsed: unknown = JSON.parse(raw)
-    if (!isStoredCatalog(parsed)) {
-      localStorage.removeItem(CATALOG_KEY)
-      return seedCatalog()
-    }
+    if (!isStoredCatalog(parsed)) return null
     const lists = transporterLists(parsed)
     return {
       sellers: parsed.sellers as string[],
@@ -113,33 +122,146 @@ function loadCatalog(): Catalog {
       timeWindows: parsed.timeWindows as string[],
     }
   } catch {
-    try {
-      localStorage.removeItem(CATALOG_KEY)
-    } catch {
-      // El navegador puede bloquear el almacenamiento.
-    }
-    return seedCatalog()
+    return null
   }
 }
 
-export function CatalogProvider({ children }: { children: ReactNode }) {
-  const [catalog, setCatalog] = useState<Catalog>(loadCatalog)
-  const catalogRef = useRef(catalog)
+function forgetBrowserCatalog() {
+  try {
+    localStorage.removeItem(CATALOG_KEY)
+  } catch {
+    // El navegador puede bloquear el almacenamiento.
+  }
+}
 
-  function save(patch: Partial<Catalog>) {
-    const next = { ...catalogRef.current, ...patch }
-    if (saveList(CATALOG_KEY, next) !== 'ok') return false
-    catalogRef.current = next
-    setCatalog(next)
+function canImport(role: string | undefined) {
+  return role === 'admin' || role === 'encargado_deposito'
+}
+
+export function CatalogProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
+  const userId = user?.id
+  const role = user?.role
+  const [catalog, setCatalog] = useState<Catalog>(seedCatalog)
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const errorRef = useRef('')
+  const [importOffer, setImportOffer] = useState<CatalogImportOffer | null>(null)
+  const [importing, setImporting] = useState(false)
+  const catalogRef = useRef(catalog)
+  const serverEmpty = useRef(false)
+  const loading = Boolean(userId) && loadedFor !== userId
+  const shown = !userId || loading ? SESSION_DEFAULTS : catalog
+
+  useEffect(() => {
+    if (!userId) return
+    let cancel = false
+    void fetchCatalog().then((result) => {
+      if (cancel) return
+      setLoadedFor(userId)
+      if (!result.ok) {
+        setError(result.message)
+        return
+      }
+      const payload = parseCatalogPayload(result.data)
+      if (!payload) {
+        setError('No se pudieron leer los datos maestros.')
+        return
+      }
+      setError('')
+      serverEmpty.current = payload.empty
+      if (!payload.empty) {
+        catalogRef.current = payload.catalog
+        setCatalog(payload.catalog)
+        setImportOffer(null)
+        return
+      }
+      const local = canImport(role) ? readBrowserCatalog() : null
+      const next = local ?? seedCatalog()
+      catalogRef.current = next
+      setCatalog(next)
+      setImportOffer(canImport(role) ? (local ? 'browser' : 'seed') : null)
+    })
+    return () => {
+      cancel = true
+    }
+  }, [userId, role])
+
+  function report(message: string) {
+    errorRef.current = message
+    setError(message)
+  }
+
+  function applyPayload(data: unknown) {
+    const payload = parseCatalogPayload(data)
+    if (!payload) {
+      report('No se pudieron leer los datos maestros.')
+      return false
+    }
+    serverEmpty.current = payload.empty
+    catalogRef.current = payload.catalog
+    setCatalog(payload.catalog)
+    report('')
+    if (!payload.empty) setImportOffer(null)
     return true
+  }
+
+  async function save(patch: Partial<Catalog>) {
+    const next = { ...catalogRef.current, ...patch }
+    const result = await saveCatalog(serverEmpty.current ? next : patch)
+    if (!result.ok) {
+      errorRef.current = result.message
+      return false
+    }
+    const applied = applyPayload(result.data)
+    if (applied && !serverEmpty.current) forgetBrowserCatalog()
+    return applied
+  }
+
+  async function finishImport(result: Awaited<ReturnType<typeof importCatalog>>) {
+    if (!result.ok) {
+      if (result.status === 409) {
+        const again = await fetchCatalog()
+        if (again.ok) applyPayload(again.data)
+        forgetBrowserCatalog()
+        return
+      }
+      report(result.message)
+      return
+    }
+    if (applyPayload(result.data)) forgetBrowserCatalog()
+  }
+
+  async function uploadBrowserCatalog() {
+    const local = readBrowserCatalog()
+    if (!local) {
+      setImportOffer('seed')
+      return
+    }
+    setImporting(true)
+    await finishImport(await importCatalog(local))
+    setImporting(false)
+  }
+
+  async function loadSeedCatalog() {
+    setImporting(true)
+    await finishImport(await importCatalog(null))
+    setImporting(false)
   }
 
   return (
     <CatalogContext.Provider
       value={{
-        ...catalog,
-        transporters: unionNames([catalog.ownTransporters, catalog.courierTransporters]),
+        ...shown,
+        transporters: unionNames([shown.ownTransporters, shown.courierTransporters]),
+        loading,
+        error: userId ? error : '',
+        errorRef,
+        importOffer: userId && !loading ? importOffer : null,
+        importing,
         save,
+        uploadBrowserCatalog,
+        loadSeedCatalog,
       }}
     >
       {children}

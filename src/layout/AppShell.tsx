@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { Button } from '../components/ui'
 import { focusables } from '../lib/focus'
+import { useCatalog } from '../state/CatalogContext'
 import { useOrders } from '../state/OrdersContext'
 import { useAuth } from '../state/AuthContext'
 import { AppHeader } from './AppHeader'
@@ -14,6 +15,53 @@ import { Sidebar } from './Sidebar'
 const SIDEBAR_KEY = 'luminocity.sidebar'
 
 const MENU_MQ = '(max-width: 1023px)'
+
+function CatalogNotice() {
+  const { importOffer, importing, error, uploadBrowserCatalog, loadSeedCatalog } = useCatalog()
+  if (!importOffer && !error) return null
+  return (
+    <div className="orders-import no-print">
+      {importOffer === 'browser' && (
+        <p>Los datos maestros de este navegador todavía no están en el servidor.</p>
+      )}
+      {importOffer === 'seed' && <p>Todavía no hay datos maestros cargados.</p>}
+      {error && (
+        <p className="field-error" role="alert">
+          {error}
+        </p>
+      )}
+      {importOffer === 'browser' && (
+        <>
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            disabled={importing}
+            loading={importing}
+            onClick={() => void uploadBrowserCatalog()}
+          >
+            Subir datos de este navegador
+          </Button>
+          <Button type="button" variant="ghost" size="lg" disabled={importing} onClick={() => void loadSeedCatalog()}>
+            Usar los valores iniciales
+          </Button>
+        </>
+      )}
+      {importOffer === 'seed' && (
+        <Button
+          type="button"
+          variant="primary"
+          size="lg"
+          disabled={importing}
+          loading={importing}
+          onClick={() => void loadSeedCatalog()}
+        >
+          Cargar los valores iniciales
+        </Button>
+      )}
+    </div>
+  )
+}
 
 function ImportReport({ text }: { text: string }) {
   const [head, ...rest] = text.split('\n')
@@ -231,6 +279,7 @@ export function AppShell() {
           />
         ) : null}
       <main className="main">
+        <CatalogNotice />
         {loading && <Spinner label="Cargando pedidos…" />}
         {error && <ServerDown message={error} onRetry={reload} />}
         {showImport && (

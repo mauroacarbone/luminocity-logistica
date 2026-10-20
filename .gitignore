@@ -22,6 +22,7 @@ server/data/locations.json
 server/data/routeSheets.json
 server/data/picking.json
 server/data/claims.json
+server/data/catalog.json
 
 # Editor directories and files
 .vscode/*

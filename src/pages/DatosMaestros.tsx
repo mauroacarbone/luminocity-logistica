@@ -31,7 +31,7 @@ function StringList({
   placeholder: string
   empty: string
   items: string[]
-  onSave: (next: string[]) => boolean
+  onSave: (next: string[]) => Promise<boolean>
   normalize?: (value: string) => string
 }) {
   const [draft, setDraft] = useState('')
@@ -41,17 +41,22 @@ function StringList({
   const [editError, setEditError] = useState('')
   const [confirming, setConfirming] = useState<number | null>(null)
   const [saveError, setSaveError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const { errorRef } = useCatalog()
 
-  function persist(next: string[]) {
-    if (!onSave(next)) {
-      setSaveError('No se pudo guardar en este navegador.')
+  async function persist(next: string[]) {
+    setSaving(true)
+    const ok = await onSave(next)
+    setSaving(false)
+    if (!ok) {
+      setSaveError(errorRef.current || 'No se pudieron guardar los datos maestros.')
       return false
     }
     setSaveError('')
     return true
   }
 
-  function add(event: FormEvent) {
+  async function add(event: FormEvent) {
     event.preventDefault()
     const error = nameError(draft, items, normalize)
     if (error) {
@@ -59,7 +64,7 @@ function StringList({
       return
     }
     const cleaned = normalize ? normalize(draft) : draft.trim()
-    if (!persist([...items, cleaned])) return
+    if (!(await persist([...items, cleaned]))) return
     setDraft('')
     setAddError('')
   }
@@ -71,7 +76,7 @@ function StringList({
     setConfirming(null)
   }
 
-  function saveEdit(event: FormEvent) {
+  async function saveEdit(event: FormEvent) {
     event.preventDefault()
     if (editing === null) return
     const error = nameError(
@@ -85,14 +90,14 @@ function StringList({
     }
     const cleaned = normalize ? normalize(editDraft) : editDraft.trim()
     const next = items.map((item, index) => (index === editing ? cleaned : item))
-    if (!persist(next)) return
+    if (!(await persist(next))) return
     setEditing(null)
     setEditDraft('')
     setEditError('')
   }
 
-  function remove(index: number) {
-    if (!persist(items.filter((_, itemIndex) => itemIndex !== index))) return
+  async function remove(index: number) {
+    if (!(await persist(items.filter((_, itemIndex) => itemIndex !== index)))) return
     setConfirming(null)
     if (editing === index) {
       setEditing(null)
@@ -126,13 +131,14 @@ function StringList({
                         }}
                       />
                     </Field>
-                    <Button type="submit" variant="secondary" size="lg">
+                    <Button type="submit" variant="secondary" size="lg" disabled={saving}>
                       Guardar
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="lg"
+                      disabled={saving}
                       onClick={() => {
                         setEditing(null)
                         setEditError('')
@@ -148,22 +154,23 @@ function StringList({
                   {confirming === index ? (
                     <span className="master-confirm">
                       <span>¿Eliminar?</span>
-                      <Button type="button" variant="danger" size="lg" onClick={() => remove(index)}>
+                      <Button type="button" variant="danger" size="lg" disabled={saving} onClick={() => void remove(index)}>
                         Sí
                       </Button>
-                      <Button type="button" variant="ghost" size="lg" onClick={() => setConfirming(null)}>
+                      <Button type="button" variant="ghost" size="lg" disabled={saving} onClick={() => setConfirming(null)}>
                         No
                       </Button>
                     </span>
                   ) : (
                     <span className="master-actions">
-                      <Button type="button" variant="ghost" size="lg" onClick={() => startEdit(index)}>
+                      <Button type="button" variant="ghost" size="lg" disabled={saving} onClick={() => startEdit(index)}>
                         Editar
                       </Button>
                       <Button
                         type="button"
                         variant="danger-outline"
                         size="lg"
+                        disabled={saving}
                         onClick={() => {
                           setConfirming(index)
                           setEditing(null)
@@ -191,7 +198,7 @@ function StringList({
             }}
           />
         </Field>
-        <Button type="submit" variant="secondary" size="lg">
+        <Button type="submit" variant="secondary" size="lg" disabled={saving}>
           Agregar
         </Button>
       </form>
@@ -205,7 +212,7 @@ function ZoneList({
   onSave,
 }: {
   zones: { name: string; days: string }[]
-  onSave: (next: { name: string; days: string }[]) => boolean
+  onSave: (next: { name: string; days: string }[]) => Promise<boolean>
 }) {
   const [name, setName] = useState('')
   const [days, setDays] = useState('')
@@ -216,10 +223,15 @@ function ZoneList({
   const [editError, setEditError] = useState('')
   const [confirming, setConfirming] = useState<number | null>(null)
   const [saveError, setSaveError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const { errorRef } = useCatalog()
 
-  function persist(next: { name: string; days: string }[]) {
-    if (!onSave(next)) {
-      setSaveError('No se pudo guardar en este navegador.')
+  async function persist(next: { name: string; days: string }[]) {
+    setSaving(true)
+    const ok = await onSave(next)
+    setSaving(false)
+    if (!ok) {
+      setSaveError(errorRef.current || 'No se pudieron guardar los datos maestros.')
       return false
     }
     setSaveError('')
@@ -236,14 +248,14 @@ function ZoneList({
     return ''
   }
 
-  function add(event: FormEvent) {
+  async function add(event: FormEvent) {
     event.preventDefault()
     const error = zoneError(name, days, zones)
     if (error) {
       setAddError(error)
       return
     }
-    if (!persist([...zones, { name: name.trim(), days: days.trim() }])) return
+    if (!(await persist([...zones, { name: name.trim(), days: days.trim() }]))) return
     setName('')
     setDays('')
     setAddError('')
@@ -259,7 +271,7 @@ function ZoneList({
     setConfirming(null)
   }
 
-  function saveEdit(event: FormEvent) {
+  async function saveEdit(event: FormEvent) {
     event.preventDefault()
     if (editing === null) return
     const error = zoneError(
@@ -274,13 +286,13 @@ function ZoneList({
     const next = zones.map((zone, index) =>
       index === editing ? { name: editName.trim(), days: editDays.trim() } : zone,
     )
-    if (!persist(next)) return
+    if (!(await persist(next))) return
     setEditing(null)
     setEditError('')
   }
 
-  function remove(index: number) {
-    if (!persist(zones.filter((_, itemIndex) => itemIndex !== index))) return
+  async function remove(index: number) {
+    if (!(await persist(zones.filter((_, itemIndex) => itemIndex !== index)))) return
     setConfirming(null)
     if (editing === index) {
       setEditing(null)
@@ -326,13 +338,14 @@ function ZoneList({
                         }}
                       />
                     </Field>
-                    <Button type="submit" variant="secondary" size="lg">
+                    <Button type="submit" variant="secondary" size="lg" disabled={saving}>
                       Guardar
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="lg"
+                      disabled={saving}
                       onClick={() => {
                         setEditing(null)
                         setEditError('')
@@ -351,22 +364,23 @@ function ZoneList({
                   {confirming === index ? (
                     <span className="master-confirm">
                       <span>¿Eliminar?</span>
-                      <Button type="button" variant="danger" size="lg" onClick={() => remove(index)}>
+                      <Button type="button" variant="danger" size="lg" disabled={saving} onClick={() => void remove(index)}>
                         Sí
                       </Button>
-                      <Button type="button" variant="ghost" size="lg" onClick={() => setConfirming(null)}>
+                      <Button type="button" variant="ghost" size="lg" disabled={saving} onClick={() => setConfirming(null)}>
                         No
                       </Button>
                     </span>
                   ) : (
                     <span className="master-actions">
-                      <Button type="button" variant="ghost" size="lg" onClick={() => startEdit(index)}>
+                      <Button type="button" variant="ghost" size="lg" disabled={saving} onClick={() => startEdit(index)}>
                         Editar
                       </Button>
                       <Button
                         type="button"
                         variant="danger-outline"
                         size="lg"
+                        disabled={saving}
                         onClick={() => {
                           setConfirming(index)
                           setEditing(null)
@@ -405,7 +419,7 @@ function ZoneList({
             }}
           />
         </Field>
-        <Button type="submit" variant="secondary" size="lg">
+        <Button type="submit" variant="secondary" size="lg" disabled={saving}>
           Agregar
         </Button>
       </form>

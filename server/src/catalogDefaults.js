@@ -1,0 +1,30 @@
+/** Mismos textos que src/data/catalog.ts. El server no importa el front. */
+export const CATALOG_DEFAULTS = {
+  sellers: [
+    'Agustina Peluso',
+    'Andrea Gariboldi',
+    'Bianca Lebon',
+    'Cristian Ciuffo',
+    'Fernanda Casas',
+    'German Rago',
+    'Jose Favaccio',
+    'Leandro Cuba',
+    'Martin Mijael Goldstein',
+    'Mauro Carbone',
+    'Maximiliano Cordoba',
+    'Milagro Sanchez',
+    'Yisshell Guzmán',
+    'Yoel Goldstein',
+  ],
+  ownTransporters: ['Entrego ya!', 'Oscar', 'Via cargo', 'Eventual', 'Dario', 'Expreso', 'Hormiga'],
+  courierTransporters: ['Andreani', 'Correo Argentino', 'Via Cargo', 'Entrego ya!', 'Oca'],
+  zones: [
+    { name: 'CABA', days: 'Lun · Mar · Mié · Jue · Vie · Sáb' },
+    { name: 'GBA Norte', days: 'Lun · Jue' },
+    { name: 'GBA Oeste', days: 'Mar · Vie' },
+    { name: 'GBA Sur', days: 'Jue' },
+    { name: 'Provincia', days: 'Sin días' },
+  ],
+  propertyTypes: ['Casa', 'Departamento', 'Obra', 'Local', 'Edificio', 'Oficina'],
+  timeWindows: ['10:00-15:00', '09:00-13:00', '15:00-19:00'],
+}

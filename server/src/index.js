@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
 import express from 'express'
 import { authorizationsRouter } from './authorizations.js'
+import { catalogRouter } from './catalog.js'
 import { authRouter } from './auth.js'
 import { checkDatabase, ensureSchema } from './db/store.js'
 import { driversRouter } from './drivers.js'
@@ -126,6 +127,7 @@ app.use('/api/route-sheets', closeGerencia(routeSheetsRouter))
 app.use('/api/trip-rates', closeGerencia(tripRatesRouter))
 app.use('/api/drivers', closeGerencia(driversRouter))
 app.use('/api/reports', closeTecnico(reportsRouter))
+app.use('/api/catalog', requireAuth, catalogRouter)
 app.use('/api', (_req, res) => {
   res.status(404).json({ message: 'No existe esa ruta de la API' })
 })

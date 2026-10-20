@@ -17,6 +17,7 @@ const SPECS = {
   tripRates: { file: 'tripRates.json', kind: 'array' },
   picking: { file: 'picking.json', kind: 'array' },
   claims: { file: 'claims.json', kind: 'array' },
+  catalog: { file: 'catalog.json', kind: 'object' },
 }
 
 const tx = new AsyncLocalStorage()
