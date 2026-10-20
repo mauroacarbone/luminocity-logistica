@@ -935,7 +935,7 @@ export function PlanificadorRutas() {
                         className="planner-line text-sm text-muted last:border-b-0"
                       >
                         <p className="flex flex-wrap items-center gap-2">
-                          <Link className="order-link font-medium" to={`/pedidos/${order.id}`}>
+                          <Link className="order-link font-medium" to={`/?pedido=${encodeURIComponent(order.id)}`}>
                             {order.id}
                           </Link>
                           <span>— {order.client.toUpperCase()}</span>

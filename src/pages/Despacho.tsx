@@ -485,7 +485,7 @@ export function Despacho() {
         <Link
           id={`order-${order.id}`}
           className="font-medium text-accent hover:underline"
-          to={`/pedidos/${order.id}`}
+          to={`/?pedido=${encodeURIComponent(order.id)}`}
           onClick={(event) => event.stopPropagation()}
         >
           {order.id}

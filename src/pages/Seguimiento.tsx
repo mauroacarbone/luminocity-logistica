@@ -256,7 +256,7 @@ export function Seguimiento() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <strong>
-                        <Link className="order-link" to={`/pedidos/${order.id}`}>
+                        <Link className="order-link" to={`/?pedido=${encodeURIComponent(order.id)}`}>
                           {order.id}
                         </Link>
                       </strong>
@@ -267,7 +267,7 @@ export function Seguimiento() {
                       <PrepChip order={order} />
                     </div>
                     <p className="mt-2 font-semibold uppercase">
-                      <Link className="order-link" to={`/pedidos/${order.id}`}>
+                      <Link className="order-link" to={`/?pedido=${encodeURIComponent(order.id)}`}>
                         {order.client}
                       </Link>
                     </p>
@@ -298,7 +298,7 @@ export function Seguimiento() {
                   </div>
                   <Link
                     className="order-link shrink-0 text-sm font-semibold"
-                    to={`/pedidos/${order.id}`}
+                    to={`/?pedido=${encodeURIComponent(order.id)}`}
                   >
                     Ver detalle
                   </Link>

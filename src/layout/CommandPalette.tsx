@@ -73,7 +73,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [active, setActive] = useState(0)
 
   const role = user?.role
-  const canSearchOrders = Boolean(role && canOpen(role, '/pedidos'))
+  const canSearchOrders = Boolean(role && canOpen(role, '/'))
 
   const results = useMemo(() => {
     if (!role) return [] as Result[]
@@ -163,7 +163,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
   function go(result: Result) {
     if (result.kind === 'page') navigate(result.item.to)
-    else navigate(`/pedidos/${result.orderId}`)
+    else navigate(`/?pedido=${encodeURIComponent(result.orderId)}`)
     onClose()
   }
 

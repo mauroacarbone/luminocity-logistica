@@ -6,7 +6,6 @@ const MENU: Record<Role, readonly string[]> = {
   vendedor: [
     '/',
     '/nuevo-pedido',
-    '/pedidos',
     '/despacho',
     '/retiros',
     '/seguimiento',
@@ -17,7 +16,6 @@ const MENU: Record<Role, readonly string[]> = {
   deposito: [
     '/',
     '/preparacion',
-    '/pedidos',
     '/despacho',
     '/retiros',
     '/seguimiento',
@@ -29,7 +27,6 @@ const MENU: Record<Role, readonly string[]> = {
   encargado_deposito: [
     '/',
     '/preparacion',
-    '/pedidos',
     '/despacho',
     '/retiros',
     '/seguimiento',
@@ -49,7 +46,6 @@ const MENU: Record<Role, readonly string[]> = {
     '/',
     '/nuevo-pedido',
     '/preparacion',
-    '/pedidos',
     '/despacho',
     '/retiros',
     '/seguimiento',

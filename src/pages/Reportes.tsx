@@ -525,8 +525,8 @@ export function Reportes() {
       >
         {openOrder ? (
           <div className="flex flex-col gap-4">
-            {user && canOpen(user.role, '/pedidos') ? (
-              <Link className="text-sm font-medium text-accent hover:underline" to={`/pedidos/${openOrder.id}`}>
+            {user && canOpen(user.role, '/') ? (
+              <Link className="text-sm font-medium text-accent hover:underline" to={`/?pedido=${encodeURIComponent(openOrder.id)}`}>
                 Abrir página completa
               </Link>
             ) : null}

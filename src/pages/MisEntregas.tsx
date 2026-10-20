@@ -590,7 +590,7 @@ function DeliveryCard({
       <p className="text-sm text-muted">Bultos: {order.packages ?? '—'}</p>
       {inSheet && <p className="text-sm text-muted">Notas: {order.notes?.trim() || '—'}</p>}
       <p className="mt-2">
-        <Link className="text-sm font-semibold text-accent hover:underline" to={`/pedidos/${order.id}`}>
+        <Link className="text-sm font-semibold text-accent hover:underline" to={`/?pedido=${encodeURIComponent(order.id)}`}>
           Ver detalle
         </Link>
       </p>

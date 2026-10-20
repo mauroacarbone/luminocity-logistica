@@ -338,7 +338,7 @@ function PickupCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <strong>
-              <Link className="order-link" to={`/pedidos/${order.id}`}>
+              <Link className="order-link" to={`/?pedido=${encodeURIComponent(order.id)}`}>
                 {order.id}
               </Link>
             </strong>
@@ -351,7 +351,7 @@ function PickupCard({
             )}
           </div>
           <p className="mt-2 font-semibold uppercase">
-            <Link className="order-link" to={`/pedidos/${order.id}`}>
+            <Link className="order-link" to={`/?pedido=${encodeURIComponent(order.id)}`}>
               {order.client}
             </Link>
           </p>

@@ -1268,7 +1268,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       setHoldNotice('El cambio quedó esperando confirmación del encargado.')
       return
     }
-    navigate('/pedidos')
+    navigate('/')
   }
 
   async function askAuthorization() {
@@ -2128,7 +2128,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
                   if (!accepted) return
                 }
                 wipeLocalDraft()
-                navigate(storedId ? '/pedidos' : '/')
+                navigate('/')
               })()
             }}
           >
@@ -2175,7 +2175,7 @@ export function NuevoPedido() {
             title="Editar Pedido"
             subtitle={message}
             actions={
-              <Link className="text-accent underline" to={`/pedidos/${encodeURIComponent(editingId)}`}>
+              <Link className="text-accent underline" to={`/?pedido=${encodeURIComponent(editingId)}`}>
                 Ver pedido {editingId}
               </Link>
             }

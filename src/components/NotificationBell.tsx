@@ -223,7 +223,7 @@ export function NotificationBell() {
       navigate(`${base}?reclamo=${encodeURIComponent(item.claimId)}`)
       return
     }
-    if (item.orderId) navigate(`/pedidos/${encodeURIComponent(item.orderId)}`)
+    if (item.orderId) navigate(`/?pedido=${encodeURIComponent(item.orderId)}`)
   }
 
   const closeToast = useCallback(() => {

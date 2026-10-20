@@ -254,9 +254,9 @@ function OrderCard({
     <article className="order-card">
       <div className="order-card-top">
         <strong className="inline-flex flex-wrap items-center gap-2">
-          <Link className="order-link" to={`/pedidos/${order.id}`}>
+          <button type="button" className="order-link" onClick={onOpen}>
             {order.id}
-          </Link>
+          </button>
           <PriorityChip order={order} />
         </strong>
         {user && canEditOrder(user, order) && (
@@ -285,9 +285,9 @@ function OrderCard({
         <OverdueChip order={order} today={today} />
       </div>
       <p className="order-client">
-        <Link className="order-link" to={`/pedidos/${order.id}`}>
+        <button type="button" className="order-link" onClick={onOpen}>
           {order.client}
-        </Link>
+        </button>
       </p>
       {waiting && <p className="order-zone">Esperando confirmación</p>}
       {order.address && <p className="order-zone">{order.address}</p>}
@@ -517,7 +517,7 @@ export function PanelOperativo() {
   const [exportBusy, setExportBusy] = useState<'excel' | 'pdf' | null>(null)
 
   const dateFilter = parseFecha(searchParams.get('fecha'))
-  const openId = searchParams.get('pedido')
+  const openId = searchParams.get('pedido') || searchParams.get('id')
   const today = businessToday()
   const tomorrow = businessOffset(1)
   const weekStart = startOfWeek(parseIso(businessToday()))
@@ -714,6 +714,7 @@ export function PanelOperativo() {
       (current) => {
         const next = new URLSearchParams(current)
         next.delete('pedido')
+        next.delete('id')
         return next
       },
       { replace: true },
@@ -753,13 +754,16 @@ export function PanelOperativo() {
       header: 'Pedido',
       cell: (order) => (
         <span className="inline-flex flex-wrap items-center gap-2">
-          <Link
+          <button
+            type="button"
             className="font-medium text-accent hover:underline"
-            to={`/pedidos/${order.id}`}
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+              openPedido(order.id)
+            }}
           >
             {order.id}
-          </Link>
+          </button>
           <PriorityChip order={order} />
           {isOverdue(order, today) ? <OverdueChip order={order} today={today} /> : null}
         </span>
@@ -1098,9 +1102,6 @@ export function PanelOperativo() {
       >
         {openOrder ? (
           <div className="flex flex-col gap-4">
-            <Link className="text-sm font-medium text-accent hover:underline" to={`/pedidos/${openOrder.id}`}>
-              Abrir página completa
-            </Link>
             {takeState(openOrder) === 'en-preparacion' ? (
               <p className="text-sm text-muted">
                 En preparación · {takenByName(openOrder) || 'operario'} · <PrepClock order={openOrder} />

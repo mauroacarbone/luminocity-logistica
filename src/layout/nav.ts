@@ -7,7 +7,6 @@ export const NAV = [
   { to: '/mis-viajes', label: 'Mis viajes', icon: 'route' },
   { to: '/nuevo-pedido', label: 'Nuevo Pedido', icon: 'plus' },
   { to: '/preparacion', label: 'Mi preparación', icon: 'box' },
-  { to: '/pedidos', label: 'Pedidos y Preparación', icon: 'box' },
   { to: '/pendientes', label: 'Pendientes de Entregas', icon: 'pin' },
   { to: '/despacho', label: 'Despacho', icon: 'truck' },
   { to: '/retiros', label: 'Retiros', icon: 'store' },
@@ -45,7 +44,7 @@ const GROUP_DEFS: { id: GroupId; title: string; icon: NavIconName; sections: Nav
     title: 'Operación',
     icon: 'panel',
     sections: [
-      { paths: ['/', '/preparacion', '/nuevo-pedido', '/pedidos', '/pendientes', '/despacho', '/retiros'] },
+      { paths: ['/', '/preparacion', '/nuevo-pedido', '/pendientes', '/despacho', '/retiros'] },
     ],
   },
   {

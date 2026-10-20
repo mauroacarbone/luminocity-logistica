@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { NoAccess } from './components/NoAccess'
 import { canOpen } from './lib/access'
 import { homePathForRole } from './layout/nav'
@@ -18,8 +18,6 @@ import { MisEntregas } from './pages/MisEntregas'
 import { MisViajes } from './pages/MisViajes'
 import { MiPreparacion } from './pages/MiPreparacion'
 import { PanelOperativo } from './pages/PanelOperativo'
-import { PedidoDetalle } from './pages/PedidoDetalle'
-import { PedidosPreparacion } from './pages/PedidosPreparacion'
 import { PendientesEntregas } from './pages/PendientesEntregas'
 import { PostVenta } from './pages/PostVenta'
 import { Registro } from './pages/Registro'
@@ -41,6 +39,18 @@ function Gate({ path, children }: { path: string; children: ReactNode }) {
   const { user } = useAuth()
   if (!user || !canOpen(user.role, path)) return <NoAccess />
   return children
+}
+
+function PedidosRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={{ pathname: '/', search }} replace />
+}
+
+function PedidoIdRedirect() {
+  const { id = '' } = useParams()
+  const params = new URLSearchParams()
+  if (id) params.set('pedido', id)
+  return <Navigate to={{ pathname: '/', search: params.toString() }} replace />
 }
 
 function Home() {
@@ -107,7 +117,7 @@ export default function App() {
             </Gate>
           }
         />
-        <Route path="/pedidos/:id" element={<PedidoDetalle />} />
+        <Route path="/pedidos/:id" element={<PedidoIdRedirect />} />
         <Route
           path="/preparacion"
           element={
@@ -116,14 +126,7 @@ export default function App() {
             </Gate>
           }
         />
-        <Route
-          path="/pedidos"
-          element={
-            <Gate path="/pedidos">
-              <PedidosPreparacion />
-            </Gate>
-          }
-        />
+        <Route path="/pedidos" element={<PedidosRedirect />} />
         <Route
           path="/despacho"
           element={

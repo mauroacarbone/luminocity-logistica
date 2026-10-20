@@ -315,7 +315,7 @@ function OrderLinkBlock({ link }: { link: InvoiceMatch }) {
   if (link.kind === 'one') {
     return (
       <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-        <Link className="order-link font-semibold" to={`/pedidos/${link.order.id}`}>
+        <Link className="order-link font-semibold" to={`/?pedido=${encodeURIComponent(link.order.id)}`}>
           {link.order.id}
         </Link>
         <span>{link.order.client}</span>
@@ -1065,7 +1065,7 @@ export function PendientesEntregas() {
       cell: (order) => (
         <Link
           className="font-medium text-accent hover:underline"
-          to={`/pedidos/${order.id}`}
+          to={`/?pedido=${encodeURIComponent(order.id)}`}
           onClick={(event) => event.stopPropagation()}
         >
           {order.id}
