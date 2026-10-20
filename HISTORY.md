@@ -156,6 +156,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 39 | Puesta en producción: datos maestros, limpieza y permisos | Hecho |
 | 39.1 | Ajustes de datos maestros y del administrador | Hecho |
 | 40 | Pedidos unificado en el Panel operativo | Hecho |
+| 40.1 | Detalle del pedido para el chofer | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -415,7 +416,7 @@ El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pe
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
 
-El Brief 40 unifica Pedidos y preparación en el Panel operativo. `/pedidos` y `/pedidos/:id` redirigen al Panel y conservan el pedido (`?pedido=` o `?id=`). Al Panel se sumaron la búsqueda por cliente, factura o teléfono, el filtro de armado incompleto, cancelar o borrar, liberar un armado, y el checklist con el tiempo de preparación en el detalle. Ya estaban el flujo del pedido, el detalle, el orden por prioridad, los estados y la exportación. Mi preparación no cambia. El vendedor sigue viendo solo sus pedidos.
+El Brief 40 unifica Pedidos y preparación en el Panel operativo. `/pedidos` y `/pedidos/:id` redirigen al Panel y conservan el pedido (`?pedido=` o `?id=`). Al Panel se sumaron la búsqueda por cliente, factura o teléfono, el filtro de armado incompleto, cancelar o borrar, liberar un armado, y el checklist con el tiempo de preparación en el detalle. Ya estaban el flujo del pedido, el detalle, el orden por prioridad, los estados y la exportación. Mi preparación no cambia. El vendedor sigue viendo solo sus pedidos. El 40.1 abre el detalle del pedido en Mis entregas para el chofer, también desde la campana y desde los links viejos, y avisa en el Panel cuando el pedido del link no se puede ver.
 
 El Brief 39 deja los datos maestros en el servidor, con una importación única desde el navegador. El script `purge:test` borra los datos de prueba: es un simulacro salvo que se pase `--confirm`, y `--before` corta por fecha. El README explica la app para alguien no técnico y qué hace cada rol. `/api/health` devuelve la versión y el commit. El JSON tiene un tope global de 100kb. Se borraron los assets de la plantilla. El usuario demo no se crea en producción y, si quedó activo, el server avisa. La contraseña mínima queda en 10 caracteres. El estado y la importación de reclamos quedan solo para el encargado y el admin; con una reparación abierta no se saltea el taller, y las notas del técnico se cargan desde ahí. El encargado no ve ni modifica al administrador. El 39.1 no deja guardar datos maestros sin haberlos leído y unifica el mensaje del administrador.
 
