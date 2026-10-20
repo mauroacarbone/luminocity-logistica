@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
+import { DEMO_EMAIL } from '../users.js'
 import {
   closeDatabase,
   ensureSchema,
@@ -147,6 +148,8 @@ try {
   console.log(describeBase())
   await ensureSchema()
   const plan = await withTransaction(async () => {
+    const users = await readCollection('users')
+    const demoPresent = (Array.isArray(users) ? users : []).some((user) => user?.email === DEMO_EMAIL)
     const next = []
     for (const name of PURGE) {
       const value = await readCollection(name)
@@ -154,12 +157,13 @@ try {
       next.push(split)
       if (confirm) await writeCollection(name, split.keep)
     }
-    return next
+    return { plan: next, demoPresent }
   })
-  const orders = plan.find((item) => item.name === 'orders')
-  const picking = plan.find((item) => item.name === 'picking')
+  const orders = plan.plan.find((item) => item.name === 'orders')
+  const picking = plan.plan.find((item) => item.name === 'picking')
   const leftover = cutoff === null ? 0 : pickingLeft(picking?.keep, orders?.removedOrderIds ?? [])
-  printPlan(plan, leftover)
+  if (!confirm) console.log(`Usuario demo presente: ${plan.demoPresent ? 'sí' : 'no'}`)
+  printPlan(plan.plan, leftover)
   if (!confirm) {
     console.log('Simulacro: no se borró nada. Para borrar, agregá --confirm.')
   }

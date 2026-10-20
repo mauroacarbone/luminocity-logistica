@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { sign } from './auth.js'
 import { requireAuth, requireRole } from './middleware.js'
 import {
+  PASSWORD_MAX_BYTES,
+  PASSWORD_MIN,
   ROLES,
   canManageUser,
   createUser,
@@ -48,11 +50,11 @@ usersRouter.post('/', requireRole('admin', 'encargado_deposito'), async (req, re
     res.status(400).json({ message: 'Ingresá un email válido.' })
     return
   }
-  if (password.length < 8) {
-    res.status(400).json({ message: 'Usá al menos 8 caracteres.' })
+  if (password.length < PASSWORD_MIN) {
+    res.status(400).json({ message: `Usá al menos ${PASSWORD_MIN} caracteres.` })
     return
   }
-  if (Buffer.byteLength(password, 'utf8') > 72) {
+  if (Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) {
     res.status(400).json({ message: 'La contraseña es demasiado larga' })
     return
   }
@@ -169,11 +171,11 @@ usersRouter.patch('/:id/active', requireRole('admin', 'encargado_deposito'), asy
 
 usersRouter.patch('/:id/password', requireRole('admin', 'encargado_deposito'), async (req, res) => {
   const password = req.body?.password
-  if (typeof password !== 'string' || password.length < 8) {
-    res.status(400).json({ message: 'Usá al menos 8 caracteres.' })
+  if (typeof password !== 'string' || password.length < PASSWORD_MIN) {
+    res.status(400).json({ message: `Usá al menos ${PASSWORD_MIN} caracteres.` })
     return
   }
-  if (Buffer.byteLength(password, 'utf8') > 72) {
+  if (Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) {
     res.status(400).json({ message: 'La contraseña es demasiado larga' })
     return
   }

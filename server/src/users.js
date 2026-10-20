@@ -6,6 +6,9 @@ import { forgetUsers } from './locations.js'
 import { locked } from './lock.js'
 
 export const ROLES = ['vendedor', 'deposito', 'encargado_deposito', 'chofer', 'gerencia', 'tecnico', 'admin']
+export const DEMO_EMAIL = 'mauro@luminocity.local'
+export const PASSWORD_MIN = 10
+export const PASSWORD_MAX_BYTES = 72
 
 /** El admin administra a todos. El encargado, a cualquiera que no sea admin, y no puede dar ese rol. */
 export function canManageUser(actor, target, changes = {}) {
@@ -30,7 +33,7 @@ export function canManageUser(actor, target, changes = {}) {
 
 const DEMO = {
   name: 'Mauro Carbone',
-  email: 'mauro@luminocity.local',
+  email: DEMO_EMAIL,
   password: 'demo1234',
   role: 'admin',
 }
@@ -93,7 +96,7 @@ async function writeUsers(users) {
 }
 
 export function ensureDemoUser() {
-  if (usingDatabase()) return Promise.resolve()
+  if (usingDatabase() || process.env.NODE_ENV === 'production') return Promise.resolve()
   return locked(async () => {
     if (await collectionFileExists('users')) return
     const passwordHash = await bcrypt.hash(DEMO.password, 10)
@@ -108,6 +111,16 @@ export function ensureDemoUser() {
       },
     ])
   })
+}
+
+export async function warnActiveDemoUser() {
+  if (process.env.NODE_ENV !== 'production') return
+  const users = await readCollection('users')
+  const demo = (Array.isArray(users) ? users : []).find((user) => user?.email === DEMO_EMAIL)
+  if (!demo || !isActive(demo)) return
+  console.warn(
+    'Atención: el usuario demo mauro@luminocity.local está activo en producción. Desactivalo desde Usuarios.',
+  )
 }
 
 export function authenticate(email, password) {

@@ -15,6 +15,7 @@ import {
   updateUserRole,
 } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
+import { PASSWORD_MIN, passwordMinMessage } from '../lib/password'
 import { useCatalog } from '../state/CatalogContext'
 
 type Account = Session & { phone: string; createdAt?: string }
@@ -139,7 +140,7 @@ function NewUserDialog({
     if (!form.name.trim()) nextErrors.name = 'Ingresá el nombre.'
     else if (form.name.trim().length > 80) nextErrors.name = 'El nombre es demasiado largo.'
     if (!EMAIL_PATTERN.test(form.email.trim())) nextErrors.email = 'Ingresá un email válido.'
-    if (form.password.length < 8) nextErrors.password = 'Usá al menos 8 caracteres.'
+    if (form.password.length < PASSWORD_MIN) nextErrors.password = passwordMinMessage()
     else if (passwordTooLong(form.password)) nextErrors.password = 'La contraseña es demasiado larga'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
@@ -296,7 +297,7 @@ function PasswordDialog({
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     const next: { password?: string; confirm?: string } = {}
-    if (password.length < 8) next.password = 'Usá al menos 8 caracteres.'
+    if (password.length < PASSWORD_MIN) next.password = passwordMinMessage()
     else if (passwordTooLong(password)) next.password = 'La contraseña es demasiado larga'
     if (confirmPassword !== password) next.confirm = 'Las contraseñas no coinciden.'
     setErrors(next)

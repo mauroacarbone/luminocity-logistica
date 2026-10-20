@@ -24,7 +24,7 @@ Si no hay `DATABASE_URL` y `server/data/users.json` no existe, al arrancar el ba
 - Contraseña: `demo1234`
 - Rol: Admin
 
-En desarrollo, `/registro` crea un vendedor. El admin da de alta y administra las cuentas desde Usuarios: nombre, email, contraseña inicial (8 a 72 caracteres) y rol (vendedor, depósito, encargado de depósito, chofer, técnico, gerencia o admin). Si el rol es vendedor o chofer, también puede vincular el vendedor o el transportista. El encargado entra a la misma pantalla: ve a todos y puede crear y modificar, pero no toca a un admin ni asigna ese rol. Puede activar o desactivar cuentas, editar nombre y email, y resetear la contraseña. Un usuario inactivo no puede entrar. Nadie se desactiva a sí mismo y tiene que quedar al menos un admin activo. La contraseña se hashea con bcrypt. El navegador guarda solo el token.
+En desarrollo, `/registro` crea un vendedor. El admin da de alta y administra las cuentas desde Usuarios: nombre, email, contraseña inicial (10 a 72 caracteres) y rol (vendedor, depósito, encargado de depósito, chofer, técnico, gerencia o admin). Si el rol es vendedor o chofer, también puede vincular el vendedor o el transportista. El encargado entra a la misma pantalla: ve a todos y puede crear y modificar, pero no toca a un admin ni asigna ese rol. Puede activar o desactivar cuentas, editar nombre y email, y resetear la contraseña. Un usuario inactivo no puede entrar. Nadie se desactiva a sí mismo y tiene que quedar al menos un admin activo. La contraseña se hashea con bcrypt. El navegador guarda solo el token.
 
 `/api/users` (admin y encargado; el resto recibe 403):
 
@@ -35,7 +35,7 @@ En desarrollo, `/registro` crea un vendedor. El admin da de alta y administra la
 | PATCH | `/api/users/:id` | Nombre, email, celular, vendedor o transportista |
 | PATCH | `/api/users/:id/role` | Rol |
 | PATCH | `/api/users/:id/active` | Activo o inactivo |
-| PATCH | `/api/users/:id/password` | Contraseña nueva, de 8 a 72 caracteres |
+| PATCH | `/api/users/:id/password` | Contraseña nueva, de 10 a 72 caracteres |
 
 Ese usuario demo no se crea si hay `DATABASE_URL`, ni en producción. `npm run create-admin` queda solo para crear el primer admin (ver Deploy).
 

@@ -2,7 +2,7 @@ import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
 import jwt from 'jsonwebtoken'
 import { requireAuth } from './middleware.js'
-import { authenticate, createUser, toPublicUser } from './users.js'
+import { PASSWORD_MAX_BYTES, PASSWORD_MIN, authenticate, createUser, toPublicUser } from './users.js'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const TOKEN_EXPIRES = '8h'
@@ -49,8 +49,12 @@ authRouter.post('/register', async (req, res) => {
     res.status(400).json({ message: 'Ingresá un email válido.' })
     return
   }
-  if (password.length < 6) {
-    res.status(400).json({ message: 'Usá al menos 6 caracteres.' })
+  if (password.length < PASSWORD_MIN) {
+    res.status(400).json({ message: `Usá al menos ${PASSWORD_MIN} caracteres.` })
+    return
+  }
+  if (Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) {
+    res.status(400).json({ message: 'La contraseña es demasiado larga' })
     return
   }
 

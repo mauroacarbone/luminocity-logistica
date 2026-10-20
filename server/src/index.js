@@ -18,7 +18,7 @@ import { releaseClosedSheetOrders, routeSheetsRouter } from './routeSheets.js'
 import { reportsRouter } from './reports.js'
 import { tripRatesRouter } from './tripRates.js'
 import { usersRouter } from './usersRoute.js'
-import { ensureDemoUser } from './users.js'
+import { ensureDemoUser, warnActiveDemoUser } from './users.js'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const serverPackage = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))
@@ -174,6 +174,7 @@ try {
   process.exit(1)
 }
 
+await warnActiveDemoUser()
 await ensureDemoUser()
 await releaseClosedSheetOrders()
 await alignOwnDriverCarrier()

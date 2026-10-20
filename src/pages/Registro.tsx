@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Field, Input } from '../components/ui'
 import { AuthScreen } from '../layout/AuthScreen'
+import { PASSWORD_MIN, passwordMinMessage } from '../lib/password'
 import { useAuth } from '../state/AuthContext'
 
 type Errors = {
@@ -28,7 +29,7 @@ export function Registro() {
     const next: Errors = {}
     if (!name.trim()) next.name = 'Ingresá tu nombre.'
     if (!EMAIL_PATTERN.test(email.trim())) next.email = 'Ingresá un email válido.'
-    if (password.length < 6) next.password = 'Usá al menos 6 caracteres.'
+    if (password.length < PASSWORD_MIN) next.password = passwordMinMessage()
     if (confirm !== password) next.confirm = 'Las contraseñas no coinciden.'
     setErrors(next)
     if (Object.keys(next).length > 0) return

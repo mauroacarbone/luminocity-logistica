@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
 import dotenv from 'dotenv'
 import { normalizeName } from '../access.js'
+import { PASSWORD_MIN } from '../users.js'
 import {
   closeDatabase,
   ensureSchema,
@@ -85,8 +86,8 @@ async function readInput() {
     console.error('Ingresá un email válido.')
     return null
   }
-  if (password.length < 10) {
-    console.error('Usá al menos 10 caracteres.')
+  if (password.length < PASSWORD_MIN) {
+    console.error(`Usá al menos ${PASSWORD_MIN} caracteres.`)
     return null
   }
   return { email, password, name }
