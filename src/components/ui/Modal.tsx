@@ -52,12 +52,14 @@ export function Modal({
       const dialog = rootRef.current
       if (!dialog) return
       const target = event.target
+      if (target instanceof Element && target.closest('.swal2-container')) return
       if (target instanceof Node && dialog.contains(target)) return
       const items = focusables(dialog)
       ;(items[0] ?? dialog).focus({ preventScroll: true })
     }
 
     function onKeyDown(event: KeyboardEvent) {
+      if (document.querySelector('.swal2-container')) return
       const dialog = rootRef.current
       if (!dialog) return
       if (event.key === 'Escape') {
