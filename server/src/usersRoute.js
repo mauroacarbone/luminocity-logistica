@@ -27,8 +27,13 @@ function forbid(res, actor, target, changes) {
   return true
 }
 
-usersRouter.get('/', requireRole('admin', 'encargado_deposito'), async (_req, res) => {
-  res.json(await listUsers())
+usersRouter.get('/', requireRole('admin', 'encargado_deposito'), async (req, res) => {
+  const users = await listUsers()
+  if (req.user.role === 'encargado_deposito') {
+    res.json(users.filter((user) => user.role !== 'admin'))
+    return
+  }
+  res.json(users)
 })
 
 usersRouter.post('/', requireRole('admin', 'encargado_deposito'), async (req, res) => {

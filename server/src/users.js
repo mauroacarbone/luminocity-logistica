@@ -17,7 +17,7 @@ export function canManageUser(actor, target, changes = {}) {
   }
   if (actor.role === 'admin') return { ok: true }
   if (target && target.role === 'admin') {
-    return { ok: false, status: 403, message: 'No podés modificar a un administrador' }
+    return { ok: false, status: 403, message: 'No podés modificar al administrador.' }
   }
   if (changes.role === 'admin') {
     return { ok: false, status: 403, message: 'No podés asignar el rol administrador' }

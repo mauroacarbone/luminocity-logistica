@@ -6,7 +6,7 @@ Luminocity Logística es la app interna que sigue cada pedido desde que el vende
 
 - Vendedor: carga pedidos y reclamos, y sigue los suyos.
 - Depósito: prepara pedidos en Mi preparación, atiende retiros y recibe productos en post venta.
-- Encargado de depósito: panel operativo, despacho, rutas, usuarios, tarifas y reportes.
+- Encargado de depósito: panel operativo, despacho, rutas, usuarios, tarifas y reportes. Da de alta usuarios, modifica las tarifas de viaje y ve Reportes; no ve ni modifica al administrador.
 - Chofer: sus entregas y viajes.
 - Técnico: Mi taller. Levanta reparaciones, presupuesta y avisa al cliente.
 - Gerencia: solo Reportes.
