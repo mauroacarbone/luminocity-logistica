@@ -2118,23 +2118,25 @@ function PedidoForm({ editingId }: { editingId?: string }) {
 
         <section className="form-card" ref={attachmentSectionRef} data-field="file">
           <h2>{pickup ? 'FC o nota de pedido (PDF)' : 'Documentación'}</h2>
-          <Field
-            label={
-              pickup
-                ? 'FC o nota de pedido (PDF) *'
-                : 'Adjuntar remito, factura u otro archivo (imagen, PDF o Word, opcional)'
-            }
-            hint={pickup ? 'PDF. Máximo 2 MB.' : 'Imagen, PDF o Word (.doc, .docx). Máximo 2 MB.'}
-            error={errors.file || undefined}
-          >
-            <Input
-              ref={fileRef}
-              size="lg"
-              type="file"
-              accept={pickup ? 'application/pdf,.pdf' : ATTACHMENT_ACCEPT}
-              onChange={(event) => onFile(event.target.files?.[0])}
-            />
-          </Field>
+          {attachmentDataUrl && attachmentKind(attachmentName, attachmentDataUrl) === 'pdf' ? null : (
+            <Field
+              label={
+                pickup
+                  ? 'FC o nota de pedido (PDF) *'
+                  : 'Adjuntar remito, factura u otro archivo (imagen, PDF o Word, opcional)'
+              }
+              hint={pickup ? 'PDF. Máximo 2 MB.' : 'Imagen, PDF o Word (.doc, .docx). Máximo 2 MB.'}
+              error={errors.file || undefined}
+            >
+              <Input
+                ref={fileRef}
+                size="lg"
+                type="file"
+                accept={pickup ? 'application/pdf,.pdf' : ATTACHMENT_ACCEPT}
+                onChange={(event) => onFile(event.target.files?.[0])}
+              />
+            </Field>
+          )}
           {readingFile && <small className="hint">Leyendo archivo…</small>}
           {(attachmentName || attachmentDataUrl) && (
             <div className="attachment-bar">
