@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { OrderDetail } from '../components/OrderDetail'
 import { OrderStepper } from '../components/OrderStepper'
 import { StopRouteMap, type MapStop } from '../components/StopRouteMap'
 import { PriorityChip } from '../components/PriorityChip'
 import { FinishTripDialog } from '../components/FinishTripDialog'
 import { ChoiceGroup } from '../components/ChoiceGroup'
-import { Badge, Button, EmptyState, KpiCard, Page, PageHeader } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, KpiCard, Page, PageHeader } from '../components/ui'
 import { type Order } from '../data/orders'
 import { confirm, error, success } from '../lib/alerts'
 import { clearDriverLocation, postDriverLocation } from '../lib/driversApi'
@@ -76,6 +77,7 @@ function sortDeliveries(list: Order[], now = Date.now()) {
 export function MisEntregas() {
   const { user } = useAuth()
   const { orders, loading, error: ordersError, transitionOrder, refresh } = useOrders()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>('asignados')
   const [busy, setBusy] = useState('')
   const [here, setHere] = useState<Point | null>(null)
@@ -244,6 +246,33 @@ export function MisEntregas() {
   ).length
   const travelingCount = orders.filter((order) => order.status === 'en-viaje').length
   const visible = tab === 'asignados' ? assigned : traveling
+  const openId = searchParams.get('pedido') || searchParams.get('id')
+  const openOrder = orders.find((order) => order.id === openId) ?? null
+  const missingDetail = useRef('')
+
+  const closeDetail = useCallback(() => {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.delete('pedido')
+        next.delete('id')
+        return next
+      },
+      { replace: true },
+    )
+  }, [setSearchParams])
+
+  useEffect(() => {
+    if (!openId) {
+      missingDetail.current = ''
+      return
+    }
+    if (loading || openOrder) return
+    if (missingDetail.current === openId) return
+    missingDetail.current = openId
+    void error('Ese pedido ya no está en tus entregas.')
+    closeDetail()
+  }, [loading, openId, openOrder, closeDetail])
 
   async function changeStatus(order: Order, status: 'en-viaje' | 'entregado') {
     const leaving = status === 'en-viaje'
@@ -509,6 +538,35 @@ export function MisEntregas() {
           })}
         </div>
       )}
+      {openOrder ? (
+        <Drawer
+          open
+          onClose={closeDetail}
+          title={openOrder.id}
+          subtitle={openOrder.client.toUpperCase()}
+          footer={
+            <DriverDetailActions
+              order={openOrder}
+              busy={busy === openOrder.id}
+              inSheet={sheets.some(
+                (sheet) => sheet.status !== 'cerrada' && sheet.orderIds.includes(openOrder.id),
+              )}
+              allowLeave={sheets.some(
+                (sheet) => sheet.status === 'en_curso' && sheet.orderIds.includes(openOrder.id),
+              )}
+              routeReady={!departureBlock(openOrder, sheets, orders)}
+              sheetNotice={departureBlock(openOrder, sheets, orders)}
+              onLeave={() => void changeStatus(openOrder, 'en-viaje')}
+              onDelivered={() => void changeStatus(openOrder, 'entregado')}
+            />
+          }
+        >
+          <div className="flex flex-col gap-4">
+            <OrderStepper order={openOrder} variant="full" />
+            <OrderDetail order={openOrder} />
+          </div>
+        </Drawer>
+      ) : null}
     </Page>
   )
 }
@@ -521,6 +579,58 @@ function waitingCopy(order: Order, sheetNotice: string) {
     return 'El pedido cambió y el encargado tiene que volver a planificarlo'
   }
   return sheetNotice || WAITING_SHEET
+}
+
+function DriverDetailActions({
+  order,
+  busy,
+  inSheet,
+  allowLeave,
+  routeReady,
+  sheetNotice,
+  onLeave,
+  onDelivered,
+}: {
+  order: Order
+  busy: boolean
+  inSheet: boolean
+  allowLeave: boolean
+  routeReady: boolean
+  sheetNotice: string
+  onLeave: () => void
+  onDelivered: () => void
+}) {
+  const waiting = order.status === 'preparado'
+  const canLeave = order.status === 'asignado'
+  const canDeliver = order.status === 'en-viaje'
+  const showLeave = canLeave && !order.sheetPlanned && (!inSheet || allowLeave)
+  if (waiting) {
+    return <p className="w-full text-sm font-semibold">Esperando asignación del encargado</p>
+  }
+  return (
+    <div className="flex w-full flex-col gap-2">
+      {order.sheetPlanned && (
+        <p className="rounded-md border border-border px-3 py-2 text-sm font-semibold">
+          En hoja de ruta planificada para el {formatIsoDate(order.deliveryDate)}
+        </p>
+      )}
+      {canLeave && !routeReady && !order.sheetPlanned && (
+        <p className="rounded-md border border-border px-3 py-2 text-sm font-semibold">
+          {waitingCopy(order, sheetNotice)}
+        </p>
+      )}
+      {showLeave && (
+        <Button variant="primary" size="lg" fullWidth disabled={busy || !routeReady} onClick={onLeave}>
+          Salir a reparto
+        </Button>
+      )}
+      {canDeliver && (
+        <Button variant="primary" size="lg" fullWidth disabled={busy} onClick={onDelivered}>
+          Confirmar entrega
+        </Button>
+      )}
+    </div>
+  )
 }
 
 function DeliveryCard({
@@ -590,7 +700,10 @@ function DeliveryCard({
       <p className="text-sm text-muted">Bultos: {order.packages ?? '—'}</p>
       {inSheet && <p className="text-sm text-muted">Notas: {order.notes?.trim() || '—'}</p>}
       <p className="mt-2">
-        <Link className="text-sm font-semibold text-accent hover:underline" to={`/?pedido=${encodeURIComponent(order.id)}`}>
+        <Link
+          className="text-sm font-semibold text-accent hover:underline"
+          to={`/mis-entregas?pedido=${encodeURIComponent(order.id)}`}
+        >
           Ver detalle
         </Link>
       </p>

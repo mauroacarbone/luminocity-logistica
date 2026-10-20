@@ -223,7 +223,10 @@ export function NotificationBell() {
       navigate(`${base}?reclamo=${encodeURIComponent(item.claimId)}`)
       return
     }
-    if (item.orderId) navigate(`/?pedido=${encodeURIComponent(item.orderId)}`)
+    if (item.orderId) {
+      const path = user?.role === 'chofer' ? '/mis-entregas' : '/'
+      navigate(`${path}?pedido=${encodeURIComponent(item.orderId)}`)
+    }
   }
 
   const closeToast = useCallback(() => {
