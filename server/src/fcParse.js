@@ -40,8 +40,8 @@ async function readDocument(data) {
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => reject(Object.assign(new Error('timeout'), { code: 'timeout' })), PARSE_TIMEOUT_MS)
   })
-  try {
-    pdf = await Promise.race([task.promise, timeout])
+  const reading = (async () => {
+    pdf = await task.promise
     const pages = []
     for (let number = 1; number <= pdf.numPages; number += 1) {
       const page = await pdf.getPage(number)
@@ -49,6 +49,10 @@ async function readDocument(data) {
       pages.push(linesFromItems(content.items))
     }
     return interpret(pages)
+  })()
+  reading.catch(() => {})
+  try {
+    return await Promise.race([reading, timeout])
   } catch (error) {
     if (error?.code === 'timeout') console.error('La lectura de la FC superó los 10 s')
     else if (error?.name !== 'InvalidPDFException' && error?.name !== 'PasswordException') {
