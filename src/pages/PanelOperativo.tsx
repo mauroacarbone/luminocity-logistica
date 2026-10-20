@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { PrepChecklist } from '../components/PrepChecklist'
 import { PrepChip } from '../components/PrepChip'
-import { Badge, Button, Drawer, EmptyState, KpiCard, ListBox, Menu, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
+import { Badge, Button, Drawer, EmptyState, FilterBar, KpiCard, ListBox, Menu, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
 import { NavIcon } from '../layout/NavIcon'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { OrderDetail } from '../components/OrderDetail'
@@ -16,8 +17,10 @@ import {
   type Order,
   type OrderStatus,
 } from '../data/orders'
-import { canEditOrder, canExportPanel, canOpen } from '../lib/access'
-import { error as showError } from '../lib/alerts'
+import { canCancelOrder, canEditOrder, canExportPanel, canOpen, ownsOrder } from '../lib/access'
+import { confirm, error as showError, success } from '../lib/alerts'
+import { normalizeInvoiceKey } from '../lib/invoiceKey'
+import { formatPrepMs, prepDuration, takeState, takenByName } from '../lib/preparation'
 import { statusPillFor } from '../lib/orderFlow'
 import { compareOpenPriority } from '../lib/priority'
 import { placeLine } from '../lib/place'
@@ -31,6 +34,38 @@ import { useOrders } from '../state/OrdersContext'
 const REFRESH_MS = 30_000
 const ADVANCE_STATUSES: OrderStatus[] = ['pendiente', 'preparado', 'asignado']
 const DONE_STATUSES: OrderStatus[] = ['en-viaje', 'entregado']
+
+function fold(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLocaleLowerCase('es')
+}
+
+function matchesQuery(order: Order, raw: string) {
+  const q = fold(raw.trim())
+  if (!q) return true
+  if (fold(order.id).includes(q) || fold(order.client).includes(q)) return true
+  if (order.phone && fold(order.phone).includes(q)) return true
+  const invoiceKey = normalizeInvoiceKey(raw)
+  return (order.invoices ?? []).some((invoice) => {
+    if (fold(invoice).includes(q)) return true
+    return invoiceKey.length > 0 && normalizeInvoiceKey(invoice) === invoiceKey
+  })
+}
+
+function PrepClock({ order }: { order: Order }) {
+  const [now, setNow] = useState(0)
+  useEffect(() => {
+    const start = window.setTimeout(() => setNow(Date.now()), 0)
+    const id = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => {
+      window.clearTimeout(start)
+      window.clearInterval(id)
+    }
+  }, [])
+  return <span className="tabular-nums">{now ? formatPrepMs(prepDuration(order, now)) : '—'}</span>
+}
 
 function sortPanelList(left: Order, right: Order) {
   const byPriority = compareOpenPriority(left, right)
@@ -198,9 +233,21 @@ function OrderCard({
 }) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { transitionOrder } = useOrders()
+  const { transitionOrder, releaseOrder } = useOrders()
   const [busy, setBusy] = useState(false)
+  const [releasing, setReleasing] = useState(false)
   const waiting = pendingEdit(order)
+  const canRelease =
+    Boolean(user) &&
+    (user?.role === 'encargado_deposito' || user?.role === 'admin') &&
+    takeState(order) === 'en-preparacion'
+
+  async function release() {
+    setReleasing(true)
+    const result = await releaseOrder(order.id)
+    setReleasing(false)
+    if (result.status === 'not-saved') await showError(result.message)
+  }
   const flowOrder = withSheetFlag(order, sheets, canPlan)
 
   return (
@@ -300,6 +347,16 @@ function OrderCard({
         <button type="button" className="text-muted hover:text-text hover:underline" onClick={onOpen}>
           Ver detalle
         </button>
+        {canRelease ? (
+          <button
+            type="button"
+            className="text-text hover:underline disabled:opacity-50"
+            disabled={releasing}
+            onClick={() => void release()}
+          >
+            Liberar
+          </button>
+        ) : null}
       </div>
     </article>
   )
@@ -309,16 +366,47 @@ function DetailActions({
   order,
   sheets,
   canPlan,
+  onRemoved,
 }: {
   order: Order
   sheets: RouteSheet[]
   canPlan: boolean
+  onRemoved: () => void
 }) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { transitionOrder } = useOrders()
+  const { transitionOrder, releaseOrder, removeOrder } = useOrders()
   const [busy, setBusy] = useState(false)
+  const [extraBusy, setExtraBusy] = useState(false)
   const flowOrder = withSheetFlag(order, sheets, canPlan)
+  const preparing = takeState(order) === 'en-preparacion'
+  const canRelease = Boolean(user) && (user?.role === 'encargado_deposito' || user?.role === 'admin') && preparing
+
+  async function release() {
+    setExtraBusy(true)
+    const result = await releaseOrder(order.id)
+    setExtraBusy(false)
+    if (result.status === 'not-saved') await showError(result.message)
+  }
+
+  async function cancelOrder() {
+    if (!user) return
+    const admin = user.role === 'admin'
+    const accepted = await confirm(
+      admin ? 'Borrar pedido' : 'Cancelar pedido',
+      admin ? `Se borra el pedido ${order.id}.` : `Se cancela el pedido ${order.id}.`,
+      { peligro: true },
+    )
+    if (!accepted) return
+    setExtraBusy(true)
+    const result = await removeOrder(order.id)
+    setExtraBusy(false)
+    if (result.status === 'not-saved') await showError(result.message)
+    else {
+      onRemoved()
+      await success(admin ? 'Pedido borrado' : 'Pedido cancelado')
+    }
+  }
 
   return (
     <>
@@ -327,14 +415,24 @@ function DetailActions({
           order={flowOrder}
           role={user.role}
           via="panel"
-          busy={busy}
+          busy={busy || extraBusy}
           onBusy={setBusy}
           transition={transitionOrder}
         />
       ) : null}
+      {canRelease ? (
+        <Button variant="secondary" disabled={extraBusy} onClick={() => void release()}>
+          Liberar
+        </Button>
+      ) : null}
       {user && canEditOrder(user, order) ? (
-        <Button variant="ghost" onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}>
+        <Button variant="ghost" disabled={extraBusy} onClick={() => navigate('/nuevo-pedido', { state: { orderId: order.id } })}>
           Editar
+        </Button>
+      ) : null}
+      {user && canCancelOrder(user.role) ? (
+        <Button variant="danger-outline" disabled={extraBusy} onClick={() => void cancelOrder()}>
+          {user.role === 'admin' ? 'Borrar' : 'Cancelar'}
         </Button>
       ) : null}
       <SheetLinks order={order} sheets={sheets} canPlan={canPlan} />
@@ -401,6 +499,8 @@ function PanelViewSwitch({ view, onChange }: { view: View; onChange: (next: View
 export function PanelOperativo() {
   const { user } = useAuth()
   const { orders, loading } = useOrders()
+  const [query, setQuery] = useState('')
+  const [armado, setArmado] = useState<'todos' | 'incompletos'>('todos')
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -418,7 +518,6 @@ export function PanelOperativo() {
 
   const dateFilter = parseFecha(searchParams.get('fecha'))
   const openId = searchParams.get('pedido')
-  const openOrder = orders.find((order) => order.id === openId) ?? null
   const today = businessToday()
   const tomorrow = businessOffset(1)
   const weekStart = startOfWeek(parseIso(businessToday()))
@@ -451,12 +550,18 @@ export function PanelOperativo() {
     }
   }, [])
 
+  const scopedOrders = useMemo(() => {
+    if (user?.role === 'vendedor') return orders.filter((order) => ownsOrder(user, order))
+    return orders
+  }, [orders, user])
+  const openOrder = scopedOrders.find((order) => order.id === openId) ?? null
+
   const datedOrders = useMemo(
     () =>
-      orders.filter((order) =>
+      scopedOrders.filter((order) =>
         matchesFecha(order, dateFilter, today, tomorrow, weekFrom, weekTo),
       ),
-    [orders, dateFilter, today, tomorrow, weekFrom, weekTo],
+    [scopedOrders, dateFilter, today, tomorrow, weekFrom, weekTo],
   )
 
   const visibleOrders = useMemo(() => {
@@ -466,8 +571,10 @@ export function PanelOperativo() {
         : statusFilter
           ? ordersByStatus(datedOrders, statusFilter)
           : datedOrders
-    return [...list].sort(sortPanelList)
-  }, [datedOrders, statusFilter])
+    const searched = list.filter((order) => matchesQuery(order, query))
+    const armed = armado === 'incompletos' ? searched.filter((order) => order.prepIncomplete) : searched
+    return [...armed].sort(sortPanelList)
+  }, [datedOrders, statusFilter, query, armado])
 
   async function runPanelExport(kind: 'excel' | 'pdf') {
     if (!user || visibleOrders.length === 0) return
@@ -505,7 +612,7 @@ export function PanelOperativo() {
       : statusFilter
         ? [statusFilter]
         : STATUS_ORDER
-  const overdueCount = orders.filter(
+  const overdueCount = scopedOrders.filter(
     (order) =>
       isOverdue(order, today) &&
       (order.status === 'pendiente' ||
@@ -803,6 +910,34 @@ export function PanelOperativo() {
         <PanelViewSwitch view={view} onChange={selectView} />
       </div>
 
+      <FilterBar
+        className="mt-4"
+        search={{
+          value: query,
+          onChange: setQuery,
+          label: 'Buscar pedido',
+          placeholder: 'Cliente, factura o teléfono',
+        }}
+        chips={[
+          {
+            id: 'armado',
+            label: 'Armado',
+            variant: 'segmented',
+            value: armado,
+            options: [
+              { value: 'todos', label: 'Todos' },
+              { value: 'incompletos', label: 'Incompletos' },
+            ],
+            onChange: (next) => setArmado(next === 'incompletos' ? 'incompletos' : 'todos'),
+          },
+        ]}
+        activeCount={(query.trim() ? 1 : 0) + (armado === 'incompletos' ? 1 : 0)}
+        onClear={() => {
+          setQuery('')
+          setArmado('todos')
+        }}
+      />
+
       {sheetsError && (
         <p className="mt-3 text-sm text-muted">No se pudieron cargar las hojas de ruta</p>
       )}
@@ -955,14 +1090,24 @@ export function PanelOperativo() {
         onClose={closePedido}
         title={openOrder?.id ?? 'Pedido'}
         subtitle={openOrder ? openOrder.client.toUpperCase() : undefined}
-        footer={openOrder ? <DetailActions order={openOrder} sheets={sheets} canPlan={canPlan} /> : null}
+        footer={
+          openOrder ? (
+            <DetailActions order={openOrder} sheets={sheets} canPlan={canPlan} onRemoved={closePedido} />
+          ) : null
+        }
       >
         {openOrder ? (
           <div className="flex flex-col gap-4">
             <Link className="text-sm font-medium text-accent hover:underline" to={`/pedidos/${openOrder.id}`}>
               Abrir página completa
             </Link>
+            {takeState(openOrder) === 'en-preparacion' ? (
+              <p className="text-sm text-muted">
+                En preparación · {takenByName(openOrder) || 'operario'} · <PrepClock order={openOrder} />
+              </p>
+            ) : null}
             <OrderDetail order={openOrder} compact />
+            <PrepChecklist order={openOrder} userId={user?.id} role={user?.role} />
           </div>
         ) : null}
       </Drawer>
