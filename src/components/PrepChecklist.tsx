@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import type { Order } from '../data/orders'
 import { confirm } from '../lib/alerts'
 import type { Role } from '../lib/authStore'
@@ -66,13 +66,11 @@ export function PrepChecklist({
   userId,
   role,
   countLocked = false,
-  emptyExtra,
 }: {
   order: Order
   userId?: string
   role?: Role
   countLocked?: boolean
-  emptyExtra?: ReactNode
 }) {
   const { lines, patchLine } = usePicking()
   const { orders, refresh, addOrderItem, updateOrderItem, deleteOrderItem } = useOrders()
@@ -180,8 +178,7 @@ export function PrepChecklist({
     <div className="flex flex-col gap-3">
       {total === 0 ? (
         <div className="flex flex-col gap-2">
-          <p className="text-sm text-muted">Sin artículos cargados. Revisá la FC / nota de pedido.</p>
-          {emptyExtra}
+          <p className="text-sm text-muted">Sin artículos cargados</p>
         </div>
       ) : (
         <>

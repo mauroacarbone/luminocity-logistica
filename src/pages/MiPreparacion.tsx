@@ -371,7 +371,6 @@ export function MiPreparacion() {
               userId={user?.id}
               role={user?.role}
               countLocked={user?.role === 'deposito' && open.status === 'pendiente' && !openMine}
-              emptyExtra={<InvoiceFile order={open} />}
             />
             {open.status === 'pendiente' ? (
               <div className="flex flex-col gap-2">
