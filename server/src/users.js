@@ -20,7 +20,7 @@ export function canManageUser(actor, target, changes = {}) {
     return { ok: false, status: 403, message: 'No podés modificar al administrador.' }
   }
   if (changes.role === 'admin') {
-    return { ok: false, status: 403, message: 'No podés asignar el rol administrador' }
+    return { ok: false, status: 403, message: 'No podés modificar al administrador.' }
   }
   if (target && target.role === 'gerencia') {
     return { ok: false, status: 403, message: 'No podés modificar a gerencia' }

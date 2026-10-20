@@ -154,6 +154,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 37 | Tarjetas por estado en el Dashboard de Post Venta | Hecho |
 | 38 | Estado de ingreso y cierre de la reparación | Hecho |
 | 39 | Puesta en producción: datos maestros, limpieza y permisos | Hecho |
+| 39.1 | Ajustes de datos maestros y del administrador | Hecho |
 | 40 | Pedidos unificado en el Panel operativo | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
@@ -416,7 +417,7 @@ El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lis
 
 El Brief 40 unifica Pedidos y preparación en el Panel operativo. `/pedidos` y `/pedidos/:id` redirigen al Panel y conservan el pedido (`?pedido=` o `?id=`). Al Panel se sumaron la búsqueda por cliente, factura o teléfono, el filtro de armado incompleto, cancelar o borrar, liberar un armado, y el checklist con el tiempo de preparación en el detalle. Ya estaban el flujo del pedido, el detalle, el orden por prioridad, los estados y la exportación. Mi preparación no cambia. El vendedor sigue viendo solo sus pedidos.
 
-El Brief 39 deja los datos maestros en el servidor, con una importación única desde el navegador. El script `purge:test` borra los datos de prueba: es un simulacro salvo que se pase `--confirm`, y `--before` corta por fecha. El README explica la app para alguien no técnico y qué hace cada rol. `/api/health` devuelve la versión y el commit. El JSON tiene un tope global de 100kb. Se borraron los assets de la plantilla. El usuario demo no se crea en producción y, si quedó activo, el server avisa. La contraseña mínima queda en 10 caracteres. El estado y la importación de reclamos quedan solo para el encargado y el admin; con una reparación abierta no se saltea el taller, y las notas del técnico se cargan desde ahí. El encargado no ve ni modifica al administrador.
+El Brief 39 deja los datos maestros en el servidor, con una importación única desde el navegador. El script `purge:test` borra los datos de prueba: es un simulacro salvo que se pase `--confirm`, y `--before` corta por fecha. El README explica la app para alguien no técnico y qué hace cada rol. `/api/health` devuelve la versión y el commit. El JSON tiene un tope global de 100kb. Se borraron los assets de la plantilla. El usuario demo no se crea en producción y, si quedó activo, el server avisa. La contraseña mínima queda en 10 caracteres. El estado y la importación de reclamos quedan solo para el encargado y el admin; con una reparación abierta no se saltea el taller, y las notas del técnico se cargan desde ahí. El encargado no ve ni modifica al administrador. El 39.1 no deja guardar datos maestros sin haberlos leído y unifica el mensaje del administrador.
 
 El Brief 38 deja obligatorio el estado en que el producto ingresa al taller, con accesorios opcionales. El encargado y el admin pueden corregir ese ingreso. Al terminar la reparación hay que cargar un comentario final; en cobro el costo es obligatorio y viene precargado con el presupuesto, y en garantía no se pide ni se guarda. Si la reparación vuelve atrás, el cierre se borra. El reporte de reparaciones suma ese costo de cobro.
 
