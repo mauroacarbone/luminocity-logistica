@@ -153,6 +153,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 36.3 | Reparación asignada antes de levantarla | Hecho |
 | 37 | Tarjetas por estado en el Dashboard de Post Venta | Hecho |
 | 38 | Estado de ingreso y cierre de la reparación | Hecho |
+| 39 | Puesta en producción: datos maestros, limpieza y permisos | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -412,6 +413,8 @@ El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pe
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
 
+El Brief 39 deja los datos maestros en el servidor, con una importación única desde el navegador. El script `purge:test` borra los datos de prueba: es un simulacro salvo que se pase `--confirm`, y `--before` corta por fecha. El README explica la app para alguien no técnico y qué hace cada rol. `/api/health` devuelve la versión y el commit. El JSON tiene un tope global de 100kb. Se borraron los assets de la plantilla. El usuario demo no se crea en producción y, si quedó activo, el server avisa. La contraseña mínima queda en 10 caracteres. El estado y la importación de reclamos quedan solo para el encargado y el admin; con una reparación abierta no se saltea el taller, y las notas del técnico se cargan desde ahí. El encargado no ve ni modifica al administrador.
+
 El Brief 38 deja obligatorio el estado en que el producto ingresa al taller, con accesorios opcionales. El encargado y el admin pueden corregir ese ingreso. Al terminar la reparación hay que cargar un comentario final; en cobro el costo es obligatorio y viene precargado con el presupuesto, y en garantía no se pide ni se guarda. Si la reparación vuelve atrás, el cierre se borra. El reporte de reparaciones suma ese costo de cobro.
 
 El Brief 37 suma en el Dashboard de Post Venta una tarjeta por estado con al menos un reclamo, cancelado incluido. Cada una muestra el nombre completo, la cantidad, el porcentaje del total que ve el Dashboard y una barra de ese porcentaje, con el color de la pastilla del estado. Tocar una tarjeta filtra la lista y abre la pestaña que corresponde. El estado también está en la barra de filtros, cuenta para Limpiar y se borra al abrir un reclamo por link.
@@ -456,14 +459,13 @@ En este orden. No adelantar el siguiente.
 | 16d | WhatsApp Cloud API | **Pendiente** |
 | 21 | Reclamos (`R-`) a la API. | **Pendiente** |
 | — | Sacar los adjuntos del listado de pedidos y que el PATCH mande solo lo que cambia. | **Pendiente** |
-| — | Datos maestros siguen en localStorage. Este brief no los pasa a Postgres. | **Pendiente** |
 | — | Los tiles de OpenStreetMap y el OSRM demo no son para producción. Revisar más adelante. | **Pendiente** |
 | — | Autorizar un cuarto pedido en la franja con el permiso de un solo uso del Brief 15. Esa autorización es para cargar a nombre de otro vendedor y no encaja acá: hoy solo el encargado o el admin lo confirman en el momento. | **Pendiente** |
 | — | Sincronización de stock en tiempo real con el CRM de la empresa, por API key. | **Pendiente** |
 
 ## Decisiones
 
-- Los pedidos se guardan en el server. Sin `DATABASE_URL` van a JSON en `server/data`. Con `DATABASE_URL` van a Postgres, una tabla por colección. Los datos maestros siguen en el navegador. La auth ya está en el server.
+- Los pedidos se guardan en el server. Sin `DATABASE_URL` van a JSON en `server/data`. Con `DATABASE_URL` van a Postgres, una tabla por colección. Los datos maestros también: una fila por lista. La auth ya está en el server.
 - En producción hacen falta `DATABASE_URL` y `JWT_SECRET`. No se crea el usuario demo. El front y la API salen del mismo proceso. `create-admin` crea solo el primer admin. El resto de las cuentas las da de alta el admin desde Usuarios.
 - La contraseña se hashea con bcrypt en el server. El navegador solo guarda el JWT.
 - El rol filtra el menú y la API. En desarrollo el registro público crea `vendedor` y rechaza un nombre o email que ya use otra cuenta. En producción el registro responde 403. No carga `sellerName`.
