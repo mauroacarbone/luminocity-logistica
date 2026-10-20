@@ -682,6 +682,18 @@ export function readManualItem(body, partial = false) {
     }
     result.quantity = quantity
   }
+  if (
+    Object.prototype.hasOwnProperty.call(body, 'internalCode') &&
+    body.internalCode != null &&
+    body.internalCode !== ''
+  ) {
+    if (typeof body.internalCode !== 'string') return fail('El código interno no es válido.', 400, 'code')
+    const internalCode = body.internalCode.trim()
+    if (!internalCode || internalCode.length > 20) {
+      return fail('El código interno puede tener hasta 20 caracteres.', 400, 'code')
+    }
+    result.internalCode = internalCode
+  }
   return result
 }
 
@@ -698,11 +710,13 @@ export function readManualItems(value) {
   return { value: items }
 }
 
-export function buildManualRow(order, item, now) {
+export function buildManualRow(order, item, now, raw) {
   const invoices = Array.isArray(order?.invoices)
     ? order.invoices.filter((value) => typeof value === 'string' && value.trim())
     : []
   const description = typeof item.description === 'string' ? item.description.trim() : ''
+  const stored = isRecord(raw) ? { ...raw } : {}
+  if (item.internalCode && stored.internalCode == null) stored.internalCode = item.internalCode
   return {
     id: randomUUID(),
     createdAt: now,
@@ -713,7 +727,7 @@ export function buildManualRow(order, item, now) {
     cantidad: item.quantity,
     vendedor: typeof order?.seller === 'string' ? order.seller : '',
     codigo: item.code,
-    raw: {},
+    raw: stored,
     status: 'pendiente',
     orderId: order.id,
     source: 'manual',

@@ -225,6 +225,16 @@ ordersRouter.post('/:id/items', async (req, res) => {
     res.status(201).json({ order: withHistory(result.order), rows: result.rows })
   })
 })
+ordersRouter.post('/:id/items/batch', async (req, res) => {
+  await send(res, async () => {
+    const result = await createOrderItemsBatch(req.params.id, req.body, req.user)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.status(201).json({ order: withHistory(result.order), rows: result.rows })
+  })
+})
 ordersRouter.patch('/:id/items/:itemId', async (req, res) => {
   await send(res, async () => {
     const result = await updateOrderItem(req.params.id, req.params.itemId, req.body, req.user)
@@ -893,6 +903,88 @@ function guardManualRow(row, orderId) {
   if (!row || row.orderId !== orderId) return fail('No existe ese artículo.', 404)
   if (row.source !== 'manual') return fail('Ese artículo viene del Excel y no se edita acá.', 409)
   return null
+}
+
+function itemSource(row) {
+  if (row?.source === 'manual' || row?.source === 'crm' || row?.source === 'excel') return row.source
+  return 'excel'
+}
+
+function countedQty(row) {
+  if (typeof row?.pickedQty === 'number' && Number.isFinite(row.pickedQty)) return row.pickedQty
+  if (row?.status === 'preparado') {
+    return typeof row.cantidad === 'number' && Number.isFinite(row.cantidad) ? row.cantidad : 0
+  }
+  return 0
+}
+
+function codeKey(code) {
+  return String(code ?? '')
+    .replace(/\s+/g, '')
+    .toLocaleLowerCase('es')
+}
+
+function applyManualQuantity(row, quantity) {
+  const previousQty = typeof row.cantidad === 'number' && Number.isFinite(row.cantidad) ? row.cantidad : 0
+  let counted = 0
+  if (typeof row.pickedQty === 'number' && Number.isFinite(row.pickedQty)) counted = row.pickedQty
+  else if (row.status === 'preparado') counted = previousQty
+  if (counted > quantity) counted = quantity
+  row.cantidad = quantity
+  row.pickedQty = counted
+  row.status = pickedStatus(counted, quantity)
+}
+
+function fcRaw(item, current) {
+  const raw = isRecord(current) ? { ...current } : {}
+  if (item.internalCode) raw.internalCode = item.internalCode
+  raw.from = 'fc'
+  return raw
+}
+
+function createOrderItemsBatch(id, body, user) {
+  return locked(async () => {
+    const loaded = await loadEditableOrder(id, user)
+    if (loaded.error) return loaded
+    if (!isRecord(body)) return fail('La carga no es válida.')
+    if (body.mode !== 'replace' && body.mode !== 'merge') return fail('El modo no es válido.')
+    if (!Array.isArray(body.items)) return fail('Los artículos no son válidos.')
+    const parsed = readManualItems(body.items)
+    if (parsed.error) return parsed
+    const picking = await readCollection('picking')
+    const list = Array.isArray(picking) ? picking : []
+    const linked = list.filter((row) => row && row.orderId === id)
+    if (linked.some((row) => itemSource(row) !== 'manual')) {
+      return fail('Este pedido ya tiene artículos de la planilla.', 409)
+    }
+    const manuals = linked.filter((row) => itemSource(row) === 'manual')
+    if (body.mode === 'replace' && manuals.some((row) => countedQty(row) > 0)) {
+      return fail('Hay artículos con conteo cargado; usá Agregar o quitá el conteo.', 409)
+    }
+    const now = new Date().toISOString()
+    const next = body.mode === 'replace'
+      ? list.filter((row) => !(row && row.orderId === id && itemSource(row) === 'manual'))
+      : list
+    for (const item of parsed.value) {
+      if (body.mode === 'merge') {
+        const key = codeKey(item.code)
+        const index = next.findIndex(
+          (row) => row && row.orderId === id && itemSource(row) === 'manual' && codeKey(row.codigo) === key,
+        )
+        if (index >= 0) {
+          const row = { ...next[index], raw: fcRaw(item, next[index].raw) }
+          applyManualQuantity(row, item.quantity)
+          row.updatedAt = now
+          next[index] = row
+          continue
+        }
+      }
+      next.push(buildManualRow(loaded.order, item, now, fcRaw(item)))
+    }
+    await writeCollection('picking', next)
+    await syncChecklist(loaded.orders, loaded.index, user)
+    return { order: loaded.orders[loaded.index], rows: orderItemRows(next, id) }
+  })
 }
 
 function createOrderItem(id, body, user) {

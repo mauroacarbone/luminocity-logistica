@@ -166,6 +166,7 @@ export type ManualItemInput = {
   code: string
   description?: string
   quantity: number
+  internalCode?: string
 }
 
 export function addOrderItem(id: string, body: ManualItemInput) {
@@ -174,6 +175,18 @@ export function addOrderItem(id: string, body: ManualItemInput) {
     'POST',
     body,
     'No se pudo agregar el artículo.',
+  )
+}
+
+export function addOrderItemsBatch(
+  id: string,
+  body: { mode: 'replace' | 'merge'; items: ManualItemInput[] },
+) {
+  return request(
+    `/api/orders/${encodeURIComponent(id)}/items/batch`,
+    'POST',
+    body,
+    'No se pudieron cargar los artículos.',
   )
 }
 
