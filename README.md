@@ -97,3 +97,28 @@ En producción no hay registro público. El admin da de alta y administra las cu
 6. Abrí `https://<tu-servicio>.onrender.com/api/health`. Tiene que responder 200. Después entrá a la raíz y logueate con el admin.
 
 El plan gratis de Render se duerme tras unos 15 minutos sin uso y tarda cerca de un minuto en despertar.
+
+## Borrar los datos de prueba
+
+El plan gratis de Render no tiene shell. El script se corre desde la PC, contra Neon. Antes, creá un branch de respaldo de la base en Neon.
+
+Desde `server/`, en PowerShell:
+
+```powershell
+$env:DATABASE_URL = 'postgresql://user:pass@ep-xxxx-pooler.region.aws.neon.tech/neondb?sslmode=require'
+npm run purge:test
+```
+
+Eso es un simulacro: muestra la base (el host, sin usuario ni contraseña) y cuántos registros borraría. No toca usuarios, datos maestros ni tarifas de viaje. Si los números cierran:
+
+```powershell
+npm run purge:test -- --confirm
+```
+
+Para borrar solo lo anterior a un día, en hora de Buenos Aires:
+
+```powershell
+npm run purge:test -- --before=2026-10-20
+```
+
+Un registro sin fecha no entra en ese corte. Si un pedido se borra y una fila de picking sigue apuntándolo, esa fila queda y el script lo avisa. No hay cascada.
