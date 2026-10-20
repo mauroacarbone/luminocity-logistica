@@ -267,12 +267,12 @@ export function MisEntregas() {
       missingDetail.current = ''
       return
     }
-    if (loading || openOrder) return
+    if (loading || ordersError || openOrder) return
     if (missingDetail.current === openId) return
     missingDetail.current = openId
     void error('Ese pedido ya no está en tus entregas.')
     closeDetail()
-  }, [loading, openId, openOrder, closeDetail])
+  }, [loading, ordersError, openId, openOrder, closeDetail])
 
   async function changeStatus(order: Order, status: 'en-viaje' | 'entregado') {
     const leaving = status === 'en-viaje'

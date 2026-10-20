@@ -498,7 +498,7 @@ function PanelViewSwitch({ view, onChange }: { view: View; onChange: (next: View
 
 export function PanelOperativo() {
   const { user } = useAuth()
-  const { orders, loading } = useOrders()
+  const { orders, loading, error: ordersError } = useOrders()
   const [query, setQuery] = useState('')
   const [armado, setArmado] = useState<'todos' | 'incompletos'>('todos')
   const navigate = useNavigate()
@@ -728,7 +728,7 @@ export function PanelOperativo() {
       unseenPanel.current = ''
       return
     }
-    if (loading) return
+    if (loading || ordersError) return
     if (scopedOrders.some((order) => order.id === openId)) return
     if (unseenPanel.current === openId) return
     unseenPanel.current = openId
@@ -742,17 +742,17 @@ export function PanelOperativo() {
       },
       { replace: true },
     )
-  }, [loading, openId, scopedOrders, setSearchParams])
+  }, [loading, ordersError, openId, scopedOrders, setSearchParams])
 
   useEffect(() => {
-    if (loading || !openId) return
+    if (loading || ordersError || !openId) return
     const pool = useAdvanceList
       ? showDone
         ? advanceOrders.concat(doneOrders)
         : advanceOrders
       : visibleOrders
     if (!pool.some((order) => order.id === openId)) closePedido()
-  }, [loading, openId, useAdvanceList, showDone, advanceOrders, doneOrders, visibleOrders, closePedido])
+  }, [loading, ordersError, openId, useAdvanceList, showDone, advanceOrders, doneOrders, visibleOrders, closePedido])
 
   function selectView(next: View) {
     setView(next)
