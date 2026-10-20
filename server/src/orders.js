@@ -354,7 +354,7 @@ function previewFc(body, user) {
   if (!isRecord(body)) return fail('La solicitud no es válida.')
   const hasUrl = Object.prototype.hasOwnProperty.call(body, 'dataUrl')
   const hasOrder = Object.prototype.hasOwnProperty.call(body, 'orderId')
-  if (hasUrl === hasOrder) return fail('Mandá la FC o el pedido.')
+  if (hasUrl === hasOrder) return fail('Mandá la factura / nota de pedido o el pedido.')
   if (hasUrl) return previewFcData(body.dataUrl, user)
   return previewFcOrder(body.orderId, user)
 }
@@ -375,7 +375,7 @@ function previewFcOrder(orderId, user) {
     const blocked = canEditItems(user, order)
     if (blocked) return blocked
     const url = attachmentUrl(order)
-    if (!url.startsWith(PDF_DATA_PREFIX)) return fail('El pedido no tiene una FC en PDF adjunta.')
+    if (!url.startsWith(PDF_DATA_PREFIX)) return fail('El pedido no tiene una factura / nota de pedido en PDF adjunta.')
     return { dataUrl: url }
   }).then((loaded) => {
     if (!loaded || loaded.error) return loaded
@@ -1642,7 +1642,7 @@ function readPickupPdf(_body, current, order) {
   const attachmentChanged = attachmentUrl(order) !== attachmentUrl(current)
   if (!passesToPickup && !attachmentChanged) return { ok: true }
   const url = typeof order.attachmentDataUrl === 'string' ? order.attachmentDataUrl : ''
-  if (!url) return fail('Los retiros necesitan la FC o nota de pedido en PDF.')
+  if (!url) return fail('Los retiros necesitan la factura / nota de pedido en PDF.')
   if (!url.startsWith(PDF_DATA_PREFIX)) return fail('El adjunto tiene que ser un PDF.')
   const bytes = pdfByteLength(url)
   if (bytes == null) return fail('El adjunto tiene que ser un PDF.')

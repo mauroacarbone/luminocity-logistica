@@ -7,9 +7,9 @@ const Y_TOLERANCE = 3
 const ITEM_LIMIT = 100
 const INVALID_PDF = 'El adjunto tiene que ser un PDF.'
 const TOO_BIG = 'El archivo supera los 2 MB.'
-const NO_TEXT = 'La FC no tiene texto para leer (parece escaneada). Cargá los artículos a mano.'
-const UNRECOGNIZED = 'No reconocimos el formato de la FC. Tiene que ser una factura de Cianbox.'
-const TOO_MANY = 'La FC tiene más de 100 artículos.'
+const NO_TEXT = 'La factura / nota de pedido no tiene texto para leer (parece escaneada). Cargá los artículos a mano.'
+const UNRECOGNIZED = 'No reconocimos el formato de la factura / nota de pedido. Tiene que ser una factura de Cianbox.'
+const TOO_MANY = 'La factura / nota de pedido tiene más de 100 artículos.'
 
 const FACTURA_RE = /Factura\s+N[º°o]?\s*(\d{4}-\d{8})/
 const HEADER_RE = /IT\s+Cant\.?\s+Detalle/i

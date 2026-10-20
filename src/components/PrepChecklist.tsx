@@ -186,7 +186,7 @@ export function PrepChecklist({
     }
     const parsed = readFcParsed(result.data)
     if (!parsed) {
-      setFcError('No se pudo leer la FC.')
+      setFcError('No se pudo leer la factura / nota de pedido.')
       return
     }
     if (!parsed.ok) {
@@ -330,7 +330,7 @@ export function PrepChecklist({
           loading={fcPending === 'merge' && !fcPreview}
           onClick={() => void prefillFromFc()}
         >
-          Precargar artículos desde la FC
+          Precargar artículos desde la factura / nota de pedido
         </Button>
       ) : null}
       {form ? (

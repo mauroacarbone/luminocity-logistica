@@ -43,7 +43,7 @@ export function FcPreview({
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-4 overflow-hidden rounded-lg bg-surface p-5 shadow-md">
         <div>
           <h2 id="fc-preview-title" className="text-xl font-semibold text-text">
-            Artículos de la FC
+            Artículos de la factura / nota de pedido
           </h2>
           <p className="mt-1 text-sm text-text">Factura {factura ?? 'sin número'}</p>
           <p className="text-sm text-text">Cliente {cliente ?? 'no leído'}</p>

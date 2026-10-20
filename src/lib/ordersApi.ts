@@ -207,7 +207,7 @@ export type FcParsedOk = {
 }
 
 export function parseOrderFc(body: { dataUrl: string } | { orderId: string }) {
-  return request('/api/orders/fc/parse', 'POST', body, 'No se pudo leer la FC.')
+  return request('/api/orders/fc/parse', 'POST', body, 'No se pudo leer la factura / nota de pedido.')
 }
 
 export function readFcParsed(data: unknown): FcParsedOk | { ok: false; reason: string } | null {

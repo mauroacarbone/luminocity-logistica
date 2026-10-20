@@ -320,7 +320,7 @@ export function MiTaller() {
               <article key={claim.id} className="rounded-xl border border-border bg-surface p-4">
                 <button type="button" className="block min-h-11 w-full text-left" onClick={() => setOpenId(claim.id)}>
                   <p className="font-semibold">
-                    {claim.invoices[0] || 'Sin FC'} · {claim.client}
+                    {claim.invoices[0] || 'Sin factura / nota de pedido'} · {claim.client}
                   </p>
                   <p className="mt-1 text-sm text-subtle">
                     Ingreso {day(repair.intakeAt)} · {repair.product}
@@ -374,7 +374,7 @@ export function MiTaller() {
         {selected?.repair && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-subtle">
-              {selected.invoices[0] || 'Sin FC'} · Ingreso {day(selected.repair.intakeAt)} · Recibió{' '}
+              {selected.invoices[0] || 'Sin factura / nota de pedido'} · Ingreso {day(selected.repair.intakeAt)} · Recibió{' '}
               {selected.repair.receivedBy.name}
             </p>
             <RepairIntake

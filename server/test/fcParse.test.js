@@ -143,7 +143,7 @@ test('rechaza más de 100 artículos', async () => {
     pages.push(tablePage(rows))
   }
   const parsed = await parseFcPdf(dataUrlOf(buildTextPdf(pages)))
-  assert.deepEqual(parsed, { ok: false, reason: 'La FC tiene más de 100 artículos.' })
+  assert.deepEqual(parsed, { ok: false, reason: 'La factura / nota de pedido tiene más de 100 artículos.' })
 })
 
 test('distingue PDF inválido, sin texto y con otro formato', async () => {
@@ -159,12 +159,12 @@ test('distingue PDF inválido, sin texto y con otro formato', async () => {
   const empty = await parseFcPdf(dataUrlOf(buildTextPdf([[]])))
   assert.deepEqual(empty, {
     ok: false,
-    reason: 'La FC no tiene texto para leer (parece escaneada). Cargá los artículos a mano.',
+    reason: 'La factura / nota de pedido no tiene texto para leer (parece escaneada). Cargá los artículos a mano.',
   })
 
   const other = await parseFcPdf(dataUrlOf(buildTextPdf([[line(40, 700, 'Presupuesto sin tabla')]])))
   assert.deepEqual(other, {
     ok: false,
-    reason: 'No reconocimos el formato de la FC. Tiene que ser una factura de Cianbox.',
+    reason: 'No reconocimos el formato de la factura / nota de pedido. Tiene que ser una factura de Cianbox.',
   })
 })

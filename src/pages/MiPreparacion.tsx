@@ -54,7 +54,7 @@ function InvoiceFile({ order }: { order: Order }) {
       <OrderAttachmentLink
         name={order.attachmentName}
         dataUrl={order.attachmentDataUrl}
-        label="Ver FC / nota de pedido"
+        label="Ver factura / nota de pedido"
       />
     )
   }
@@ -269,7 +269,7 @@ export function MiPreparacion() {
                   </span>
                   <span className="font-semibold">{order.client}</span>
                   <span className={invoices.length > 0 ? 'text-sm text-text' : 'text-sm text-muted'}>
-                    {invoices.length > 0 ? `FC / NP ${invoices.join(', ')}` : 'Sin FC / nota de pedido'}
+                    {invoices.length > 0 ? `Factura / Nota de pedido ${invoices.join(', ')}` : 'Sin factura / nota de pedido'}
                   </span>
                   <span className="text-sm text-muted">
                     {[order.zone, normalizeTimeWindow(order.timeWindow) || order.timeWindow, order.deliveryDate ? formatIsoDate(order.deliveryDate) : '']
@@ -358,11 +358,11 @@ export function MiPreparacion() {
                 <dd>{open.seller || '—'}</dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="text-muted">FC / Nota de pedido</dt>
+                <dt className="text-muted">Factura / Nota de pedido</dt>
                 <dd className={invoiceNumbers(open).length > 0 ? undefined : 'text-muted'}>
                   {invoiceNumbers(open).length > 0
                     ? invoiceNumbers(open).join(', ')
-                    : 'Sin FC / nota de pedido'}
+                    : 'Sin factura / nota de pedido'}
                 </dd>
                 <div className="mt-2">
                   <InvoiceFile order={open} />

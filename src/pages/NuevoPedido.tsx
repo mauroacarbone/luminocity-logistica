@@ -129,10 +129,10 @@ const SERVER_FIELD_MESSAGES: { message: string; field: ErrorKey }[] = [
   { message: 'Elegí la fecha de entrega.', field: 'deliveryDate' },
   { message: 'Elegí la fecha de retiro.', field: 'deliveryDate' },
   { message: 'Ingresá el monto a cobrar.', field: 'amount' },
-  { message: 'Los retiros necesitan la FC o nota de pedido en PDF.', field: 'file' },
+  { message: 'Los retiros necesitan la factura / nota de pedido en PDF.', field: 'file' },
   { message: 'El adjunto tiene que ser un PDF.', field: 'file' },
   { message: 'El archivo supera los 2 MB.', field: 'file' },
-  { message: 'Adjuntá la FC o nota de pedido en PDF.', field: 'file' },
+  { message: 'Adjuntá la factura / nota de pedido en PDF.', field: 'file' },
   { message: 'Cargá el N° de nota de pedido o factura.', field: 'invoices' },
 ]
 
@@ -450,7 +450,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     }
     const parsed = readFcParsed(result.data)
     if (!parsed) {
-      setFcError('No se pudo leer la FC.')
+      setFcError('No se pudo leer la factura / nota de pedido.')
       return
     }
     if (!parsed.ok) {
@@ -1189,7 +1189,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         nextErrors.invoices = 'Cargá el N° de nota de pedido o factura.'
       }
       if (!readingFile && !attachmentDataUrl.startsWith('data:application/pdf')) {
-        nextErrors.file = 'Adjuntá la FC o nota de pedido en PDF.'
+        nextErrors.file = 'Adjuntá la factura / nota de pedido en PDF.'
       }
     }
     setSaveError('')
@@ -1274,8 +1274,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     setSaving(false)
     if (result.status === 'saved-without-attachment') {
       if (requiresInvoicePdf({ dispatchType })) {
-        setSaveError('Los retiros necesitan la FC o nota de pedido en PDF.')
-        setErrors({ file: 'Los retiros necesitan la FC o nota de pedido en PDF.' })
+        setSaveError('Los retiros necesitan la factura / nota de pedido en PDF.')
+        setErrors({ file: 'Los retiros necesitan la factura / nota de pedido en PDF.' })
         attachmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
         return
       }
@@ -1325,8 +1325,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     if (result.status === 'saved-without-attachment') {
       if (requiresInvoicePdf(draft)) {
         setReasonOpen(false)
-        setSaveError('Los retiros necesitan la FC o nota de pedido en PDF.')
-        setErrors({ file: 'Los retiros necesitan la FC o nota de pedido en PDF.' })
+        setSaveError('Los retiros necesitan la factura / nota de pedido en PDF.')
+        setErrors({ file: 'Los retiros necesitan la factura / nota de pedido en PDF.' })
         attachmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
         return
       }
@@ -1406,7 +1406,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       if (attachmentDataUrl && attachmentKind(attachmentName, attachmentDataUrl) !== 'pdf') {
         setErrors((current) => ({
           ...current,
-          file: 'Para retiros adjuntá la FC o nota de pedido en PDF.',
+          file: 'Para retiros adjuntá la factura / nota de pedido en PDF.',
         }))
       }
       setTransporter('')
@@ -1741,7 +1741,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
             <h2>Artículos (opcional)</h2>
             {canPrefillFc ? (
               <Button className="mb-3" variant="secondary" loading={fcBusy} onClick={() => void prefillFromFc()}>
-                Precargar artículos desde la FC
+                Precargar artículos desde la factura / nota de pedido
               </Button>
             ) : null}
             {fcError ? (
@@ -2117,12 +2117,12 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         </section>
 
         <section className="form-card" ref={attachmentSectionRef} data-field="file">
-          <h2>{pickup ? 'FC o nota de pedido (PDF)' : 'Documentación'}</h2>
+          <h2>{pickup ? 'Factura / Nota de pedido (PDF)' : 'Documentación'}</h2>
           {attachmentDataUrl && attachmentKind(attachmentName, attachmentDataUrl) === 'pdf' ? null : (
             <Field
               label={
                 pickup
-                  ? 'FC o nota de pedido (PDF) *'
+                  ? 'Factura / Nota de pedido (PDF) *'
                   : 'Adjuntar remito, factura u otro archivo (imagen, PDF o Word, opcional)'
               }
               hint={pickup ? 'PDF. Máximo 2 MB.' : 'Imagen, PDF o Word (.doc, .docx). Máximo 2 MB.'}

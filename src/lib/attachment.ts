@@ -65,7 +65,7 @@ function isImageFile(file: File) {
 export function pdfAttachmentRejection(file: File) {
   const type = file.type.toLowerCase()
   const pdf = type === 'application/pdf' || (isGenericType(type) && extensionOf(file.name) === '.pdf')
-  if (!pdf) return 'Para retiros adjuntá la FC o nota de pedido en PDF.'
+  if (!pdf) return 'Para retiros adjuntá la factura / nota de pedido en PDF.'
   if (file.size > MAX_ATTACHMENT_BYTES) return 'El archivo supera los 2 MB.'
   return null
 }
