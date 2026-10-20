@@ -308,34 +308,38 @@ export function MiPreparacion() {
         subtitle={open?.client}
         mobileFull
         footer={
-          open && open.status === 'pendiente' ? (
-            <div className="flex w-full flex-col gap-2">
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
-                disabled={busy === open.id || openHeldByOther}
-                onClick={() => void markArmed(open)}
-              >
-                {openHeldByOther ? `Lo está armando ${takenByName(open)}` : 'Marcar armado'}
-              </Button>
-              {!openMine && !openHeldByOther ? (
-                <Button variant="secondary" size="lg" fullWidth disabled={busy === open.id} onClick={() => void take(open)}>
-                  Tomar
-                </Button>
-              ) : null}
-              {openMine ? (
-                <Button variant="secondary" size="lg" fullWidth disabled={busy === open.id} onClick={() => void release(open)}>
-                  Liberar
-                </Button>
-              ) : null}
-            </div>
+          open && open.status === 'pendiente' && openMine ? (
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              disabled={busy === open.id}
+              onClick={() => void markArmed(open)}
+            >
+              Marcar armado
+            </Button>
           ) : null
         }
       >
         {open ? (
           <div className="flex flex-col gap-4">
-            <p className="text-lg font-semibold tabular-nums">{armingText(open, now, mineId)}</p>
+            {open.status === 'pendiente' && !openMine && !openHeldByOther ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-text">Tomá el pedido para empezar a armarlo</p>
+                <Button variant="primary" size="lg" fullWidth disabled={busy === open.id} onClick={() => void take(open)}>
+                  Tomar pedido
+                </Button>
+              </div>
+            ) : openMine ? (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-lg font-semibold tabular-nums">{armingText(open, now, mineId)}</p>
+                <Button variant="secondary" size="lg" disabled={busy === open.id} onClick={() => void release(open)}>
+                  Liberar
+                </Button>
+              </div>
+            ) : (
+              <p className="text-lg font-semibold tabular-nums">{armingText(open, now, mineId)}</p>
+            )}
             <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-muted">Zona</dt>
@@ -370,7 +374,8 @@ export function MiPreparacion() {
               order={open}
               userId={user?.id}
               role={user?.role}
-              countLocked={user?.role === 'deposito' && open.status === 'pendiente' && !openMine}
+              countLocked={open.status === 'pendiente' && !openMine}
+              awaitingTake={open.status === 'pendiente' && !openMine}
             />
             {open.status === 'pendiente' ? (
               <div className="flex flex-col gap-2">

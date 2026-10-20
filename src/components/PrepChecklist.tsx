@@ -66,11 +66,13 @@ export function PrepChecklist({
   userId,
   role,
   countLocked = false,
+  awaitingTake = false,
 }: {
   order: Order
   userId?: string
   role?: Role
   countLocked?: boolean
+  awaitingTake?: boolean
 }) {
   const { lines, patchLine } = usePicking()
   const { orders, refresh, addOrderItem, updateOrderItem, deleteOrderItem } = useOrders()
@@ -182,15 +184,17 @@ export function PrepChecklist({
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-semibold text-text">
-              {done} de {total} artículos
-            </p>
-            <div className="h-2 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
-              <div className="h-full bg-accent" style={{ width: `${progress}%` }} />
+          {awaitingTake ? null : (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold text-text">
+                {done} de {total} artículos
+              </p>
+              <div className="h-2 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+                <div className="h-full bg-accent" style={{ width: `${progress}%` }} />
+              </div>
             </div>
-          </div>
-          {countLocked ? <p className="text-sm text-muted">Tomalo para empezar a contar</p> : null}
+          )}
+          {countLocked && !awaitingTake ? <p className="text-sm text-muted">Tomalo para empezar a contar</p> : null}
           <ul className="flex flex-col gap-2">
             {rows.map((line) => {
               const qty = counted(line)
@@ -331,7 +335,7 @@ export function PrepChecklist({
             </Button>
           </div>
         </div>
-      ) : canAdd ? (
+      ) : canAdd && !awaitingTake ? (
         <Button variant="secondary" size="lg" onClick={openCreate}>
           Agregar artículo
         </Button>
