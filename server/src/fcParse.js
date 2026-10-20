@@ -14,6 +14,8 @@ const TOO_MANY = 'La FC tiene más de 100 artículos.'
 const FACTURA_RE = /Factura\s+N[º°o]?\s*(\d{4}-\d{8})/
 const HEADER_RE = /IT\s+Cant\.?\s+Detalle/i
 const GRAVADO_RE = /^GRAVADO\b/i
+const FOOTER_RE =
+  /^(ORIGINAL|DUPLICADO|TRIPLICADO)\b|pag\.\s*\d+\s*\/\s*\d+|Emitido con|Powered by|^Observaciones\b|^Transporte\b/i
 const ITEM_RE = /^(\d{1,3})\s+(\d+(?:,\d+)?)\s+\[([^\]]+)\]\s*\((\d+)\)\s*-\s*(.+?)\s+-?[\d.]+,\d{2}\s/
 const PRICE_RE = /[\d.]*,\d{2}/
 const CUIT_RE = /C\.U\.I\.T\./i
@@ -123,7 +125,7 @@ function interpret(pages) {
         sawTable = true
         continue
       }
-      if (inTable && GRAVADO_RE.test(line)) {
+      if (inTable && (GRAVADO_RE.test(line) || FOOTER_RE.test(line))) {
         flush()
         inTable = false
         continue
@@ -135,7 +137,7 @@ function interpret(pages) {
         current = readMatch(match, warnings)
         continue
       }
-      if (PRICE_RE.test(line) || !current) continue
+      if (PRICE_RE.test(line) || !current || /^\d+$/.test(line)) continue
       current.description = `${current.description} ${line}`.replace(/\s+/g, ' ').trim()
     }
     flush()

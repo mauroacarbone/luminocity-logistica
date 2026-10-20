@@ -112,6 +112,26 @@ test('ignora renglones fuera de la tabla de cada página', async () => {
   assert.equal(parsed.items[1].quantity, 3)
 })
 
+test('no pega el pie de una página intermedia a la descripción', async () => {
+  const page1 = [
+    line(40, 700, 'IT Cant. Detalle'),
+    line(40, 660, '1 1 [UNO] (1) - Primero 10,00 10,00'),
+    line(40, 120, '1'),
+    line(40, 100, 'ORIGINAL :: pag. 1/2'),
+    line(40, 60, 'Emitido con www.cianbox.com'),
+    line(40, 40, 'Powered by TCPDF (www.tcpdf.org)'),
+  ]
+  const page2 = [
+    line(40, 700, 'IT Cant. Detalle'),
+    line(40, 660, '2 3 [DOS] (2) - Segundo 10,00 10,00'),
+    line(40, 80, 'GRAVADO $ 1,00'),
+  ]
+  const parsed = await parseFcPdf(dataUrlOf(buildTextPdf([page1, page2])))
+  assert.equal(parsed.ok, true)
+  assert.equal(parsed.items[0].description, 'Primero')
+  assert.equal(parsed.items[1].description, 'Segundo')
+})
+
 test('rechaza más de 100 artículos', async () => {
   const pages = []
   for (let start = 0; start < 101; start += 20) {
