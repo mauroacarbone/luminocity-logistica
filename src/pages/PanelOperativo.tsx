@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { PrepChecklist } from '../components/PrepChecklist'
 import { PrepChip } from '../components/PrepChip'
 import { Badge, Button, Drawer, EmptyState, FilterBar, KpiCard, ListBox, Menu, Page, PageHeader, statusTone, Table, type TableColumn } from '../components/ui'
@@ -720,6 +720,29 @@ export function PanelOperativo() {
       { replace: true },
     )
   }, [location.state, navigate, setSearchParams])
+
+  const unseenPanel = useRef('')
+
+  useEffect(() => {
+    if (!openId) {
+      unseenPanel.current = ''
+      return
+    }
+    if (loading) return
+    if (scopedOrders.some((order) => order.id === openId)) return
+    if (unseenPanel.current === openId) return
+    unseenPanel.current = openId
+    void showError('No podés ver ese pedido o ya no está en el Panel.')
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.delete('pedido')
+        next.delete('id')
+        return next
+      },
+      { replace: true },
+    )
+  }, [loading, openId, scopedOrders, setSearchParams])
 
   useEffect(() => {
     if (loading || !openId) return
