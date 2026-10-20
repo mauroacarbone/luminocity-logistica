@@ -17,6 +17,7 @@ import {
   transitionOrder as transitionOrderRequest,
   updateOrderItem as updateOrderItemRequest,
   addOrderItem as addOrderItemRequest,
+  addOrderItemsBatch as addOrderItemsBatchRequest,
   withoutNewAttachment,
   type ApiResult,
   type ManualItemInput,
@@ -90,6 +91,10 @@ type OrdersContextValue = {
   takeOrder: (id: string) => Promise<OrderSaveResult>
   releaseOrder: (id: string) => Promise<OrderSaveResult>
   addOrderItem: (id: string, body: ManualItemInput) => Promise<OrderSaveResult>
+  addOrderItemsBatch: (
+    id: string,
+    body: { mode: 'replace' | 'merge'; items: ManualItemInput[] },
+  ) => Promise<OrderSaveResult>
   updateOrderItem: (id: string, itemId: string, body: Partial<ManualItemInput>) => Promise<OrderSaveResult>
   deleteOrderItem: (id: string, itemId: string) => Promise<OrderSaveResult>
   reviewEdit: (
@@ -456,6 +461,10 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return addOrderItemRequest(id, body).then(saveOrderItems)
   }
 
+  function addOrderItemsBatch(id: string, body: { mode: 'replace' | 'merge'; items: ManualItemInput[] }) {
+    return addOrderItemsBatchRequest(id, body).then(saveOrderItems)
+  }
+
   function updateOrderItem(id: string, itemId: string, body: Partial<ManualItemInput>) {
     return updateOrderItemRequest(id, itemId, body).then(saveOrderItems)
   }
@@ -541,6 +550,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         takeOrder,
         releaseOrder,
         addOrderItem,
+        addOrderItemsBatch,
         updateOrderItem,
         deleteOrderItem,
         reviewEdit,

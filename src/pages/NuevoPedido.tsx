@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { EditReasonDialog } from '../components/EditReasonDialog'
+import { FcPreview } from '../components/FcPreview'
+import { fcClientNotice, fcInvoiceNotice } from '../lib/fcArticles'
 import { Button, Field, Input, Page, PageHeader, Select, Textarea } from '../components/ui'
 import { onSegmentKey } from '../lib/radioKeys'
 import { NoAccess } from '../components/NoAccess'
@@ -36,7 +38,7 @@ import {
   type OrderDraftFields,
   type OrderDraftRecord,
 } from '../lib/orderDraft'
-import type { ManualItemInput } from '../lib/ordersApi'
+import { parseOrderFc, readFcParsed, type FcParsedItem, type FcParsedOk, type ManualItemInput } from '../lib/ordersApi'
 import { requiresInvoicePdf } from '../lib/preparation'
 import { isOrderPriority, PRIORITIES, PRIORITY_LABEL, priorityOf } from '../lib/priority'
 import type { OrderPriority } from '../data/orders'
@@ -209,13 +211,56 @@ function articlesForCreate(rows: DraftArticle[]): { items: ManualItemInput[]; er
     if (!Number.isInteger(quantity) || quantity < 1) {
       rowErrors.quantity = 'La cantidad tiene que ser un entero mayor a 0.'
     }
+    const internalCode = row.internalCode?.trim()
+    if (internalCode && internalCode.length > 20) {
+      rowErrors.code = 'El código interno puede tener hasta 20 caracteres.'
+    }
     if (rowErrors.code || rowErrors.description || rowErrors.quantity) errors[index] = rowErrors
-    else items.push({ code, quantity, ...(description ? { description } : {}) })
+    else {
+      items.push({
+        code,
+        quantity,
+        ...(description ? { description } : {}),
+        ...(internalCode ? { internalCode } : {}),
+      })
+    }
   })
   if (items.length > 100) {
     errors[0] = { ...errors[0], code: 'Podés cargar hasta 100 artículos.' }
   }
   return Object.keys(errors).length > 0 ? { items: [], errors } : { items }
+}
+
+function articleKey(code: string) {
+  return code.replace(/\s+/g, '').toLocaleLowerCase('es')
+}
+
+function applyFcArticles(current: DraftArticle[], items: FcParsedItem[], mode: 'replace' | 'merge') {
+  const incoming: DraftArticle[] = items.map((item) => ({
+    code: item.code,
+    description: item.description,
+    quantity: String(item.quantity),
+    ...(item.internalCode ? { internalCode: item.internalCode } : {}),
+  }))
+  if (mode === 'replace') return incoming
+  const next = current.filter((row) => row.code.trim())
+  for (const item of incoming) {
+    const key = articleKey(item.code)
+    const index = next.findIndex((row) => articleKey(row.code) === key)
+    if (index < 0) {
+      next.push(item)
+      continue
+    }
+    const previous = next[index]
+    if (!previous) continue
+    next[index] = {
+      ...previous,
+      quantity: item.quantity,
+      description: previous.description.trim() ? previous.description : item.description,
+      ...(item.internalCode ? { internalCode: item.internalCode } : {}),
+    }
+  }
+  return next
 }
 
 function PedidoForm({ editingId }: { editingId?: string }) {
@@ -345,6 +390,10 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   const [articles, setArticles] = useState<DraftArticle[]>(seededArticles)
   const [articlesOpen, setArticlesOpen] = useState(seededArticles.some((row) => row.code.trim()))
   const [articleErrors, setArticleErrors] = useState<Record<number, ItemFieldErrors>>({})
+  const [fcPreview, setFcPreview] = useState<FcParsedOk | null>(null)
+  const [fcError, setFcError] = useState('')
+  const [fcNotice, setFcNotice] = useState('')
+  const [fcBusy, setFcBusy] = useState(false)
   const [draftOffer, setDraftOffer] = useState<OrderDraftRecord | null>(() => {
     if (!user || !editingId) return null
     const stored = readOrderDraft(orderDraftKey(user.id, editingId))
@@ -383,6 +432,46 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       delete next[index]
       return next
     })
+  }
+
+  const canPrefillFc =
+    (user?.role === 'vendedor' || user?.role === 'admin') &&
+    attachmentDataUrl.startsWith('data:application/pdf')
+
+  async function prefillFromFc() {
+    if (fcBusy || !canPrefillFc) return
+    setFcBusy(true)
+    setFcError('')
+    const result = await parseOrderFc({ dataUrl: attachmentDataUrl })
+    setFcBusy(false)
+    if (!result.ok) {
+      setFcError(result.message)
+      return
+    }
+    const parsed = readFcParsed(result.data)
+    if (!parsed) {
+      setFcError('No se pudo leer la FC.')
+      return
+    }
+    if (!parsed.ok) {
+      setFcError(parsed.reason)
+      return
+    }
+    setFcPreview(parsed)
+  }
+
+  function confirmFc(mode: 'replace' | 'merge') {
+    if (!fcPreview) return
+    markDirty()
+    const notice = fcInvoiceNotice(invoices, fcPreview.factura)
+    setArticles((current) => applyFcArticles(current, fcPreview.items, mode))
+    setArticlesOpen(true)
+    setArticleErrors({})
+    if (fcPreview.factura && !notice && !invoices.some((value) => value.trim())) {
+      setInvoices([fcPreview.factura])
+    }
+    setFcNotice(notice)
+    setFcPreview(null)
   }
 
   function removeArticle(index: number) {
@@ -1650,6 +1739,17 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         {!storedId && (
           <section className="form-card">
             <h2>Artículos (opcional)</h2>
+            {canPrefillFc ? (
+              <Button className="mb-3" variant="secondary" loading={fcBusy} onClick={() => void prefillFromFc()}>
+                Precargar artículos desde la FC
+              </Button>
+            ) : null}
+            {fcError ? (
+              <p className="mb-3 text-sm text-danger" role="alert">
+                {fcError}
+              </p>
+            ) : null}
+            {fcNotice ? <p className="mb-3 text-sm text-text">{fcNotice}</p> : null}
             {articlesOpen ? (
               <div className="flex flex-col gap-3">
                 {articles.map((row, index) => (
@@ -2141,6 +2241,22 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         </div>
         </div>
       </form>
+      {fcPreview ? (
+        <FcPreview
+          factura={fcPreview.factura}
+          cliente={fcPreview.cliente}
+          items={fcPreview.items}
+          warnings={fcPreview.warnings}
+          clientNotice={fcClientNotice(client, fcPreview.cliente)}
+          invoiceNotice={fcInvoiceNotice(invoices, fcPreview.factura)}
+          sheetNotice=""
+          error=""
+          hasManual={articles.some((row) => row.code.trim())}
+          pending=""
+          onClose={() => setFcPreview(null)}
+          onApply={confirmFc}
+        />
+      ) : null}
       {reasonOpen && (
         <EditReasonDialog
           prepared={user?.role === 'vendedor' && existing?.status === 'preparado'}

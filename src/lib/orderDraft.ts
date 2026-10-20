@@ -41,6 +41,7 @@ export type DraftArticle = {
   code: string
   description: string
   quantity: string
+  internalCode?: string
 }
 
 export type OrderDraftRecord = {
@@ -174,11 +175,13 @@ export function draftArticles(value: unknown): DraftArticle[] {
           : typeof row.quantity === 'number' && Number.isFinite(row.quantity)
             ? String(row.quantity)
             : '1'
+      const internalCode = typeof row.internalCode === 'string' ? row.internalCode.trim() : ''
       return [
         {
           code: typeof row.code === 'string' ? row.code : '',
           description: typeof row.description === 'string' ? row.description : '',
           quantity,
+          ...(internalCode ? { internalCode } : {}),
         },
       ]
     })

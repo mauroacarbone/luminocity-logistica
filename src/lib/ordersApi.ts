@@ -190,6 +190,58 @@ export function addOrderItemsBatch(
   )
 }
 
+export type FcParsedItem = {
+  it: number
+  code: string
+  internalCode: string
+  description: string
+  quantity: number
+}
+
+export type FcParsedOk = {
+  ok: true
+  factura: string | null
+  cliente: string | null
+  items: FcParsedItem[]
+  warnings: string[]
+}
+
+export function parseOrderFc(body: { dataUrl: string } | { orderId: string }) {
+  return request('/api/orders/fc/parse', 'POST', body, 'No se pudo leer la FC.')
+}
+
+export function readFcParsed(data: unknown): FcParsedOk | { ok: false; reason: string } | null {
+  if (!data || typeof data !== 'object') return null
+  const record = data as Record<string, unknown>
+  if (record.ok === false) {
+    return typeof record.reason === 'string' && record.reason.trim()
+      ? { ok: false, reason: record.reason }
+      : null
+  }
+  if (record.ok !== true || !Array.isArray(record.items) || !Array.isArray(record.warnings)) return null
+  const items: FcParsedItem[] = []
+  for (const item of record.items) {
+    if (!item || typeof item !== 'object') return null
+    const row = item as Record<string, unknown>
+    if (typeof row.it !== 'number' || typeof row.code !== 'string' || typeof row.description !== 'string') return null
+    if (typeof row.quantity !== 'number' || !Number.isInteger(row.quantity)) return null
+    items.push({
+      it: row.it,
+      code: row.code,
+      internalCode: typeof row.internalCode === 'string' ? row.internalCode : '',
+      description: row.description,
+      quantity: row.quantity,
+    })
+  }
+  return {
+    ok: true,
+    factura: typeof record.factura === 'string' ? record.factura : null,
+    cliente: typeof record.cliente === 'string' ? record.cliente : null,
+    items,
+    warnings: record.warnings.filter((warning): warning is string => typeof warning === 'string'),
+  }
+}
+
 export function updateOrderItem(id: string, itemId: string, body: Partial<ManualItemInput>) {
   return request(
     `/api/orders/${encodeURIComponent(id)}/items/${encodeURIComponent(itemId)}`,

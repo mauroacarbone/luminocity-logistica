@@ -9,9 +9,12 @@ import {
   linesForOrderPrep,
   pickedStatus,
 } from '../lib/preparation'
+import { fcClientNotice } from '../lib/fcArticles'
+import { parseOrderFc, readFcParsed, type FcParsedOk } from '../lib/ordersApi'
 import type { PickingLine } from '../lib/pickingSheet'
 import { useOrders } from '../state/OrdersContext'
 import { usePicking } from '../state/PickingContext'
+import { FcPreview } from './FcPreview'
 import { Badge, Button, Field, Input } from './ui'
 
 function counted(line: PickingLine) {
@@ -75,7 +78,7 @@ export function PrepChecklist({
   awaitingTake?: boolean
 }) {
   const { lines, patchLine } = usePicking()
-  const { orders, refresh, addOrderItem, updateOrderItem, deleteOrderItem } = useOrders()
+  const { orders, refresh, addOrderItem, addOrderItemsBatch, updateOrderItem, deleteOrderItem } = useOrders()
   const rows = linesForOrderPrep(lines, order, orders)
   const done = rows.filter((line) => lineIsPicked(line)).length
   const total = rows.length
@@ -86,6 +89,10 @@ export function PrepChecklist({
   const [fieldErrors, setFieldErrors] = useState<ItemErrors>({})
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [fcPreview, setFcPreview] = useState<FcParsedOk | null>(null)
+  const [fcError, setFcError] = useState('')
+  const [fcApplyError, setFcApplyError] = useState('')
+  const [fcPending, setFcPending] = useState<'' | 'replace' | 'merge'>('')
   const editable = canTickChecklist(role, order, userId) && !countLocked
   const canAdd = canEditItems(role, order, userId, now)
 
@@ -159,6 +166,56 @@ export function PrepChecklist({
     }
     setForm(null)
     setFieldErrors({})
+  }
+
+  const hasPdf =
+    typeof order.attachmentDataUrl === 'string' && order.attachmentDataUrl.startsWith('data:application/pdf')
+  const hasManual = rows.some((line) => line.source === 'manual')
+  const hasSheet = rows.some((line) => line.source !== 'manual')
+
+  async function prefillFromFc() {
+    if (fcPending || !canAdd || !hasPdf) return
+    setFcPending('merge')
+    setFcError('')
+    setFcApplyError('')
+    const result = await parseOrderFc({ orderId: order.id })
+    setFcPending('')
+    if (!result.ok) {
+      setFcError(result.message)
+      return
+    }
+    const parsed = readFcParsed(result.data)
+    if (!parsed) {
+      setFcError('No se pudo leer la FC.')
+      return
+    }
+    if (!parsed.ok) {
+      setFcError(parsed.reason)
+      return
+    }
+    setFcPreview(parsed)
+  }
+
+  async function confirmFc(mode: 'replace' | 'merge') {
+    if (!fcPreview || fcPending) return
+    setFcPending(mode)
+    setFcApplyError('')
+    const result = await addOrderItemsBatch(order.id, {
+      mode,
+      items: fcPreview.items.map((item) => ({
+        code: item.code,
+        quantity: item.quantity,
+        ...(item.description ? { description: item.description } : {}),
+        ...(item.internalCode ? { internalCode: item.internalCode } : {}),
+      })),
+    })
+    setFcPending('')
+    if (result.status !== 'saved') {
+      setFcApplyError(result.status === 'not-saved' ? result.message : 'No se pudieron cargar los artículos.')
+      return
+    }
+    setFcPreview(null)
+    await refresh({ silent: true })
   }
 
   async function removeItem(line: PickingLine) {
@@ -266,6 +323,16 @@ export function PrepChecklist({
           </ul>
         </>
       )}
+      {canAdd && !awaitingTake && hasPdf ? (
+        <Button
+          variant="secondary"
+          size="lg"
+          loading={fcPending === 'merge' && !fcPreview}
+          onClick={() => void prefillFromFc()}
+        >
+          Precargar artículos desde la FC
+        </Button>
+      ) : null}
       {form ? (
         <div className="flex flex-col gap-3 rounded-md border border-border bg-surface px-3 py-3">
           <Field label="Código" required error={fieldErrors.code}>
@@ -340,7 +407,32 @@ export function PrepChecklist({
           Agregar artículo
         </Button>
       ) : null}
+      {fcError ? (
+        <p className="text-sm text-danger" role="alert">
+          {fcError}
+        </p>
+      ) : null}
       {message ? <p className="text-sm text-danger">{message}</p> : null}
+      {fcPreview ? (
+        <FcPreview
+          factura={fcPreview.factura}
+          cliente={fcPreview.cliente}
+          items={fcPreview.items}
+          warnings={fcPreview.warnings}
+          clientNotice={fcClientNotice(order.client, fcPreview.cliente)}
+          invoiceNotice=""
+          sheetNotice={hasSheet ? 'Este pedido ya tiene artículos de la planilla.' : ''}
+          error={fcApplyError}
+          hasManual={hasManual}
+          pending={fcPending}
+          onClose={() => {
+            if (fcPending) return
+            setFcPreview(null)
+            setFcApplyError('')
+          }}
+          onApply={(mode) => void confirmFc(mode)}
+        />
+      ) : null}
     </div>
   )
 }
