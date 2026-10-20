@@ -229,14 +229,39 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     return true
   }
 
+  async function reloadCatalog() {
+    if (!userId) return
+    const ticket = ++request.current
+    const again = await fetchCatalog()
+    if (ticket !== request.current) return
+    if (!again.ok) {
+      absorbCatalog(again, userId)
+      return
+    }
+    if (!applyPayload(again.data) || !serverEmpty.current) return
+    const local = canImport(role) ? readBrowserCatalog() : null
+    const next = local ?? seedCatalog()
+    catalogRef.current = next
+    setCatalog(next)
+    setImportOffer(canImport(role) ? (local ? 'browser' : 'seed') : null)
+  }
+
   async function save(patch: Partial<Catalog>) {
     if (loadFailed.current) {
       errorRef.current = 'No se pudieron leer los datos maestros. Reintentá antes de guardar.'
       return false
     }
     const next = { ...catalogRef.current, ...patch }
-    const result = serverEmpty.current ? await importCatalog(next) : await saveCatalog(patch)
+    const viaImport = serverEmpty.current
+    const result = viaImport ? await importCatalog(next) : await saveCatalog(patch)
     if (!result.ok) {
+      if (result.status === 409) {
+        await reloadCatalog()
+        errorRef.current = viaImport
+          ? 'Otro usuario ya cargó los datos maestros. Revisá la lista y volvé a guardar tu cambio.'
+          : result.message
+        return false
+      }
       errorRef.current = result.message
       return false
     }
