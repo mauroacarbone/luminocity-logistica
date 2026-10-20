@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, Field, Input } from '../components/ui'
+import { Button, Field, Input, PasswordInput } from '../components/ui'
 import { AuthScreen } from '../layout/AuthScreen'
 import { PASSWORD_MIN, passwordMinMessage } from '../lib/password'
 import { useAuth } from '../state/AuthContext'
@@ -78,18 +78,16 @@ export function Registro() {
           />
         </Field>
         <Field label="Contraseña" error={errors.password}>
-          <Input
+          <PasswordInput
             size="lg"
-            type="password"
             autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
         <Field label="Confirmar contraseña" error={errors.confirm}>
-          <Input
+          <PasswordInput
             size="lg"
-            type="password"
             autoComplete="new-password"
             value={confirm}
             onChange={(event) => setConfirm(event.target.value)}

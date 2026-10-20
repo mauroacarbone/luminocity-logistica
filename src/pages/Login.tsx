@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, Field, Input } from '../components/ui'
+import { Button, Field, Input, PasswordInput } from '../components/ui'
 import { AuthScreen } from '../layout/AuthScreen'
 import { takeSessionNotice } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
@@ -63,9 +63,8 @@ export function Login() {
           />
         </Field>
         <Field label="Contraseña" error={errors.password}>
-          <Input
+          <PasswordInput
             size="lg"
-            type="password"
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}

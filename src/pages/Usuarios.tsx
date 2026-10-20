@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Button, Card, Field, Input, Page, PageHeader, Select } from '../components/ui'
+import { Button, Card, Field, Input, Page, PageHeader, PasswordInput, Select } from '../components/ui'
 import { Link } from 'react-router-dom'
 import { ServerDown, Spinner } from '../components/LoadState'
 import { Modal } from '../components/ui/Modal'
@@ -205,9 +205,8 @@ function NewUserDialog({
           />
         </Field>
         <Field label="Contraseña inicial" error={errors.password}>
-          <Input
+          <PasswordInput
             size="lg"
-            type="password"
             autoComplete="new-password"
             value={form.password}
             onChange={(event) => patch({ password: event.target.value })}
@@ -336,19 +335,17 @@ function PasswordDialog({
         <p className="mt-1 text-sm text-muted">Nueva contraseña para {account.name}.</p>
         <div className="mt-4 flex flex-col gap-3">
         <Field label="Nueva contraseña" error={errors.password}>
-          <Input
+          <PasswordInput
             size="lg"
             autoFocus
-            type="password"
             autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
         <Field label="Confirmar contraseña" error={errors.confirm}>
-          <Input
+          <PasswordInput
             size="lg"
-            type="password"
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
