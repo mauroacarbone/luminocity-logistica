@@ -25,6 +25,7 @@ import {
   notifyWarehouse,
 } from './notifications.js'
 import { applyTransition, stampStatus, withHistory } from './orderFlow.js'
+import { PDF_DATA_PREFIX, PDF_MAX_BYTES, pdfByteLength } from './pdfAttachment.js'
 import { buildManualRow, readManualItem, readManualItems, syncChecklist } from './picking.js'
 import {
   TAKE_STALE_MS,
@@ -1477,9 +1478,6 @@ function readOrderFields(body, current) {
   return { order }
 }
 
-const PDF_DATA_PREFIX = 'data:application/pdf;base64,'
-const PDF_MAX_BYTES = 2 * 1024 * 1024
-
 function invoiceSignature(order) {
   const list = Array.isArray(order?.invoices) ? order.invoices : []
   return list
@@ -1517,13 +1515,6 @@ function readPickupPdf(_body, current, order) {
     : []
   if (invoices.length === 0) return fail('Cargá el N° de nota de pedido o factura.')
   return { ok: true }
-}
-
-function pdfByteLength(dataUrl) {
-  const payload = dataUrl.slice(PDF_DATA_PREFIX.length).replace(/\s/g, '')
-  if (!payload || /[^A-Za-z0-9+/=]/.test(payload)) return null
-  const pad = payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0
-  return Math.floor((payload.length * 3) / 4) - pad
 }
 
 function readRequiredText(value) {

@@ -16,7 +16,7 @@ const RAW_MAX_KEYS = 100
 const RAW_KEY_MAX = 100
 const RAW_STRING_MAX = 1000
 const RAW_JSON_MAX = 16 * 1024
-const CANTIDAD_MAX = 100_000
+export const CANTIDAD_MAX = 100_000
 const ORDER_ID_MAX = 64
 const BATCH_MAX = 2000
 const BATCH_MODES = new Set(['replace', 'merge'])
@@ -653,8 +653,8 @@ function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-const ITEM_CODE_MAX = 60
-const ITEM_DESCRIPTION_MAX = 200
+export const ITEM_CODE_MAX = 60
+export const ITEM_DESCRIPTION_MAX = 200
 
 export function readManualItem(body, partial = false) {
   if (!isRecord(body)) return fail('El artículo no es válido.')
