@@ -59,7 +59,7 @@ export function Modal({
     }
 
     function onKeyDown(event: KeyboardEvent) {
-      if (document.querySelector('.swal2-container')) return
+      if (document.querySelector('.swal2-container .swal2-popup:not(.swal2-toast)')) return
       const dialog = rootRef.current
       if (!dialog) return
       if (event.key === 'Escape') {
