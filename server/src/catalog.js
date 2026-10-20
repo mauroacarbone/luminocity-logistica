@@ -131,13 +131,26 @@ catalogRouter.put('/', requireRole('admin'), async (req, res) => {
     res.status(400).json({ message: parsed.error })
     return
   }
-  const saved = await locked(async () => {
-    const current = await readStored()
-    const next = { ...current, ...parsed.value }
-    await writeCollection('catalog', next)
-    return next
-  })
-  res.json(present(saved))
+  try {
+    const saved = await locked(async () => {
+      const current = await readStored()
+      if (Object.keys(current).length === 0) {
+        const error = new Error('Primero cargá los datos maestros desde el aviso de importación.')
+        error.status = 409
+        throw error
+      }
+      const next = { ...current, ...parsed.value }
+      await writeCollection('catalog', next)
+      return next
+    })
+    res.json(present(saved))
+  } catch (error) {
+    if (error?.status === 409) {
+      res.status(409).json({ message: error.message })
+      return
+    }
+    throw error
+  }
 })
 
 catalogRouter.post('/import', requireRole('admin', 'encargado_deposito'), async (req, res) => {

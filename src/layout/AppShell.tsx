@@ -17,7 +17,7 @@ const SIDEBAR_KEY = 'luminocity.sidebar'
 const MENU_MQ = '(max-width: 1023px)'
 
 function CatalogNotice() {
-  const { importOffer, importing, error, uploadBrowserCatalog, loadSeedCatalog } = useCatalog()
+  const { importOffer, importing, error, retry, uploadBrowserCatalog, loadSeedCatalog } = useCatalog()
   if (!importOffer && !error) return null
   return (
     <div className="orders-import no-print">
@@ -57,6 +57,11 @@ function CatalogNotice() {
           onClick={() => void loadSeedCatalog()}
         >
           Cargar los valores iniciales
+        </Button>
+      )}
+      {error && !importOffer && (
+        <Button type="button" variant="secondary" size="lg" onClick={() => void retry()}>
+          Reintentar
         </Button>
       )}
     </div>

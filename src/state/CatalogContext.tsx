@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   COURIER_TRANSPORTERS,
   DELIVERY_ZONES,
@@ -32,6 +32,7 @@ type CatalogContextValue = Catalog & {
   importOffer: CatalogImportOffer | null
   importing: boolean
   save: (patch: Partial<Catalog>) => Promise<boolean>
+  retry: () => Promise<void>
   uploadBrowserCatalog: () => Promise<void>
   loadSeedCatalog: () => Promise<void>
 }
@@ -150,42 +151,64 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [importing, setImporting] = useState(false)
   const catalogRef = useRef(catalog)
   const serverEmpty = useRef(false)
+  const loadFailed = useRef(false)
+  const request = useRef(0)
   const loading = Boolean(userId) && loadedFor !== userId
   const shown = !userId || loading ? SESSION_DEFAULTS : catalog
 
+  const absorbCatalog = useCallback((result: Awaited<ReturnType<typeof fetchCatalog>>, expectedId: string) => {
+    setLoadedFor(expectedId)
+    if (!result.ok) {
+      loadFailed.current = true
+      setError(result.message)
+      return
+    }
+    const payload = parseCatalogPayload(result.data)
+    if (!payload) {
+      loadFailed.current = true
+      setError('No se pudieron leer los datos maestros.')
+      return
+    }
+    loadFailed.current = false
+    setError('')
+    serverEmpty.current = payload.empty
+    if (!payload.empty) {
+      catalogRef.current = payload.catalog
+      setCatalog(payload.catalog)
+      setImportOffer(null)
+      return
+    }
+    const local = canImport(role) ? readBrowserCatalog() : null
+    const next = local ?? seedCatalog()
+    catalogRef.current = next
+    setCatalog(next)
+    setImportOffer(canImport(role) ? (local ? 'browser' : 'seed') : null)
+  }, [role])
+
   useEffect(() => {
-    if (!userId) return
+    if (!userId) {
+      loadFailed.current = false
+      return
+    }
+    const ticket = ++request.current
     let cancel = false
     void fetchCatalog().then((result) => {
-      if (cancel) return
-      setLoadedFor(userId)
-      if (!result.ok) {
-        setError(result.message)
-        return
-      }
-      const payload = parseCatalogPayload(result.data)
-      if (!payload) {
-        setError('No se pudieron leer los datos maestros.')
-        return
-      }
-      setError('')
-      serverEmpty.current = payload.empty
-      if (!payload.empty) {
-        catalogRef.current = payload.catalog
-        setCatalog(payload.catalog)
-        setImportOffer(null)
-        return
-      }
-      const local = canImport(role) ? readBrowserCatalog() : null
-      const next = local ?? seedCatalog()
-      catalogRef.current = next
-      setCatalog(next)
-      setImportOffer(canImport(role) ? (local ? 'browser' : 'seed') : null)
+      if (cancel || ticket !== request.current) return
+      absorbCatalog(result, userId)
     })
     return () => {
       cancel = true
     }
-  }, [userId, role])
+  }, [userId, role, absorbCatalog])
+
+  async function retry() {
+    if (!userId) return
+    const ticket = ++request.current
+    setLoadedFor(null)
+    const result = await fetchCatalog()
+    if (ticket !== request.current) return
+    absorbCatalog(result, userId)
+  }
 
   function report(message: string) {
     errorRef.current = message
@@ -207,8 +230,12 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   }
 
   async function save(patch: Partial<Catalog>) {
+    if (loadFailed.current) {
+      errorRef.current = 'No se pudieron leer los datos maestros. Reintentá antes de guardar.'
+      return false
+    }
     const next = { ...catalogRef.current, ...patch }
-    const result = await saveCatalog(serverEmpty.current ? next : patch)
+    const result = serverEmpty.current ? await importCatalog(next) : await saveCatalog(patch)
     if (!result.ok) {
       errorRef.current = result.message
       return false
@@ -260,6 +287,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         importOffer: userId && !loading ? importOffer : null,
         importing,
         save,
+        retry,
         uploadBrowserCatalog,
         loadSeedCatalog,
       }}
