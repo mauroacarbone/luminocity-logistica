@@ -25,6 +25,7 @@ import {
   notifyWarehouse,
 } from './notifications.js'
 import { applyTransition, stampStatus, withHistory } from './orderFlow.js'
+import { parseFcPdf } from './fcParse.js'
 import { PDF_DATA_PREFIX, PDF_MAX_BYTES, pdfByteLength } from './pdfAttachment.js'
 import { buildManualRow, readManualItem, readManualItems, syncChecklist } from './picking.js'
 import {
@@ -119,6 +120,17 @@ function clearPlace(order) {
 
 export const ordersRouter = Router()
 ordersRouter.use(requireAuth)
+// Mismo tope que el alta: /api/orders acepta 10 MB porque la FC viaja en base64 (archivo de 2 MB).
+ordersRouter.post('/fc/parse', async (req, res) => {
+  await send(res, async () => {
+    const result = await previewFc(req.body, req.user)
+    if (result.error) {
+      sendError(res, result)
+      return
+    }
+    res.json(result)
+  })
+})
 ordersRouter.get('/', async (req, res) => {
   await send(res, async () => {
     const orders = await locked(readOrders)
@@ -325,6 +337,39 @@ function getOrder(id) {
   return locked(async () => {
     const orders = await readOrders()
     return orders.find((item) => item.id === id) ?? null
+  })
+}
+
+function previewFc(body, user) {
+  if (!isRecord(body)) return fail('La solicitud no es válida.')
+  const hasUrl = Object.prototype.hasOwnProperty.call(body, 'dataUrl')
+  const hasOrder = Object.prototype.hasOwnProperty.call(body, 'orderId')
+  if (hasUrl === hasOrder) return fail('Mandá la FC o el pedido.')
+  if (hasUrl) return previewFcData(body.dataUrl, user)
+  return previewFcOrder(body.orderId, user)
+}
+
+async function previewFcData(dataUrl, user) {
+  if (!canCreate(user)) return fail('No podés cargar pedidos.', 403)
+  if (typeof dataUrl !== 'string' || !dataUrl.trim()) return fail('El adjunto tiene que ser un PDF.')
+  return parseFcPdf(dataUrl)
+}
+
+function previewFcOrder(orderId, user) {
+  if (typeof orderId !== 'string' || !orderId.trim()) return fail('El pedido no es válido.')
+  return locked(async () => {
+    const orders = await readOrders()
+    const order = orders.find((item) => item.id === orderId)
+    if (!order) return fail('No existe ese pedido.', 404)
+    if (!canSeeOrder(user, order)) return fail('No tenés permiso para esto.', 403)
+    const blocked = canEditItems(user, order)
+    if (blocked) return blocked
+    const url = attachmentUrl(order)
+    if (!url.startsWith(PDF_DATA_PREFIX)) return fail('El pedido no tiene una FC en PDF adjunta.')
+    return { dataUrl: url }
+  }).then((loaded) => {
+    if (!loaded || loaded.error) return loaded
+    return parseFcPdf(loaded.dataUrl)
   })
 }
 
