@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { access } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -20,6 +21,9 @@ import { usersRouter } from './usersRoute.js'
 import { ensureDemoUser } from './users.js'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
+const serverPackage = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))
+const appVersion = typeof serverPackage.version === 'string' ? serverPackage.version : '1.0.0'
+const appCommit = process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? null
 const repoRoot = path.join(root, '..')
 dotenv.config({ path: path.join(root, '.env') })
 
@@ -46,22 +50,27 @@ if (production && !String(process.env.DATABASE_URL ?? '').trim()) {
 const app = express()
 // Render termina HTTPS y manda la IP en X-Forwarded-For.
 app.set('trust proxy', 1)
-const jsonLarge = express.json({ limit: '10mb' })
+const jsonDefault = express.json({ limit: '100kb' })
+const jsonOrders = express.json({ limit: '10mb' })
 const jsonPicking = express.json({ limit: '2mb' })
 const jsonClaims = express.json({ limit: '12mb' })
 const jsonLocation = express.json({ limit: '2kb' })
 // El front llama a /api por el proxy de Vite, así que no hace falta CORS.
-// Adjuntos del pedido van en el JSON (data URL, tope 2 MB de archivo).
-// 10mb alcanza para el base64 y el resto de los campos.
-// El picking importa muchas filas: tope 2 MB.
-// Los reclamos llevan fotos en data URL: tope 12 MB.
-// La ubicación del chofer es chica: 2kb.
+// Tope global: 100kb. El catálogo entra por acá.
+// Pedidos: 10 MB. El adjunto va en data URL, tope 2 MB de archivo.
+// Picking: 2 MB.
+// Reclamos: 12 MB, por las fotos.
+// La ubicación del chofer: 2 KB.
 app.use((req, res, next) => {
   if (req.method === 'POST' && req.path === '/api/drivers/location') {
     jsonLocation(req, res, next)
     return
   }
   const lowerPath = String(req.path ?? '').toLowerCase()
+  if (lowerPath === '/api/orders' || lowerPath.startsWith('/api/orders/')) {
+    jsonOrders(req, res, next)
+    return
+  }
   if (lowerPath === '/api/picking' || lowerPath.startsWith('/api/picking/')) {
     jsonPicking(req, res, next)
     return
@@ -70,7 +79,7 @@ app.use((req, res, next) => {
     jsonClaims(req, res, next)
     return
   }
-  jsonLarge(req, res, next)
+  jsonDefault(req, res, next)
 })
 app.use((error, req, res, next) => {
   if (error && (error.type === 'entity.too.large' || error.status === 413)) {
@@ -78,11 +87,13 @@ app.use((error, req, res, next) => {
     const message =
       req.path === '/api/drivers/location'
         ? 'La ubicación es demasiado grande.'
-        : lowerPath === '/api/picking' || lowerPath.startsWith('/api/picking/')
-          ? 'La importación es demasiado grande. Partí el archivo.'
-          : lowerPath === '/api/claims' || lowerPath.startsWith('/api/claims/')
-            ? 'El reclamo es demasiado grande. Probá con menos fotos o archivos más livianos.'
-            : 'El pedido es demasiado grande. Probá un adjunto más chico.'
+        : lowerPath === '/api/orders' || lowerPath.startsWith('/api/orders/')
+          ? 'El pedido es demasiado grande. Probá un adjunto más chico.'
+          : lowerPath === '/api/picking' || lowerPath.startsWith('/api/picking/')
+            ? 'La importación es demasiado grande. Partí el archivo.'
+            : lowerPath === '/api/claims' || lowerPath.startsWith('/api/claims/')
+              ? 'El reclamo es demasiado grande. Probá con menos fotos o archivos más livianos.'
+              : 'La solicitud es demasiado grande.'
     res.status(413).json({ message })
     return
   }
@@ -95,10 +106,10 @@ app.use((error, req, res, next) => {
 app.get('/api/health', async (_req, res) => {
   try {
     await checkDatabase()
-    res.status(200).json({ ok: true })
+    res.status(200).json({ ok: true, version: appVersion, commit: appCommit })
   } catch (error) {
     console.error('No se pudo verificar la base', error)
-    res.status(503).json({ ok: false })
+    res.status(503).json({ ok: false, version: appVersion, commit: appCommit })
   }
 })
 function closeGerencia(router, { tecnico = false } = {}) {

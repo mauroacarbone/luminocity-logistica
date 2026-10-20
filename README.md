@@ -1,6 +1,18 @@
 # Luminocity Logística
 
-App interna para cargar pedidos, prepararlos, despacharlos y seguir reclamos de post venta. Los pedidos, los usuarios, las autorizaciones, los avisos y la ubicación del chofer se guardan en el backend de `server/`. Sin `DATABASE_URL` van a archivos JSON en `server/data/` (fuera de git). Con `DATABASE_URL` van a Postgres. El login y el registro también pasan por ese backend. Los datos maestros siguen en el navegador.
+Luminocity Logística es la app interna que sigue cada pedido desde que el vendedor lo carga hasta que se entrega o se retira, y los reclamos de post venta hasta que el producto vuelve reparado. La usan vendedores, depósito, el encargado, los choferes, el técnico, gerencia y el administrador. Se abre desde el navegador o el celular.
+
+## Qué hace cada rol
+
+- Vendedor: carga pedidos y reclamos, y sigue los suyos.
+- Depósito: prepara pedidos en Mi preparación, atiende retiros y recibe productos en post venta.
+- Encargado de depósito: panel operativo, despacho, rutas, usuarios, tarifas y reportes.
+- Chofer: sus entregas y viajes.
+- Técnico: Mi taller. Levanta reparaciones, presupuesta y avisa al cliente.
+- Gerencia: solo Reportes.
+- Admin: todo, más Datos maestros.
+
+App interna para cargar pedidos, prepararlos, despacharlos y seguir reclamos de post venta. Los pedidos, los usuarios, las autorizaciones, los avisos, la ubicación del chofer y los datos maestros se guardan en el backend de `server/`. Sin `DATABASE_URL` van a archivos JSON en `server/data/` (fuera de git). Con `DATABASE_URL` van a Postgres. El login y el registro también pasan por ese backend.
 
 ## Acceso
 
@@ -12,7 +24,7 @@ Si no hay `DATABASE_URL` y `server/data/users.json` no existe, al arrancar el ba
 - Contraseña: `demo1234`
 - Rol: Admin
 
-En desarrollo, `/registro` crea un vendedor. El admin da de alta y administra las cuentas desde Usuarios: nombre, email, contraseña inicial (8 a 72 caracteres) y rol (vendedor, depósito, encargado de depósito, chofer o admin). Si el rol es vendedor o chofer, también puede vincular el vendedor o el transportista. El encargado entra a la misma pantalla: ve a todos y puede crear y modificar, pero no toca a un admin ni asigna ese rol. Puede activar o desactivar cuentas, editar nombre y email, y resetear la contraseña. Un usuario inactivo no puede entrar. Nadie se desactiva a sí mismo y tiene que quedar al menos un admin activo. La contraseña se hashea con bcrypt. El navegador guarda solo el token.
+En desarrollo, `/registro` crea un vendedor. El admin da de alta y administra las cuentas desde Usuarios: nombre, email, contraseña inicial (8 a 72 caracteres) y rol (vendedor, depósito, encargado de depósito, chofer, técnico, gerencia o admin). Si el rol es vendedor o chofer, también puede vincular el vendedor o el transportista. El encargado entra a la misma pantalla: ve a todos y puede crear y modificar, pero no toca a un admin ni asigna ese rol. Puede activar o desactivar cuentas, editar nombre y email, y resetear la contraseña. Un usuario inactivo no puede entrar. Nadie se desactiva a sí mismo y tiene que quedar al menos un admin activo. La contraseña se hashea con bcrypt. El navegador guarda solo el token.
 
 `/api/users` (admin y encargado; el resto recibe 403):
 
