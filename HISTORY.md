@@ -159,6 +159,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 40 | Pedidos unificado en el Panel operativo | Hecho |
 | 40.1 | Detalle del pedido para el chofer | Hecho |
 | 41 | Precarga de artículos desde la FC | Hecho |
+| 41.1 | Pie de página en FC de varias páginas | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -418,7 +419,7 @@ El Brief 32g.1 cierra el panel con Atrás hacia la página anterior cuando el pe
 
 El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lista. En escritorio, Pedidos y Preparación y la tabla del Panel usan Table; en el celular siguen las tarjetas. El id queda en `?pedido=`. El Panel muestra los contadores en KpiCard, con Atrasados, y un solo primario en el panel de detalle.
 
-El Brief 41 precarga los artículos desde la FC de Cianbox adjunta, sin usar la API. Es provisorio hasta que esa API exista: ahí se reemplaza esta lectura y el stock se va a mirar con `stock_total`, compartido entre sucursales. El servidor usa pdfjs-dist (build legacy) para leer el texto del PDF. El formato asumido es la tabla IT Cant. Detalle, con el código entre corchetes y el código interno entre paréntesis. Hay vista previa, carga en bloque (reemplazar o agregar) y el botón en Nuevo pedido y en Mi preparación. Los artículos quedan como manuales. Si el pedido ya tiene artículos de la planilla, no se precargan. Una cantidad con decimales no entra y hay que cargarla a mano. El N° de factura solo se completa si está vacío; si el cliente leído no coincide, avisa y no bloquea.
+El Brief 41 precarga los artículos desde la FC de Cianbox adjunta, sin usar la API. Es provisorio hasta que esa API exista: ahí se reemplaza esta lectura y el stock se va a mirar con `stock_total`, compartido entre sucursales. El servidor usa pdfjs-dist (build legacy) para leer el texto del PDF. El formato asumido es la tabla IT Cant. Detalle, con el código entre corchetes y el código interno entre paréntesis. Hay vista previa, carga en bloque (reemplazar o agregar) y el botón en Nuevo pedido y en Mi preparación. Los artículos quedan como manuales. Si el pedido ya tiene artículos de la planilla, no se precargan. Una cantidad con decimales no entra y hay que cargarla a mano. El N° de factura solo se completa si está vacío; si el cliente leído no coincide, avisa y no bloquea. El 41.1 corta la tabla en el pie de página de las FC de varias páginas y aplica el timeout a toda la lectura.
 
 El Brief 40 unifica Pedidos y preparación en el Panel operativo. `/pedidos` y `/pedidos/:id` redirigen al Panel y conservan el pedido (`?pedido=` o `?id=`). Al Panel se sumaron la búsqueda por cliente, factura o teléfono, el filtro de armado incompleto, cancelar o borrar, liberar un armado, y el checklist con el tiempo de preparación en el detalle. Ya estaban el flujo del pedido, el detalle, el orden por prioridad, los estados y la exportación. Mi preparación no cambia. El vendedor sigue viendo solo sus pedidos. El 40.1 abre el detalle del pedido en Mis entregas para el chofer, también desde la campana y desde los links viejos, y avisa en el Panel cuando el pedido del link no se puede ver.
 
