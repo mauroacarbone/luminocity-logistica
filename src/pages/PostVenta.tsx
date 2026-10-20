@@ -321,6 +321,10 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
   const [busy, setBusy] = useState(false)
   const invoice = claim.invoices[0]
   const readOnly = user?.role === 'tecnico'
+  const canChangeStatus = user?.role === 'encargado_deposito' || user?.role === 'admin'
+  const repairOpen = Boolean(
+    claim.repair && claim.repair.step !== 'entregado' && claim.repair.step !== 'rechazado',
+  )
   const notes = claim.events.filter((event) => event.note)
   const trail = claim.events.filter((event) => !event.note)
   const previous = trail.length > 1 ? trail[trail.length - 2] : null
@@ -431,7 +435,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           </p>
         )}
 
-        {!readOnly && !terminal && nextStatus && (
+        {canChangeStatus && !repairOpen && !terminal && nextStatus && (
           <Button
             variant="secondary"
             size="lg"
@@ -444,7 +448,7 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           </Button>
         )}
 
-        {!readOnly && claim.status !== 'cancelado' && (
+        {canChangeStatus && !repairOpen && claim.status !== 'cancelado' && (
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
             {prevStatus && (
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => void applyStatus(prevStatus)}>
@@ -559,18 +563,20 @@ function ClaimCard({ claim, highlight }: { claim: Claim; highlight: boolean }) {
           ))}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            onClick={() => {
-              setNoting((current) => !current)
-              setConfirmCancel(false)
-            }}
-          >
-            Nota
-          </Button>
-          {isOpenClaim(claim.status) && !readOnly &&
+          {!readOnly && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setNoting((current) => !current)
+                setConfirmCancel(false)
+              }}
+            >
+              Nota
+            </Button>
+          )}
+          {isOpenClaim(claim.status) && canChangeStatus &&
             (confirmCancel ? (
               <div className="flex items-center gap-2 text-sm">
                 <Button variant="danger" size="sm" disabled={busy} onClick={() => void cancelClaim()}>

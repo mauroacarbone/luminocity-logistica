@@ -200,15 +200,6 @@ function canAccessClaim(user, claim) {
   return normalizeName(claim.seller) === sellerName
 }
 
-function repairOnly(user) {
-  return user?.role === 'deposito' || user?.role === 'tecnico'
-}
-
-function denyRepairWriter(user) {
-  if (repairOnly(user)) return fail('Solo podés cargar la reparación.', 403)
-  return null
-}
-
 function actorOf(user) {
   return { userId: user.id, userName: user.name }
 }
@@ -282,8 +273,9 @@ function getClaim(user, id) {
 
 function importClaims(user, body) {
   return locked(async () => {
-    const blocked = denyRepairWriter(user)
-    if (blocked) return blocked
+    if (user.role !== 'encargado_deposito' && user.role !== 'admin') {
+      return fail('No podés importar reclamos.', 403)
+    }
     if (!isRecord(body)) return fail('La importación no es válida.')
     if (!Array.isArray(body.claims)) return fail('Mandá la lista de reclamos en claims.')
     if (body.claims.length > IMPORT_MAX) {
@@ -371,8 +363,9 @@ function readImportEvents(value) {
 
 function patchStatus(user, id, body) {
   return locked(async () => {
-    const blocked = denyRepairWriter(user)
-    if (blocked) return blocked
+    if (user.role !== 'encargado_deposito' && user.role !== 'admin') {
+      return fail('Solo el encargado cambia el estado del reclamo.', 403)
+    }
     if (typeof id !== 'string' || !id.trim()) return fail('Reclamo no encontrado', 404)
     if (!isRecord(body)) return fail('El estado no es válido.')
     const status = readStatus(body.status)
@@ -382,6 +375,11 @@ function patchStatus(user, id, body) {
     if (index < 0 || !canAccessClaim(user, list[index])) return fail('Reclamo no encontrado', 404)
     const current = list[index]
     if (current.status === status.value) return { claim: current }
+    const repairStep = current.repair?.step
+    const repairOpen = Boolean(current.repair) && repairStep !== 'entregado' && repairStep !== 'rechazado'
+    if (repairOpen && status.value !== 'cancelado') {
+      return fail('Este reclamo tiene una reparación en curso. Movelo desde el taller.', 409)
+    }
     const now = new Date().toISOString()
     const claim = {
       ...current,
@@ -400,6 +398,9 @@ function patchStatus(user, id, body) {
 
 function addNote(user, id, body) {
   return locked(async () => {
+    if (user.role === 'tecnico') {
+      return fail('Las notas de la reparación se cargan desde el taller.', 403)
+    }
     if (typeof id !== 'string' || !id.trim()) return fail('Reclamo no encontrado', 404)
     if (!isRecord(body)) return fail('La nota no es válida.')
     const note = readNote(body.note)
