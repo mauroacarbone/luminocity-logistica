@@ -91,7 +91,7 @@ export function canPrepare(role: Role) {
 }
 
 export function canCancelOrder(role: Role) {
-  return role === 'encargado_deposito' || role === 'admin'
+  return role === 'admin'
 }
 
 export function canEditOrder(user: Session, order: Order) {

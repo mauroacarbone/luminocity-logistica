@@ -391,12 +391,7 @@ function DetailActions({
 
   async function cancelOrder() {
     if (!user) return
-    const admin = user.role === 'admin'
-    const accepted = await confirm(
-      admin ? 'Borrar pedido' : 'Cancelar pedido',
-      admin ? `Se borra el pedido ${order.id}.` : `Se cancela el pedido ${order.id}.`,
-      { peligro: true },
-    )
+    const accepted = await confirm('Eliminar pedido', `Se elimina el pedido ${order.id}.`, { peligro: true })
     if (!accepted) return
     setExtraBusy(true)
     const result = await removeOrder(order.id)
@@ -404,7 +399,7 @@ function DetailActions({
     if (result.status === 'not-saved') await showError(result.message)
     else {
       onRemoved()
-      await success(admin ? 'Pedido borrado' : 'Pedido cancelado')
+      await success('Pedido eliminado')
     }
   }
 
@@ -432,7 +427,7 @@ function DetailActions({
       ) : null}
       {user && canCancelOrder(user.role) ? (
         <Button variant="danger-outline" disabled={extraBusy} onClick={() => void cancelOrder()}>
-          {user.role === 'admin' ? 'Borrar' : 'Cancelar'}
+          Eliminar
         </Button>
       ) : null}
       <SheetLinks order={order} sheets={sheets} canPlan={canPlan} />

@@ -286,7 +286,7 @@ export function reviewOrderEdit(
 }
 
 export function deleteOrder(id: string) {
-  return request(`/api/orders/${encodeURIComponent(id)}`, 'DELETE', undefined, 'No se pudo cancelar el pedido.')
+  return request(`/api/orders/${encodeURIComponent(id)}`, 'DELETE', undefined, 'No se pudo eliminar el pedido.')
 }
 
 function text(value: string | undefined) {

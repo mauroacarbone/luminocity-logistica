@@ -287,7 +287,7 @@ ordersRouter.patch('/:id', async (req, res) => {
     queueGeo(result.order)
   })
 })
-ordersRouter.delete('/:id', requireRole('admin', 'encargado_deposito'), async (req, res) => {
+ordersRouter.delete('/:id', requireRole('admin'), async (req, res) => {
   await send(res, async () => {
     const result = await deleteOrder(req.params.id, req.user)
     if (result.error) {
@@ -1219,10 +1219,7 @@ function deleteOrder(id, user) {
     const orders = await readOrders()
     const current = orders.find((item) => item.id === id)
     if (!current) return fail('No existe ese pedido.', 404)
-    if (!canSeeOrder(user, current)) return fail('No tenés permiso para cancelar este pedido.', 403)
-    if (user.role === 'encargado_deposito' && (current.status === 'en-viaje' || current.status === 'entregado')) {
-      return fail('No podés cancelar un pedido que ya salió.', 403)
-    }
+    if (user.role !== 'admin') return fail('No podés eliminar este pedido.', 403)
     const remaining = orders.filter((item) => item.id !== id)
     await pullOrderFromSheets(remaining, current)
     await syncSheetFreshness(remaining)
