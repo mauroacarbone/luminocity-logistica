@@ -5,12 +5,10 @@ import { ServerDown, Spinner } from '../components/LoadState'
 import { Badge, Button, EmptyState, FilterBar, ListBox, Page, PageHeader, Table, type TableColumn } from '../components/ui'
 import { isOwnDelivery } from '../data/catalog'
 import { error, success } from '../lib/alerts'
-import { fetchDriverLocations, type LiveDriver } from '../lib/driversApi'
+import { fetchDriverLocations, listAssignableDrivers, type LiveDriver } from '../lib/driversApi'
 import { finishRouteSheet, listOpenRouteSheets, listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
 import { FinishTripDialog } from '../components/FinishTripDialog'
 import { missedClosedStop, undeliveredReason } from '../lib/sheetStop'
-import { isSession } from '../lib/authStore'
-import { listUsers } from '../lib/usersApi'
 import { formatIsoDate } from '../lib/week'
 import { businessToday, clockTime } from '../lib/schedule'
 import { cssVar } from '../lib/theme'
@@ -160,16 +158,15 @@ export function ChoferesEnRuta() {
 
   useEffect(() => {
     let cancelled = false
-    void listUsers().then((result) => {
+    void listAssignableDrivers().then((result) => {
       if (cancelled) return
       if (!result.ok) {
         if (result.status === 401) logout()
         return
       }
-      if (!Array.isArray(result.data)) return
       const names = new Map<string, string>()
       for (const item of result.data) {
-        if (isSession(item) && item.role === 'chofer' && item.name.trim()) names.set(item.id, item.name.trim())
+        if (item.name.trim()) names.set(item.id, item.name.trim())
       }
       setAccountNames(names)
     })

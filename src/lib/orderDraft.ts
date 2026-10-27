@@ -28,6 +28,7 @@ export type OrderDraftFields = {
   dispatchType: DispatchType
   priority: OrderPriority
   transporter: string
+  driverId?: string
   notes: string
   attachmentName: string
   attachmentDataUrl: string

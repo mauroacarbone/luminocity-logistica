@@ -1,4 +1,5 @@
 import Swal, { type SweetAlertOptions } from 'sweetalert2'
+import { driverOptionClass } from './driverLabel'
 import { cssVar } from './theme'
 
 type ConfirmOptions = {
@@ -132,7 +133,7 @@ export async function askPlanRoute() {
 
 /** Chofer, franja y override de cupo para asignar desde el detalle. */
 export async function askAssignDriver(options: {
-  drivers: { id: string; name: string }[]
+  drivers: { id: string; name: string; trialDriver?: boolean }[]
   timeWindows: string[]
   currentDriverId?: string
   currentTimeWindow?: string
@@ -151,7 +152,9 @@ export async function askAssignDriver(options: {
   const driverOptions = drivers
     .map((driver) => {
       const selected = driver.id === options.currentDriverId ? ' selected' : ''
-      return `<option value="${escapeHtml(driver.id)}"${selected}>${escapeHtml(driver.name)}</option>`
+      const emphasis = driverOptionClass(driver.trialDriver)
+      const className = emphasis ? ` class="${emphasis}"` : ''
+      return `<option value="${escapeHtml(driver.id)}"${selected}${className}>${escapeHtml(driver.name)}</option>`
     })
     .join('')
   const windowOptions = windows

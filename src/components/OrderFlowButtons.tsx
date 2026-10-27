@@ -16,11 +16,10 @@ import {
 } from '../lib/alerts'
 import { canPrepare } from '../lib/access'
 import type { Role } from '../lib/authStore'
-import { isSession } from '../lib/authStore'
 import { labelDrivers } from '../lib/driverLabel'
+import { listAssignableDrivers } from '../lib/driversApi'
 import { backActions, isBackupDelivery, nextAction, statusPillFor } from '../lib/orderFlow'
 import { normalizeTimeWindow } from '../lib/slot'
-import { listUsers } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 import type { OrderSaveResult } from '../state/OrdersContext'
@@ -139,7 +138,7 @@ export function OrderFlowButtons({
 
   async function assignFromDialog() {
     onBusy(true)
-    const usersResult = await listUsers()
+    const usersResult = await listAssignableDrivers()
     onBusy(false)
     if (!usersResult.ok) {
       if (usersResult.status === 401) {
@@ -149,17 +148,12 @@ export function OrderFlowButtons({
       await error(usersResult.message)
       return
     }
-    if (!Array.isArray(usersResult.data)) {
-      await error('No se pudieron cargar los choferes.')
-      return
-    }
     const drivers = labelDrivers(
       usersResult.data.flatMap((item) => {
-        if (!isSession(item) || item.role !== 'chofer' || !item.active) return []
-        const phone = 'phone' in item && typeof item.phone === 'string' ? item.phone : ''
-        return [{ id: item.id, name: item.name, phone, email: item.email }]
+        if (!item.active) return []
+        return [{ id: item.id, name: item.name, phone: item.phone, email: item.email, trialDriver: item.trialDriver }]
       }),
-    ).map((driver) => ({ id: driver.id, name: driver.label }))
+    ).map((driver) => ({ id: driver.id, name: driver.label, trialDriver: driver.trialDriver }))
     const windows = withCurrentWindow(timeWindows, order.timeWindow)
     const choice = await askAssignDriver({
       drivers,

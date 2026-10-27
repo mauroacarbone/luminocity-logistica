@@ -18,12 +18,11 @@ import {
 import { deleteRouteSheet, isRouteSheet, listRouteSheets, saveRouteSheet, type RouteSheet } from '../lib/routeSheetsApi'
 import { driverSlotCount, normalizeTimeWindow, slotQuestion } from '../lib/slot'
 import { cssVar } from '../lib/theme'
-import { labelDrivers } from '../lib/driverLabel'
+import { driverOptionClass, labelDrivers } from '../lib/driverLabel'
+import { listAssignableDrivers } from '../lib/driversApi'
 import { businessToday, clockTime } from '../lib/schedule'
 import { missedClosedStop, undeliveredReason } from '../lib/sheetStop'
 import { DAY_SHORT, MONTH_SHORT, formatDayLabel, parseIso, toIso, weekDays, weekOffsetForIso } from '../lib/week'
-import { listUsers } from '../lib/usersApi'
-import { isSession } from '../lib/authStore'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 import { useOrders } from '../state/OrdersContext'
@@ -64,7 +63,7 @@ function emptySelectableMessage(othersCount: number, withoutSlot: number, used: 
   return 'No hay pedidos para esta franja.'
 }
 
-type DriverOption = { id: string; name: string; label: string }
+type DriverOption = { id: string; name: string; label: string; trialDriver?: boolean }
 
 function placeQuery(value: string) {
   const trimmed = value.trim()
@@ -324,16 +323,14 @@ export function PlanificadorRutas() {
     .join(' · ')
 
   useEffect(() => {
-    void listUsers().then((result) => {
+    void listAssignableDrivers().then((result) => {
       if (!result.ok) {
         if (result.status === 401) logout()
         return
       }
-      if (!Array.isArray(result.data)) return
       const choferes = result.data.flatMap((item) => {
-        if (!isSession(item) || item.role !== 'chofer' || !item.active) return []
-        const phone = 'phone' in item && typeof item.phone === 'string' ? item.phone : ''
-        return [{ id: item.id, name: item.name, phone, email: item.email }]
+        if (!item.active) return []
+        return [{ id: item.id, name: item.name, phone: item.phone, email: item.email, trialDriver: item.trialDriver }]
       })
       setDrivers(labelDrivers(choferes))
     })
@@ -747,7 +744,7 @@ export function PlanificadorRutas() {
             >
               <option value="">Elegir chofer</option>
               {drivers.map((driver) => (
-                <option key={driver.id} value={driver.id}>
+                <option key={driver.id} value={driver.id} className={driverOptionClass(driver.trialDriver)}>
                   {driver.label}
                 </option>
               ))}
