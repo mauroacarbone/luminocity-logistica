@@ -347,6 +347,11 @@ export function orderBody(order: OrderDraft, mode: 'create' | 'patch', previous?
 
   if (mode === 'create' && order.items && order.items.length > 0) body.items = order.items
 
+  if (mode === 'create' && order.dispatchType === 'propia') {
+    const driverId = text(order.driverId)
+    if (driverId) body.driverId = driverId
+  }
+
   return body
 }
 

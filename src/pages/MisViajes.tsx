@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ChoiceGroup } from '../components/ChoiceGroup'
 import { Badge, Button, EmptyState, FilterBar, KpiCard, ListBox, Page, PageHeader } from '../components/ui'
-import { isSession, type Session } from '../lib/authStore'
+import { listAssignableDrivers } from '../lib/driversApi'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
 import { listDriverTrips, type DriverTrip } from '../lib/routeSheetsApi'
 import { businessToday, clockTime } from '../lib/schedule'
-import { listUsers } from '../lib/usersApi'
 import { formatIsoDate } from '../lib/week'
 import { useAuth } from '../state/AuthContext'
 
@@ -86,20 +85,16 @@ export function MisViajes() {
   const [to, setTo] = useState(initial.to)
   const [tab, setTab] = useState<TripTab>('pendientes')
   const [trips, setTrips] = useState<DriverTrip[]>([])
-  const [drivers, setDrivers] = useState<Session[]>([])
+  const [drivers, setDrivers] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(!manager || driverId.length > 0)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (!manager) return
     let cancelled = false
-    void listUsers().then((result) => {
-      if (cancelled || !result.ok || !Array.isArray(result.data)) return
-      setDrivers(
-        result.data
-          .filter((item) => isSession(item) && item.role === 'chofer')
-          .sort((left, right) => left.name.localeCompare(right.name, 'es')),
-      )
+    void listAssignableDrivers().then((result) => {
+      if (cancelled || !result.ok) return
+      setDrivers(result.data.filter((item) => item.active).map((item) => ({ id: item.id, name: item.name })))
     })
     return () => {
       cancelled = true

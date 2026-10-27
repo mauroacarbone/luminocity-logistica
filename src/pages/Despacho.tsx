@@ -27,13 +27,13 @@ import {
   weekOffsetForIso,
 } from '../lib/week'
 import { askPlanRoute, askReason, confirm, error, success } from '../lib/alerts'
+import { driverOptionClass } from '../lib/driverLabel'
+import { listAssignableDrivers, type AssignableDriver } from '../lib/driversApi'
 import { canAssignDispatch, canConfirmDelivery, canEditOrder } from '../lib/access'
 import { compareOpenPriority } from '../lib/priority'
 import { driverSlotCount, normalizeTimeWindow, SLOT_LIMIT, slotQuestion } from '../lib/slot'
-import { isSession } from '../lib/authStore'
 import { listRouteSheets, type RouteSheet } from '../lib/routeSheetsApi'
 import { businessToday } from '../lib/schedule'
-import { listUsers } from '../lib/usersApi'
 import { useAuth } from '../state/AuthContext'
 import { useCatalog } from '../state/CatalogContext'
 import { useOrders } from '../state/OrdersContext'
@@ -69,18 +69,20 @@ function DriverChoice({
   order,
   driverId,
   name,
+  trialDriver,
 }: {
   orders: Order[]
   order: Order
   driverId: string
   name: string
+  trialDriver?: boolean
 }) {
   const count = driverSlotCount(orders, driverId, order.deliveryDate, order.timeWindow)
   const full = Boolean(order.timeWindow) && count >= SLOT_LIMIT
   return (
     <option
       value={driverId}
-      className={full ? 'text-danger' : undefined}
+      className={driverOptionClass(trialDriver, full)}
     >
       {order.timeWindow ? `${name} (${count}/${SLOT_LIMIT})` : name}
     </option>
@@ -88,7 +90,7 @@ function DriverChoice({
 }
 
 function choferOptions(
-  drivers: { id: string; name: string; active: boolean }[],
+  drivers: AssignableDriver[],
   order: Order,
 ) {
   const current = drivers.find((driver) => driver.id === order.driverId)
@@ -123,7 +125,7 @@ export function Despacho() {
   const { user, logout } = useAuth()
   const { orders, loading, patchFields, transitionOrder } = useOrders()
   const { transporters: catalogTransporters, ownTransporters, courierTransporters } = useCatalog()
-  const [drivers, setDrivers] = useState<{ id: string; name: string; active: boolean }[]>([])
+  const [drivers, setDrivers] = useState<AssignableDriver[]>([])
   const [sheets, setSheets] = useState<RouteSheet[]>([])
   const [tab, setTab] = useState<DispatchTab>('en-viaje')
   const [weekOffset, setWeekOffset] = useState(0)
@@ -145,18 +147,13 @@ export function Despacho() {
   useEffect(() => {
     if (!assign) return
     let cancelled = false
-    void listUsers().then((result) => {
+    void listAssignableDrivers().then((result) => {
       if (cancelled) return
       if (!result.ok) {
         if (result.status === 401) logout()
         return
       }
-      if (!Array.isArray(result.data)) return
-      setDrivers(
-        result.data.filter(isSession).flatMap((item) =>
-          item.role === 'chofer' ? [{ id: item.id, name: item.name, active: item.active }] : [],
-        ),
-      )
+      setDrivers(result.data)
     })
     return () => {
       cancelled = true
@@ -781,6 +778,7 @@ export function Despacho() {
                                   orders={orders}
                                   order={openOrder}
                                   driverId={driver.id}
+                                  trialDriver={driver.trialDriver}
                                   name={driver.active ? driver.name : `${driver.name} (inactivo)`}
                                 />
                               ))}

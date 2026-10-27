@@ -37,6 +37,7 @@ import {
 import { requiresInvoicePdf } from '../lib/preparation'
 import { isOrderPriority, PRIORITIES, PRIORITY_LABEL, priorityOf } from '../lib/priority'
 import type { OrderPriority } from '../data/orders'
+import { listAssignableDrivers, type AssignableDriver } from '../lib/driversApi'
 import { slotQuestion } from '../lib/slot'
 import {
   isAuthorization,
@@ -275,6 +276,11 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     ? ((sessionSeed?.dispatchType ?? existing?.dispatchType) as DispatchType)
     : 'propia'
   const [dispatchType, setDispatchType] = useState<DispatchType>(initialDispatch)
+  const [driverId, setDriverId] = useState(() => {
+    if (seedPickup || initialDispatch !== 'propia') return ''
+    return typeof sessionSeed?.driverId === 'string' ? sessionSeed.driverId : ''
+  })
+  const [driverChoices, setDriverChoices] = useState<AssignableDriver[]>([])
   const [priority, setPriority] = useState<OrderPriority>(() =>
     sessionSeed && isOrderPriority(sessionSeed.priority) ? sessionSeed.priority : priorityOf(existing),
   )
@@ -366,6 +372,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       dispatchType,
       priority,
       transporter,
+      driverId: dispatchType === 'propia' ? driverId : '',
       notes,
       attachmentName,
       attachmentDataUrl,
@@ -420,6 +427,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       setDoorbell('')
       setTimeWindow('')
       setTransporter('')
+      setDriverId('')
       setRequiresPickup(false)
     } else {
       setAddress(typeof fields.address === 'string' ? fields.address : '')
@@ -449,6 +457,9 @@ function PedidoForm({ editingId }: { editingId?: string }) {
           : '',
       )
       setRequiresPickup(Boolean(fields.requiresPickup))
+      setDriverId(
+        next === 'propia' && typeof fields.driverId === 'string' ? fields.driverId : '',
+      )
       const list = listForDispatch(next, transporterLists)
       setTransporter(
         typeof fields.transporter === 'string' && list.includes(fields.transporter)
@@ -513,6 +524,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       dispatchType: 'propia',
       priority: 'normal',
       transporter: '',
+      driverId: '',
       notes: '',
       attachmentName: '',
       attachmentDataUrl: '',
@@ -538,6 +550,18 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       cancelled = true
     }
   }, [user, logout])
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return
+    let cancelled = false
+    void listAssignableDrivers().then((result) => {
+      if (cancelled || !result.ok) return
+      setDriverChoices(result.data.filter((item) => item.active))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user?.role])
 
   useEffect(() => {
     if (!dirty) return
@@ -589,6 +613,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
     dispatchType,
     priority,
     transporter,
+    driverId,
     notes,
     attachmentName,
     attachmentDataUrl,
@@ -1090,6 +1115,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       dispatchType,
       priority,
       transporter: pickup ? undefined : transporter.trim() || undefined,
+      driverId: !pickup && dispatchType === 'propia' && driverId ? driverId : undefined,
       notes: notes.trim(),
       attachmentName: attachmentName || undefined,
       attachmentDataUrl: attachmentDataUrl || undefined,
@@ -1118,7 +1144,17 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       if (!accepted) return
     }
     setSaving(true)
-    const result = await addOrder(draft)
+    let result = await addOrder(draft)
+    if (result.status === 'not-saved' && result.code === 'FRANJA_LLENA' && result.slot && canAuthorizeSlot()) {
+      setSaving(false)
+      const accepted = await confirm(
+        'Franja llena',
+        slotQuestion(result.slot.timeWindow, result.slot.deliveryDate, result.slot.count),
+      )
+      if (!accepted) return
+      setSaving(true)
+      result = await addOrder(draft, true)
+    }
     setSaving(false)
     if (result.status === 'saved-without-attachment') {
       if (requiresInvoicePdf({ dispatchType })) {
@@ -1246,6 +1282,8 @@ function PedidoForm({ editingId }: { editingId?: string }) {
   )
   const timeOptions = withCurrent(timeWindows, timeWindow)
   const transporterOptions = withCurrent(listForDispatch(dispatchType, transporterLists), transporter)
+  const canPickDriver =
+    !storedId && user?.role === 'admin' && dispatchType === 'propia' && driverChoices.length > 0
 
   function chooseDispatch(next: DispatchType) {
     markDirty()
@@ -1258,6 +1296,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
         }))
       }
       setTransporter('')
+      setDriverId('')
       setTimeWindow('')
       setAddress('')
       setLookup('')
@@ -1277,6 +1316,7 @@ function PedidoForm({ editingId }: { editingId?: string }) {
       setDeliveryDate((current) => current || toIso(new Date()))
       return
     }
+    if (next !== 'propia') setDriverId('')
     const list = listForDispatch(next, transporterLists)
     setTransporter((current) => (current && list.includes(current) ? current : ''))
     setTimeWindow((current) => current || timeWindows[0] || '')
@@ -1857,6 +1897,73 @@ function PedidoForm({ editingId }: { editingId?: string }) {
               </Field>
             )}
           </div>
+          {canPickDriver && (
+            <div className="mt-4">
+              <span className="text-sm font-medium text-text" id="chofer-label">
+                Chofer
+              </span>
+              <p className="hint">Opcional. Si no elegís, se asigna después en Despacho.</p>
+              <div
+                className="mt-2 flex flex-wrap gap-2"
+                role="radiogroup"
+                aria-labelledby="chofer-label"
+                onKeyDown={(event) =>
+                  onSegmentKey(
+                    event,
+                    [...driverChoices.map((driver) => driver.id), 'none'],
+                    driverId || 'none',
+                    (value) => {
+                      markDirty()
+                      setDriverId(value === 'none' ? '' : value)
+                    },
+                  )
+                }
+              >
+                {driverChoices.map((driver) => {
+                  const active = driverId === driver.id
+                  const suggested = driver.trialDriver && !active
+                  const emphasized = active || (suggested && !driverId)
+                  return (
+                    <button
+                      key={driver.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      tabIndex={active || (!driverId && driver.trialDriver) ? 0 : -1}
+                      data-option={driver.id}
+                      className={`inline-flex h-11 min-h-11 items-center rounded-md px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        emphasized
+                          ? 'border border-accent bg-accent-soft font-semibold text-text'
+                          : suggested
+                            ? 'border border-accent font-semibold text-text'
+                            : 'border border-border bg-transparent text-text'
+                      }`}
+                      onClick={() => {
+                        markDirty()
+                        setDriverId(driver.id)
+                      }}
+                    >
+                      {driver.name}
+                    </button>
+                  )
+                })}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={!driverId}
+                  tabIndex={!driverId && !driverChoices.some((driver) => driver.trialDriver) ? 0 : -1}
+                  data-option="none"
+                  className="inline-flex h-11 min-h-11 items-center rounded-md border border-border bg-transparent px-3 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => {
+                    markDirty()
+                    setDriverId('')
+                  }}
+                >
+                  Sin chofer
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="form-card toggle-card">

@@ -3,6 +3,7 @@ export type DriverChoice = {
   name: string
   phone?: string
   email?: string
+  trialDriver?: boolean
 }
 
 function nameKey(name: string) {
@@ -12,6 +13,14 @@ function nameKey(name: string) {
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .replace(/\s+/g, ' ')
+}
+
+/** El admin de prueba va primero y se destaca en el selector. */
+export function driverOptionClass(trial?: boolean, full?: boolean) {
+  const parts: string[] = []
+  if (trial) parts.push('bg-accent-soft', 'font-semibold')
+  if (full) parts.push('text-danger')
+  return parts.length > 0 ? parts.join(' ') : undefined
 }
 
 /** Si hay dos choferes con el mismo nombre, suma el celular o el email. */

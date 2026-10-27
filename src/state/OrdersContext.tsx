@@ -84,7 +84,7 @@ type OrdersContextValue = {
   importLegacy: () => Promise<void>
   reload: () => void
   refresh: (options?: { silent?: boolean }) => Promise<void>
-  addOrder: (order: OrderDraft) => Promise<OrderSaveResult>
+  addOrder: (order: OrderDraft, override?: boolean) => Promise<OrderSaveResult>
   updateOrder: (order: Order, reason?: string, override?: boolean) => Promise<OrderSaveResult>
   patchFields: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
   transitionOrder: (id: string, fields: Record<string, unknown>) => Promise<OrderSaveResult>
@@ -396,8 +396,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return { status: 'saved', order: saved }
   }
 
-  function addOrder(order: OrderDraft) {
-    return write('create', order)
+  function addOrder(order: OrderDraft, override = false) {
+    return write('create', order, undefined, undefined, override)
   }
 
   function updateOrder(order: Order, reason?: string, override = false) {

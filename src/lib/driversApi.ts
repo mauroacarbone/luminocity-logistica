@@ -27,6 +27,43 @@ export function clearDriverLocation() {
   return apiRequest('/api/drivers/location', 'DELETE', undefined, 'No se pudo borrar la ubicación.')
 }
 
+export type AssignableDriver = {
+  id: string
+  name: string
+  email: string
+  phone: string
+  active: boolean
+  trialDriver: boolean
+}
+
+function asAssignableDriver(value: unknown): AssignableDriver | null {
+  if (!value || typeof value !== 'object') return null
+  const driver = value as Record<string, unknown>
+  if (typeof driver.id !== 'string' || !driver.id) return null
+  if (typeof driver.name !== 'string' || !driver.name.trim()) return null
+  if (typeof driver.active !== 'boolean') return null
+  return {
+    id: driver.id,
+    name: driver.name.trim(),
+    email: typeof driver.email === 'string' ? driver.email : '',
+    phone: typeof driver.phone === 'string' ? driver.phone : '',
+    active: driver.active,
+    trialDriver: driver.trialDriver === true,
+  }
+}
+
+export async function listAssignableDrivers(): Promise<{ ok: true; data: AssignableDriver[] } | ApiFailure> {
+  const result = await apiRequest('/api/drivers', 'GET', undefined, 'No se pudieron cargar los choferes.')
+  if (!result.ok) return result
+  if (!Array.isArray(result.data)) {
+    return { ok: false, status: 500, message: 'No se pudieron cargar los choferes.' }
+  }
+  return { ok: true, data: result.data.flatMap((item) => {
+    const driver = asAssignableDriver(item)
+    return driver ? [driver] : []
+  }) }
+}
+
 function isLiveDriver(value: unknown): value is LiveDriver {
   if (!value || typeof value !== 'object') return false
   const driver = value as Record<string, unknown>
