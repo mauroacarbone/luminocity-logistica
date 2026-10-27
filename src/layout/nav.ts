@@ -98,8 +98,8 @@ export function pathMatches(pathname: string, to: string, end?: boolean) {
 
 export type VisibleGroup = { id: GroupId; title: string; items: NavItem[] }
 
-export function visibleNav(role: Role): { standalone: NavItem[]; groups: VisibleGroup[] } {
-  const allowed = new Set(menuPaths(role))
+export function visibleNav(role: Role, trialDriver = false): { standalone: NavItem[]; groups: VisibleGroup[] } {
+  const allowed = new Set(menuPaths(role, trialDriver))
   const standalone = NAV.filter((item) => STANDALONE.has(item.to) && allowed.has(item.to))
   const groups = GROUPS.map((group) => ({
     id: group.id,
@@ -129,8 +129,8 @@ export function activeItem(pathname: string, items: readonly NavItem[]): NavItem
 
 export type AppTab = { id: string; label: string; icon: NavIconName; to: string }
 
-export function tabsFor(role: Role): AppTab[] {
-  const { standalone, groups } = visibleNav(role)
+export function tabsFor(role: Role, trialDriver = false): AppTab[] {
+  const { standalone, groups } = visibleNav(role, trialDriver)
   if (role === 'gerencia') {
     const item = itemByPath('/reportes')
     return item ? [{ id: item.to, label: item.label, icon: item.icon, to: item.to }] : []
@@ -149,7 +149,7 @@ export function tabsFor(role: Role): AppTab[] {
       to: item.to,
     }))
   }
-  return groups.map((group) => {
+  const tabs = groups.map((group) => {
     const def = GROUPS.find((entry) => entry.id === group.id)
     return {
       id: group.id,
@@ -158,13 +158,17 @@ export function tabsFor(role: Role): AppTab[] {
       to: group.items[0].to,
     }
   })
+  if (!trialDriver) return tabs
+  const deliveries = itemByPath('/mis-entregas')
+  if (!deliveries) return tabs
+  return [{ id: deliveries.to, label: deliveries.label, icon: deliveries.icon, to: deliveries.to }, ...tabs]
 }
 
 export type SidebarSection = { label?: string; items: NavItem[] }
 
-export function sidebarFor(role: Role, pathname: string): SidebarSection[] | null {
+export function sidebarFor(role: Role, pathname: string, trialDriver = false): SidebarSection[] | null {
   if (role === 'chofer' || role === 'gerencia' || role === 'tecnico') return null
-  const { groups } = visibleNav(role)
+  const { groups } = visibleNav(role, trialDriver)
   const groupId = activeGroupId(pathname, groups)
   const group = groups.find((entry) => entry.id === groupId)
   if (!group || group.items.length <= 1) return null
@@ -183,12 +187,13 @@ export function sidebarFor(role: Role, pathname: string): SidebarSection[] | nul
   return sections.length > 0 ? sections : null
 }
 
-export function activeTabId(role: Role, pathname: string): string | null {
+export function activeTabId(role: Role, pathname: string, trialDriver = false): string | null {
+  if (trialDriver && pathMatches(pathname, '/mis-entregas')) return '/mis-entregas'
   if (role === 'chofer' || role === 'gerencia' || role === 'tecnico') {
-    const tab = tabsFor(role).find((entry) => pathMatches(pathname, entry.to))
+    const tab = tabsFor(role, trialDriver).find((entry) => pathMatches(pathname, entry.to))
     return tab?.id ?? null
   }
-  return activeGroupId(pathname, visibleNav(role).groups)
+  return activeGroupId(pathname, visibleNav(role, trialDriver).groups)
 }
 
 export function homePathForRole(role: Role) {

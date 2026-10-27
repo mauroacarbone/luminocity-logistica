@@ -239,7 +239,7 @@ export function AppShell() {
 
   const drawerClosed = compact && !menuOpen
   const drawerDialog = compact && menuOpen
-  const sections = user ? sidebarFor(user.role, location.pathname) : null
+  const sections = user ? sidebarFor(user.role, location.pathname, user.trialDriver === true) : null
   const showDock = !compact && sections != null
 
   return (
