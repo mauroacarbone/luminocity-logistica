@@ -6,6 +6,7 @@ import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { notifyPlanners } from './notifications.js'
 import { applyTransition, STATUS_RANK } from './orderFlow.js'
+import { matchesTrialDriver } from './trialDriver.js'
 import { readUsersList } from './users.js'
 import {
   checkDriver,
@@ -97,7 +98,11 @@ routeSheetsRouter.post('/:id/finish', async (req, res) => {
   })
 })
 
-routeSheetsRouter.post('/:id/start', requireRole('chofer'), async (req, res) => {
+routeSheetsRouter.post('/:id/start', async (req, res) => {
+  if (req.user.role !== 'chofer' && req.user.trialDriver !== true) {
+    res.status(403).json({ message: 'No tenés permiso para esto.' })
+    return
+  }
   await send(res, async () => {
     const result = await startSheet(req.params.id, req.user)
     if (result.error) {
@@ -676,7 +681,7 @@ export async function requireFreshSheet(orders, order) {
 }
 
 export async function blockPlannedDeparture(user, current, next) {
-  if (user.role !== 'chofer') return null
+  if (user.role !== 'chofer' && user.trialDriver !== true) return null
   if (current.status !== 'asignado' || next.status !== 'en-viaje') return null
   if (typeof current.routeId !== 'string' || !current.routeId) return null
   const sheets = await readCollection('routeSheets')
@@ -774,7 +779,9 @@ function listTrips(user, query) {
       return fail('Elegí un chofer.')
     }
     const users = await readCollection('users')
-    const driver = users.find((item) => item && item.id === driverId && item.role === 'chofer')
+    const driver = users.find(
+      (item) => item && item.id === driverId && (item.role === 'chofer' || matchesTrialDriver(item)),
+    )
     if (!driver) return fail('No existe ese chofer.', 404)
     const sheets = await readCollection('routeSheets')
     const orders = await readCollection('orders')

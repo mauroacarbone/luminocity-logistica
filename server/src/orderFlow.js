@@ -54,6 +54,7 @@ const TRANSITIONS = {
     roles: new Set(['chofer']),
     mustBeDriver: true,
     ownDelivery: true,
+    allowTrialDriver: true,
   },
   'en-viaje|entregado': {
     direction: 'forward',
@@ -193,7 +194,7 @@ export async function applyTransition(orders, current, input, user, via, options
   if (rule.ownDelivery && !isOwnDelivery(current)) return invalidTransition(current.status, to)
   if (rule.pickupOnly && !isPickup(current)) return invalidTransition(current.status, to)
   if (rule.notPickup && isPickup(current)) return invalidTransition(current.status, to)
-  if (!rule.roles.has(user.role)) {
+  if (!rule.roles.has(user.role) && !(rule.allowTrialDriver && user.trialDriver === true)) {
     return fail('No tenés permiso para ese cambio de estado.', 403)
   }
   if (rule.mustBeDriver && !isOrderDriver(user, current)) {

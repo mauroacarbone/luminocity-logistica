@@ -4,6 +4,7 @@ import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
 import { describeTrip } from './routeSheets.js'
 import { deliveredTimeliness, slotRange } from './timeliness.js'
+import { trialDriverNames } from './trialDriver.js'
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
 const DISPATCHES = ['propia', 'correo', 'retiro']
@@ -224,6 +225,7 @@ async function driverNames() {
         map.set(user.id, text(user.name) || user.id)
       }
     }
+    await addTrialDriverNames(map)
     return map
   }
   const rows = await queryRows(
@@ -232,7 +234,13 @@ async function driverNames() {
      WHERE data->>'role' = 'chofer'`,
   )
   for (const row of rows) map.set(row.id, text(row.name) || row.id)
+  await addTrialDriverNames(map)
   return map
+}
+
+async function addTrialDriverNames(map) {
+  const extra = await trialDriverNames()
+  for (const [id, name] of extra) map.set(id, name)
 }
 
 async function ordersById(ids) {

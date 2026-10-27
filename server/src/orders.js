@@ -48,6 +48,7 @@ import {
   syncSheetFreshness,
   syncSheetOnEdit,
 } from './routeSheets.js'
+import { isAssignableDriver, isTrialDriver, matchesTrialDriver } from './trialDriver.js'
 import { isActive, readUsersList } from './users.js'
 
 const STATUSES = ['pendiente', 'preparado', 'asignado', 'en-viaje', 'entregado']
@@ -137,6 +138,12 @@ ordersRouter.get('/', async (req, res) => {
     const visible = orders.filter((order) => canSeeOrder(req.user, order))
     if (req.user.role === 'chofer') {
       queueGeoIds(visible.filter((order) => needsGeo(order)).map((order) => order.id))
+    } else if (req.user.trialDriver === true) {
+      queueGeoIds(
+        visible
+          .filter((order) => order.driverId === req.user.id && needsGeo(order))
+          .map((order) => order.id),
+      )
     }
     const planned = await plannedSheetIds()
     const users = await readUsersList()
@@ -170,6 +177,9 @@ ordersRouter.get('/:id', async (req, res) => {
       return
     }
     if (req.user.role === 'chofer' && needsGeo(order)) queueGeoIds([order.id])
+    else if (req.user.trialDriver === true && order.driverId === req.user.id && needsGeo(order)) {
+      queueGeoIds([order.id])
+    }
     res.json(await withClientFlags(withHistory(order)))
   })
 })
@@ -407,7 +417,8 @@ function createOrder(body, user) {
     const otherSeller =
       user.role === 'vendedor' &&
       normalizeName(parsed.order.seller) !== normalizeName(user.sellerName)
-    delete parsed.order.driverId
+    const keptDriver = await keepDriverOnCreate(user, parsed.order)
+    if (keptDriver.error) return keptDriver
     const createdAt = new Date().toISOString()
     const order = {
       ...parsed.order,
@@ -1292,11 +1303,25 @@ function makeEdit(user, reason, changes, status) {
   }
 }
 
+async function keepDriverOnCreate(user, order) {
+  const own = isOwnDelivery(order)
+  const driverId = typeof order.driverId === 'string' ? order.driverId.trim() : ''
+  if (user.role === 'vendedor' || !own || !driverId) {
+    delete order.driverId
+    return { ok: true }
+  }
+  order.driverId = driverId
+  const driver = await checkDriver(driverId)
+  if (driver.error) return driver
+  stampOwnDriver(order, await driverDisplayName(driverId))
+  return { ok: true }
+}
+
 export async function checkDriver(driverId, previous) {
   if (!driverId || driverId === previous) return { ok: true }
   const users = await readUsersList()
   const driver = users.find((item) => item.id === driverId)
-  if (!driver || driver.role !== 'chofer') return fail('Elegí un chofer.')
+  if (!driver || !isAssignableDriver(driver)) return fail('Elegí un chofer.')
   if (!isActive(driver)) return fail('Ese chofer está desactivado')
   return { ok: true }
 }
@@ -1765,7 +1790,10 @@ export function listLiveDrivers() {
       const user = byId.get(userId)
       const carrier = typeof user?.carrierName === 'string' ? user.carrierName.trim() : ''
       const live =
-        user?.role === 'chofer' && isActive(user) && stillTraveling(orders, user) && isStoredPoint(point)
+        (user?.role === 'chofer' || isTrialDriver(user)) &&
+        isActive(user) &&
+        stillTraveling(orders, user) &&
+        isStoredPoint(point)
       if (!live) {
         drop.push(userId)
         continue
@@ -1837,7 +1865,7 @@ export async function releaseIdleDrivers(orders, userId) {
   if (!userId) return
   const users = await readUsersList()
   const user = users.find((item) => item.id === userId)
-  if (!user || user.role !== 'chofer' || stillTraveling(orders, user)) return
+  if (!user || (user.role !== 'chofer' && !matchesTrialDriver(user)) || stillTraveling(orders, user)) return
   await forgetUsers([userId])
 }
 
