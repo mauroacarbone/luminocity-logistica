@@ -3,6 +3,11 @@ import { listLiveDrivers, updateDriverLocation } from './orders.js'
 import { forgetUsers } from './locations.js'
 import { locked } from './lock.js'
 import { requireAuth, requireRole } from './middleware.js'
+import { listAssignableDrivers } from './trialDriver.js'
+
+function canDrive(user) {
+  return user?.role === 'chofer' || user?.trialDriver === true
+}
 
 const MIN_POST_MS = 20_000
 const lastPostAt = new Map()
@@ -10,7 +15,19 @@ const lastPostAt = new Map()
 export const driversRouter = Router()
 driversRouter.use(requireAuth)
 
-driversRouter.post('/location', requireRole('chofer'), async (req, res) => {
+driversRouter.get('/', requireRole('encargado_deposito', 'admin'), async (_req, res) => {
+  try {
+    res.json(await listAssignableDrivers())
+  } catch {
+    if (!res.headersSent) res.status(500).json({ message: 'No se pudieron cargar los choferes.' })
+  }
+})
+
+driversRouter.post('/location', async (req, res) => {
+  if (!canDrive(req.user)) {
+    res.status(403).json({ message: 'No tenés permiso para esto.' })
+    return
+  }
   const point = readPoint(req.body)
   if (point.error) {
     res.status(point.status).json({ message: point.error })
@@ -35,7 +52,11 @@ driversRouter.post('/location', requireRole('chofer'), async (req, res) => {
   }
 })
 
-driversRouter.delete('/location', requireRole('chofer'), async (req, res) => {
+driversRouter.delete('/location', async (req, res) => {
+  if (!canDrive(req.user)) {
+    res.status(403).json({ message: 'No tenés permiso para esto.' })
+    return
+  }
   try {
     await locked(() => forgetUsers([req.user.id]))
     res.status(204).end()

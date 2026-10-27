@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { normalizeName } from './access.js'
 import { collectionFileExists, readCollection, usingDatabase, writeCollection } from './db/store.js'
+import { isTrialDriver } from './trialDriver.js'
 import { forgetUsers } from './locations.js'
 import { locked } from './lock.js'
 
@@ -84,6 +85,7 @@ export function toPublicUser(user) {
   if (typeof user.createdAt === 'string' && user.createdAt.trim()) {
     publicUser.createdAt = user.createdAt
   }
+  if (isTrialDriver(user)) publicUser.trialDriver = true
   return publicUser
 }
 
