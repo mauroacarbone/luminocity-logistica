@@ -73,11 +73,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [active, setActive] = useState(0)
 
   const role = user?.role
+  const trialDriver = user?.trialDriver === true
   const canSearchOrders = Boolean(role && canOpen(role, '/'))
 
   const results = useMemo(() => {
     if (!role) return [] as Result[]
-    const { standalone, groups } = visibleNav(role)
+    const { standalone, groups } = visibleNav(role, trialDriver)
     const pages = [...standalone, ...groups.flatMap((g) => g.items)]
     const q = fold(deferredQuery.trim())
     const pageResults: PageResult[] = pages
@@ -108,7 +109,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     }
 
     return [...pageResults, ...orderResults]
-  }, [role, deferredQuery, orders, canSearchOrders])
+  }, [role, trialDriver, deferredQuery, orders, canSearchOrders])
 
   const activeIndex = results.length === 0 ? 0 : Math.min(active, results.length - 1)
 

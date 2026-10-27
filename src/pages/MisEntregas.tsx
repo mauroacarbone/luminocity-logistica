@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { OrderDetail } from '../components/OrderDetail'
 import { OrderStepper } from '../components/OrderStepper'
@@ -76,7 +76,12 @@ function sortDeliveries(list: Order[], now = Date.now()) {
 
 export function MisEntregas() {
   const { user } = useAuth()
-  const { orders, loading, error: ordersError, transitionOrder, refresh } = useOrders()
+  const { orders: loadedOrders, loading, error: ordersError, transitionOrder, refresh } = useOrders()
+  const asDriver = user?.role === 'chofer' || user?.trialDriver === true
+  const orders = useMemo(() => {
+    if (!user?.trialDriver) return loadedOrders
+    return loadedOrders.filter((order) => order.driverId === user.id)
+  }, [loadedOrders, user])
   const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>('asignados')
   const [busy, setBusy] = useState('')
@@ -88,9 +93,9 @@ export function MisEntregas() {
   const [finishTarget, setFinishTarget] = useState<RouteSheet | null>(null)
   const [finishing, setFinishing] = useState(false)
   const today = businessToday()
-  const canFinish = user?.role === 'chofer'
+  const canFinish = asDriver
   const tracking =
-    user?.role === 'chofer' && !loading && !ordersError && orders.some((order) => order.status === 'en-viaje')
+    asDriver && !loading && !ordersError && orders.some((order) => order.status === 'en-viaje')
   const hadTraveling = useRef(false)
   const userId = user?.id
 
@@ -232,9 +237,9 @@ export function MisEntregas() {
 
   const shownGps: Gps = tracking ? gps : 'off'
   const position = shownGps === 'on' ? here : null
-  const visibleSheets = sheets
-  const headerSheet = visibleSheets.find((sheet) => sheetPrimary(sheet, user?.role, today, canFinish))
-  const headerKind = headerSheet ? sheetPrimary(headerSheet, user?.role, today, canFinish) : null
+  const visibleSheets = user?.trialDriver ? sheets.filter((sheet) => sheet.driverId === user.id) : sheets
+  const headerSheet = visibleSheets.find((sheet) => sheetPrimary(sheet, asDriver ? 'chofer' : user?.role, today, canFinish))
+  const headerKind = headerSheet ? sheetPrimary(headerSheet, asDriver ? 'chofer' : user?.role, today, canFinish) : null
   const onSheet = new Set(visibleSheets.flatMap((sheet) => sheet.orderIds))
   const loose = orders.filter((order) => !onSheet.has(order.id))
   const assigned = sortDeliveries(
@@ -353,14 +358,14 @@ export function MisEntregas() {
           ) : undefined
         }
       />
-      {user?.role === 'chofer' && (
+      {asDriver && (
         <div className="no-print mt-3">
           <Badge tone={shownGps === 'on' ? 'success' : 'neutral'}>
             {shownGps === 'on' ? 'Ubicación activa' : 'Ubicación apagada'}
           </Badge>
         </div>
       )}
-      {user?.role === 'chofer' && shownGps === 'denied' && (
+      {asDriver && shownGps === 'denied' && (
         <p className="no-print mt-3 text-sm text-muted">Activá la ubicación para ordenar las entregas</p>
       )}
       {sheetsError && <p className="no-print mt-4 text-sm font-semibold text-danger">{sheetsError}</p>}
@@ -425,7 +430,7 @@ export function MisEntregas() {
                   Finalizar viaje
                 </Button>
               )}
-              {user?.role === 'chofer' && sheet.status === 'planificada' && sheet.date <= today && (
+              {asDriver && sheet.status === 'planificada' && sheet.date <= today && (
                 <>
                   {!sheetIsReady(sheet, orders) && (
                     <p className="rounded-md border border-border px-4 py-3 text-sm font-semibold">

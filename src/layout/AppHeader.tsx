@@ -27,8 +27,9 @@ export function AppHeader({
 }: AppHeaderProps) {
   const { user } = useAuth()
   const location = useLocation()
-  const tabs = user ? tabsFor(user.role) : []
-  const activeId = user ? activeTabId(user.role, location.pathname) : null
+  const trialDriver = user?.trialDriver === true
+  const tabs = user ? tabsFor(user.role, trialDriver) : []
+  const activeId = user ? activeTabId(user.role, location.pathname, trialDriver) : null
   const area = tabs.find((tab) => tab.id === activeId)?.label ?? 'Operación'
   const home = user ? homePathForRole(user.role) : '/'
   const hideSearch = user?.role === 'gerencia' || user?.role === 'tecnico'

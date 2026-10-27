@@ -19,6 +19,8 @@ export type Session = {
   active: boolean
   sellerName?: string
   carrierName?: string
+  /** Admin que también puede actuar como chofer. */
+  trialDriver?: boolean
 }
 
 const TOKEN_KEY = 'luminocity.token.v1'
@@ -59,7 +61,8 @@ export function isSession(value: unknown): value is Session {
     isRole(user.role) &&
     typeof user.active === 'boolean' &&
     (user.sellerName === undefined || typeof user.sellerName === 'string') &&
-    (user.carrierName === undefined || typeof user.carrierName === 'string')
+    (user.carrierName === undefined || typeof user.carrierName === 'string') &&
+    (user.trialDriver === undefined || typeof user.trialDriver === 'boolean')
   )
 }
 

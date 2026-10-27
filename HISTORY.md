@@ -160,6 +160,7 @@ Los briefs 1–6 entraron juntos por el PR #1.
 | 40.1 | Detalle del pedido para el chofer | Hecho |
 | 41 | Precarga de artículos desde la FC | Hecho |
 | 41.1 | Pie de página en FC de varias páginas | Hecho |
+| — | Admin de prueba como chofer | Hecho |
 
 El Brief 13 mueve el login y el registro a Express: JWT, bcrypt y usuarios en `server/data/users.json`.
 
@@ -421,6 +422,8 @@ El Brief 32g abre el detalle del pedido en un panel lateral, sin salir de la lis
 
 El admin elimina un pedido desde el detalle del Panel, en cualquier estado. El encargado ya no puede cancelarlo. `DELETE /api/orders/:id` queda solo para el admin: el pedido sale de la hoja y libera el cupo.
 
+El admin de prueba puede actuar como chofer sin otra cuenta. Por defecto es el admin activo cuyo primer nombre o nombre completo es Francis. `TRIAL_DRIVER_ID` fija el id y `TRIAL_DRIVER_NAME` cambia el nombre; un nombre vacío lo apaga. Sigue con rol admin: el encargado no lo ve ni lo edita en Usuarios. Entra en los selectores de chofer (Nuevo pedido, Despacho, el diálogo de asignar, el planificador y Mis viajes), primero y con el fondo de acento. En Nuevo pedido el chofer es opcional y solo en una entrega propia; un retiro o un correo no lo guardan. El cupo de 3 por franja sigue igual, con la autorización del encargado o del admin. Además abre Mis entregas: inicia la hoja, sale a reparto y confirma la entrega solo de sus pedidos. El resto de los roles no cambia. A `en-viaje` sigue sin poder pasar otro admin.
+
 El Brief 41 precarga los artículos desde la FC de Cianbox adjunta, sin usar la API. Es provisorio hasta que esa API exista: ahí se reemplaza esta lectura y el stock se va a mirar con `stock_total`, compartido entre sucursales. El servidor usa pdfjs-dist (build legacy) para leer el texto del PDF. El formato asumido es la tabla IT Cant. Detalle, con el código entre corchetes y el código interno entre paréntesis. Hay vista previa, carga en bloque (reemplazar o agregar) y el botón en Nuevo pedido y en Mi preparación. Los artículos quedan como manuales. Si el pedido ya tiene artículos de la planilla, no se precargan. Una cantidad con decimales no entra y hay que cargarla a mano. El N° de factura solo se completa si está vacío; si el cliente leído no coincide, avisa y no bloquea. El 41.1 corta la tabla en el pie de página de las FC de varias páginas y aplica el timeout a toda la lectura.
 
 El Brief 40 unifica Pedidos y preparación en el Panel operativo. `/pedidos` y `/pedidos/:id` redirigen al Panel y conservan el pedido (`?pedido=` o `?id=`). Al Panel se sumaron la búsqueda por cliente, factura o teléfono, el filtro de armado incompleto, cancelar o borrar, liberar un armado, y el checklist con el tiempo de preparación en el detalle. Ya estaban el flujo del pedido, el detalle, el orden por prioridad, los estados y la exportación. Mi preparación no cambia. El vendedor sigue viendo solo sus pedidos. El 40.1 abre el detalle del pedido en Mis entregas para el chofer, también desde la campana y desde los links viejos, y avisa en el Panel cuando el pedido del link no se puede ver.
@@ -483,6 +486,7 @@ En este orden. No adelantar el siguiente.
 - El rol filtra el menú y la API. En desarrollo el registro público crea `vendedor` y rechaza un nombre o email que ya use otra cuenta. En producción el registro responde 403. No carga `sellerName`.
 - El vendedor ve y edita por `sellerName`, no por el nombre de la cuenta. Sin vínculo no puede cargar pedidos. El admin o el encargado lo elige en Usuarios, desde los vendedores de datos maestros. Una cuenta admin solo la edita un admin. Al editar no puede cambiar el vendedor del pedido.
 - El chofer ve los pedidos con su `driverId`. Si el pedido no tiene chofer, los ve por su `carrierName`. Sin `driverId` en el pedido y sin vínculo no ve nada. El admin o el encargado elige el transportista en Usuarios. Una cuenta admin solo la edita un admin.
+- Un admin de prueba (por defecto Francis, o `TRIAL_DRIVER_ID` / `TRIAL_DRIVER_NAME`) también se puede elegir como chofer y abre Mis entregas. El rol sigue siendo admin. Otro admin no pasa a `en-viaje`.
 - La hoja de ruta es una por chofer, fecha y franja. Se guarda en `routeSheets`. Al confirmar, los preparados pasan a asignado. Al iniciar, pasan a en viaje. Cuando todos quedan entregados o ya no existen (eliminar borra el pedido; solo el admin), la hoja se cierra. Si cambia el despacho de un pedido en una hoja planificada, sale de la hoja; en una en curso, el cambio se rechaza salvo entregar.
 - El estado del pedido solo cambia por `POST /api/orders/:id/transition`. El `PATCH` no acepta `status`. Las transiciones válidas y los roles están en `orderFlow.js`. Cada cambio se anota en `history`.
 - Una carga a nombre de otro vendedor exige una autorización aprobada y sin usar. Se marca usada en la misma escritura que guarda el pedido. Al pedirla se avisa al encargado.

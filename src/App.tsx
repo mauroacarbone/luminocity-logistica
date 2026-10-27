@@ -37,7 +37,7 @@ function PublicOnly({ children }: { children: ReactNode }) {
 
 function Gate({ path, children }: { path: string; children: ReactNode }) {
   const { user } = useAuth()
-  if (!user || !canOpen(user.role, path)) return <NoAccess />
+  if (!user || !canOpen(user.role, path, user.trialDriver === true)) return <NoAccess />
   return children
 }
 
@@ -64,7 +64,7 @@ function Home() {
 
 function MisEntregasRoute() {
   const { user } = useAuth()
-  if (!user || user.role !== 'chofer') {
+  if (!user || (user.role !== 'chofer' && user.trialDriver !== true)) {
     return <Navigate to={user ? homePathForRole(user.role) : '/'} replace />
   }
   return <MisEntregas />

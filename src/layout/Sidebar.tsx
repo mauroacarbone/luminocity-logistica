@@ -32,7 +32,7 @@ function SideLink({
 function AreaLink({ tab, onNavigate }: { tab: AppTab; onNavigate?: () => void }) {
   const location = useLocation()
   const { user } = useAuth()
-  const active = user ? activeTabId(user.role, location.pathname) === tab.id : false
+  const active = user ? activeTabId(user.role, location.pathname, user.trialDriver === true) === tab.id : false
   return (
     <Link
       to={tab.to}
@@ -57,7 +57,7 @@ type SidebarProps = {
 
 export function Sidebar({ mode, sections, collapsed, onCollapse, onClose, onNavigate }: SidebarProps) {
   const { user, logout } = useAuth()
-  const tabs = user ? tabsFor(user.role) : []
+  const tabs = user ? tabsFor(user.role, user.trialDriver === true) : []
   const initial = user?.name.trim().charAt(0).toUpperCase() || 'L'
   const dock = mode === 'dock'
 

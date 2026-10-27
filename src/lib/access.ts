@@ -62,13 +62,16 @@ const MENU: Record<Role, readonly string[]> = {
   ],
 }
 
-export function menuPaths(role: Role) {
-  return MENU[role]
+export function menuPaths(role: Role, trialDriver = false) {
+  const paths = MENU[role]
+  if (!trialDriver || paths.includes('/mis-entregas')) return paths
+  return [...paths, '/mis-entregas']
 }
 
-export function canOpen(role: Role, path: string) {
+export function canOpen(role: Role, path: string, trialDriver = false) {
   if (path === '/nuevo-pedido' && role === 'encargado_deposito') return true
   if (path === '/mis-viajes' && (role === 'encargado_deposito' || role === 'admin')) return true
+  if (path === '/mis-entregas' && trialDriver) return true
   return MENU[role].includes(path)
 }
 

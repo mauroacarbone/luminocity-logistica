@@ -45,8 +45,13 @@ function sameSession(prev: Session, session: Session) {
     prev.role === session.role &&
     prev.active === session.active &&
     prev.sellerName === session.sellerName &&
-    prev.carrierName === session.carrierName
+    prev.carrierName === session.carrierName &&
+    prev.trialDriver === session.trialDriver
   )
+}
+
+function tracksLocation(user: Session | null) {
+  return user?.role === 'chofer' || user?.trialDriver === true
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -86,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!expiresAt) return
     const delay = Math.max(0, expiresAt - Date.now())
     const timeout = window.setTimeout(() => {
-      if (user.role === 'chofer') void clearDriverLocation()
+      if (tracksLocation(user)) void clearDriverLocation()
       clearToken()
       setUser(null)
     }, delay)
@@ -144,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     const current = userRef.current
-    if (current?.role === 'chofer') void clearDriverLocation()
+    if (tracksLocation(current)) void clearDriverLocation()
     if (current?.id) {
       clearOrderDraftsForUser(current.id)
       clearSessionDraft(current.id)
